@@ -1,0 +1,1299 @@
+#+title: Emacs Config: Base
+#+author: Cash Weaver
+#+email: cashweaver@google.com
+#+STARTUP: overview
+
+This is my emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
+
+* Table of Contents :TOC_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#example-of-literate-programming][Example of Literate Programming]]
+  - [[#tangled-files][Tangled Files]]
+    - [[#work][Work]]
+  - [[#function-and-variable-nameing-convention][Function and Variable Nameing Convention]]
+- [[#doom-emacs][Doom Emacs]]
+  - [[#configuration-file-headers][Configuration File headers]]
+  - [[#initel][=init.el=]]
+- [[#general][General]]
+  - [[#user-information][User Information]]
+- [[#theme-and-visual][Theme and Visual]]
+- [[#dates-and-time][Dates and time]]
+  - [[#utility-functions][Utility functions]]
+- [[#packages][Packages]]
+  - [[#aggressive-indent][=aggressive-indent=]]
+    - [[#package][Package]]
+    - [[#config][Config]]
+  - [[#calfw][=calfw=]]
+    - [[#package-1][Package]]
+    - [[#config-1][Config]]
+  - [[#doct-declarative-org-capture-template][=doct= (Declarative Org Capture Template)]]
+    - [[#package-2][Package]]
+    - [[#config-2][Config]]
+  - [[#gnus-alias][=gnus-alias=]]
+    - [[#package-3][Package]]
+    - [[#config-3][Config]]
+  - [[#notmuch][=notmuch=]]
+    - [[#config-4][Config]]
+  - [[#org-gcal][=org-gcal=]]
+    - [[#package-4][Package]]
+  - [[#org-mime][=org-mime=]]
+    - [[#package-5][Package]]
+    - [[#config-5][Config]]
+  - [[#org-mode][=org-mode=]]
+    - [[#general-1][General]]
+    - [[#agenda][Agenda]]
+    - [[#helper-methods][Helper Methods]]
+  - [[#org-notmuch][=org-notmuch=]]
+    - [[#config-6][Config]]
+  - [[#org-super-agenda][=org-super-agenda=]]
+    - [[#package-6][Package]]
+  - [[#ox-pandoc][=ox-pandoc=]]
+    - [[#package-7][Package]]
+    - [[#config-7][Config]]
+- [[#key-bindings][Key bindings]]
+  - [[#general-2][General]]
+  - [[#org-mode-1][=org-mode=]]
+- [[#additional-config-files][Additional Config Files]]
+  - [[#config-workel][=config-work.el=]]
+  - [[#packages-workel][=packages-work.el=]]
+- [[#footnotes][Footnotes]]
+
+* Introduction
+** Example of Literate Programming
+
+As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
+
+#+begin_src md :tangle foo.md
+# Foo
+#+end_src
+
+Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
+
+#+begin_src md :tangle foo.md
+1. Orange
+1. Blue
+1. Red
+#+end_src
+
+Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
+
+#+begin_src md
+# Foo
+
+1. Orange
+1. Blue
+1. Red
+#+end_src
+** Tangled Files
+
+This single file tangles the following files:
+
+- =init.el= defines which of the existing Doom [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#modules][modules]] are loaded. A Doom module is a bundle of packages, configuration, and commands which are organized into a unit that can be toggled easily from this file.
+- =packages.el= defines which [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#package-management][packages]] should be installed, beyond those that are installed and loaded as part of the enabled modules.
+- =config.el= contains all [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#configuring-doom][custom configuration]] and code.
+
+*** Work :work:
+
+- =packages-work.el=: A version of =packages.el= which contains packages for my work environment.
+- =config-work.el=: A version of =config.el= which contains configuration for my work environment.
+
+** Function and Variable Nameing Convention
+
+I prefix all of my own functions and variables with =cashweaver-= to prevent any unintentional overlaps.
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver-favorite-color "orange")
+#+end_src
+
+"Private" functions and variables -- those I wouldn't indend to be accessed directly -- are prefixed with =cashweaver--= (note the two =-='s).
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver--secret-color "blue")
+#+end_src
+
+Additionally, variables and functions which are in a "library"/group are prefixed with either =cashweaver-<library name>-= or =cashweaver-<library name>--=, depending on their intended visibility.
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver-colors-favorite "orange"
+ cashweaver-colors--secret "blue")
+#+end_src
+
+#+RESULTS:
+: green
+
+* Doom Emacs
+
+I use [[https://github.com/hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll my entire config from scratch.
+
+** Configuration File headers
+
+There is some boilerplate which is present in the configuration files when you first create them using =doom install= which I like to preserve.
+
+#+HTMl: <details><summary>init.el</summary>
+#+attr_html: :collapsed t
+#+begin_src emacs-lisp :tangle init.el
+;;; init.el -*- lexical-binding: t; -*-
+
+;; DO NOT EDIT THIS FILE MANUALLY.
+;; This file is generated from doom.md. You should make your changes there and
+;; this file using org-babel-tangle.
+
+;; This file controls what Doom modules are enabled and what order they load
+;; in. Remember to run 'doom sync' after modifying it!
+
+;; NOTE Press 'SPC h d h' (or 'C-h d h' for non-vim users) to access Doom's
+;;      documentation. There you'll find a "Module Index" link where you'll find
+;;      a comprehensive list of Doom's modules and what flags they support.
+
+;; NOTE Move your cursor over a module's name (or its flags) and press 'K' (or
+;;      'C-c c k' for non-vim users) to view its documentation. This works on
+;;      flags as well (those symbols that start with a plus).
+;;
+;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
+;;      directory (for easy access to its source code).
+#+end_src
+#+HTMl: </details>
+
+#+HTMl: <details><summary>packages.el</summary>
+#+attr_html: :collapsed t
+#+begin_src emacs-lisp :tangle packages.el
+;; -*- no-byte-compile: t; -*-
+;;; $DOOMDIR/packages.el
+
+;; DO NOT EDIT THIS FILE MANUALLY.
+;; This file is generated from doom.md. You should make your changes there and
+;; this file using org-babel-tangle.
+
+;; To install a package with Doom you must declare them here and run 'doom sync'
+;; on the command line, then restart Emacs for the changes to take effect -- or
+;; use 'M-x doom/reload'.
+
+
+;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
+;(package! some-package)
+
+;; To install a package directly from a remote git repo, you must specify a
+;; `:recipe'. You'll find documentation on what `:recipe' accepts here:
+;; https://github.com/raxod502/straight.el#the-recipe-format
+;(package! another-package
+;  :recipe (:host github :repo "username/repo"))
+
+;; If the package you are trying to install does not contain a PACKAGENAME.el
+;; file, or is located in a subdirectory of the repo, you'll need to specify
+;; `:files' in the `:recipe':
+;(package! this-package
+;  :recipe (:host github :repo "username/repo"
+;           :files ("some-file.el" "src/lisp/*.el")))
+
+;; If you'd like to disable a package included with Doom, you can do so here
+;; with the `:disable' property:
+;(package! builtin-package :disable t)
+
+;; You can override the recipe of a built in package without having to specify
+;; all the properties for `:recipe'. These will inherit the rest of its recipe
+;; from Doom or MELPA/ELPA/Emacsmirror:
+;(package! builtin-package :recipe (:nonrecursive t))
+;(package! builtin-package-2 :recipe (:repo "myfork/package"))
+
+;; Specify a `:branch' to install a package from a particular branch or tag.
+;; This is required for some packages whose default branch isn't 'master' (which
+;; our package manager can't deal with; see raxod502/straight.el#279)
+;(package! builtin-package :recipe (:branch "develop"))
+
+;; Use `:pin' to specify a particular commit to install.
+;(package! builtin-package :pin "1a2b3c4d5e")
+
+
+;; Doom's packages are pinned to a specific commit and updated from release to
+;; release. The `unpin!' macro allows you to unpin single packages...
+;(unpin! pinned-package)
+;; ...or multiple packages
+;(unpin! pinned-package another-pinned-package)
+;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
+;(unpin! t)
+#+end_src
+#+HTMl: </details>
+
+#+HTMl: <details><summary>config.el</summary>
+#+attr_html: :collapsed t
+#+begin_src emacs-lisp :tangle config.el
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+
+;; DO NOT EDIT THIS FILE MANUALLY.
+;; This file is generated from doom.md. You should make your changes there and
+;; this file using org-babel-tangle.
+
+;; Place your private configuration here! Remember, you do not need to run 'doom
+;; sync' after modifying this file!
+
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets.
+; (setq user-full-name "John Doe"
+;       user-mail-address "john@doe.com")
+
+;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
+;; are the three important ones:
+;;
+;; + `doom-font'
+;; + `doom-variable-pitch-font'
+;; + `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;;
+;; They all accept either a font-spec, font string ("Input Mono-12"), or xlfd
+;; font string. You generally only need these two:
+;; (setq doom-font (font-spec :family "monospace" :size 12 :weight 'semi-light)
+;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
+
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+; (setq doom-theme 'doom-one)
+
+;; If you use `org' and don't want your org files in the default location below,
+;; change `org-directory'. It must be set before org loads!
+; (setq org-directory "~/org/")
+
+;; This determines the style of line numbers in effect. If set to `nil', line
+;; numbers are disabled. For relative line numbers, set this to `relative'.
+; (setq display-line-numbers-type t)
+
+
+;; Here are some additional functions/macros that could help you configure Doom:
+;;
+;; - `load!' for loading external *.el files relative to this one
+;; - `use-package!' for configuring packages
+;; - `after!' for running code after a package has loaded
+;; - `add-load-path!' for adding directories to the `load-path', relative to
+;;   this file. Emacs searches the `load-path' when you load packages with
+;;   `require' or `use-package'.
+;; - `map!' for binding new keys
+;;
+;; To get information about any of these functions/macros, move the cursor over
+;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
+;; This will open documentation for it, including demos of how they are used.
+;;
+;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
+;; they are implemented.
+#+end_src
+#+HTMl: </details>
+
+** =init.el=
+
+#+HTMl: <details><summary>init.el</summary>
+#+attr_html: :collapsed t
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+(doom!
+ :input
+ <<doom-input>>
+
+ :completion
+ <<doom-completion>>
+
+ :ui
+ <<doom-ui>>
+
+ :editor
+ <<doom-editor>>
+
+ :emacs
+ <<doom-emacs>>
+
+ :term
+ <<doom-term>>
+
+ :checkers
+ <<doom-checkers>>
+
+ :tools
+ <<doom-tools>>
+
+ :os
+ <<doom-os>>
+
+ :lang
+ <<doom-lang>>
+
+ :email
+ <<doom-email>>
+
+ :app
+ <<doom-app>>
+
+ :config
+ <<doom-config>>
+ )
+#+end_src
+#+HTMl: </details>
+
+#+name: doom-input
+#+begin_src emacs-lisp
+ ;;chinese
+ ;;japanese
+ ;;layout            ; auie,ctsrnm is the superior home row
+#+end_src
+
+#+name: doom-completion
+#+begin_src emacs-lisp
+ company             ; the ultimate code completion backend
+ ;;helm              ; the *other* search engine for love and life
+ ;;ido               ; the other *other* search engine...
+ ivy                 ; a search engine for love and life
+#+end_src
+
+#+name: doom-ui
+#+begin_src emacs-lisp
+ ;;deft              ; notational velocity for Emacs
+ doom                ; what makes DOOM look the way it does
+ doom-dashboard      ; a nifty splash screen for Emacs
+ doom-quit           ; DOOM quit-message prompts when you quit Emacs
+ (emoji              ; 🙂
+  +ascii
+  +github
+  +unicode)
+ ;;fill-column       ; a `fill-column' indicator
+ hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
+ ;;hydra
+ ;;indent-guides     ; highlighted indent columns
+ ;;ligatures         ; ligatures and symbols to make your code pretty again
+ ;;minimap           ; show a map of the code on the side
+ modeline            ; snazzy, Atom-inspired modeline, plus API
+ ;;nav-flash         ; blink cursor line after big motions
+ ;;neotree           ; a project drawer, like NERDTree for vim
+ ophints             ; highlight the region an operation acts on
+ (popup +defaults)   ; tame sudden yet inevitable temporary windows
+ ;;tabs              ; a tab bar for Emacs
+ ;;treemacs          ; a project drawer, like neotree but cooler
+ unicode             ; extended unicode support for various languages
+ vc-gutter          ; vcs diff in the fringe
+ vi-tilde-fringe     ; fringe tildes to mark beyond EOB
+ ;;window-select     ; visually switch windows
+ workspaces          ; tab emulation, persistence & separate workspaces
+ ;;zen               ; distraction-free coding or writing
+#+end_src
+
+#+name: doom-editor
+#+begin_src emacs-lisp
+ (evil +everywhere)  ; come to the dark side, we have cookies
+ file-templates      ; auto-snippets for empty files
+ fold                ; (nigh) universal code folding
+ ;;(format +onsave)  ; automated prettiness
+ ;;god               ; run Emacs commands without modifier keys
+ ;;lispy             ; vim for lisp, for people who don't like vim
+ ;;multiple-cursors  ; editing in many places at once
+ ;;objed             ; text object editing for the innocent
+ ;;parinfer          ; turn lisp into python, sort of
+ ;;rotate-text       ; cycle region at point between text candidates
+ snippets            ; my elves. They type so I don't have to
+ ;;word-wrap         ; soft wrapping with language-aware indent
+#+end_src
+
+#+name: doom-emacs
+#+begin_src emacs-lisp
+ dired               ; making dired pretty [functional]
+ electric            ; smarter, keyword-based electric-indent
+ ;;ibuffer           ; interactive buffer management
+ undo                ; persistent, smarter undo for your inevitable mistakes
+ vc                  ; version-control and Emacs, sitting in a tree
+#+end_src
+
+#+name: doom-term
+#+begin_src emacs-lisp
+ ;;eshell            ; the elisp shell that works everywhere
+ ;;shell             ; simple shell REPL for Emacs
+ ;;term              ; basic terminal emulator for Emacs
+ vterm               ; the best terminal emulation in Emacs
+#+end_src
+
+#+name: doom-checkers
+#+begin_src emacs-lisp
+ syntax              ; tasing you for every semicolon you forget
+ ;;spell             ; tasing you for misspelling mispelling
+ ;;grammar           ; tasing grammar mistake every you make
+#+end_src
+
+#+name: doom-tools
+#+begin_src emacs-lisp
+ ;;ansible
+ ;;debugger          ; FIXME stepping through code, to help you add bugs
+ ;;direnv
+ ;;docker
+ ;;editorconfig      ; let someone else argue about tabs vs spaces
+ ;;ein               ; tame Jupyter notebooks with emacs
+ (eval +overlay)     ; run code, run (also, repls)
+ ;;gist              ; interacting with github gists
+ lookup              ; navigate your code and its documentation
+ ;;lsp
+ magit               ; a git porcelain for Emacs
+ ;;make              ; run make tasks from Emacs
+ ;;pass              ; password manager for nerds
+ ;;pdf               ; pdf enhancements
+ ;;prodigy           ; FIXME managing external services & code builders
+ ;;rgb               ; creating color strings
+ ;;taskrunner        ; taskrunner for all your projects
+ ;;terraform         ; infrastructure as code
+ ;;tmux              ; an API for interacting with tmux
+ ;;upload            ; map local to remote projects via ssh/ftp
+#+end_src
+
+#+name: doom-os
+#+begin_src emacs-lisp
+ (:if IS-MAC macos)  ; improve compatibility with macOS
+ ;;tty               ; improve the terminal Emacs experience
+#+end_src
+
+#+name: doom-lang
+#+begin_src emacs-lisp
+ ;;agda              ; types of types of types of types...
+ ;;cc                ; C/C++/Obj-C madness
+ ;;clojure           ; java with a lisp
+ ;;common-lisp       ; if you've seen one lisp, you've seen them all
+ ;;coq               ; proofs-as-programs
+ ;;crystal           ; ruby at the speed of c
+ ;;csharp            ; unity, .NET, and mono shenanigans
+ ;;data              ; config/data formats
+ ;;(dart +flutter)   ; paint ui and not much else
+ ;;elixir            ; erlang done right
+ ;;elm               ; care for a cup of TEA?
+ emacs-lisp          ; drown in parentheses
+ ;;erlang            ; an elegant language for a more civilized age
+ ;;ess               ; emacs speaks statistics
+ ;;faust             ; dsp, but you get to keep your soul
+ ;;fsharp            ; ML stands for Microsoft's Language
+ ;;fstar             ; (dependent) types and (monadic) effects and Z3
+ ;;gdscript          ; the language you waited for
+ ;;(go +lsp)         ; the hipster dialect
+ ;;(haskell +dante)  ; a language that's lazier than I am
+ ;;hy                ; readability of scheme w/ speed of python
+ ;;idris             ; a language you can depend on
+ ;;json              ; At least it ain't XML
+ java                ; the poster child for carpal tunnel syndrome
+ javascript          ; all(hope(abandon(ye(who(enter(here))))))
+ ;;julia             ; a better, faster MATLAB
+ ;;kotlin            ; a better, slicker Java(Script)
+ ;;latex             ; writing papers in Emacs has never been so fun
+ ;;lean
+ ;;factor
+ ;;ledger            ; an accounting system in Emacs
+ ;;lua               ; one-based indices? one-based indices
+ markdown            ; writing docs for people to ignore
+ ;;nim               ; python + lisp at the speed of c
+ ;;nix               ; I hereby declare "nix geht mehr!"
+ ;;ocaml             ; an objective camel
+ (org                ; organize your plain life in plain text
+  +pandoc
+  +pomodoro)
+ ;;php               ; perl's insecure younger brother
+ ;;plantuml          ; diagrams for confusing people more
+ ;;purescript        ; javascript, but functional
+ python              ; beautiful is better than ugly
+ ;;qt                ; the 'cutest' gui framework ever
+ ;;racket            ; a DSL for DSLs
+ ;;raku              ; the artist formerly known as perl6
+ ;;rest              ; Emacs as a REST client
+ ;;rst               ; ReST in peace
+ ;;(ruby +rails)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
+ ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
+ ;;scala             ; java, but good
+ ;;scheme            ; a fully conniving family of lisps
+ sh                  ; she sells {ba,z,fi}sh shells on the C xor
+ ;;sml
+ ;;solidity          ; do you need a blockchain? No.
+ ;;swift             ; who asked for emoji variables?
+ ;;terra             ; Earth and Moon in alignment for performance.
+ ;;web               ; the tubes
+ yaml                ; JSON, but readable
+#+end_src
+
+#+name: doom-email
+#+begin_src emacs-lisp
+ ;;(mu4e +gmail)
+ notmuch
+ ;;(wanderlust +gmail)
+#+end_src
+
+#+name: doom-app
+#+begin_src emacs-lisp
+ ;;calendar
+ ;; emms
+ everywhere
+ ;;irc               ; how neckbeards socialize
+ ;;(rss +org)        ; emacs as an RSS reader
+ ;;twitter           ; twitter client https://twitter.com/vnought
+#+end_src
+
+#+name: doom-config
+#+begin_src emacs-lisp
+ ;;literate
+ (default +bindings +smartparens)
+#+end_src
+
+* General
+** User Information
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ user-full-name "Cash Weaver"
+ user-mail-address "cashweaver@google.com")
+#+end_src
+* Theme and Visual
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ doom-theme 'doom-tomorrow-night
+ show-trailing-whitespace t)
+#+end_src
+
+* Dates and time
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ ;; Use YYYY-MM-DD date format.
+ calendar-date-style 'iso)
+#+end_src
+
+** Utility functions
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-get-date (&optional date-format offset-days)
+  "Return the (offset) date in format."
+  (interactive)
+  (let ((date-format (or date-format "%Y-%m-%d"))
+        (offset-days (or offset-days 0)))
+    (shell-command-to-string
+     (format "echo -n $(date \"+%s\" --date=\"%d days\")" date-format offset-days))))
+
+(defun cashweaver-todays-date ()
+  "Return todays date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   0))
+
+(defun cashweaver-yesterdays-date ()
+  "Return yesterday's date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   -1))
+#+end_src
+
+* Packages
+
+#+begin_src emacs-lisp :tangle packages.el
+(defvar
+ cashweaver--local-package-path
+ "/usr/local/google/home/cashweaver/third_party"
+ "Path to local emacs package files.")
+#+end_src
+
+** =aggressive-indent=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! aggressive-indent)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! aggressive-indent
+  :config
+  (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
+#+end_src
+**** Work :work:
+
+#+begin_src emacs-lisp :tangle config.el
+(after! gnus-alias
+  (setq
+   gnus-alias-identity-alist '(("work"
+                                ;; Refers to
+                                nil
+                                "Cash Weaver <cashweaver@google.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil "~/.email_signature"))
+   gnus-alias-default-identity "work"))
+#+end_src
+** =calfw=
+*** Package
+Provided through =app/calendar= in =init.el=.
+
+*** Config
+#+begin_src emacs-lisp :tangle config.el
+;(use-package! calfw-cal
+;  :config
+;  (setq
+;   ; Start the week on Monday
+;   calendar-week-start-day 1))
+;
+;(use-package! calfw-ical)
+;(use-package! calfw-org)
+;
+;(defun cashweaver-calfw-open ()
+;  "Open my calendar"
+;  (interactive)
+;  (cfw:open-calendar-buffer
+;   :contents-sources
+;   (list
+;    (cfw:org-create-source "Green"))))
+#+end_src
+
+** =doct= ([[https://github.com/progfolio/doct][Declarative Org Capture Template]])
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! doct)
+#+end_src
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! doct
+  :commands (doct))
+#+end_src
+** =gnus-alias=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! gnus-alias)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! gnus-alias
+  :config
+  (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
+  (gnus-alias-init))
+#+end_src
+**** Work :work:
+
+#+begin_src emacs-lisp :tangle config.el
+(after! gnus-alias
+  (setq
+   gnus-alias-identity-alist '(("work"
+                                ;; Refers to
+                                nil
+                                "Cash Weaver <cashweaver@google.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil "~/.email_signature"))
+   gnus-alias-default-identity "work"))
+#+end_src
+
+** =notmuch=
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
+  "Whether or not the thread has a tag."
+  (interactive)
+  (let ((thread-tags (notmuch-search-get-tags)))
+    (member match-tag thread-tags)))
+
+(defun cashweaver-notmuch-search-toggle-tag (tag)
+  "Toggle the provided tag."
+  (interactive)
+  (if (member tag (notmuch-search-get-tags))
+      (notmuch-search-tag (list (concat "-" tag)))
+    (notmuch-search-tag (list (concat "+" tag)))))
+
+(defun cashweaver-notmuch--search-thread-toggle-tag (key)
+  "Toggle the specified tag(s)."
+  (interactive "k")
+  (let ((tags (assoc key cashweaver-notmuch-tag-alist)))
+    (apply 'notmuch-search-tag (cdr tags))))
+
+(defun cashweaver-notmuch-search-super-archive (&optional beg end)
+  "Super archive the selected thread; based on `notmuch-search-archive-thread'."
+  (interactive (notmuch-interactive-region))
+  (notmuch-search-tag cashweaver-notmuch-super-archive-tags beg end)
+  (when (eq beg end)
+    (notmuch-search-next-thread)))
+
+(defun cashweaver-org-notmuch-capture-follow-up-mail()
+  "Capture mail to org mode."
+  (interactive)
+  (org-store-link nil)
+  (org-capture nil "ef"))
+
+(after! notmuch
+  (setq
+   notmuch-wash-wrap-lines-length 100
+   notmuch-saved-searches '((:name "inbox"
+                             :key "i"
+                             :query "tag:inbox")
+                            (:name "p0"
+                             :key "0"
+                             :query "tag:p0")
+                            (:name "bugs"
+                             :key "b"
+                             :query "tag:Bug AND tag:inbox")
+                            (:name "bugs (all)"
+                             :key "B"
+                             :query "tag:Bug")
+                            (:name "waiting"
+                             :key "w"
+                             :query "tag:waiting")
+                            (:name "automated"
+                             :key "a"
+                             :query "tag:Automated AND tag:inbox")
+                            (:name "to-read"
+                             :key "r"
+                             :query "tag:Read!")
+                            (:name "sent"
+                             :key "s"
+                             :query "tag:sent")
+                            (:name "drafts"
+                             :key "d"
+                             :query "tag:draft"))
+   +notmuch-home-function (lambda ()
+                            (notmuch-search "tag:inbox"))
+   notmuch-archive-tags '("-inbox"
+                          "-unread")
+   notmuch-search-line-faces '(("p0" . '(:foreground "red"))
+                               ("Bug" . '(:foreground "green"))
+                               ("waiting" . '(:foreground "yellow"))
+                               ("Calendar-Events" . '(:foreground "blue"))
+                               ("Read!" . '(:foreground "magenta")))
+                                        ; Superset of `notmuch-archive-tags' for super archiving.
+   cashweaver-notmuch-super-archive-tags (append
+                                          notmuch-archive-tags
+                                          '("-p0"
+                                            "-waiting"
+                                            "-Read!")))
+
+                                        ; Prevent wrapping at 70 characters in email composition.
+  (add-hook! 'message-mode-hook 'turn-off-auto-fill)
+  (add-hook! 'message-mode-hook 'visual-line-mode)
+
+                                        ; Reply-all should be the default.
+  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
+  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+
+                                        ; Easy archive for my most-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+
+                                        ; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+
+                                        ; Helpers for toggling often-used tags.
+  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+                                                           "Toggle p0"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+                                                           "Toggle Read!"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+                                                           "Toggle waiting"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+#+end_src
+
+#+RESULTS:
+
+** =org-gcal=
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-gcal)
+#+end_src
+** =org-mime=
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-mime)
+#+end_src
+*** Config
+#+begin_src emacs-lisp :tangle config.el
+(use-package! org-mime)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-compose-mail-org ()
+  (interactive)
+  (compose-mail)
+  (message-goto-body)
+  (setq *compose-html-org* t)
+  (org-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-htmlize-and-send-mail-org ()
+  (interactive)
+  (when *compose-html-org*
+    (setq *compose-html-org* nil)
+    (message-mode)
+    (org-mime-htmlize)
+    (message-send-and-exit)))
+#+end_src
+
+#+RESULTS:
+: cashweaver-htmlize-and-send-mail-org
+
+** =org-mode=
+
+*** General
+
+#+begin_src emacs-lisp :tangle config.el
+(after! org
+  (setq
+   org-ellipsis " ▾ "
+   org-log-done 'time
+   ;; Start the org agenda mini-calendar on Monday.
+   calendar-week-start-day 1
+   org-priority-highest 0
+   org-priority-default 2
+   org-priority-lowest 4
+   org-hide-leading-stars t))
+#+end_src
+
+Specify custom todo keywords.
+
+#+begin_src emacs-lisp :tangle config.el
+(after! org
+  (setq
+   org-todo-keywords
+   '((sequence
+      ; A task that needs doing & is ready to do
+      "TODO(t)"
+      ; A project, which usually contains other tasks
+      "PROJ(p)"
+      ; A task that is in progress
+      "INPROGRESS(i)"
+      ; Something external is holding up this task
+      "BLOCKED(b)"
+      ; This task is paused/on hold because of me
+      "HOLD(h)"
+      "|"
+      ; Task successfully completed
+      "DONE(d)"
+      ; Task was moved
+      "MOVE(m)"
+      ; Task was cancelled, aborted or is no longer applicable
+      "KILL(k)")
+     (sequence
+      ; A task that needs doing
+      "[ ](T)"
+      ; Task is in progress
+      "[-](S)"
+      ; Task is being held up or paused
+      "[?](W)"
+      "|"
+      ; Task was completed
+      "[X](D)"))
+   org-todo-keyword-faces
+   '(("[-]"  . +org-todo-active)
+     ("INPROGRESS" . +org-todo-active)
+     ("[?]"  . +org-todo-onhold)
+     ("BLKD" . +org-todo-onhold)
+     ("HOLD" . +org-todo-onhold)
+     ("PROJ" . +org-todo-project))))
+#+end_src
+
+#+RESULTS:
+: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLKD . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
+
+*** Agenda
+
+#+begin_src emacs-lisp :tangle config.el
+(after! org-agenda
+  (setq
+   org-agenda-skip-scheduled-if-deadline-is-shown t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-deadline-if-done t
+   org-agenda-include-deadlines t
+   org-agenda-block-separator nil
+   org-agenda-compact-blocks t
+   org-agenda-start-day nil ;; i.e. today
+   org-agenda-span 1
+   org-agenda-start-on-weekday nil))
+#+end_src
+
+#+RESULTS:
+
+*** Helper Methods
+**** Create a heading for today
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-mode-insert-heading-for-today ()
+  "Insert a heading for today's date, with relevant tags."
+  (interactive)
+  (let* ((today-week-number (cashweaver-get-date "%W"))
+         (today-quarter-number (cashweaver-get-date "%q"))
+         (today-year (cashweaver-get-date "%Y"))
+         (today-month (cashweaver-get-date "%m"))
+         (today-day (cashweaver-get-date "%d"))
+         (today-weekday-name (cashweaver-get-date "%A")))
+    (org-insert-heading-respect-content)
+    (insert
+     (format "%s-%s-%s %s :week%s:quarter%s:"
+             today-year
+             today-month
+             today-day
+             today-weekday-name
+             today-week-number
+             today-quarter-number))))
+
+(defun cashweaver-org-mode-insert-heading-for-this-week ()
+  "Insert a heading for this week, with relevant tags."
+  (interactive)
+  (let* ((today-week-number (cashweaver-get-date "%W"))
+         (today-quarter-number (cashweaver-get-date "%q"))
+         (today-year (cashweaver-get-date "%Y")))
+    (org-insert-heading-respect-content)
+    (insert
+     (format "%s Week %s :week%s:quarter%s:"
+             today-year
+             today-week-number
+             today-week-number
+             today-quarter-number))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-mode-insert-heading-for-this-week
+
+**** Scheduling task for my calendar blocks
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
+#+end_src
+
+#+RESULTS:
+| :start | 16:00 | :end | 18:00 |
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-schedule-for-block (block-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-schedule-for-block
+
+**** Schedule task
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org--schedule-today-at (start-time-as-string)
+  "Schedule a task today at the specified time."
+  (interactive "sWhen?: ")
+  (message start-time-as-string)
+  (string-match
+   "^\\([1-9]\\|[01][0-9]\\|2[0-3]\\):?\\([0-5][0-9]\\)?$"
+   start-time-as-string)
+  (let
+      ((hour
+        (string-to-number
+         (or
+          (match-string 1 start-time-as-string)
+          "0")))
+       (minute
+        (string-to-number
+         (or
+          (match-string 2 start-time-as-string)
+          "0"))))
+    (org-schedule nil (format "today %02d:%02d"
+                              hour
+                              minute))
+    (message (number-to-string hour))
+    ))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org--schedule-today-at
+
+**** Schedule task for duration
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org--schedule-for (start-time end-time &optional date)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+    ;(org-schedule nil (format "%s %s-%s"
+                              ;date
+                              ;start-time
+                              ;end-time))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
+  (let* ((start-time-in-minutes-since-midnight
+         (+ start-minute (* start-hour 60)))
+        (end-time-in-minutes-since-midnight
+         (+ start-time-in-minutes-since-midnight duration-in-minutes))
+        (end-minute (mod end-time-in-minutes-since-midnight 60))
+        (end-hour (/ end-time-in-minutes-since-midnight 60))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %02d:%02d-%02d:%02d"
+                              date
+                              start-hour
+                              start-minute
+                              end-hour
+                              end-minute))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org--schedule-at-for-minutes
+
+**** Scheduling task at start of pomodoro
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ cashweaver--schedule-pomodoro-one '(:start "09:00" :end "09:50")
+ cashweaver--schedule-pomodoro-two '(:start "10:00" :end "10:50")
+ cashweaver--schedule-pomodoro-three '(:start "11:00" :end "11:50")
+ cashweaver--schedule-pomodoro-four '(:start "12:00" :end "12:50")
+ cashweaver--schedule-pomodoro-five '(:start "13:00" :end "13:50")
+ cashweaver--schedule-pomodoro-six '(:start "14:00" :end "14:50")
+ cashweaver--schedule-pomodoro-seven '(:start "15:00" :end "15:50")
+ cashweaver--schedule-pomodoro-eight '(:start "16:00" :end "16:50")
+ cashweaver--schedule-pomodoro-nine '(:start "17:00" :end "17:50")
+ cashweaver--schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
+#+end_src
+
+#+RESULTS:
+| :start | 18:00 | :end | 18:50 |
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-schedule-at-pomodoro (pomodoro-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get pomodoro-time :start)))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s"
+                              date
+                              start-time)))
+#+end_src
+
+**** Scheduling task in N hours
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-schedule-in-n-hours (offset-hours &optional date)
+  (interactive)
+  (let* ((time-list (parse-time-string (current-time-string)))
+         (current-hour (nth 2 time-list))
+         (current-minute (nth 1 time-list))
+         (hour (mod (+ current-hour offset-hours) 24))
+         (date (or date "today")))
+    (org-schedule nil (format "%s %s:%s"
+                              date
+                              hour
+                              current-minute))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-schedule-in-n-hours
+
+**** Scheduling task in N days
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-schedule-in-n-workdays (num-days &optional time)
+  (interactive)
+  (let*
+      ((time (or time "09:00"))
+       (offset-days))
+    (org-schedule
+     nil
+     (format "%s %s"
+             offset-days
+             time))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-schedule-in-n-days
+
+** =org-notmuch=
+*** Config
+
+#+begin_src emacs-lisp :tangle packages.el
+;;(package! ol-notmuch
+  ;;:recipe `(:local-repo ,(concat cashweaver--local-package-path "org-mode/lisp/ol-notmuch.el")))
+#+end_src
+
+#+RESULTS:
+| ol-notmuch | :modules | (nil) | :recipe | (:local-repo /usr/local/google/home/cashweaver/third_partyorg-mode/lisp/ol-notmuch.el) |
+
+** =org-super-agenda=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-super-agenda)
+#+end_src
+
+** =ox-pandoc=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! ox-pandoc)
+#+end_src
+
+#+RESULTS:
+| ox-pandoc | :modules | (nil) |
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq org-pandoc-menu-entry
+        '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+          (?d "to docx." org-pandoc-export-to-docx)
+          (?m "to markdown." org-pandoc-export-to-markdown)
+          (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
+        org-pandoc-options-for-docx
+        '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+          (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+          ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+          (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir)
+  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
+  (setq org-pandoc-format format)
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc
+          filename
+          (concat (make-temp-name ".tmp") ".org")
+          plist pub-dir))
+        (outfile
+         (format
+          "%s.%s"
+          (concat
+           pub-dir
+           (file-name-sans-extension (file-name-nondirectory filename)))
+          (assoc-default format org-pandoc-extensions))))
+    ;;(org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run
+            tempfile
+            outfile
+            format
+            'org-pandoc-sentinel
+            org-pandoc-option-table))
+          (local-hook-symbol
+           (intern
+            (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file filename)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'markdown plist filename pub-dir))
+#+end_src
+
+* Key bindings
+
+Key bindings, in my experience, don't benefit from the same "tangle-like" style of spreading them throughout the config. I prefer to have my key bindings all in one place.
+
+#+begin_src emacs-lisp :tangle config.el
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+(defun evil-lambda-key (mode keymap key def)
+  "Wrap `evil-define-key' to provide documentation."
+  (set 'sym (make-symbol (documentation def)))
+  (fset sym def)
+  (evil-define-key mode keymap key sym))
+#+end_src
+
+#+RESULTS:
+: evil-lambda-key
+
+** General
+#+begin_src emacs-lisp :tangle config.el
+;; Keep in alphabetical order.
+(map!
+ (:leader
+  :desc "at point" :n "h h" #'helpful-at-point
+
+  ;;:desc "Store email link" :n "n L" #'org-notmuch-store-link
+  ))
+#+end_src
+
+** =org-mode=
+
+#+begin_src emacs-lisp :tangle work-config.el
+(after! org
+  (map!
+   :map org-mode-map
+   :localleader
+
+   (:prefix ("b")
+    :n "RET" #'org-table-copy-down)
+
+   (:prefix ("d")
+    (:prefix ("h" . "insert heading")
+     :n "d" #'cashweaver-org-mode-insert-heading-for-today
+     :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
+
+    (:prefix ("S")
+     (:prefix ("." . "today")
+      :desc "at" :n "a" #'cashweaver-org--schedule-today-at
+      )))))
+#+end_src
+
+* Additional Config Files
+
+This file contains the my base configuration for emacs. I have other config files, nameely =config-work.org=, which extend this file for specific environments.
+
+#+name: cashweaver-work-config-dir
+#+begin_src emacs-lisp
+(setq
+ cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
+#+end_src
+
+#+name: cashweaver-is-work-p
+#+begin_src emacs-lisp
+(defun cashweaver-is-work-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p cashweaver-work-config-dir))
+#+end_src
+
+** =config-work.el=
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+<<cashweaver-work-config-dir>>
+<<cashweaver-is-work-p>>
+
+(if (cashweaver-is-work-p)
+    (load (concat cashweaver-work-config-dir "/config-work.el")))
+#+end_src
+
+** =packages-work.el=
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+<<cashweaver-work-config-dir>>
+<<cashweaver-is-work-p>>
+
+(if (cashweaver-is-work-p)
+    (load (concat cashweaver-work-config-dir "/packages-work.el")))
+#+end_src
+* Footnotes
+
+[fn:1] 1. [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]]

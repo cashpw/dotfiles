@@ -1,0 +1,7 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhistcnt =5
+let g:netrw_dirhist_5='/home/cashweaver/proj/cashweaver.com/_posts'
+let g:netrw_dirhist_4='/home/cashweaver/.scripts/brightness'
+let g:netrw_dirhist_3='/home/cashweaver/.scripts'
+let g:netrw_dirhist_2='/home/cashweaver/.scripts/brightness'
+let g:netrw_dirhist_1='/home/cashweaver/.scripts'

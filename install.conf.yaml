@@ -1,0 +1,26 @@
+- defaults:
+    link:
+      relink: true
+
+- clean: ['~']
+
+- link:
+    ~/.config/:
+      glob: true
+      path: config/*
+    ~/.scripts/:
+      glob: true
+      path: scripts/*
+    ~/.Xresources:
+    ~/.profile:
+
+- create:
+  - ~/.fonts
+
+- shell:
+  - [git submodule update --init --recursive, Installing submodules.]
+  - [bash fonts/download_and_install_fonts.sh, Downloading and installing fonts.]
+  -
+    command: bash check_programs.sh
+    description: Checking for expected programs.
+    stdout: true

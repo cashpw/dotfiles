@@ -1,0 +1,320 @@
+# i3 config file (v4)
+#
+# Please see https://i3wm.org/docs/userguide.html for a complete reference!
+
+# Use alt as mod key (run `$ xmodmap` to see possible values
+# alt
+#set $mod Mod1 # alt
+# System/Super/Win/Meta
+set $mod Mod4 
+
+#System/Super/Win/Meta
+#set $mod Mod4
+
+set $monitor_north DP-1
+set $monitor_south DP-2
+set $monitor_west DP-3
+
+################################################################################
+#         Look and Feel
+################################################################################
+
+# Font for window titles. Will also be used by the bar unless a different font
+# is used in the bar {} block below.
+font pango:monospace 8
+
+################################################################################
+#         Core Commands
+################################################################################
+
+# reload the configuration file
+bindsym $mod+Shift+c reload
+# restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
+bindsym $mod+Shift+r restart
+
+# start a terminal
+bindsym $mod+Return exec rxvt-unicode
+bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "ssh cashweaver.sbo.corp.google.com"
+
+# kill focused window
+bindsym $mod+Shift+q kill
+
+# start dmenu (a program launcher)
+bindsym $mod+d exec rofi -combi-modi drun#ssh -font "Iosevka Term SS09 10" -show combi
+
+################################################################################
+#         Movement and Focus
+################################################################################
+
+# change focus
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# alternatively, you can use the cursor keys:
+#bindsym $mod+Left focus left
+#bindsym $mod+Down focus down
+#bindsym $mod+Up focus up
+#bindsym $mod+Right focus right
+
+# move focused window
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# alternatively, you can use the cursor keys:
+#bindsym $mod+Shift+Left move left
+#bindsym $mod+Shift+Down move down
+#bindsym $mod+Shift+Up move up
+#bindsym $mod+Shift+Right move right
+
+# split in horizontal orientation
+bindsym $mod+semicolon split h
+
+# split in vertical orientation
+bindsym $mod+Shift+v split v
+
+# enter fullscreen mode for the focused container
+bindsym $mod+f fullscreen toggle
+
+# I prefer split, which is the default, so disable the rest.
+#
+# change container layout (stacked, tabbed, toggle split)
+#bindsym $mod+s layout stacking
+#bindsym $mod+w layout tabbed
+#bindsym $mod+e layout toggle split
+# toggle tiling / floating
+#bindsym $mod+Shift+space floating toggle
+# change focus between tiling / floating windows
+#bindsym $mod+space focus mode_toggle
+
+# focus the parent container
+#bindsym $mod+a focus parent
+
+# focus the child container
+#bindsym $mod+d focus child
+
+# Use Mouse+$mod to drag floating windows to their wanted position
+floating_modifier $mod
+
+################################################################################
+#         Workspace Management                                               
+################################################################################
+
+# switch to workspace
+bindsym $mod+1 workspace 1
+bindsym $mod+2 workspace 2
+bindsym $mod+3 workspace 3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+6 workspace 6
+bindsym $mod+7 workspace 7
+bindsym $mod+8 workspace 8
+bindsym $mod+9 workspace 9
+bindsym $mod+0 workspace 10
+
+# move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+0 move container to workspace 10
+
+# assign workspaces to monitors 
+workspace 1 output $monitor_south
+workspace 2 output $monitor_south
+workspace 3 output $monitor_south
+workspace 4 output $monitor_south
+workspace 5 output $monitor_north
+workspace 6 output $monitor_north
+workspace 7 output $monitor_north
+workspace 8 output $monitor_north
+workspace 9 output $monitor_west
+workspace 0 output $monitor_west
+
+################################################################################
+#         Status Bar
+################################################################################
+
+bar {
+  font pango:Source Code Pro 8
+
+  status_command i3blocks
+}
+hide_edge_borders both
+
+################################################################################
+#         Startup
+################################################################################
+
+# Open development configuration and browser
+#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; gnome-terminal; workspace 10; exec chromium-browser'
+exec --no-startup-id redshift -O 3000
+
+################################################################################
+#         Modes
+################################################################################
+
+set $interval 10
+
+# Resize windows
+mode "resize" {
+  bindsym h resize shrink width $interval px  or $interval ppt
+  bindsym j resize grow height $interval px  or $interval ppt
+  bindsym k resize shrink height $interval px or $interval ppt
+  bindsym l resize grow width $interval px or $interval ppt
+
+  bindsym Left resize shrink width $interval px or $interval ppt
+  bindsym Down resize grow height $interval px or $interval ppt
+  bindsym Up resize shrink height $interval px or $interval ppt
+  bindsym Right resize grow width $interval px or $interval ppt
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# i3lock; logout, shutdown, etc
+set $Locker i3lock --no-unlock-indicator --image=/home/cashweaver/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
+set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
+mode "$mode_system" {
+  bindsym l exec --no-startup-id $Locker, mode "default"
+  bindsym e exec --no-startup-id i3-msg exit, mode "default"
+  bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
+  bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
+  bindsym r exec --no-startup-id systemctl reboot, mode "default"
+  bindsym Shift+s exec --no-startup-id  systemctl poweroff -i, mode "default"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+Delete mode "$mode_system"
+
+set $mode_brightness Brightness: (l/L) Left ↑/↓, (c/C) Center ↑/↓, (r/R) Right ↑/↓, (↑/↓) All ↑/↓
+mode "$mode_brightness" {
+  set $change_brightness "~/.scripts/brightness/change_brightness.sh"
+
+  # all monitors
+  bindsym Down exec --no-startup-id bash $change_brightness "down"
+  bindsym Up exec --no-startup-id bash $change_brightness "up"
+
+  # north monitor
+  bindsym l exec --no-startup-id bash $change_brightness "down" "left"
+  bindsym Shift+l exec --no-startup-id bash $change_brightness "up" "left"
+
+  # south monitor
+  bindsym c exec --no-startup-id bash $change_brightness "down" "center"
+  bindsym Shift+c exec --no-startup-id bash $change_brightness "up" "center"
+
+  # east monitor
+  bindsym e exec --no-startup-id bash $change_brightness "down" "east"
+  bindsym Shift+e exec --no-startup-id bash $change_brightness "up" "east"
+
+  # west monitor
+  bindsym r exec --no-startup-id bash $change_brightness "down" "right"
+  bindsym Shift+r exec --no-startup-id bash $change_brightness "up" "right"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+b mode "$mode_brightness"
+
+# Screenshots
+set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
+mode "$mode_screenshot" {
+  bindsym s exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select.sh, mode "default"
+  bindsym c exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+s mode "$mode_screenshot"
+
+set $mode_volume Volume: (0-9) set volume to X0%, (k|up) volume up, (j|down) volume down, (m) toggle mute
+mode "$mode_volume" {
+  bindsym 0 exec --no-startup-id amixer set Master 0
+  bindsym 1 exec --no-startup-id amixer set Master 10%
+  bindsym 2 exec --no-startup-id amixer set Master 20%
+  bindsym 3 exec --no-startup-id amixer set Master 30%
+  bindsym 4 exec --no-startup-id amixer set Master 40%
+  bindsym 5 exec --no-startup-id amixer set Master 50%
+  bindsym 6 exec --no-startup-id amixer set Master 60%
+  bindsym 7 exec --no-startup-id amixer set Master 70%
+  bindsym 8 exec --no-startup-id amixer set Master 80%
+  bindsym 9 exec --no-startup-id amixer set Master 90%
+  bindsym Up exec --no-startup-id amixer set Master 2%+
+  bindsym Down exec --no-startup-id amixer set Master 2%-
+  bindsym k exec --no-startup-id amixer set Master 2%+
+  bindsym j exec --no-startup-id amixer set Master 2%-
+  bindsym m exec --no-startup-id amixer set Master toggle
+
+ # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+v mode "$mode_volume"
+
+# Sound
+set $mode_sound Sound: (j) Next, (k) Prev, (s) Stop, (p) Play/Pause, (Up/Down) Volume, (0-9) Volume, (m) mute, (M) unmute
+mode "$mode_sound" {
+  bindsym h exec "playerctl --all-players position 10-"
+  bindsym k exec "playerctl --all-players previous"
+  bindsym j exec "playerctl --all-players next"
+  bindsym l exec "playerctl --all-players position 10+"
+
+  bindsym s exec "playerctl --all-players stop"
+  bindsym p exec "playerctl --all-players play-pause"
+
+  bindsym Down exec "amixer set Master,0 2%-"
+  bindsym Up exec "amixer set Master,0 2%+"
+  bindsym 1 exec "amixer set Master,0 10%"
+  bindsym 2 exec "amixer set Master,0 20%"
+  bindsym 3 exec "amixer set Master,0 30%"
+  bindsym 4 exec "amixer set Master,0 40%"
+  bindsym 5 exec "amixer set Master,0 50%"
+  bindsym 6 exec "amixer set Master,0 60%"
+  bindsym 7 exec "amixer set Master,0 70%"
+  bindsym 8 exec "amixer set Master,0 80%"
+  bindsym 9 exec "amixer set Master,0 90%"
+  bindsym 0 exec "amixer set Master,0 0%"
+  bindsym m exec "amixer set Master,0 mute"
+  bindsym Shift+m exec "amixer set Master,0 unmute"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+s mode "$mode_sound"
+
+################################################################################
+#         Programs
+################################################################################
+
+# Determine the window's class by running `xprop WM_CLASS` and clicking on the
+# window.
+
+for_window [class=".*"] border none
+
+################################################################################
+#         Keybindings
+################################################################################
+
+bindsym $mod+Up exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/dock.sh
+bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/undock.sh
+
+################################################################################
+#         Autolaunch
+################################################################################
+
+#set $scripts_path "/home/cashweaver/.scripts"
