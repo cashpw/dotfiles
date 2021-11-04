@@ -1238,7 +1238,7 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 
 ** =org-mode=
 
-#+begin_src emacs-lisp :tangle work-config.el
+#+begin_src emacs-lisp :tangle config.el
 (after! org
   (map!
    :map org-mode-map
