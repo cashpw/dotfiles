@@ -13,6 +13,7 @@
       path: scripts/*
     ~/.Xresources:
     ~/.profile:
+    ~/.bashrc:
 
 - create:
   - ~/.fonts
