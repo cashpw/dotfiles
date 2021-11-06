@@ -4,6 +4,11 @@
 
 - clean: ['~']
 
+- create:
+  - ~/.fonts
+  - ~/.scripts
+  - ~/.config
+
 - link:
     ~/.config/:
       glob: true
@@ -16,12 +21,12 @@
     ~/.bashrc:
     ~/.bash_aliases:
 
-- create:
-  - ~/.fonts
-
 - shell:
   - [git submodule update --init --recursive, Installing submodules.]
-  - [bash fonts/download_and_install_fonts.sh, Downloading and installing fonts.]
+  -
+    command: bash fonts/download_and_install_fonts.sh
+    description: Downloading and installing fonts.
+    stdout: true
   -
     command: bash check_programs.sh
     description: Checking for expected programs.
