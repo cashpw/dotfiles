@@ -27,19 +27,17 @@ fi
 
 echo -e "\nAll fonts are downloaded to $DOWNLOADS_PATH."
 
-#if [[ ! -d "${FONTS_PATH}/iosevka" ]]; then
-  echo "Downloading Iosevka..."
+if [[ ! -d "${FONTS_PATH}/iosevka" ]]; then
   version="$(latest_version "be5invis/iosevka")"
-  echo "version: $version"
+  echo "Downloading Iosevka version ${version}"
   iosevka_target="ttf-iosevka-term-ss09-${version}"
-  echo "target: $iosevka_target"
-  exit
   cd ~/Downloads
   wget "https://github.com/be5invis/Iosevka/releases/download/v${version}/${iosevka_target}.zip"
-  echo "Installing..."
+  echo "Installing Iosevka..."
   mkdir -p ~/.fonts/iosevka
   unzip "${iosevka_target}.zip" -d ${iosevka_target} > /dev/null
-  mv "${iosevka_target}/ttf/"* "${FONTS_PATH}/iosevka"
-#else
-  #echo "Iosevka has already been installed."
-#fi
+  mv "${iosevka_target}/"* "${FONTS_PATH}/iosevka"
+  echo "You may need to create a symlink to your font directory (eg: /usr/share/fonts) and/or run fc-cache -fv."
+else
+  echo "Iosevka has already been installed."
+fi
