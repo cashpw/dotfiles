@@ -14,6 +14,7 @@
     ~/.Xresources:
     ~/.profile:
     ~/.bashrc:
+    ~/.bash_aliases:
 
 - create:
   - ~/.fonts
