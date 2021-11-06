@@ -2,18 +2,14 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-# Use alt as mod key (run `$ xmodmap` to see possible values
 # alt
-#set $mod Mod1 # alt
+#set $mod Mod1
 # System/Super/Win/Meta
-set $mod Mod4 
+set $mod Mod4
 
-#System/Super/Win/Meta
-#set $mod Mod4
-
-set $monitor_north DP-1
-set $monitor_south DP-2
-set $monitor_west DP-3
+#set $monitor_north DP-1
+#set $monitor_south DP-2
+#set $monitor_west DP-3
 
 ################################################################################
 #         Look and Feel
@@ -128,16 +124,16 @@ bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
 # assign workspaces to monitors 
-workspace 1 output $monitor_south
-workspace 2 output $monitor_south
-workspace 3 output $monitor_south
-workspace 4 output $monitor_south
-workspace 5 output $monitor_north
-workspace 6 output $monitor_north
-workspace 7 output $monitor_north
-workspace 8 output $monitor_north
-workspace 9 output $monitor_west
-workspace 0 output $monitor_west
+#workspace 1 output $monitor_south
+#workspace 2 output $monitor_south
+#workspace 3 output $monitor_south
+#workspace 4 output $monitor_south
+#workspace 5 output $monitor_north
+#workspace 6 output $monitor_north
+#workspace 7 output $monitor_north
+#workspace 8 output $monitor_north
+#workspace 9 output $monitor_west
+#workspace 0 output $monitor_west
 
 ################################################################################
 #         Status Bar
@@ -239,7 +235,7 @@ mode "$mode_screenshot" {
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
-bindsym $mod+s mode "$mode_screenshot"
+bindsym $mod+Shift+s mode "$mode_screenshot"
 
 set $mode_volume Volume: (0-9) set volume to X0%, (k|up) volume up, (j|down) volume down, (m) toggle mute
 mode "$mode_volume" {
