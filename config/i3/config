@@ -240,40 +240,17 @@ mode "$mode_screenshot" {
 }
 bindsym $mod+Shift+s mode "$mode_screenshot"
 
-set $mode_volume Volume: (0-9) set volume to X0%, (k|up) volume up, (j|down) volume down, (m) toggle mute
-mode "$mode_volume" {
-  bindsym 0 exec --no-startup-id amixer set Master 0
-  bindsym 1 exec --no-startup-id amixer set Master 10%
-  bindsym 2 exec --no-startup-id amixer set Master 20%
-  bindsym 3 exec --no-startup-id amixer set Master 30%
-  bindsym 4 exec --no-startup-id amixer set Master 40%
-  bindsym 5 exec --no-startup-id amixer set Master 50%
-  bindsym 6 exec --no-startup-id amixer set Master 60%
-  bindsym 7 exec --no-startup-id amixer set Master 70%
-  bindsym 8 exec --no-startup-id amixer set Master 80%
-  bindsym 9 exec --no-startup-id amixer set Master 90%
-  bindsym Up exec --no-startup-id amixer set Master 2%+
-  bindsym Down exec --no-startup-id amixer set Master 2%-
-  bindsym k exec --no-startup-id amixer set Master 2%+
-  bindsym j exec --no-startup-id amixer set Master 2%-
-  bindsym m exec --no-startup-id amixer set Master toggle
-
- # back to normal: Enter or Escape
-  bindsym Return mode "default"
-  bindsym Escape mode "default"
-}
-bindsym $mod+v mode "$mode_volume"
-
 # Sound
-set $mode_sound Sound: (j) Next, (k) Prev, (s) Stop, (p) Play/Pause, (Up/Down) Volume, (0-9) Volume, (m) mute, (M) unmute
+set $mode_sound Sound: (j) Prev, (k) Play/Pause, (l) Next, (s) Stop, (↑↓) ±2%, (0-9) Volume, (M)m (un)mute, (S) Shuffle
 mode "$mode_sound" {
-  bindsym h exec "playerctl --all-players position 10-"
-  bindsym k exec "playerctl --all-players previous"
-  bindsym j exec "playerctl --all-players next"
-  bindsym l exec "playerctl --all-players position 10+"
+  bindsym h exec "playerctl --all-players position 15-"
+  bindsym j exec "playerctl --all-players previous"
+  bindsym l exec "playerctl --all-players next"
+  bindsym ";" exec "playerctl --all-players position 15+"
 
   bindsym s exec "playerctl --all-players stop"
-  bindsym p exec "playerctl --all-players play-pause"
+  bindsym Shift+s exec "playerctl --all-players shuffle Toggle"
+  bindsym k exec "playerctl --all-players play-pause"
 
   bindsym Down exec "amixer set Master,0 2%-"
   bindsym Up exec "amixer set Master,0 2%+"
@@ -286,7 +263,7 @@ mode "$mode_sound" {
   bindsym 7 exec "amixer set Master,0 70%"
   bindsym 8 exec "amixer set Master,0 80%"
   bindsym 9 exec "amixer set Master,0 90%"
-  bindsym 0 exec "amixer set Master,0 0%"
+  bindsym 0 exec "amixer set Master,0 100%"
   bindsym m exec "amixer set Master,0 mute"
   bindsym Shift+m exec "amixer set Master,0 unmute"
 
