@@ -39,6 +39,7 @@ bindsym $mod+Shift+q kill
 bindsym $mod+d exec rofi -combi-modi drun#ssh -font "Iosevka Term SS09 10" -show combi
 
 bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
+bindsym $mod+Shift+e exec emacsclient -c
 
 ################################################################################
 #         Movement and Focus
