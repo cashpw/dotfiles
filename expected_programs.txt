@@ -16,3 +16,4 @@ spotify
 unzip
 xclip
 zip
+fzf
