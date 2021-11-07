@@ -38,7 +38,7 @@ bindsym $mod+Shift+q kill
 # start dmenu (a program launcher)
 bindsym $mod+d exec rofi -combi-modi drun#ssh -font "Iosevka Term SS09 10" -show combi
 
-bindsym $mod+e exec emacs
+bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 
 ################################################################################
 #         Movement and Focus
