@@ -19,7 +19,9 @@
     ~/.Xresources:
     ~/.profile:
     ~/.bashrc:
+    ~/.screenlayout:
     ~/.bash_aliases:
+    ~/.chrome-remote-desktop-session:
 
 - shell:
   - [git submodule update --init --recursive, Installing submodules.]

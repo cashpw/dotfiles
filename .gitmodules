@@ -4,6 +4,6 @@
 [submodule "nvim/dein.vim"]
 	path = nvim/dein.vim
 	url = https://github.com/Shougo/dein.vim
-[submodule "config/dircolors-solarized"]
-	path = config/dircolors-solarized
+[submodule "config/dircolors/dircolors-solarized"]
+	path = config/dircolors/dircolors-solarized
 	url = https://github.com/seebi/dircolors-solarized.git

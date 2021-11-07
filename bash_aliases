@@ -1,1 +1,10 @@
-alias c=clear
+alias c="clear"
+alias l="ls"
+alias la="ls -a"
+alias ll="ls -la"
+
+alias ..="cd ../"
+alias ..2="cd ../../"
+alias ..3="cd ../../../"
+alias ..4="cd ../../../../"
+alias ..5="cd ../../../../../"

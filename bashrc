@@ -113,4 +113,6 @@ if ! shopt -oq posix; then
 fi
 
 export PATH="$HOME/.emacs.d/bin:$PATH"
+export DOOMDIR="$HOME/.config/doom"
 set -o vi
+export PATH="$HOME/bin:$PATH"
