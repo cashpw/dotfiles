@@ -881,6 +881,14 @@ Provided through =app/calendar= in =init.el=.
 *** General
 
 #+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-mode-when-done ()
+  "Perform actions when a task is marked as done."
+  (when (org-entry-is-done-p)
+    (org-clock-out-if-current)
+    ;; Archive
+    (unless (org-get-repeat)
+      (org-archive-subtree-default))))
+
 (after! org
   (setq
    org-ellipsis " ▾ "
@@ -890,8 +898,13 @@ Provided through =app/calendar= in =init.el=.
    org-priority-highest 0
    org-priority-default 2
    org-priority-lowest 4
-   org-hide-leading-stars t))
+   org-hide-leading-stars t)
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-done))
 #+end_src
+
+#+RESULTS:
 
 Specify custom todo keywords.
 
@@ -1285,6 +1298,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (format
         ":ID: %s\n"
         id))
+      (insert
+       (format
+        ":DIR: %s/\n"
+        cashweaver-org-roam-attachment-path))
       (if properties
           (cl-loop for (property . value) in properties
                    do (insert
@@ -1292,7 +1309,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                         ":%s: %s\n"
                         property
                         value))))
-      (insert ":END:\n\n")
+      (insert ":END:\n")
       (insert
        (format
         "#+TITLE: %s"
@@ -1362,7 +1379,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (setq
    org-roam-directory
    (file-truename
-    "~/proj/roam")))
+    "~/proj/roam")
+   cashweaver-org-roam-attachment-dir-path
+   (file-truename
+    (format
+     "%s/attachments"
+     org-roam-directory))))
 #+end_src
 
 #+RESULTS:
@@ -1416,10 +1438,12 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at
       )))
 
-   :desc "Create node from headline link" :n "m N" (cmd! ()
-                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
-                                                          ;; mark-as-done
-                                                          t))))
+   (:prefix ("m")
+    :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    :desc "Create node from headline link" :n "N" (cmd! ()
+                                                        (cashweaver-org-roam-new-node-from-link-heading-at-point
+                                                         ;; mark-as-done
+                                                         t)))))
 #+end_src
 
 #+RESULTS:
