@@ -503,6 +503,9 @@ There is some boilerplate which is present in the configuration files when you f
  ;;nix               ; I hereby declare "nix geht mehr!"
  ;;ocaml             ; an objective camel
  (org                ; organize your plain life in plain text
+  +noter
+  +pretty
+  +roam2 
   +pandoc
   +pomodoro)
  ;;php               ; perl's insecure younger brother
@@ -541,7 +544,7 @@ There is some boilerplate which is present in the configuration files when you f
 #+name: doom-app
 #+begin_src emacs-lisp
  ;;calendar
- ;; emms
+ ;;emms
  everywhere
  ;;irc               ; how neckbeards socialize
  ;;(rss +org)        ; emacs as an RSS reader

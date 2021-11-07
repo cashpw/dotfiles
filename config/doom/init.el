@@ -155,6 +155,9 @@
   ;;nix               ; I hereby declare "nix geht mehr!"
   ;;ocaml             ; an objective camel
   (org                ; organize your plain life in plain text
+   +noter
+   +pretty
+   +roam2 
    +pandoc
    +pomodoro)
   ;;php               ; perl's insecure younger brother
@@ -185,7 +188,7 @@
 
  :app
   ;;calendar
-  ;; emms
+  ;;emms
   everywhere
   ;;irc               ; how neckbeards socialize
   ;;(rss +org)        ; emacs as an RSS reader
