@@ -27,8 +27,11 @@ if [ -d "$HOME/.local/bin" ] ; then
 fi
 
 #eval $(dircolors /home/cashweaver/third_party/dircolors-solarized/dircolors.256dark)
-#eval $(dircolors /home/cashweaver/.config/dircolors/dircolors-solarized/dircolors.256dark)
+eval $(dircolors /home/cashweaver/.config/dircolors/dircolors-solarized/dircolors.256dark)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-source "$HOME/.screenlayout/left_right_portrait.sh"
+preferred_screenlayout_filepath="~/.screenlayout/preferred.sh"
+if [[ -f "${preferred_screenlayout_filepath}" ]]; then
+  source "${preferred_screenlayout_filepath}"
+fi
