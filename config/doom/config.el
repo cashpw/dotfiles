@@ -276,6 +276,14 @@
     (org-mime-htmlize)
     (message-send-and-exit)))
 
+(defun cashweaver-org-mode-when-done ()
+  "Perform actions when a task is marked as done."
+  (when (org-entry-is-done-p)
+    (org-clock-out-if-current)
+    ;; Archive
+    (unless (org-get-repeat)
+      (org-archive-subtree-default))))
+
 (after! org
   (setq
    org-ellipsis " ▾ "
@@ -285,7 +293,10 @@
    org-priority-highest 0
    org-priority-default 2
    org-priority-lowest 4
-   org-hide-leading-stars t))
+   org-hide-leading-stars t)
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-done))
 
 (after! org
   (setq
@@ -531,6 +542,168 @@
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'markdown plist filename pub-dir))
 
+(defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
+  "Return a filenaem for an org-roam node.
+
+Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
+  (let ((timestamp
+         (format-time-string
+          "%Y%m%d%H%M%S"
+          (or time
+              (current-time))
+          (or time-zone
+              (current-time-zone))))
+        (slug
+         (org-roam-node-slug
+          (org-roam-node-create
+           :title title))))
+    (format
+     "%s/%s_%s.org"
+     org-roam-directory
+     timestamp
+     slug)))
+;;(cashweaver-org-roam-make-filepath "This is the foo")
+
+(defun cashweaver-org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE)."
+  (interactive)
+  (insert
+   (format
+    "#+%s: %s\n"
+    option
+    value)))
+
+(defun cashweaver-org-mode-insert-options (options)
+  "Insert an alist of org-mode options (#+OPTION: VALUE)."
+  (interactive)
+  (cl-loop for (option . value) in options
+           do (cashweaver-org-mode-insert-option
+               option
+               value)))
+
+(defun cashweaver-org-mode-insert-property (property value)
+  "Insert an org-mode property (:PROPERTY: VALUE)."
+  (interactive)
+  (insert
+   (format
+    ":%s: %s\n"
+    property
+    value)))
+
+(defun cashweaver-org-mode-insert-properties (properties)
+  "Insert an alist of org-mode properties (:PROPERTY: VALUE).
+
+When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
+  (interactive)
+  (cl-loop for (property . value) in properties
+           do (org-set-property
+               property
+               value)))
+
+(defun cashweaver-org-roam-new-node (file-path title &optional properties)
+  "Build a new org-roam node in a temp file.
+
+PROPERTIES is expected to be an alist of additional properties to include.
+
+Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
+  (let* ((id (org-id-new))
+         (all-properties
+          (append
+           `(("ID" . ,id)
+             ("DIR" . ,cashweaver-org-roam-attachment-dir-path))
+           properties)))
+    (with-temp-file
+        file-path
+      (cashweaver-org-mode-insert-properties
+       all-properties)
+      (cashweaver-org-mode-insert-options
+       `(("TITLE" . ,title)
+         ("STARTUP" . "overview"))))))
+
+(defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
+  "Build a new org-roam node from the link heading at point."
+  (interactive)
+  (let* ((link
+          (org-element-context))
+         (type
+          (org-element-property
+           :type
+           link))
+         (url
+          (org-element-property
+           :raw-link
+           link))
+         (description
+          (cashweaver-org-mode-get-description-from-link-at-point))
+         (org-roam-node-file-path
+          (cashweaver-org-roam-make-filepath description)))
+    ;; TODO Replace with regexp?
+    (unless (or (string= type "http")
+                (string= type "https")))
+    (cashweaver-org-roam-new-node
+     org-roam-node-file-path
+     description
+     `(("ROAM_REFS" . ,url)))
+    (if mark-as-done
+        (org-todo "DONE"))
+    (find-file
+     org-roam-node-file-path)))
+
+(defun cashweaver-org-mode-get-description-from-link-at-point ()
+  "Reference: https://emacs.stackexchange.com/a/38297"
+  (interactive)
+  (let ((link
+         (org-element-context)))
+    (message
+     "%s"
+     (buffer-substring-no-properties
+      (org-element-property
+       :contents-begin
+       link)
+      (org-element-property
+       :contents-end
+       link)))))
+
+(defun cashweaver-org-roam-open-ref ()
+  "Open the ROAM_REF."
+  (interactive)
+  (let ((roam-refs
+         (org-entry-get
+          (point)
+          "ROAM_REFS")))
+    (if (s-starts-with-p
+         "http"
+         roam-refs)
+        (browse-url roam-refs)
+      (message "Not an http(s) ref."))))
+
+(defun cashweaver-org-roam-insert-attachment-path ()
+  (save-excursion
+    (org-set-property
+     "DIR"
+     cashweaver-org-roam-attachment-dir-path)))
+
+(use-package! org-roam
+  :after org
+  :config
+  (setq
+   org-roam-directory
+   (file-truename
+    "~/proj/roam")
+   cashweaver-org-roam-attachment-dir-path
+   (file-truename
+    (format
+     "%s/attachments"
+     org-roam-directory))
+   org-roam-capture-templates
+   '(("d" "default" plain "%?" :target
+      (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n")
+      :unnarrowed t)))
+  (add-hook!
+   'org-roam-capture-new-node-hook
+   'cashweaver-org-roam-insert-attachment-path)
+  (org-roam-db-autosync-mode))
+
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
@@ -562,7 +735,14 @@
     (:prefix ("S")
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at
-      )))))
+      )))
+
+   (:prefix ("m")
+    :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    :desc "Create node from headline link" :n "N" (cmd! ()
+                                                        (cashweaver-org-roam-new-node-from-link-heading-at-point
+                                                         ;; mark-as-done
+                                                         t)))))
 
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")

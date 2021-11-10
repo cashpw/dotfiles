@@ -1284,36 +1284,61 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      slug)))
 ;;(cashweaver-org-roam-make-filepath "This is the foo")
 
+(defun cashweaver-org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE)."
+  (interactive)
+  (insert
+   (format
+    "#+%s: %s\n"
+    option
+    value)))
+
+(defun cashweaver-org-mode-insert-options (options)
+  "Insert an alist of org-mode options (#+OPTION: VALUE)."
+  (interactive)
+  (cl-loop for (option . value) in options
+           do (cashweaver-org-mode-insert-option
+               option
+               value)))
+
+(defun cashweaver-org-mode-insert-property (property value)
+  "Insert an org-mode property (:PROPERTY: VALUE)."
+  (interactive)
+  (insert
+   (format
+    ":%s: %s\n"
+    property
+    value)))
+
+(defun cashweaver-org-mode-insert-properties (properties)
+  "Insert an alist of org-mode properties (:PROPERTY: VALUE).
+
+When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
+  (interactive)
+  (cl-loop for (property . value) in properties
+           do (org-set-property
+               property
+               value)))
+
 (defun cashweaver-org-roam-new-node (file-path title &optional properties)
   "Build a new org-roam node in a temp file.
 
 PROPERTIES is expected to be an alist of additional properties to include.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
-  (let* ((id (org-id-new)))
+  (let* ((id (org-id-new))
+         (all-properties
+          (append
+           `(("ID" . ,id)
+             ("DIR" . ,cashweaver-org-roam-attachment-dir-path))
+           properties)))
     (with-temp-file
         file-path
-      (insert ":PROPERTIES:\n")
-      (insert
-       (format
-        ":ID: %s\n"
-        id))
-      (insert
-       (format
-        ":DIR: %s/\n"
-        cashweaver-org-roam-attachment-path))
-      (if properties
-          (cl-loop for (property . value) in properties
-                   do (insert
-                       (format
-                        ":%s: %s\n"
-                        property
-                        value))))
-      (insert ":END:\n")
-      (insert
-       (format
-        "#+TITLE: %s"
-        title)))))
+      (cashweaver-org-mode-insert-properties
+       all-properties)
+      (cashweaver-org-mode-insert-options
+       `(("TITLE" . ,title)
+         ("STARTUP" . "overview"))))))
 
 (defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
@@ -1372,10 +1397,15 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
         (browse-url roam-refs)
       (message "Not an http(s) ref."))))
 
+(defun cashweaver-org-roam-insert-attachment-path ()
+  (save-excursion
+    (org-set-property
+     "DIR"
+     cashweaver-org-roam-attachment-dir-path)))
+
 (use-package! org-roam
   :after org
   :config
-  (org-roam-db-autosync-mode)
   (setq
    org-roam-directory
    (file-truename
@@ -1384,7 +1414,15 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    (file-truename
     (format
      "%s/attachments"
-     org-roam-directory))))
+     org-roam-directory))
+   org-roam-capture-templates
+   '(("d" "default" plain "%?" :target
+      (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n")
+      :unnarrowed t)))
+  (add-hook!
+   'org-roam-capture-new-node-hook
+   'cashweaver-org-roam-insert-attachment-path)
+  (org-roam-db-autosync-mode))
 #+end_src
 
 #+RESULTS:
