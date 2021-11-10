@@ -105,7 +105,7 @@
   magit               ; a git porcelain for Emacs
   ;;make              ; run make tasks from Emacs
   ;;pass              ; password manager for nerds
-  ;;pdf               ; pdf enhancements
+  pdf               ; pdf enhancements
   ;;prodigy           ; FIXME managing external services & code builders
   ;;rgb               ; creating color strings
   ;;taskrunner        ; taskrunner for all your projects
@@ -157,7 +157,7 @@
   (org                ; organize your plain life in plain text
    +noter
    +pretty
-   +roam2 
+   +roam2
    +pandoc
    +pomodoro)
   ;;php               ; perl's insecure younger brother

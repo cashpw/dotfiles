@@ -53,6 +53,12 @@ This is my emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#org-roam][=org-roam=]]
     - [[#package-8][Package]]
     - [[#config-8][Config]]
+  - [[#org-noter][=org-noter=]]
+    - [[#package-9][Package]]
+    - [[#config-9][Config]]
+  - [[#pdf-tools][=pdf-tools=]]
+    - [[#package-10][Package]]
+    - [[#config-10][Config]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
   - [[#org-mode-1][=org-mode=]]
@@ -448,7 +454,7 @@ There is some boilerplate which is present in the configuration files when you f
  magit               ; a git porcelain for Emacs
  ;;make              ; run make tasks from Emacs
  ;;pass              ; password manager for nerds
- ;;pdf               ; pdf enhancements
+ pdf               ; pdf enhancements
  ;;prodigy           ; FIXME managing external services & code builders
  ;;rgb               ; creating color strings
  ;;taskrunner        ; taskrunner for all your projects
@@ -508,7 +514,7 @@ There is some boilerplate which is present in the configuration files when you f
  (org                ; organize your plain life in plain text
   +noter
   +pretty
-  +roam2 
+  +roam2
   +pandoc
   +pomodoro)
  ;;php               ; perl's insecure younger brother
@@ -1427,6 +1433,52 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 #+RESULTS:
 : t
+
+** =org-noter=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-noter
+  :recipe (:host github
+           :repo "cashwever/org-noter"))
+#+end_src
+
+#+RESULTS:
+| org-noter | :modules | ((:lang . org) (:private . config) (:private . modules)) | :pin | 9ead81d42dd4dd5074782d239b2efddf9b8b7b3d | :recipe | (:host github :repo cashwever/org-noter) |
+
+*** Config
+
+=org-noter= is configured by Doom.
+
+** =pdf-tools=
+*** Package
+
+=pdf-tools= is provided by =init.el=.
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! pdf-tools
+  :config
+  (pdf-tools-install))
+
+(defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
+  (interactive)
+  (progn (setq currenb (buffer-name))
+	 (org-noter-insert-precise-note)
+	 (set-buffer currenb)
+	 (org-noter-insert-note)
+	 ;;(org-noter-quote)
+         ))
+
+(fset 'org-noter-quote
+   (kmacro-lambda-form [return S-f3 backspace ?# ?+ ?e ?n ?d ?_ ?q ?u ?o ?t ?e ?\C-r ?: ?e return ?\C-e return delete ?# ?+ ?b ?e ?g ?i ?n ?_ ?q ?u ?o ?t ?e] 1 "%d"))
+
+(define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-noter-insert-selected-text-inside-note-content
 
 * Key bindings
 

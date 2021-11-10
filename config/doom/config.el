@@ -704,6 +704,37 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
+;;(use-package! org-noter
+  ;;;; Based on https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/org/contrib/noter.el
+  ;;:defer t
+  ;;:preface
+  ;;;; Allow the user to preempt this and set the document search path
+  ;;;; If not set then use `org-directory'
+  ;;(defvar org-noter-notes-search-path nil)
+  ;;:config
+  ;;(unless org-noter-notes-search-path
+    ;;(setq org-noter-notes-search-path (list org-directory)))
+  ;;(setq org-noter-auto-save-last-location t
+        ;;org-noter-separate-notes-from-heading t))
+
+(use-package! pdf-tools
+  :config
+  (pdf-tools-install))
+
+(defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
+  (interactive)
+  (progn (setq currenb (buffer-name))
+	 (org-noter-insert-precise-note)
+	 (set-buffer currenb)
+	 (org-noter-insert-note)
+	 ;;(org-noter-quote)
+         ))
+
+(fset 'org-noter-quote
+   (kmacro-lambda-form [return S-f3 backspace ?# ?+ ?e ?n ?d ?_ ?q ?u ?o ?t ?e ?\C-r ?: ?e return ?\C-e return delete ?# ?+ ?b ?e ?g ?i ?n ?_ ?q ?u ?o ?t ?e] 1 "%d"))
+
+(define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
+
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."

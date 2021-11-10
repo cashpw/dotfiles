@@ -75,6 +75,10 @@
 
 (package! ox-pandoc)
 
+(package! org-noter
+  :recipe (:host github
+           :repo "cashwever/org-noter"))
+
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
 (defun cashweaver-is-work-p ()
