@@ -112,8 +112,23 @@ if ! shopt -oq posix; then
   fi
 fi
 
+
+function is_work() {
+  [[ "$HOME" == *"google"* ]]
+}
+
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export DOOMDIR="$HOME/.config/doom"
 set -o vi
 export PATH="$HOME/bin:$PATH"
-source /usr/share/doc/fzf/examples/key-bindings.bash
+if [[ -f "/usr/share/doc/fzf/examples/key-bindings.bash" ]]; then
+  source /usr/share/doc/fzf/examples/key-bindings.bash
+fi
+
+if ! is_work; then
+  PATH="$HOME/third_party/balena-cli-v12.51.5-linux-x64-standalone/balena-cli:$PATH"
+fi
+
+if is_work; then
+  source $HOME/.work_bashrc
+fi
