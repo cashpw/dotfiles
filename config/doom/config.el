@@ -131,6 +131,8 @@
 (use-package! doct
   :commands (doct))
 
+(use-package! free-keys)
+
 (use-package! gnus-alias
   :config
   (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
@@ -149,6 +151,21 @@
                                 ;; Body
                                 nil "~/.email_signature"))
    gnus-alias-default-identity "work"))
+
+(use-package! langtool
+  :init
+  (setq
+   langtool-language-tool-server-jar
+   "~/third_party/LanguageTool-5.5/languagetool-server.jar"
+   ;;langtool-language-tool-jar
+   ;;"~/third_party/LanguageTool-5.5/languagetool-commandline.jar"
+   )
+  :config
+  (setq
+   langtool-default-language
+   "en-US"
+   langtool-mother-tongue
+   "en"))
 
 (defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
@@ -259,32 +276,32 @@
                                                            (interactive)
                                                            (cashweaver-notmuch-search-toggle-tag "waiting"))))
 
+(use-package! operate-on-number)
+
 (use-package! org-mime)
 
-(defun cashweaver-compose-mail-org ()
-  (interactive)
-  (compose-mail)
-  (message-goto-body)
-  (setq *compose-html-org* t)
-  (org-mode))
-
-(defun cashweaver-htmlize-and-send-mail-org ()
-  (interactive)
-  (when *compose-html-org*
-    (setq *compose-html-org* nil)
-    (message-mode)
-    (org-mime-htmlize)
-    (message-send-and-exit)))
+(setq
+ cashweaver-org-non-archival-filepaths
+ '())
 
 (defun cashweaver-org-mode-when-done ()
-  "Perform actions when a task is marked as done."
+  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    ;; Archive
     (unless (org-get-repeat)
-      (org-archive-subtree-default))))
+      (unless
+          (seq-contains-p
+           cashweaver-org-non-archival-filepaths
+           buffer-file-name)
+        (org-archive-subtree-default)))))
+
+(defun cashweaver-org-mode-when-inprogress ()
+  "Handle inprogress ehavior"
+  (when (string-equal (org-get-todo-state) "INPROGRESS")
+    (org-clock-in)))
 
 (after! org
+  :config
   (setq
    org-ellipsis " ▾ "
    org-log-done 'time
@@ -293,41 +310,35 @@
    org-priority-highest 0
    org-priority-default 2
    org-priority-lowest 4
-   org-hide-leading-stars t)
-  (add-hook!
-   'org-after-todo-state-change-hook
-   'cashweaver-org-mode-when-done))
-
-(after! org
-  (setq
+   org-hide-leading-stars t
    org-todo-keywords
    '((sequence
-      ; A task that needs doing & is ready to do
+      ;; A task that needs doing & is ready to do
       "TODO(t)"
-      ; A project, which usually contains other tasks
+      ;; A project, which usually contains other tasks
       "PROJ(p)"
-      ; A task that is in progress
+      ;; A task that is in progress
       "INPROGRESS(i)"
-      ; Something external is holding up this task
+      ;; Something external is holding up this task
       "BLOCKED(b)"
-      ; This task is paused/on hold because of me
+      ;; This task is paused/on hold because of me
       "HOLD(h)"
       "|"
-      ; Task successfully completed
+      ;; Task successfully completed
       "DONE(d)"
-      ; Task was moved
+      ;; Task was moved
       "MOVE(m)"
-      ; Task was cancelled, aborted or is no longer applicable
+      ;; Task was cancelled, aborted or is no longer applicable
       "KILL(k)")
      (sequence
-      ; A task that needs doing
+      ;; A task that needs doing
       "[ ](T)"
-      ; Task is in progress
+      ;; Task is in progress
       "[-](S)"
-      ; Task is being held up or paused
+      ;; Task is being held up or paused
       "[?](W)"
       "|"
-      ; Task was completed
+      ;; Task was completed
       "[X](D)"))
    org-todo-keyword-faces
    '(("[-]"  . +org-todo-active)
@@ -335,7 +346,25 @@
      ("[?]"  . +org-todo-onhold)
      ("BLKD" . +org-todo-onhold)
      ("HOLD" . +org-todo-onhold)
-     ("PROJ" . +org-todo-project))))
+     ("PROJ" . +org-todo-project))
+   org-structure-template-alist
+   '(("a" . "export ascii")
+     ("c" . "center")
+     ("C" . "comment")
+     ("e" . "example")
+     ("E" . "export")
+     ("Eh" . "export html")
+     ("El" . "export latex")
+     ("q" . "quote")
+     ("s" . "src")
+     ("se" . "src emacs-lisp")
+     ("v" . "verse")))
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-inprogress)
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-done))
 
 (after! org-agenda
   (setq
@@ -493,54 +522,8 @@
              offset-days
              time))))
 
-(use-package! ox-pandoc
-  :after (:all org)
-  :config
-  (setq org-pandoc-menu-entry
-        '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
-          (?d "to docx." org-pandoc-export-to-docx)
-          (?m "to markdown." org-pandoc-export-to-markdown)
-          (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
-        org-pandoc-options-for-docx
-        '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
-          (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
-          ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-          (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
-
-(defun org-pandoc-publish-to (format plist filename pub-dir)
-  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
-  (setq org-pandoc-format format)
-  (let ((tempfile
-         (org-publish-org-to
-          'pandoc
-          filename
-          (concat (make-temp-name ".tmp") ".org")
-          plist pub-dir))
-        (outfile
-         (format
-          "%s.%s"
-          (concat
-           pub-dir
-           (file-name-sans-extension (file-name-nondirectory filename)))
-          (assoc-default format org-pandoc-extensions))))
-    ;;(org-pandoc-put-options (org-pandoc-plist-to-alist plist))
-    (let ((process
-           (org-pandoc-run
-            tempfile
-            outfile
-            format
-            'org-pandoc-sentinel
-            org-pandoc-option-table))
-          (local-hook-symbol
-           (intern
-            (format "org-pandoc-after-processing-%s-hook" format))))
-      (process-put process 'files (list tempfile))
-      (process-put process 'output-file filename)
-      (process-put process 'local-hook-symbol local-hook-symbol))))
-
-(defun org-pandoc-publish-to-md (plist filename pub-dir)
-  "Publish to markdown using Pandoc."
-  (org-pandoc-publish-to 'markdown plist filename pub-dir))
+(use-package! ol-notmuch
+  :after org)
 
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
@@ -704,18 +687,89 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
-;;(use-package! org-noter
-  ;;;; Based on https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/org/contrib/noter.el
-  ;;:defer t
-  ;;:preface
-  ;;;; Allow the user to preempt this and set the document search path
-  ;;;; If not set then use `org-directory'
-  ;;(defvar org-noter-notes-search-path nil)
-  ;;:config
-  ;;(unless org-noter-notes-search-path
-    ;;(setq org-noter-notes-search-path (list org-directory)))
-  ;;(setq org-noter-auto-save-last-location t
-        ;;org-noter-separate-notes-from-heading t))
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq
+   org-pandoc-menu-entry
+   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+     (?d "to docx." org-pandoc-export-to-docx)
+     (?m "to markdown." org-pandoc-export-to-markdown)
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
+   org-pandoc-options-for-docx
+   '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+     (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+     ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+     (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+  (add-hook! 'org-pandoc-after-processing-markdown-hook
+             'cashweaver-remove-yaml-header))
+
+(defun cashweaver-remove-yaml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "---\\(.\\|\n\\)*---"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
+  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
+  (setq
+   org-pandoc-format format
+   org-pandoc-option-table (make-hash-table))
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
+        (outfile (format "%s.%s"
+                         (concat
+                          pub-dir
+                          (file-name-sans-extension (file-name-nondirectory filename)))
+                         (assoc-default format org-pandoc-extensions))))
+    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
+                           org-pandoc-option-table))
+          (local-hook-symbol
+           (intern (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file outfile)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-pan-to-pub (o)
+  (intern
+   (format ":org-pandoc-%s" o)))
+
+(defun org-pandoc-pub-to-pan (o)
+  (intern
+   (substring (symbol-name o) 12)))
+
+(defconst org-pandoc-publish-options
+  (mapcar
+   'org-pandoc-pan-to-pub
+   (append
+    org-pandoc-valid-options
+    org-pandoc-colon-separated-options
+    org-pandoc-file-options)))
+
+(defun org-pandoc-plist-to-alist (plist)
+  (let ((alist '()))
+    (while plist
+      (let ((p (car plist))
+            (v (cadr plist)))
+        (when (member p org-pandoc-publish-options)
+          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
+      (setq plist (cddr plist)))
+    alist))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
+
+(defun org-pandoc-publish-to-plain (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'plain plist filename pub-dir))
 
 (use-package! pdf-tools
   :config
@@ -735,6 +789,45 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
 
+(defun cashweaver-send-mail-function ()
+  )
+
+
+(defun cashweaver-mail-htmlize-and-send-org-mail ()
+  "Converts an org-mode message to HTML and sends."
+  (message-mode))
+
+(defun cashweaver-compose-mail-org ()
+  (interactive)
+  (compose-mail)
+  (message-goto-body)
+  (setq *compose-html-org* t)
+  (org-mode))
+
+(defun cashweaver-mail-toggle-org-message-mode ()
+  (interactive)
+  (if (derived-mode-p 'message-mode)
+      (progn
+        (setq *compose-html-org* t)
+        (org-mode)
+        (message "enabled org-mode"))
+    (progn
+      (setq *compose-html-org* nil)
+      (notmuch-message-mode)
+      (message "enabled notmuch-message-mode"))))
+
+(defun cashweaver-htmlize-and-send-mail-org ()
+  (interactive)
+  (when *compose-html-org*
+    (setq *compose-html-org* nil)
+    (message-mode)
+    (org-mime-htmlize)
+    (message-send-and-exit)))
+
+(setq
+ send-mail-function #'google-sendgmr-send-it
+ message-send-mail-function #'google-sendgmr-send-it)
+
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
@@ -742,15 +835,20 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (fset sym def)
   (evil-define-key mode keymap key sym))
 
-;; Keep in alphabetical order.
 (map!
+ ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
+  :desc "Store email link" :n "n L" #'org-notmuch-store-link
+  :desc "Langtool" :n "t L" #'langtool-check))
 
-  ;;:desc "Store email link" :n "n L" #'org-notmuch-store-link
-  ))
+(map!
+ ;; Keep in alphabetical order.
+ :map global-map
+ "M-N" #'operate-on-number-at-point)
 
 (after! org
+  ;; Keep in alphabetical order.
   (map!
    :map org-mode-map
    :localleader
@@ -768,12 +866,25 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at
       )))
 
+   (:prefix ("M" . "Mail")
+    :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
+
    (:prefix ("m")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done
-                                                         t)))))
+                                                         t)))
+   (:prefix ("S" . "Structure")
+    :n "i" #'org-insert-structure-template)))
+
+(after! notmuch
+  ;; Keep in alphabetical order.
+  (map!
+   :map notmuch-message-mode-map
+   :localleader
+
+   "M t" #'cashweaver-mail-toggle-org-message-mode))
 
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")

@@ -3,14 +3,14 @@
 #+email: cashweaver@google.com
 #+STARTUP: overview
 
-This is my emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
+This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
 
 * Table of Contents :TOC_3:noexport:
 - [[#introduction][Introduction]]
   - [[#example-of-literate-programming][Example of Literate Programming]]
   - [[#tangled-files][Tangled Files]]
     - [[#work][Work]]
-  - [[#function-and-variable-nameing-convention][Function and Variable Nameing Convention]]
+  - [[#function-and-variable-naming-convention][Function and Variable Naming Convention]]
 - [[#doom-emacs][Doom Emacs]]
   - [[#configuration-file-headers][Configuration File headers]]
   - [[#initel][=init.el=]]
@@ -22,46 +22,61 @@ This is my emacs configuration file; written in [[https://orgmode.org][=org-mode
 - [[#packages][Packages]]
   - [[#aggressive-indent][=aggressive-indent=]]
     - [[#package][Package]]
-    - [[#config][Config]]
   - [[#calfw][=calfw=]]
     - [[#package-1][Package]]
-    - [[#config-1][Config]]
+    - [[#config][Config]]
   - [[#doct-declarative-org-capture-template][=doct= (Declarative Org Capture Template)]]
     - [[#package-2][Package]]
+    - [[#config-1][Config]]
+  - [[#free-keys][=free-keys=]]
+    - [[#package-3][Package]]
     - [[#config-2][Config]]
   - [[#gnus-alias][=gnus-alias=]]
-    - [[#package-3][Package]]
-    - [[#config-3][Config]]
-  - [[#notmuch][=notmuch=]]
-    - [[#config-4][Config]]
-  - [[#org-gcal][=org-gcal=]]
     - [[#package-4][Package]]
-  - [[#org-mime][=org-mime=]]
+    - [[#config-3][Config]]
+  - [[#langtool][=langtool=]]
     - [[#package-5][Package]]
+    - [[#languagetool][=LanguageTool=]]
+    - [[#config-4][Config]]
+  - [[#writegood-mode][=writegood-mode=]]
+    - [[#package-6][Package]]
+  - [[#notmuch][=notmuch=]]
+    - [[#package-7][Package]]
     - [[#config-5][Config]]
+  - [[#operate-on-number][=operate-on-number=]]
+    - [[#package-8][Package]]
+    - [[#config-6][Config]]
+  - [[#org-gcal][=org-gcal=]]
+    - [[#package-9][Package]]
+  - [[#org-mime][=org-mime=]]
+    - [[#package-10][Package]]
+    - [[#config-7][Config]]
   - [[#org-mode][=org-mode=]]
     - [[#general-1][General]]
     - [[#agenda][Agenda]]
     - [[#helper-methods][Helper Methods]]
-  - [[#org-notmuch][=org-notmuch=]]
-    - [[#config-6][Config]]
-  - [[#org-super-agenda][=org-super-agenda=]]
-    - [[#package-6][Package]]
-  - [[#ox-pandoc][=ox-pandoc=]]
-    - [[#package-7][Package]]
-    - [[#config-7][Config]]
-  - [[#org-roam][=org-roam=]]
-    - [[#package-8][Package]]
-    - [[#config-8][Config]]
   - [[#org-noter][=org-noter=]]
-    - [[#package-9][Package]]
+    - [[#package-11][Package]]
+    - [[#config-8][Config]]
+  - [[#org-notmuch][=org-notmuch=]]
+    - [[#package-12][Package]]
     - [[#config-9][Config]]
-  - [[#pdf-tools][=pdf-tools=]]
-    - [[#package-10][Package]]
+  - [[#org-roam][=org-roam=]]
+    - [[#package-13][Package]]
     - [[#config-10][Config]]
+  - [[#org-super-agenda][=org-super-agenda=]]
+    - [[#package-14][Package]]
+  - [[#ox-pandoc][=ox-pandoc=]]
+    - [[#package-15][Package]]
+    - [[#config-11][Config]]
+  - [[#pdf-tools][=pdf-tools=]]
+    - [[#package-16][Package]]
+    - [[#config-12][Config]]
+- [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
   - [[#org-mode-1][=org-mode=]]
+  - [[#notmuch-1][=notmuch=]]
 - [[#additional-config-files][Additional Config Files]]
   - [[#config-workel][=config-work.el=]]
   - [[#packages-workel][=packages-work.el=]]
@@ -106,7 +121,7 @@ This single file tangles the following files:
 - =packages-work.el=: A version of =packages.el= which contains packages for my work environment.
 - =config-work.el=: A version of =config.el= which contains configuration for my work environment.
 
-** Function and Variable Nameing Convention
+** Function and Variable Naming Convention
 
 I prefix all of my own functions and variables with =cashweaver-= to prevent any unintentional overlaps.
 
@@ -432,9 +447,14 @@ There is some boilerplate which is present in the configuration files when you f
 #+HTMl: <details><summary>doom-checkers</summary>
 #+name: doom-checkers
 #+begin_src emacs-lisp
- syntax              ; tasing you for every semicolon you forget
- ;;spell             ; tasing you for misspelling mispelling
- ;;grammar           ; tasing grammar mistake every you make
+;; tasing you for every semicolon you forget
+syntax
+;; tasing you for misspelling mispelling
+(spell
+ +flyspell
+ +everywhere)
+;; tasing grammar mistake every you make
+grammar
 #+end_src
 #+HTMl: </details>
 
@@ -637,7 +657,6 @@ There is some boilerplate which is present in the configuration files when you f
 (package! aggressive-indent)
 #+end_src
 
-*** Config
 
 #+begin_src emacs-lisp :tangle config.el
 (use-package! aggressive-indent
@@ -661,6 +680,7 @@ There is some boilerplate which is present in the configuration files when you f
                                 nil "~/.email_signature"))
    gnus-alias-default-identity "work"))
 #+end_src
+
 ** =calfw=
 *** Package
 Provided through =app/calendar= in =init.el=.
@@ -696,6 +716,23 @@ Provided through =app/calendar= in =init.el=.
 (use-package! doct
   :commands (doct))
 #+end_src
+** =free-keys=
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! free-keys
+  :recipe (:host github
+           :repo "Fuco1/free-keys"))
+#+end_src
+
+#+RESULTS:
+| free-keys | :modules | (nil) | :recipe | (:host github :repo Fuco1/free-keys) |
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! free-keys)
+#+end_src
+
 ** =gnus-alias=
 *** Package
 
@@ -729,7 +766,55 @@ Provided through =app/calendar= in =init.el=.
    gnus-alias-default-identity "work"))
 #+end_src
 
+** =langtool=
+
+*** Package
+
+=langtool= is provided by =init.el=.
+
+*** =LanguageTool=
+
+Install =LanguageTool=:
+
+A large number of angry people.
+
+1. Download the [[https://languagetool.org/download/LanguageTool-stable.zip][latest stable build]].
+2. Store it somewhere on your system.
+3. Configure =langtool-language-tool-server-jar=.
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! langtool
+  :init
+  (setq
+   langtool-language-tool-server-jar
+   "~/third_party/LanguageTool-5.5/languagetool-server.jar"
+   ;;langtool-language-tool-jar
+   ;;"~/third_party/LanguageTool-5.5/languagetool-commandline.jar"
+   )
+  :config
+  (setq
+   langtool-default-language
+   "en-US"
+   langtool-mother-tongue
+   "en"))
+#+end_src
+
+#+RESULTS:
+: t
+
+** =writegood-mode=
+
+*** Package
+
+=writegood-mode= is provided by =init.el=.
+
 ** =notmuch=
+*** Package
+
+=notmuch= is provided by =init.el=.
+
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
@@ -845,6 +930,24 @@ Provided through =app/calendar= in =init.el=.
 
 #+RESULTS:
 
+
+** =operate-on-number=
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! operate-on-number
+  :recipe (:host github
+           :repo "knu/operate-on-number.el"))
+#+end_src
+
+#+RESULTS:
+| operate-on-number | :modules | (nil) | :recipe | (:host github :repo knu/operate-on-number.el) |
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! operate-on-number)
+#+end_src
+
 ** =org-gcal=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
@@ -860,42 +963,33 @@ Provided through =app/calendar= in =init.el=.
 (use-package! org-mime)
 #+end_src
 
-#+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-compose-mail-org ()
-  (interactive)
-  (compose-mail)
-  (message-goto-body)
-  (setq *compose-html-org* t)
-  (org-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-htmlize-and-send-mail-org ()
-  (interactive)
-  (when *compose-html-org*
-    (setq *compose-html-org* nil)
-    (message-mode)
-    (org-mime-htmlize)
-    (message-send-and-exit)))
-#+end_src
-
-#+RESULTS:
-: cashweaver-htmlize-and-send-mail-org
-
 ** =org-mode=
 
 *** General
 
 #+begin_src emacs-lisp :tangle config.el
+(setq
+ cashweaver-org-non-archival-filepaths
+ '())
+
 (defun cashweaver-org-mode-when-done ()
-  "Perform actions when a task is marked as done."
+  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    ;; Archive
     (unless (org-get-repeat)
-      (org-archive-subtree-default))))
+      (unless
+          (seq-contains-p
+           cashweaver-org-non-archival-filepaths
+           buffer-file-name)
+        (org-archive-subtree-default)))))
+
+(defun cashweaver-org-mode-when-inprogress ()
+  "Handle inprogress ehavior"
+  (when (string-equal (org-get-todo-state) "INPROGRESS")
+    (org-clock-in)))
 
 (after! org
+  :config
   (setq
    org-ellipsis " ▾ "
    org-log-done 'time
@@ -904,47 +998,35 @@ Provided through =app/calendar= in =init.el=.
    org-priority-highest 0
    org-priority-default 2
    org-priority-lowest 4
-   org-hide-leading-stars t)
-  (add-hook!
-   'org-after-todo-state-change-hook
-   'cashweaver-org-mode-when-done))
-#+end_src
-
-#+RESULTS:
-
-Specify custom todo keywords.
-
-#+begin_src emacs-lisp :tangle config.el
-(after! org
-  (setq
+   org-hide-leading-stars t
    org-todo-keywords
    '((sequence
-      ; A task that needs doing & is ready to do
+      ;; A task that needs doing & is ready to do
       "TODO(t)"
-      ; A project, which usually contains other tasks
+      ;; A project, which usually contains other tasks
       "PROJ(p)"
-      ; A task that is in progress
+      ;; A task that is in progress
       "INPROGRESS(i)"
-      ; Something external is holding up this task
+      ;; Something external is holding up this task
       "BLOCKED(b)"
-      ; This task is paused/on hold because of me
+      ;; This task is paused/on hold because of me
       "HOLD(h)"
       "|"
-      ; Task successfully completed
+      ;; Task successfully completed
       "DONE(d)"
-      ; Task was moved
+      ;; Task was moved
       "MOVE(m)"
-      ; Task was cancelled, aborted or is no longer applicable
+      ;; Task was cancelled, aborted or is no longer applicable
       "KILL(k)")
      (sequence
-      ; A task that needs doing
+      ;; A task that needs doing
       "[ ](T)"
-      ; Task is in progress
+      ;; Task is in progress
       "[-](S)"
-      ; Task is being held up or paused
+      ;; Task is being held up or paused
       "[?](W)"
       "|"
-      ; Task was completed
+      ;; Task was completed
       "[X](D)"))
    org-todo-keyword-faces
    '(("[-]"  . +org-todo-active)
@@ -952,11 +1034,28 @@ Specify custom todo keywords.
      ("[?]"  . +org-todo-onhold)
      ("BLKD" . +org-todo-onhold)
      ("HOLD" . +org-todo-onhold)
-     ("PROJ" . +org-todo-project))))
+     ("PROJ" . +org-todo-project))
+   org-structure-template-alist
+   '(("a" . "export ascii")
+     ("c" . "center")
+     ("C" . "comment")
+     ("e" . "example")
+     ("E" . "export")
+     ("Eh" . "export html")
+     ("El" . "export latex")
+     ("q" . "quote")
+     ("s" . "src")
+     ("se" . "src emacs-lisp")
+     ("v" . "verse")))
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-inprogress)
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'cashweaver-org-mode-when-done))
 #+end_src
 
 #+RESULTS:
-: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLKD . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
 
 *** Agenda
 
@@ -1179,85 +1278,46 @@ Specify custom todo keywords.
 #+RESULTS:
 : cashweaver-org-schedule-in-n-days
 
-** =org-notmuch=
+** =org-noter=
+*** Package
+
+I've customized org-noter to [[https://github.com/cashweaver/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]]
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-noter
+  :recipe (:host github
+           :repo "cashweaver/org-noter"))
+#+end_src
+
+#+RESULTS:
+| org-noter | :modules | ((:lang . org) (:private . config) (:private . modules)) | :pin | 9ead81d42dd4dd5074782d239b2efddf9b8b7b3d | :recipe | (:host github :repo cashwever/org-noter) |
+
 *** Config
 
-#+begin_src emacs-lisp :tangle packages.el
-;;(package! ol-notmuch
-  ;;:recipe `(:local-repo ,(concat cashweaver--local-package-path "org-mode/lisp/ol-notmuch.el")))
-#+end_src
+=org-noter= is configured by Doom.
 
-#+RESULTS:
-| ol-notmuch | :modules | (nil) | :recipe | (:local-repo /usr/local/google/home/cashweaver/third_partyorg-mode/lisp/ol-notmuch.el) |
-
-** =org-super-agenda=
+** =org-notmuch=
 *** Package
 
 #+begin_src emacs-lisp :tangle packages.el
-(package! org-super-agenda)
-#+end_src
-
-** =ox-pandoc=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! ox-pandoc)
+(package! ol-notmuch
+  :recipe `(:local-repo
+            ,(concat
+              cashweaver--local-package-path
+              "/org-mode/contrib/lisp")
+            :files
+            ("ol-notmuch.el")))
 #+end_src
 
 #+RESULTS:
-| ox-pandoc | :modules | (nil) |
+| ol-notmuch | :modules | (nil) | :recipe | (:local-repo /usr/local/google/home/cashweaver/third_party/org-mode/contrib/lisp :files (ol-notmuch.el)) |
+
 
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(use-package! ox-pandoc
-  :after (:all org)
-  :config
-  (setq org-pandoc-menu-entry
-        '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
-          (?d "to docx." org-pandoc-export-to-docx)
-          (?m "to markdown." org-pandoc-export-to-markdown)
-          (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
-        org-pandoc-options-for-docx
-        '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
-          (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
-          ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-          (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
-
-(defun org-pandoc-publish-to (format plist filename pub-dir)
-  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
-  (setq org-pandoc-format format)
-  (let ((tempfile
-         (org-publish-org-to
-          'pandoc
-          filename
-          (concat (make-temp-name ".tmp") ".org")
-          plist pub-dir))
-        (outfile
-         (format
-          "%s.%s"
-          (concat
-           pub-dir
-           (file-name-sans-extension (file-name-nondirectory filename)))
-          (assoc-default format org-pandoc-extensions))))
-    ;;(org-pandoc-put-options (org-pandoc-plist-to-alist plist))
-    (let ((process
-           (org-pandoc-run
-            tempfile
-            outfile
-            format
-            'org-pandoc-sentinel
-            org-pandoc-option-table))
-          (local-hook-symbol
-           (intern
-            (format "org-pandoc-after-processing-%s-hook" format))))
-      (process-put process 'files (list tempfile))
-      (process-put process 'output-file filename)
-      (process-put process 'local-hook-symbol local-hook-symbol))))
-
-(defun org-pandoc-publish-to-md (plist filename pub-dir)
-  "Publish to markdown using Pandoc."
-  (org-pandoc-publish-to 'markdown plist filename pub-dir))
+(use-package! ol-notmuch
+  :after org)
 #+end_src
 
 ** =org-roam=
@@ -1434,21 +1494,113 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 #+RESULTS:
 : t
 
-** =org-noter=
+** =org-super-agenda=
 *** Package
 
 #+begin_src emacs-lisp :tangle packages.el
-(package! org-noter
-  :recipe (:host github
-           :repo "cashwever/org-noter"))
+(package! org-super-agenda)
+#+end_src
+
+** =ox-pandoc=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! ox-pandoc)
 #+end_src
 
 #+RESULTS:
-| org-noter | :modules | ((:lang . org) (:private . config) (:private . modules)) | :pin | 9ead81d42dd4dd5074782d239b2efddf9b8b7b3d | :recipe | (:host github :repo cashwever/org-noter) |
+| ox-pandoc | :modules | (nil) |
 
 *** Config
 
-=org-noter= is configured by Doom.
+#+begin_src emacs-lisp :tangle config.el
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq
+   org-pandoc-menu-entry
+   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+     (?d "to docx." org-pandoc-export-to-docx)
+     (?m "to markdown." org-pandoc-export-to-markdown)
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
+   org-pandoc-options-for-docx
+   '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+     (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+     ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+     (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+  (add-hook! 'org-pandoc-after-processing-markdown-hook
+             'cashweaver-remove-yaml-header))
+
+(defun cashweaver-remove-yaml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "---\\(.\\|\n\\)*---"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
+  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
+  (setq
+   org-pandoc-format format
+   org-pandoc-option-table (make-hash-table))
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
+        (outfile (format "%s.%s"
+                         (concat
+                          pub-dir
+                          (file-name-sans-extension (file-name-nondirectory filename)))
+                         (assoc-default format org-pandoc-extensions))))
+    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
+                           org-pandoc-option-table))
+          (local-hook-symbol
+           (intern (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file outfile)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-pan-to-pub (o)
+  (intern
+   (format ":org-pandoc-%s" o)))
+
+(defun org-pandoc-pub-to-pan (o)
+  (intern
+   (substring (symbol-name o) 12)))
+
+(defconst org-pandoc-publish-options
+  (mapcar
+   'org-pandoc-pan-to-pub
+   (append
+    org-pandoc-valid-options
+    org-pandoc-colon-separated-options
+    org-pandoc-file-options)))
+
+(defun org-pandoc-plist-to-alist (plist)
+  (let ((alist '()))
+    (while plist
+      (let ((p (car plist))
+            (v (cadr plist)))
+        (when (member p org-pandoc-publish-options)
+          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
+      (setq plist (cddr plist)))
+    alist))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
+
+(defun org-pandoc-publish-to-plain (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'plain plist filename pub-dir))
+#+end_src
+
+#+RESULTS:
+: org-pandoc-publish-to-plain
 
 ** =pdf-tools=
 *** Package
@@ -1480,6 +1632,49 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 #+RESULTS:
 : cashweaver-org-noter-insert-selected-text-inside-note-content
 
+* Mail
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-send-mail-function ()
+  )
+
+
+(defun cashweaver-mail-htmlize-and-send-org-mail ()
+  "Converts an org-mode message to HTML and sends."
+  (message-mode))
+
+(defun cashweaver-compose-mail-org ()
+  (interactive)
+  (compose-mail)
+  (message-goto-body)
+  (setq *compose-html-org* t)
+  (org-mode))
+
+(defun cashweaver-mail-toggle-org-message-mode ()
+  (interactive)
+  (if (derived-mode-p 'message-mode)
+      (progn
+        (setq *compose-html-org* t)
+        (org-mode)
+        (message "enabled org-mode"))
+    (progn
+      (setq *compose-html-org* nil)
+      (notmuch-message-mode)
+      (message "enabled notmuch-message-mode"))))
+
+(defun cashweaver-htmlize-and-send-mail-org ()
+  (interactive)
+  (when *compose-html-org*
+    (setq *compose-html-org* nil)
+    (message-mode)
+    (org-mime-htmlize)
+    (message-send-and-exit)))
+
+(setq
+ send-mail-function #'google-sendgmr-send-it
+ message-send-mail-function #'google-sendgmr-send-it)
+#+end_src
+
 * Key bindings
 
 Key bindings, in my experience, don't benefit from the same "tangle-like" style of spreading them throughout the config. I prefer to have my key bindings all in one place.
@@ -1496,21 +1691,28 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 #+RESULTS:
 : evil-lambda-key
 
+
 ** General
+
 #+begin_src emacs-lisp :tangle config.el
-;; Keep in alphabetical order.
 (map!
+ ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
+  :desc "Store email link" :n "n L" #'org-notmuch-store-link
+  :desc "Langtool" :n "t L" #'langtool-check))
 
-  ;;:desc "Store email link" :n "n L" #'org-notmuch-store-link
-  ))
+(map!
+ ;; Keep in alphabetical order.
+ :map global-map
+ "M-N" #'operate-on-number-at-point)
 #+end_src
 
 ** =org-mode=
 
 #+begin_src emacs-lisp :tangle config.el
 (after! org
+  ;; Keep in alphabetical order.
   (map!
    :map org-mode-map
    :localleader
@@ -1528,12 +1730,31 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at
       )))
 
+   (:prefix ("M" . "Mail")
+    :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
+
    (:prefix ("m")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done
-                                                         t)))))
+                                                         t)))
+   (:prefix ("S" . "Structure")
+    :n "i" #'org-insert-structure-template)))
+#+end_src
+
+#+RESULTS:
+
+** =notmuch=
+
+#+begin_src emacs-lisp :tangle config.el
+(after! notmuch
+  ;; Keep in alphabetical order.
+  (map!
+   :map notmuch-message-mode-map
+   :localleader
+
+   "M t" #'cashweaver-mail-toggle-org-message-mode))
 #+end_src
 
 #+RESULTS:

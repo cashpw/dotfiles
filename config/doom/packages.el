@@ -62,22 +62,35 @@
 
 (package! doct)
 
+(package! free-keys
+  :recipe (:host github
+           :repo "Fuco1/free-keys"))
+
 (package! gnus-alias)
+
+(package! operate-on-number
+  :recipe (:host github
+           :repo "knu/operate-on-number.el"))
 
 (package! org-gcal)
 
 (package! org-mime)
 
-;;(package! ol-notmuch
-  ;;:recipe `(:local-repo ,(concat cashweaver--local-package-path "org-mode/lisp/ol-notmuch.el")))
+(package! org-noter
+  :recipe (:host github
+           :repo "cashweaver/org-noter"))
+
+(package! ol-notmuch
+  :recipe `(:local-repo
+            ,(concat
+              cashweaver--local-package-path
+              "/org-mode/contrib/lisp")
+            :files
+            ("ol-notmuch.el")))
 
 (package! org-super-agenda)
 
 (package! ox-pandoc)
-
-(package! org-noter
-  :recipe (:host github
-           :repo "cashwever/org-noter"))
 
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
