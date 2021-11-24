@@ -92,6 +92,8 @@
 
 (package! ox-pandoc)
 
+(package! org-wild-notifier)
+
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
 (defun cashweaver-is-work-p ()

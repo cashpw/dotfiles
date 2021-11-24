@@ -167,6 +167,10 @@
    langtool-mother-tongue
    "en"))
 
+(defun cashweaver-notmuch-show-open-or-close-all ()
+  "Toggle between showing and hiding all messages in the thread."
+  (interactive))
+
 (defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
   (interactive)
@@ -233,11 +237,11 @@
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
                           "-unread")
-   notmuch-search-line-faces '(("p0" . '(:foreground "red"))
-                               ("Bug" . '(:foreground "green"))
-                               ("waiting" . '(:foreground "yellow"))
-                               ("Calendar-Events" . '(:foreground "blue"))
-                               ("Read!" . '(:foreground "magenta")))
+   notmuch-search-line-faces '(("p0" . '(:foreground "red3"))
+                               ("Bug" . '(:foreground "ivory4"))
+                               ("waiting" . '(:foreground "orange3"))
+                               ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
+                               ("Read!" . '(:foreground "magenta3")))
                                         ; Superset of `notmuch-archive-tags' for super archiving.
    cashweaver-notmuch-super-archive-tags (append
                                           notmuch-archive-tags
@@ -424,6 +428,14 @@
   (let ((start-time (plist-get block-time :start))
         (end-time (plist-get block-time :end))
         (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
     (org-schedule nil (format "%s %s-%s"
                               date
                               start-time
@@ -789,6 +801,16 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
 
+(setq
+ alert-fade-time 60
+ alert-default-style 'libnotify)
+
+(use-package! org-wild-notifier
+  :config
+  (setq
+   org-wild-notifier-alert-time '(10 2))
+  (org-wild-notifier-mode))
+
 (defun cashweaver-send-mail-function ()
   )
 
@@ -852,7 +874,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (map!
    :map org-mode-map
    :localleader
-
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
 
@@ -860,15 +881,77 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
     (:prefix ("h" . "insert heading")
      :n "d" #'cashweaver-org-mode-insert-heading-for-today
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
-
     (:prefix ("S")
      (:prefix ("." . "today")
-      :desc "at" :n "a" #'cashweaver-org--schedule-today-at
-      )))
-
+      :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
+     (:prefix ("h" . "hour")
+      (:prefix ("1" . "1?:??")
+       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "10:00"
+                                   "10:50"))
+       :desc "11:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "11:00"
+                                   "11:50"))
+       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "12:00"
+                                   "12:50"))
+       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "13:00"
+                                   "13:50"))
+       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "14:00"
+                                   "14:50"))
+       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "15:00"
+                                   "15:50"))
+       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "16:00"
+                                   "16:50"))
+       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "17:00"
+                                   "17:50"))
+       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "18:00"
+                                   "18:50"))
+       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "19:00"
+                                   "19:50")))
+      (:prefix ("2" . "2?:??")
+       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "20:00"
+                                   "20:50"))
+       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "21:00"
+                                   "21:50"))
+       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "22:00"
+                                   "22:50"))
+       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "23:00"
+                                   "23:50")))
+      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "03:00"
+                                  "03:50"))
+      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "04:00"
+                                  "04:50"))
+      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "05:00"
+                                  "05:50"))
+      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "06:00"
+                                  "06:50"))
+      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "07:00"
+                                  "07:50"))
+      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "08:00"
+                                  "08:50"))
+      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "09:00"
+                                  "09:50")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
-
    (:prefix ("m")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
     :desc "Create node from headline link" :n "N" (cmd! ()
@@ -884,7 +967,11 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    :map notmuch-message-mode-map
    :localleader
 
-   "M t" #'cashweaver-mail-toggle-org-message-mode))
+   "M t" #'cashweaver-mail-toggle-org-message-mode)
+  (map!
+   :map notmuch-show-mode-map
+
+   "M-RET" #'cashweaver-notmuch-show-open-or-close-all))
 
 (setq
  cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
