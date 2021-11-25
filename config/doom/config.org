@@ -74,6 +74,12 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#pdf-tools][=pdf-tools=]]
     - [[#package-16][Package]]
     - [[#config-12][Config]]
+  - [[#alert][=alert=]]
+    - [[#package-17][Package]]
+    - [[#config-13][Config]]
+  - [[#org-wild-notifier][=org-wild-notifier=]]
+    - [[#package-18][Package]]
+    - [[#config-14][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -146,9 +152,6 @@ Additionally, variables and functions which are in a "library"/group are prefixe
  cashweaver-colors-favorite "orange"
  cashweaver-colors--secret "blue")
 #+end_src
-
-#+RESULTS:
-: green
 
 * Doom Emacs
 
@@ -791,9 +794,6 @@ Provided through =app/calendar= in =init.el=.
            :repo "Fuco1/free-keys"))
 #+end_src
 
-#+RESULTS:
-| free-keys | :modules | (nil) | :recipe | (:host github :repo Fuco1/free-keys) |
-
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
@@ -868,9 +868,6 @@ A large number of angry people.
    "en"))
 #+end_src
 
-#+RESULTS:
-: t
-
 ** =writegood-mode=
 
 *** Package
@@ -885,6 +882,10 @@ A large number of angry people.
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-notmuch-show-open-or-close-all ()
+  "Toggle between showing and hiding all messages in the thread."
+  (interactive))
+
 (defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
   (interactive)
@@ -951,11 +952,11 @@ A large number of angry people.
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
                           "-unread")
-   notmuch-search-line-faces '(("p0" . '(:foreground "red"))
-                               ("Bug" . '(:foreground "green"))
-                               ("waiting" . '(:foreground "yellow"))
-                               ("Calendar-Events" . '(:foreground "blue"))
-                               ("Read!" . '(:foreground "magenta")))
+   notmuch-search-line-faces '(("p0" . '(:foreground "red3"))
+                               ("Bug" . '(:foreground "ivory4"))
+                               ("waiting" . '(:foreground "orange3"))
+                               ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
+                               ("Read!" . '(:foreground "magenta3")))
                                         ; Superset of `notmuch-archive-tags' for super archiving.
    cashweaver-notmuch-super-archive-tags (append
                                           notmuch-archive-tags
@@ -995,8 +996,6 @@ A large number of angry people.
                                                            (cashweaver-notmuch-search-toggle-tag "waiting"))))
 #+end_src
 
-#+RESULTS:
-
 
 ** =operate-on-number=
 *** Package
@@ -1005,9 +1004,6 @@ A large number of angry people.
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
 #+end_src
-
-#+RESULTS:
-| operate-on-number | :modules | (nil) | :recipe | (:host github :repo knu/operate-on-number.el) |
 
 *** Config
 
@@ -1122,8 +1118,6 @@ A large number of angry people.
    'cashweaver-org-mode-when-done))
 #+end_src
 
-#+RESULTS:
-
 *** Agenda
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1140,8 +1134,6 @@ A large number of angry people.
    org-agenda-span 1
    org-agenda-start-on-weekday nil))
 #+end_src
-
-#+RESULTS:
 
 *** Helper Methods
 **** Create a heading for today
@@ -1181,9 +1173,6 @@ A large number of angry people.
              today-quarter-number))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-mode-insert-heading-for-this-week
-
 **** Scheduling task for my calendar blocks
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1193,12 +1182,7 @@ A large number of angry people.
  cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
  cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
  cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
-#+end_src
 
-#+RESULTS:
-| :start | 16:00 | :end | 18:00 |
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-schedule-for-block (block-time &optional date)
   (interactive)
   (let ((start-time (plist-get block-time :start))
@@ -1208,10 +1192,18 @@ A large number of angry people.
                               date
                               start-time
                               end-time))))
+
+(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
 #+end_src
 
 #+RESULTS:
-: cashweaver-org-schedule-for-block
+: cashweaver-org-schedule-today-from-to
 
 **** Schedule task
 
@@ -1240,9 +1232,6 @@ A large number of angry people.
     (message (number-to-string hour))
     ))
 #+end_src
-
-#+RESULTS:
-: cashweaver-org--schedule-today-at
 
 **** Schedule task for duration
 
@@ -1276,9 +1265,6 @@ A large number of angry people.
                               end-minute))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org--schedule-at-for-minutes
-
 **** Scheduling task at start of pomodoro
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1294,9 +1280,6 @@ A large number of angry people.
  cashweaver--schedule-pomodoro-nine '(:start "17:00" :end "17:50")
  cashweaver--schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
 #+end_src
-
-#+RESULTS:
-| :start | 18:00 | :end | 18:50 |
 
 #+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-schedule-at-pomodoro (pomodoro-time &optional date)
@@ -1324,9 +1307,6 @@ A large number of angry people.
                               current-minute))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-schedule-in-n-hours
-
 **** Scheduling task in N days
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1342,9 +1322,6 @@ A large number of angry people.
              time))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-schedule-in-n-days
-
 ** =org-noter=
 *** Package
 
@@ -1355,9 +1332,6 @@ I've customized org-noter to [[https://github.com/cashweaver/org-noter/commit/e1
   :recipe (:host github
            :repo "cashweaver/org-noter"))
 #+end_src
-
-#+RESULTS:
-| org-noter | :modules | ((:lang . org) (:private . config) (:private . modules)) | :pin | 9ead81d42dd4dd5074782d239b2efddf9b8b7b3d | :recipe | (:host github :repo cashwever/org-noter) |
 
 *** Config
 
@@ -1375,9 +1349,6 @@ I've customized org-noter to [[https://github.com/cashweaver/org-noter/commit/e1
             :files
             ("ol-notmuch.el")))
 #+end_src
-
-#+RESULTS:
-| ol-notmuch | :modules | (nil) | :recipe | (:local-repo /usr/local/google/home/cashweaver/third_party/org-mode/contrib/lisp :files (ol-notmuch.el)) |
 
 
 *** Config
@@ -1558,9 +1529,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (org-roam-db-autosync-mode))
 #+end_src
 
-#+RESULTS:
-: t
-
 ** =org-super-agenda=
 *** Package
 
@@ -1574,9 +1542,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 #+begin_src emacs-lisp :tangle packages.el
 (package! ox-pandoc)
 #+end_src
-
-#+RESULTS:
-| ox-pandoc | :modules | (nil) |
 
 *** Config
 
@@ -1668,9 +1633,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
 
-#+RESULTS:
-: org-pandoc-publish-to-plain
-
 ** =pdf-tools=
 *** Package
 
@@ -1698,9 +1660,33 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-noter-insert-selected-text-inside-note-content
+** =alert=
+*** Package
+=alert= is provided by Doom Emacs.
+*** Config
 
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ alert-fade-time 60
+ alert-default-style 'libnotify)
+#+end_src
+
+** =org-wild-notifier=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-wild-notifier)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! org-wild-notifier
+  :config
+  (setq
+   org-wild-notifier-alert-time '(10 2))
+  (org-wild-notifier-mode))
+#+end_src
 * Mail
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1757,11 +1743,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
   (evil-define-key mode keymap key sym))
 #+end_src
 
-#+RESULTS:
-: evil-lambda-key
-
-14
-
 ** General
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1788,7 +1769,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
   (map!
    :map org-mode-map
    :localleader
-
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
 
@@ -1796,15 +1776,77 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
     (:prefix ("h" . "insert heading")
      :n "d" #'cashweaver-org-mode-insert-heading-for-today
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
-
     (:prefix ("S")
      (:prefix ("." . "today")
-      :desc "at" :n "a" #'cashweaver-org--schedule-today-at
-      )))
-
+      :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
+     (:prefix ("h" . "hour")
+      (:prefix ("1" . "1?:??")
+       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "10:00"
+                                   "10:50"))
+       :desc "11:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "11:00"
+                                   "11:50"))
+       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "12:00"
+                                   "12:50"))
+       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "13:00"
+                                   "13:50"))
+       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "14:00"
+                                   "14:50"))
+       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "15:00"
+                                   "15:50"))
+       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "16:00"
+                                   "16:50"))
+       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "17:00"
+                                   "17:50"))
+       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "18:00"
+                                   "18:50"))
+       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "19:00"
+                                   "19:50")))
+      (:prefix ("2" . "2?:??")
+       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "20:00"
+                                   "20:50"))
+       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "21:00"
+                                   "21:50"))
+       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "22:00"
+                                   "22:50"))
+       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                   "23:00"
+                                   "23:50")))
+      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "03:00"
+                                  "03:50"))
+      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "04:00"
+                                  "04:50"))
+      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "05:00"
+                                  "05:50"))
+      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "06:00"
+                                  "06:50"))
+      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "07:00"
+                                  "07:50"))
+      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "08:00"
+                                  "08:50"))
+      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
+                                  "09:00"
+                                  "09:50")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
-
    (:prefix ("m")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
     :desc "Create node from headline link" :n "N" (cmd! ()
@@ -1826,10 +1868,12 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :map notmuch-message-mode-map
    :localleader
 
-   "M t" #'cashweaver-mail-toggle-org-message-mode))
-#+end_src
+   "M t" #'cashweaver-mail-toggle-org-message-mode)
+  (map!
+   :map notmuch-show-mode-map
 
-#+RESULTS:
+   "M-RET" #'cashweaver-notmuch-show-open-or-close-all))
+#+end_src
 
 * Load Additional Config Files
 ** =config-work.el=

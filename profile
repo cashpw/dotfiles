@@ -26,11 +26,17 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
+function is_ssh_session() {
+  [[ -n "$SSH_CLIENT" ]] || [[ -n "$SSH_TTY" ]]
+}
+
 eval $(dircolors $HOME/.config/dircolors/dircolors-solarized/dircolors.256dark)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-preferred_screenlayout_filepath="$HOME/.screenlayout/preferred.sh"
-if [[ -f "${preferred_screenlayout_filepath}" ]]; then
-  source "${preferred_screenlayout_filepath}"
+if ! is_ssh_session; then
+  preferred_screenlayout_filepath="$HOME/.screenlayout/preferred.sh"
+  if [[ -f "${preferred_screenlayout_filepath}" ]]; then
+    source "${preferred_screenlayout_filepath}"
+  fi
 fi

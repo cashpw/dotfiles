@@ -111,6 +111,8 @@
 
 (package! ox-pandoc)
 
+(package! org-wild-notifier)
+
 (setq
  cashweaver-work-config-dir
  (format
