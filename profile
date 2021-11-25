@@ -35,7 +35,12 @@ eval $(dircolors $HOME/.config/dircolors/dircolors-solarized/dircolors.256dark)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 if ! is_ssh_session; then
-  preferred_screenlayout_filepath="$HOME/.screenlayout/preferred.sh"
+  preferred_screenlayout_filepath=""
+  if is_work; then
+    preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
+  else
+    preferred_screenlayout_filepath="$HOME/.screenlayout/preferred.sh"
+  fi
   if [[ -f "${preferred_screenlayout_filepath}" ]]; then
     source "${preferred_screenlayout_filepath}"
   fi
