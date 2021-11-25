@@ -59,13 +59,13 @@
  cashweaver-home-dir-work
  "/usr/local/google/home/cashweaver")
 
-(setq
+(defvar
  cashweaver-work-config-dir
  (format
   "%s/%s"
   cashweaver-home-dir-work
-  ".config/doom"
-  ))
+  ".config/doom")
+ "Full path to work Emacs cofiguration files.")
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p cashweaver-work-config-dir))
@@ -112,17 +112,6 @@
 (package! ox-pandoc)
 
 (package! org-wild-notifier)
-
-(setq
- cashweaver-work-config-dir
- (format
-  "%s/%s"
-  cashweaver-home-dir-work
-  ".config/doom"
-  ))
-(defun cashweaver-is-work-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p cashweaver-work-config-dir))
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))

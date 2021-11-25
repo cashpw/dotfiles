@@ -67,13 +67,13 @@
  cashweaver-home-dir-work
  "/usr/local/google/home/cashweaver")
 
-(setq
+(defvar
  cashweaver-work-config-dir
  (format
   "%s/%s"
   cashweaver-home-dir-work
-  ".config/doom"
-  ))
+  ".config/doom")
+ "Full path to work Emacs cofiguration files.")
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p cashweaver-work-config-dir))

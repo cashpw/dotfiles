@@ -660,11 +660,6 @@ This file contains the my base configuration for emacs. I have other config file
 <<cashweaver-is-work-p>>
 #+end_src
 
-
-
-#+RESULTS: cashweaver-is-work-p
-: cashweaver-is-work-p
-
 * Theme and Visual
 
 #+begin_src emacs-lisp :tangle config.el
