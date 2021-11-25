@@ -122,5 +122,5 @@ if ! is_work; then
 fi
 
 if is_work; then
-  source $HOME/.work_bashrc
+  source $HOME/.bashrc-work
 fi
