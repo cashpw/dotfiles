@@ -1407,6 +1407,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
         file-path
       (cashweaver-org-mode-insert-properties
        all-properties)
+      (goto-char
+       (point-max))
       (cashweaver-org-mode-insert-options
        `(("TITLE" . ,title)
          ("STARTUP" . "overview"))))))
@@ -1458,15 +1460,24 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
-  (let ((roam-refs
+  (let (
+        (dir
          (org-entry-get
           (point)
-          "ROAM_REFS")))
+          "DIR"))
+        (roam-refs
+         (org-entry-get
+          (point)
+          "ROAM_REFS"))
+        )
     (if (s-starts-with-p
          "http"
          roam-refs)
         (browse-url roam-refs)
-      (message "Not an http(s) ref."))))
+      (message
+       "Not an http(s) ref (%s) %s."
+       roam-refs
+       dir))))
 
 (defun cashweaver-org-roam-insert-attachment-path ()
   (save-excursion
@@ -1495,6 +1506,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 #+end_src
+
+#+RESULTS:
+: t
 
 ** =org-super-agenda=
 *** Package
@@ -1709,6 +1723,9 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
   (fset sym def)
   (evil-define-key mode keymap key sym))
 #+end_src
+
+#+RESULTS:
+: evil-lambda-key
 
 ** General
 
