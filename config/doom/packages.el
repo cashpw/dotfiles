@@ -53,10 +53,29 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
+(setq
+ cashweaver-home-dir-home
+ "/home/cashweaver"
+ cashweaver-home-dir-work
+ "/usr/local/google/home/cashweaver")
+
 (defvar
- cashweaver--local-package-path
- "/usr/local/google/home/cashweaver/third_party"
- "Path to local emacs package files.")
+ cashweaver-work-config-dir
+ (format
+  "%s/%s"
+  cashweaver-home-dir-work
+  ".config/doom")
+ "Full path to work Emacs cofiguration files.")
+(defun cashweaver-is-work-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p cashweaver-work-config-dir))
+
+(defvar
+  cashweaver--local-package-path
+  (if (cashweaver-is-work-p)
+      "/usr/local/google/home/cashweaver/third_party"
+    "/home/cashweaver/third_party")
+  "Path to local emacs package files.")
 
 (package! aggressive-indent)
 
@@ -93,12 +112,6 @@
 (package! ox-pandoc)
 
 (package! org-wild-notifier)
-
-(setq
- cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
-(defun cashweaver-is-work-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p cashweaver-work-config-dir))
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))

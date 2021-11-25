@@ -76,12 +76,6 @@ esac
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
-
-    #alias grep='grep --color=auto'
-    #alias fgrep='fgrep --color=auto'
-    #alias egrep='egrep --color=auto'
 fi
 
 # Alias definitions.
@@ -118,7 +112,7 @@ if [[ -f "/usr/share/doc/fzf/examples/key-bindings.bash" ]]; then
 fi
 
 if ! is_work; then
-  PATH="$HOME/third_party/balena-cli-v12.51.5-linux-x64-standalone/balena-cli:$PATH"
+  PATH="$HOME/third_party/balena-cli-v12.51.1-linux-x64-standalone/balena-cli:$PATH"
 fi
 
 if is_work; then
