@@ -957,45 +957,17 @@ A large number of angry people.
                                ("waiting" . '(:foreground "orange3"))
                                ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
                                ("Read!" . '(:foreground "magenta3")))
-                                        ; Superset of `notmuch-archive-tags' for super archiving.
+   ;; Superset of `notmuch-archive-tags' for super archiving.
    cashweaver-notmuch-super-archive-tags (append
                                           notmuch-archive-tags
                                           '("-p0"
                                             "-waiting"
                                             "-Read!")))
 
-                                        ; Prevent wrapping at 70 characters in email composition.
+  ;; Prevent wrapping at 70 characters in email composition.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
-  (add-hook! 'message-mode-hook 'visual-line-mode)
-
-                                        ; Reply-all should be the default.
-  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
-  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
-
-                                        ; Easy archive for my most-used tags.
-  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-
-                                        ; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
-  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
-  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
-
-                                        ; Helpers for toggling often-used tags.
-  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
-                                                           "Toggle p0"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
-                                                           "Toggle Read!"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
-                                                           "Toggle waiting"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+  (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
-
 
 ** =operate-on-number=
 *** Package
@@ -1869,11 +1841,43 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :localleader
 
    "M t" #'cashweaver-mail-toggle-org-message-mode)
+
   (map!
    :map notmuch-show-mode-map
 
-   "M-RET" #'cashweaver-notmuch-show-open-or-close-all))
+   "M-RET" #'cashweaver-notmuch-show-open-or-close-all)
+
+  ;; Reply-all should be the default.
+  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
+  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+
+  ;; Easy archive for my most-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+
+  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+
+  ;; Helpers for toggling often-used tags.
+  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+                                                           "Toggle p0"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+                                                           "Toggle Read!"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+                                                           "Toggle waiting"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+
+
 #+end_src
+
+#+RESULTS:
 
 * Load Additional Config Files
 ** =config-work.el=
@@ -1886,9 +1890,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 ** =packages-work.el=
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashweaver-work-config-dir>>
-<<cashweaver-is-work-p>>
-
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))
 #+end_src
