@@ -16,6 +16,8 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#initel][=init.el=]]
 - [[#general][General]]
   - [[#user-information][User Information]]
+  - [[#home-directory][Home Directory]]
+  - [[#cashweaver-is-work-p][=cashweaver-is-work-p=]]
 - [[#theme-and-visual][Theme and Visual]]
 - [[#dates-and-time][Dates and time]]
   - [[#utility-functions][Utility functions]]
@@ -77,7 +79,7 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#general-2][General]]
   - [[#org-mode-1][=org-mode=]]
   - [[#notmuch-1][=notmuch=]]
-- [[#additional-config-files][Additional Config Files]]
+- [[#load-additional-config-files][Load Additional Config Files]]
   - [[#config-workel][=config-work.el=]]
   - [[#packages-workel][=packages-work.el=]]
 - [[#footnotes][Footnotes]]
@@ -597,6 +599,69 @@ grammar
  user-full-name "Cash Weaver"
  user-mail-address "cashweaver@google.com")
 #+end_src
+** Home Directory
+
+#+name: cashweaver-home-dir
+#+begin_src emacs-lisp
+(setq
+ cashweaver-home-dir-home
+ "/home/cashweaver"
+ cashweaver-home-dir-work
+ "/usr/local/google/home/cashweaver")
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+<<cashweaver-home-dir>>
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+<<cashweaver-home-dir>>
+#+end_src
+
+
+#+RESULTS:
+: /usr/local/google/home/cashweaver
+
+** =cashweaver-is-work-p=
+
+This file contains the my base configuration for emacs. I have other config files, nameely =config-work.org=, which extend this file for specific environments.
+
+#+name: cashweaver-work-config-dir
+#+begin_src emacs-lisp
+(defvar
+ cashweaver-work-config-dir
+ (format
+  "%s/%s"
+  cashweaver-home-dir-work
+  ".config/doom")
+ "Full path to work Emacs cofiguration files.")
+#+end_src
+
+#+RESULTS: cashweaver-work-config-dir
+: /usr/local/google/home/cashweaver/.config/doom
+
+#+name: cashweaver-is-work-p
+#+begin_src emacs-lisp
+(defun cashweaver-is-work-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p cashweaver-work-config-dir))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+<<cashweaver-work-config-dir>>
+<<cashweaver-is-work-p>>
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+<<cashweaver-work-config-dir>>
+<<cashweaver-is-work-p>>
+#+end_src
+
+
+
+#+RESULTS: cashweaver-is-work-p
+: cashweaver-is-work-p
+
 * Theme and Visual
 
 #+begin_src emacs-lisp :tangle config.el
@@ -645,9 +710,11 @@ grammar
 
 #+begin_src emacs-lisp :tangle packages.el
 (defvar
- cashweaver--local-package-path
- "/usr/local/google/home/cashweaver/third_party"
- "Path to local emacs package files.")
+  cashweaver--local-package-path
+  (if (cashweaver-is-work-p)
+      "/usr/local/google/home/cashweaver/third_party"
+    "/home/cashweaver/third_party")
+  "Path to local emacs package files.")
 #+end_src
 
 ** =aggressive-indent=
@@ -1522,12 +1589,14 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
      (?d "to docx." org-pandoc-export-to-docx)
      (?m "to markdown." org-pandoc-export-to-markdown)
-     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
-   org-pandoc-options-for-docx
-   '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
-     (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
-     ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-     (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (when (cashweaver-is-work-p)
+    (setq
+     org-pandoc-options-for-docx
+     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
   (add-hook! 'org-pandoc-after-processing-markdown-hook
              'cashweaver-remove-yaml-header))
 
@@ -1691,6 +1760,7 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 #+RESULTS:
 : evil-lambda-key
 
+14
 
 ** General
 
@@ -1707,6 +1777,8 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
  :map global-map
  "M-N" #'operate-on-number-at-point)
 #+end_src
+
+#+RESULTS:
 
 ** =org-mode=
 
@@ -1759,29 +1831,10 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 
 #+RESULTS:
 
-* Additional Config Files
-
-This file contains the my base configuration for emacs. I have other config files, nameely =config-work.org=, which extend this file for specific environments.
-
-#+name: cashweaver-work-config-dir
-#+begin_src emacs-lisp
-(setq
- cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
-#+end_src
-
-#+name: cashweaver-is-work-p
-#+begin_src emacs-lisp
-(defun cashweaver-is-work-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p cashweaver-work-config-dir))
-#+end_src
-
+* Load Additional Config Files
 ** =config-work.el=
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashweaver-work-config-dir>>
-<<cashweaver-is-work-p>>
-
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/config-work.el")))
 #+end_src

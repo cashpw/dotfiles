@@ -62,6 +62,23 @@
  user-mail-address "cashweaver@google.com")
 
 (setq
+ cashweaver-home-dir-home
+ "/home/cashweaver"
+ cashweaver-home-dir-work
+ "/usr/local/google/home/cashweaver")
+
+(setq
+ cashweaver-work-config-dir
+ (format
+  "%s/%s"
+  cashweaver-home-dir-work
+  ".config/doom"
+  ))
+(defun cashweaver-is-work-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p cashweaver-work-config-dir))
+
+(setq
  doom-theme 'doom-tomorrow-night
  show-trailing-whitespace t)
 
@@ -695,12 +712,14 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
      (?d "to docx." org-pandoc-export-to-docx)
      (?m "to markdown." org-pandoc-export-to-markdown)
-     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open))
-   org-pandoc-options-for-docx
-   '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
-     (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
-     ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-     (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (when (cashweaver-is-work-p)
+    (setq
+     org-pandoc-options-for-docx
+     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
   (add-hook! 'org-pandoc-after-processing-markdown-hook
              'cashweaver-remove-yaml-header))
 
@@ -885,12 +904,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    :localleader
 
    "M t" #'cashweaver-mail-toggle-org-message-mode))
-
-(setq
- cashweaver-work-config-dir "/usr/local/google/home/cashweaver/.config/doom")
-(defun cashweaver-is-work-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p cashweaver-work-config-dir))
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/config-work.el")))
