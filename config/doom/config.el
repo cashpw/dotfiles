@@ -259,43 +259,16 @@
                                ("waiting" . '(:foreground "orange3"))
                                ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
                                ("Read!" . '(:foreground "magenta3")))
-                                        ; Superset of `notmuch-archive-tags' for super archiving.
+   ;; Superset of `notmuch-archive-tags' for super archiving.
    cashweaver-notmuch-super-archive-tags (append
                                           notmuch-archive-tags
                                           '("-p0"
                                             "-waiting"
                                             "-Read!")))
 
-                                        ; Prevent wrapping at 70 characters in email composition.
+  ;; Prevent wrapping at 70 characters in email composition.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
-  (add-hook! 'message-mode-hook 'visual-line-mode)
-
-                                        ; Reply-all should be the default.
-  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
-  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
-
-                                        ; Easy archive for my most-used tags.
-  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-
-                                        ; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
-  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
-  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
-
-                                        ; Helpers for toggling often-used tags.
-  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
-                                                           "Toggle p0"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
-                                                           "Toggle Read!"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
-                                                           "Toggle waiting"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+  (add-hook! 'message-mode-hook 'visual-line-mode))
 
 (use-package! operate-on-number)
 
@@ -399,6 +372,17 @@
    org-agenda-start-day nil ;; i.e. today
    org-agenda-span 1
    org-agenda-start-on-weekday nil))
+
+(after! org
+  (setq
+   org-publish-project-alist
+   '(("cashweaver.com"
+      :base-directory "~/proj/blog-posts/posts/"
+      :base-extension "org"
+      :publishing-directory "~/proj/cashweaver.com/content/posts/"
+      :publishing-function org-pandoc-publish-to-md
+      :section-numbers t
+      :with-toc nil))))
 
 (defun cashweaver-org-mode-insert-heading-for-today ()
   "Insert a heading for today's date, with relevant tags."
@@ -628,6 +612,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
         file-path
       (cashweaver-org-mode-insert-properties
        all-properties)
+      (goto-char
+       (point-max))
       (cashweaver-org-mode-insert-options
        `(("TITLE" . ,title)
          ("STARTUP" . "overview"))))))
@@ -687,7 +673,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          "http"
          roam-refs)
         (browse-url roam-refs)
-      (message "Not an http(s) ref."))))
+      (message
+       "Not an http(s) ref (%s)"
+       roam-refs))))
 
 (defun cashweaver-org-roam-insert-attachment-path ()
   (save-excursion
@@ -716,92 +704,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
-(use-package! ox-pandoc
-  :after (:all org)
-  :config
-  (setq
-   org-pandoc-menu-entry
-   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
-     (?d "to docx." org-pandoc-export-to-docx)
-     (?m "to markdown." org-pandoc-export-to-markdown)
-     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
-  (when (cashweaver-is-work-p)
-    (setq
-     org-pandoc-options-for-docx
-     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
-       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
-       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
-  (add-hook! 'org-pandoc-after-processing-markdown-hook
-             'cashweaver-remove-yaml-header))
-
-(defun cashweaver-remove-yaml-header ()
-  "Remove the 'front matter'/YAML header content from the current buffer."
-  (goto-char (point-min))
-  (replace-regexp
-   "---\\(.\\|\n\\)*---"
-   "")
-  (goto-char (point-min))
-  (delete-blank-lines)
-  (delete-blank-lines))
-
-(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
-  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
-  (setq
-   org-pandoc-format format
-   org-pandoc-option-table (make-hash-table))
-  (let ((tempfile
-         (org-publish-org-to
-          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
-        (outfile (format "%s.%s"
-                         (concat
-                          pub-dir
-                          (file-name-sans-extension (file-name-nondirectory filename)))
-                         (assoc-default format org-pandoc-extensions))))
-    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
-    (let ((process
-           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
-                           org-pandoc-option-table))
-          (local-hook-symbol
-           (intern (format "org-pandoc-after-processing-%s-hook" format))))
-      (process-put process 'files (list tempfile))
-      (process-put process 'output-file outfile)
-      (process-put process 'local-hook-symbol local-hook-symbol))))
-
-(defun org-pandoc-pan-to-pub (o)
-  (intern
-   (format ":org-pandoc-%s" o)))
-
-(defun org-pandoc-pub-to-pan (o)
-  (intern
-   (substring (symbol-name o) 12)))
-
-(defconst org-pandoc-publish-options
-  (mapcar
-   'org-pandoc-pan-to-pub
-   (append
-    org-pandoc-valid-options
-    org-pandoc-colon-separated-options
-    org-pandoc-file-options)))
-
-(defun org-pandoc-plist-to-alist (plist)
-  (let ((alist '()))
-    (while plist
-      (let ((p (car plist))
-            (v (cadr plist)))
-        (when (member p org-pandoc-publish-options)
-          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
-      (setq plist (cddr plist)))
-    alist))
-
-(defun org-pandoc-publish-to-md (plist filename pub-dir)
-  "Publish to markdown using Pandoc."
-  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
-
-(defun org-pandoc-publish-to-plain (plist filename pub-dir)
-  "Publish to markdown using Pandoc."
-  (org-pandoc-publish-to 'plain plist filename pub-dir))
-
 (use-package! pdf-tools
   :config
   (pdf-tools-install))
@@ -823,6 +725,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (setq
  alert-fade-time 60
  alert-default-style 'libnotify)
+
+(use-package! ox-hugo
+  :after ox)
 
 (use-package! org-wild-notifier
   :config
@@ -987,10 +892,38 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    :localleader
 
    "M t" #'cashweaver-mail-toggle-org-message-mode)
+
   (map!
    :map notmuch-show-mode-map
 
-   "M-RET" #'cashweaver-notmuch-show-open-or-close-all))
+   "M-RET" #'cashweaver-notmuch-show-open-or-close-all)
+
+  ;; Reply-all should be the default.
+  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
+  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+
+  ;; Easy archive for my most-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+
+  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+
+  ;; Helpers for toggling often-used tags.
+  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+                                                           "Toggle p0"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+                                                           "Toggle Read!"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+                                                           "Toggle waiting"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/config-work.el")))

@@ -56,6 +56,7 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#org-mode][=org-mode=]]
     - [[#general-1][General]]
     - [[#agenda][Agenda]]
+    - [[#publish][Publish]]
     - [[#helper-methods][Helper Methods]]
   - [[#org-noter][=org-noter=]]
     - [[#package-11][Package]]
@@ -77,9 +78,12 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#alert][=alert=]]
     - [[#package-17][Package]]
     - [[#config-13][Config]]
-  - [[#org-wild-notifier][=org-wild-notifier=]]
+  - [[#ox-hugo][=ox-hugo=]]
     - [[#package-18][Package]]
     - [[#config-14][Config]]
+  - [[#org-wild-notifier][=org-wild-notifier=]]
+    - [[#package-19][Package]]
+    - [[#config-15][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -1102,6 +1106,26 @@ A large number of angry people.
    org-agenda-start-on-weekday nil))
 #+end_src
 
+*** Publish
+
+#+begin_src emacs-lisp :tangle config.el
+(after! org
+  (setq
+   org-publish-project-alist
+   '(("cashweaver.com"
+      :base-directory "~/proj/blog-posts/posts/"
+      :base-extension "org"
+      :publishing-directory "~/proj/cashweaver.com/content/posts/"
+      :publishing-function org-pandoc-publish-to-md
+      :publishing-function org-hugo-export-to-md
+      :section-numbers t
+      :with-toc nil))))
+
+#+end_src
+
+#+RESULTS:
+| cashweaver.com | :base-directory | ~/proj/blog-posts/posts/ | :base-extension | org | :publishing-directory | ~/proj/cashweaver.com/content/posts/ | :publishing-function | org-pandoc-publish-to-md | :section-numbers | t | :with-toc | nil |
+
 *** Helper Methods
 **** Create a heading for today
 
@@ -1460,24 +1484,17 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
-  (let (
-        (dir
+  (let ((roam-refs
          (org-entry-get
           (point)
-          "DIR"))
-        (roam-refs
-         (org-entry-get
-          (point)
-          "ROAM_REFS"))
-        )
+          "ROAM_REFS")))
     (if (s-starts-with-p
          "http"
          roam-refs)
         (browse-url roam-refs)
       (message
-       "Not an http(s) ref (%s) %s."
-       roam-refs
-       dir))))
+       "Not an http(s) ref (%s)"
+       roam-refs))))
 
 (defun cashweaver-org-roam-insert-attachment-path ()
   (save-excursion
@@ -1542,9 +1559,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
        (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
-       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme"))))
-  (add-hook! 'org-pandoc-after-processing-markdown-hook
-             'cashweaver-remove-yaml-header))
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
+    ;;'cashweaver-remove-yaml-header)
+    ))
 
 (defun cashweaver-remove-yaml-header ()
   "Remove the 'front matter'/YAML header content from the current buffer."
@@ -1607,12 +1625,16 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (defun org-pandoc-publish-to-md (plist filename pub-dir)
   "Publish to markdown using Pandoc."
+  ;;(org-pandoc-publish-to 'markdown plist filename pub-dir t))
   (org-pandoc-publish-to 'markdown plist filename pub-dir t))
 
 (defun org-pandoc-publish-to-plain (plist filename pub-dir)
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
+
+#+RESULTS:
+: org-pandoc-publish-to-plain
 
 ** =pdf-tools=
 *** Package
@@ -1651,6 +1673,25 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
  alert-fade-time 60
  alert-default-style 'libnotify)
 #+end_src
+
+** =ox-hugo=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! ox-hugo)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! ox-hugo
+  :after ox)
+
+(after! org
+  (add-hook! 'org-mode 'org-hugo-auto-export-mode))
+#+end_src
+
+#+RESULTS:
 
 ** =org-wild-notifier=
 *** Package

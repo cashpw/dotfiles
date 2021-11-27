@@ -111,6 +111,8 @@
 
 (package! ox-pandoc)
 
+(package! ox-hugo)
+
 (package! org-wild-notifier)
 
 (if (cashweaver-is-work-p)
