@@ -110,6 +110,20 @@
    ; offset-days
    -1))
 
+(use-package! anki-editor
+  :config
+  (setq
+   anki-editor-remove-single-paragraph-tags t
+   anki-editor-use-math-jax t))
+
+(defun cashweaver-anki-editor-insert-note ()
+  (interactive)
+  (with-current-buffer
+      (find-file-noselect
+       "~/proj/anki-cards/anki.org")
+    (point-min)
+    (anki-editor-insert-note)))
+
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
@@ -380,9 +394,20 @@
       :base-directory "~/proj/blog-posts/posts/"
       :base-extension "org"
       :publishing-directory "~/proj/cashweaver.com/content/posts/"
-      :publishing-function org-pandoc-publish-to-md
+      ;;:publishing-function org-pandoc-publish-to-md
+      :publishing-function org-hugo-export-to-md
       :section-numbers t
       :with-toc nil))))
+
+;; Publish org-roam files without using org-publish because org-publish requires a top-level headline.
+;; ("roam"
+;; :base-directory "~/proj/roam/"
+;; :base-extension "org"
+;; :publishing-directory "~/proj/cashweaver.com/content/posts/"
+;; :publishing-function org-hugo-export-to-md
+;; :table-of-contents nil
+;; :section-numbers t
+;; :with-toc nil))))
 
 (defun cashweaver-org-mode-insert-heading-for-today ()
   "Insert a heading for today's date, with relevant tags."
@@ -535,8 +560,73 @@
              offset-days
              time))))
 
+(after! org
+  (setq
+   org-capture-templates
+   (doct '(("Anki"
+            :keys "a"
+            :file "~/proj/anki-cards/anki.org"
+            :olp ("Default")
+            :note-type (lambda ()
+                         (completing-read
+                          "Note type: "
+                          (sort
+                           (anki-editor-note-types)
+                           #'string-lessp)))
+            :note-type-prop anki-editor-prop-note-type
+            :template ("* %?"
+                       ":PROPERTIES:"
+                       ":ANKI_NOTE_TYPE: %{note-type}"
+                       ":END:")
+            :hook (lambda ()
+                    (let* ((note-type
+                            (org-entry-get
+                             (point)
+                             anki-editor-prop-note-type))
+                           (fields
+                            (anki-editor-api-call-result
+                             'modelFieldNames
+                             :modelName note-type))
+                           ;; Ignore the first field.
+                           ;; We'll set it as the title for the subtree.
+                           (first-field
+                            (pop fields))
+                           (second-field
+                            (pop fields)))
+                      (org-insert-subheading nil)
+                      (insert second-field)
+                      (dolist (field fields)
+                        (org-insert-heading nil)
+                        (insert field))
+                      (outline-up-heading 1)
+                      (evil-org-append-line 1))))))))
+
+(defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
+  "Insert selected text in org-noter note.
+
+Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-700346146"
+  (interactive)
+  (progn
+    (setq currenb (buffer-name))
+    (org-noter-insert-precise-note)
+    (set-buffer currenb)
+    (org-noter-insert-note)))
+
+(use-package! org-expiry
+  :after org)
+
 (use-package! ol-notmuch
   :after org)
+
+(defun cashweaver-org-roam--add-title-headline-when-exporting (backend)
+  "TODO"
+  (when (and (equal backend 'hugo)
+             (org-roam-file-p))
+    (insert "foocashweaverfoo")))
+
+;;(remove-hook!
+ ;;'org-export-before-processing-hook
+ ;;#'cashweaver-org-roam--add-title-headline-when-exporting)
 
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
@@ -554,7 +644,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           (org-roam-node-create
            :title title))))
     (format
-     "%s/%s_%s.org"
+     "%s/%s-%s.org"
      org-roam-directory
      timestamp
      slug)))
@@ -602,11 +692,19 @@ When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
 PROPERTIES is expected to be an alist of additional properties to include.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
-  (let* ((id (org-id-new))
+  (let* ((id
+          (org-id-new))
+         (dir
+          (format
+           "%s/%s"
+           cashweaver-org-roam-attachment-base-path
+           id))
+         (created
+          (format ))
          (all-properties
           (append
            `(("ID" . ,id)
-             ("DIR" . ,cashweaver-org-roam-attachment-dir-path))
+             ("DIR" . ,dir))
            properties)))
     (with-temp-file
         file-path
@@ -616,7 +714,16 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (point-max))
       (cashweaver-org-mode-insert-options
        `(("TITLE" . ,title)
-         ("STARTUP" . "overview"))))))
+         ("STARTUP" . "overview")))
+      (org-insert-heading)
+      (insert
+       "Summary")
+      (org-insert-heading)
+      (insert
+       "Notes")
+      (org-insert-heading)
+      (insert
+       "Thoughts"))))
 
 (defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
@@ -677,11 +784,69 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        "Not an http(s) ref (%s)"
        roam-refs))))
 
+;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
 (defun cashweaver-org-roam-insert-attachment-path ()
-  (save-excursion
-    (org-set-property
-     "DIR"
-     cashweaver-org-roam-attachment-dir-path)))
+  (let ((dir
+         (format
+          "%s/%s"
+          cashweaver-org-roam-attachment-base-path
+          (org-id-get))))
+    (save-excursion
+      (org-set-property
+       "DIR"
+       dir))))
+
+
+(defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
+  "Copy the list of ROAM_REFS into hugo_custom_front_matter."
+  (when (org-roam-file-p)
+    (when-let*
+        ((keyword
+          "HUGO_CUSTOM_FRONT_MATTER")
+         (raw-roam-refs
+          (org-export-get-node-property
+           :ROAM_REFS
+           (org-element-parse-buffer)))
+         (refs
+          (split-string
+           raw-roam-refs
+           " +"))
+         (roam-refs
+          (format
+           "roam_refs '(%s)"
+           (string-join
+            (mapcar
+             (lambda (ref)
+               (format "\"%s\"" ref))
+             refs)
+            " ")))
+         (current-roam-refs
+          (or 
+           (org-roam-get-keyword
+            keyword)
+           "")))
+      (if (not (string=
+                roam-refs
+                current-roam-refs))
+          (org-roam-set-keyword
+           (downcase keyword)
+           roam-refs)))))
+
+;; Override
+;;
+;; 1. Export even on first save from org-capture.
+;; 2. Make roam files known to org exporter.
+;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
+(defun org-hugo-export-wim-to-md-after-save ()
+  "See `org-hugo-export-wim-to-md-after-save'."
+  (let ((org-id-extra-files
+         (org-roam-list-files)))
+    (org-hugo-export-wim-to-md)))
+
+
+(add-hook!
+ 'before-save-hook
+ #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
 
 (use-package! org-roam
   :after org
@@ -690,44 +855,177 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    org-roam-directory
    (file-truename
     "~/proj/roam")
-   cashweaver-org-roam-attachment-dir-path
+   cashweaver-org-roam-attachment-base-path
    (file-truename
     (format
      "%s/attachments"
      org-roam-directory))
    org-roam-capture-templates
-   '(("d" "default" plain "%?" :target
-      (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n")
+   `(("d" "default" plain "%?" :target
+      (file+head
+       "${slug}.org"
+       ,(concat
+         "#+title: ${title}\n"
+         "#+author: Cash Weaver\n"
+         "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+         "#+startup: overview\n"
+         "#+hugo_auto_set_lastmod: t\n"
+         "\n\n"))
       :unnarrowed t)))
   (add-hook!
    'org-roam-capture-new-node-hook
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
+(org-roam-list-files)
+
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq
+   org-pandoc-menu-entry
+   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+     (?d "to docx." org-pandoc-export-to-docx)
+     (?m "to markdown." org-pandoc-export-to-markdown)
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (when (cashweaver-is-work-p)
+    (setq
+     org-pandoc-options-for-docx
+     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
+    ;;'cashweaver-remove-yaml-header)
+    ))
+
+(defun cashweaver-remove-yaml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "---\\(.\\|\n\\)*---"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
+  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
+  (setq
+   org-pandoc-format format
+   org-pandoc-option-table (make-hash-table))
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
+        (outfile (format "%s.%s"
+                         (concat
+                          pub-dir
+                          (file-name-sans-extension (file-name-nondirectory filename)))
+                         (assoc-default format org-pandoc-extensions))))
+    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
+                           org-pandoc-option-table))
+          (local-hook-symbol
+           (intern (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file outfile)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-pan-to-pub (o)
+  (intern
+   (format ":org-pandoc-%s" o)))
+
+(defun org-pandoc-pub-to-pan (o)
+  (intern
+   (substring (symbol-name o) 12)))
+
+(defconst org-pandoc-publish-options
+  (mapcar
+   'org-pandoc-pan-to-pub
+   (append
+    org-pandoc-valid-options
+    org-pandoc-colon-separated-options
+    org-pandoc-file-options)))
+
+(defun org-pandoc-plist-to-alist (plist)
+  (let ((alist '()))
+    (while plist
+      (let ((p (car plist))
+            (v (cadr plist)))
+        (when (member p org-pandoc-publish-options)
+          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
+      (setq plist (cddr plist)))
+    alist))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  ;;(org-pandoc-publish-to 'markdown plist filename pub-dir t))
+  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
+
+(defun org-pandoc-publish-to-plain (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'plain plist filename pub-dir))
+
 (use-package! pdf-tools
   :config
   (pdf-tools-install))
-
-(defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
-  (interactive)
-  (progn (setq currenb (buffer-name))
-	 (org-noter-insert-precise-note)
-	 (set-buffer currenb)
-	 (org-noter-insert-note)
-	 ;;(org-noter-quote)
-         ))
-
-(fset 'org-noter-quote
-   (kmacro-lambda-form [return S-f3 backspace ?# ?+ ?e ?n ?d ?_ ?q ?u ?o ?t ?e ?\C-r ?: ?e return ?\C-e return delete ?# ?+ ?b ?e ?g ?i ?n ?_ ?q ?u ?o ?t ?e] 1 "%d"))
-
-(define-key pdf-view-mode-map (kbd "y") 'cashweaver-org-noter-insert-selected-text-inside-note-content)
 
 (setq
  alert-fade-time 60
  alert-default-style 'libnotify)
 
+(defun cashweaver-org-hugo--export-all-roam ()
+  "Export all roam nodes."
+  (interactive)
+  ;; TODO
+  )
+
+(defun cashweaver-org-mode--split-tags-to-list (tags-as-string)
+  "Strip the wrapping ':' from TAG; if present."
+  (if tags-as-string
+      (if (string-match
+           "^:\\(.*\\):$"
+           tags-as-string)
+          (split-string
+           (match-string 1 tags-as-string)
+           ":")
+        nil)
+    nil))
+
+(defun cashweaver-org-hugo--tag-processing-fn-roam-tags (tag-list info)
+  "Add tags from filetags to tag-list for org-roam to ox-hugo compatibility.
+
+Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
+
+See `org-hugo-tag-processing-functions'."
+  (if (org-roam-file-p)
+      (let* ((filetags
+              (car
+               (cdr
+                (assoc-string
+                 "FILETAGS"
+                 (org-collect-keywords
+                  '("FILETAGS"))))))
+             (filetag-list
+              (or
+               (cashweaver-org-mode--split-tags-to-list
+                filetags)
+               '())))
+        (append tag-list
+                (mapcar
+                 #'downcase
+                 filetag-list)))
+    tag-list))
+
 (use-package! ox-hugo
-  :after ox)
+  :after ox
+  :config
+  (setq
+   org-hugo-allow-spaces-in-tags nil)
+  (add-to-list
+   'org-hugo-tag-processing-functions
+   'cashweaver-org-hugo--tag-processing-fn-roam-tags))
 
 (use-package! org-wild-notifier
   :config
@@ -786,7 +1084,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
   :desc "Store email link" :n "n L" #'org-notmuch-store-link
-  :desc "Langtool" :n "t L" #'langtool-check))
+  :desc "Langtool" :n "t L" #'langtool-check
+  (:prefix ("n")
+   (:prefix ("A" . "Anki")
+    :n "n" #'anki-editor-insert-note))))
 
 (map!
  ;; Keep in alphabetical order.
@@ -881,7 +1182,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done
-                                                         t)))
+                                                         t))
+    :desc "Publish all" :n "p" #'cashweaver-org-hugo-export-all)
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 
@@ -924,6 +1226,15 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                                            "Toggle waiting"
                                                            (interactive)
                                                            (cashweaver-notmuch-search-toggle-tag "waiting"))))
+
+(after! org-noter
+  (map!
+   :map pdf-view-mode-map
+   :localleader
+
+   :n "n" #'org-noter-insert-note
+   :n "N" #'org-noter-insert-precise-note
+   :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/config-work.el")))
