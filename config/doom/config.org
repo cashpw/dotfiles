@@ -1135,16 +1135,12 @@ A large number of angry people.
   (interactive)
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
-         (today-year (cashweaver-get-date "%Y"))
-         (today-month (cashweaver-get-date "%m"))
-         (today-day (cashweaver-get-date "%d"))
+         (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
          (today-weekday-name (cashweaver-get-date "%A")))
     (org-insert-heading-respect-content)
     (insert
-     (format "%s-%s-%s %s :week%s:quarter%s:"
-             today-year
-             today-month
-             today-day
+     (format "%s %s :week%s:quarter%s:"
+             today-yyyy-mm-dd
              today-weekday-name
              today-week-number
              today-quarter-number))))
@@ -1163,6 +1159,9 @@ A large number of angry people.
              today-week-number
              today-quarter-number))))
 #+end_src
+
+#+RESULTS:
+: cashweaver-org-mode-insert-heading-for-this-week
 
 **** Scheduling task for my calendar blocks
 
@@ -1809,7 +1808,7 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
        :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
                                    "10:00"
                                    "10:50"))
-       :desc "11:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to
                                    "11:00"
                                    "11:50"))
        :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to

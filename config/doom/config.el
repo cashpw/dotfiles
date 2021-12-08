@@ -381,6 +381,7 @@
       :base-extension "org"
       :publishing-directory "~/proj/cashweaver.com/content/posts/"
       :publishing-function org-pandoc-publish-to-md
+      :publishing-function org-hugo-export-to-md
       :section-numbers t
       :with-toc nil))))
 
@@ -389,16 +390,12 @@
   (interactive)
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
-         (today-year (cashweaver-get-date "%Y"))
-         (today-month (cashweaver-get-date "%m"))
-         (today-day (cashweaver-get-date "%d"))
+         (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
          (today-weekday-name (cashweaver-get-date "%A")))
     (org-insert-heading-respect-content)
     (insert
-     (format "%s-%s-%s %s :week%s:quarter%s:"
-             today-year
-             today-month
-             today-day
+     (format "%s %s :week%s:quarter%s:"
+             today-yyyy-mm-dd
              today-weekday-name
              today-week-number
              today-quarter-number))))
@@ -704,6 +701,94 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
    'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq
+   org-pandoc-menu-entry
+   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+     (?d "to docx." org-pandoc-export-to-docx)
+     (?m "to markdown." org-pandoc-export-to-markdown)
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (when (cashweaver-is-work-p)
+    (setq
+     org-pandoc-options-for-docx
+     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
+    ;;'cashweaver-remove-yaml-header)
+    ))
+
+(defun cashweaver-remove-yaml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "---\\(.\\|\n\\)*---"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
+  "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
+  (setq
+   org-pandoc-format format
+   org-pandoc-option-table (make-hash-table))
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
+        (outfile (format "%s.%s"
+                         (concat
+                          pub-dir
+                          (file-name-sans-extension (file-name-nondirectory filename)))
+                         (assoc-default format org-pandoc-extensions))))
+    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
+                           org-pandoc-option-table))
+          (local-hook-symbol
+           (intern (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file outfile)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-pan-to-pub (o)
+  (intern
+   (format ":org-pandoc-%s" o)))
+
+(defun org-pandoc-pub-to-pan (o)
+  (intern
+   (substring (symbol-name o) 12)))
+
+(defconst org-pandoc-publish-options
+  (mapcar
+   'org-pandoc-pan-to-pub
+   (append
+    org-pandoc-valid-options
+    org-pandoc-colon-separated-options
+    org-pandoc-file-options)))
+
+(defun org-pandoc-plist-to-alist (plist)
+  (let ((alist '()))
+    (while plist
+      (let ((p (car plist))
+            (v (cadr plist)))
+        (when (member p org-pandoc-publish-options)
+          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
+      (setq plist (cddr plist)))
+    alist))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  ;;(org-pandoc-publish-to 'markdown plist filename pub-dir t))
+  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
+
+(defun org-pandoc-publish-to-plain (plist filename pub-dir)
+  "Publish to markdown using Pandoc."
+  (org-pandoc-publish-to 'plain plist filename pub-dir))
+
 (use-package! pdf-tools
   :config
   (pdf-tools-install))
@@ -728,6 +813,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (use-package! ox-hugo
   :after ox)
+
+(after! org
+  (add-hook! 'org-mode 'org-hugo-auto-export-mode))
 
 (use-package! org-wild-notifier
   :config
@@ -813,7 +901,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
                                    "10:00"
                                    "10:50"))
-       :desc "11:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
+       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to
                                    "11:00"
                                    "11:50"))
        :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
