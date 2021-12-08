@@ -77,6 +77,10 @@
     "/home/cashweaver/third_party")
   "Path to local emacs package files.")
 
+(package! anki-editor
+  :recipe (:host github
+           :repo "cashweaver/anki-editor"))
+
 (package! aggressive-indent)
 
 (package! doct)
@@ -99,11 +103,21 @@
   :recipe (:host github
            :repo "cashweaver/org-noter"))
 
+(package! org-expiry
+  :recipe `(:local-repo
+            ,(format
+              "%s/%s"
+              cashweaver--local-package-path
+              "org-contrib/lisp")
+            :files
+            ("org-expiry.el")))
+
 (package! ol-notmuch
   :recipe `(:local-repo
-            ,(concat
+            ,(format
+              "%s/%s"
               cashweaver--local-package-path
-              "/org-mode/contrib/lisp")
+              "org-mode/contrib/lisp")
             :files
             ("ol-notmuch.el")))
 
