@@ -103,15 +103,6 @@
   :recipe (:host github
            :repo "cashweaver/org-noter"))
 
-(package! org-expiry
-  :recipe `(:local-repo
-            ,(format
-              "%s/%s"
-              cashweaver--local-package-path
-              "org-contrib/lisp")
-            :files
-            ("org-expiry.el")))
-
 (package! ol-notmuch
   :recipe `(:local-repo
             ,(format

@@ -263,7 +263,13 @@
                              :query "tag:sent")
                             (:name "drafts"
                              :key "d"
-                             :query "tag:draft"))
+                             :query "tag:draft")
+                            (:name "calendar-events"
+                             :key "c"
+                             :query "tag:Calendar-Events AND tag:inbox")
+                            (:name "calendar-events (all)"
+                             :key "C"
+                             :query "tag:Calendar-Events"))
    +notmuch-home-function (lambda ()
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
@@ -607,9 +613,6 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
     (org-noter-insert-precise-note)
     (set-buffer currenb)
     (org-noter-insert-note)))
-
-(use-package! org-expiry
-  :after org)
 
 (use-package! ol-notmuch
   :after org)

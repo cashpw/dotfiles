@@ -66,32 +66,29 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#org-noter][=org-noter=]]
     - [[#package-12][Package]]
     - [[#config-9][Config]]
-  - [[#org-expiry][=org-expiry=]]
+  - [[#org-notmuch][=org-notmuch=]]
     - [[#package-13][Package]]
     - [[#config-10][Config]]
-  - [[#org-notmuch][=org-notmuch=]]
+  - [[#org-roam][=org-roam=]]
     - [[#package-14][Package]]
     - [[#config-11][Config]]
-  - [[#org-roam][=org-roam=]]
-    - [[#package-15][Package]]
-    - [[#config-12][Config]]
   - [[#org-super-agenda][=org-super-agenda=]]
-    - [[#package-16][Package]]
+    - [[#package-15][Package]]
   - [[#ox-pandoc][=ox-pandoc=]]
+    - [[#package-16][Package]]
+    - [[#config-12][Config]]
+  - [[#pdf-tools][=pdf-tools=]]
     - [[#package-17][Package]]
     - [[#config-13][Config]]
-  - [[#pdf-tools][=pdf-tools=]]
+  - [[#alert][=alert=]]
     - [[#package-18][Package]]
     - [[#config-14][Config]]
-  - [[#alert][=alert=]]
+  - [[#ox-hugo][=ox-hugo=]]
     - [[#package-19][Package]]
     - [[#config-15][Config]]
-  - [[#ox-hugo][=ox-hugo=]]
+  - [[#org-wild-notifier][=org-wild-notifier=]]
     - [[#package-20][Package]]
     - [[#config-16][Config]]
-  - [[#org-wild-notifier][=org-wild-notifier=]]
-    - [[#package-21][Package]]
-    - [[#config-17][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -431,13 +428,13 @@ There is some boilerplate which is present in the configuration files when you f
  fold                ; (nigh) universal code folding
  ;;(format +onsave)  ; automated prettiness
  ;;god               ; run Emacs commands without modifier keys
- ;;lispy             ; vim for lisp, for people who don't like vim
+ lispy             ; vim for lisp, for people who don't like vim
  ;;multiple-cursors  ; editing in many places at once
  ;;objed             ; text object editing for the innocent
  ;;parinfer          ; turn lisp into python, sort of
  ;;rotate-text       ; cycle region at point between text candidates
  snippets            ; my elves. They type so I don't have to
- ;;word-wrap         ; soft wrapping with language-aware indent
+ word-wrap           ; soft wrapping with language-aware indent
 #+end_src
 #+HTMl: </details>
 
@@ -985,7 +982,13 @@ A large number of angry people.
                              :query "tag:sent")
                             (:name "drafts"
                              :key "d"
-                             :query "tag:draft"))
+                             :query "tag:draft")
+                            (:name "calendar-events"
+                             :key "c"
+                             :query "tag:Calendar-Events AND tag:inbox")
+                            (:name "calendar-events (all)"
+                             :key "C"
+                             :query "tag:Calendar-Events"))
    +notmuch-home-function (lambda ()
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
@@ -1006,6 +1009,8 @@ A large number of angry people.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
+
+#+RESULTS:
 
 ** =operate-on-number=
 *** Package
@@ -1437,29 +1442,6 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
 #+RESULTS:
 : cashweaver-org-noter-insert-selected-text-inside-note-content
-
-** =org-expiry=
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-expiry
-  :recipe `(:local-repo
-            ,(format
-              "%s/%s"
-              cashweaver--local-package-path
-              "org-contrib/lisp")
-            :files
-            ("org-expiry.el")))
-#+end_src
-
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
-(use-package! org-expiry
-  :after org)
-#+end_src
 
 ** =org-notmuch=
 *** Package
