@@ -95,6 +95,8 @@
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
 
+(package! org-ql)
+
 (package! org-gcal)
 
 (package! org-mime)

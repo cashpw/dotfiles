@@ -1109,71 +1109,41 @@ See `org-hugo-tag-processing-functions'."
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
      (:prefix ("h" . "hour")
+      (:prefix ("0" . "0?:??")
+       :desc "00:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "00:00" "00:45"))
+       :desc "01:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
+       :desc "02:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "02:00" "02:45"))
+       :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
+       :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
+       :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
+       :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
+       :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
+       :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
+       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))
       (:prefix ("1" . "1?:??")
-       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "10:00"
-                                   "10:50"))
-       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "11:00"
-                                   "11:50"))
-       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "12:00"
-                                   "12:50"))
-       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "13:00"
-                                   "13:50"))
-       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "14:00"
-                                   "14:50"))
-       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "15:00"
-                                   "15:50"))
-       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "16:00"
-                                   "16:50"))
-       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "17:00"
-                                   "17:50"))
-       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "18:00"
-                                   "18:50"))
-       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "19:00"
-                                   "19:50")))
+       :desc "01:00" :n "RET" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
+       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "10:00" "10:45"))
+       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "11:00" "11:45"))
+       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "12:00" "12:45"))
+       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "13:00" "13:45"))
+       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "14:00" "14:45"))
+       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "15:00" "15:45"))
+       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "16:00" "16:45"))
+       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "17:00" "17:45"))
+       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "18:00" "18:45"))
+       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "19:00" "19:45")))
       (:prefix ("2" . "2?:??")
-       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "20:00"
-                                   "20:50"))
-       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "21:00"
-                                   "21:50"))
-       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "22:00"
-                                   "22:50"))
-       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "23:00"
-                                   "23:50")))
-      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "03:00"
-                                  "03:50"))
-      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "04:00"
-                                  "04:50"))
-      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "05:00"
-                                  "05:50"))
-      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "06:00"
-                                  "06:50"))
-      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "07:00"
-                                  "07:50"))
-      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "08:00"
-                                  "08:50"))
-      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "09:00"
-                                  "09:50")))))
+       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "20:00" "20:45"))
+       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "21:00" "21:45"))
+       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "22:00" "22:45"))
+       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "23:00" "23:45")))
+      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
+      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
+      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
+      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
+      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
+      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
+      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
    (:prefix ("m")
