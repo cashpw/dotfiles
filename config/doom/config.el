@@ -114,7 +114,7 @@
   :config
   (setq
    anki-editor-remove-single-paragraph-tags t
-   anki-editor-use-math-jax t))
+   anki-editor-latex-style 'mathjax))
 
 (defun cashweaver-anki-editor-insert-note ()
   (interactive)
@@ -562,6 +562,22 @@
              offset-days
              time))))
 
+(defun cashweaver-org-goto-most-recent-timestamp-in-current-buffer ()
+  "`goto-char' the most recent timestamp in the buffer"
+  (interactive)
+  (let ((timestamps
+         (cl-sort
+          (org-element-map
+              (org-element-parse-buffer)
+              'timestamp
+            (lambda (timestamp)
+              `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
+          'org-time>
+          :key 'car)))
+    (goto-char
+     (cdr
+      (pop timestamps)))))
+
 (after! org
   (setq
    org-capture-templates
@@ -631,21 +647,13 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   "Return a filenaem for an org-roam node.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
-  (let ((timestamp
-         (format-time-string
-          "%Y%m%d%H%M%S"
-          (or time
-              (current-time))
-          (or time-zone
-              (current-time-zone))))
-        (slug
+  (let ((slug
          (org-roam-node-slug
           (org-roam-node-create
            :title title))))
     (format
-     "%s/%s-%s.org"
+     "%s/%s.org"
      org-roam-directory
-     timestamp
      slug)))
 ;;(cashweaver-org-roam-make-filepath "This is the foo")
 
@@ -698,8 +706,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            "%s/%s"
            cashweaver-org-roam-attachment-base-path
            id))
-         (created
-          (format ))
+         (created-date
+          (cashweaver-get-date
+           "[%Y-%m-%d %a %H:%M]"))
          (all-properties
           (append
            `(("ID" . ,id)
@@ -713,7 +722,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (point-max))
       (cashweaver-org-mode-insert-options
        `(("TITLE" . ,title)
-         ("STARTUP" . "overview")))
+         ("STARTUP" . "overview")
+         ("AUTHOR" . "Cash Weaver")
+         ("DATE" . ,created-date)
+         ("HUGO_AUTO_SET_LASTMOD" . "t")))
       (org-insert-heading)
       (insert
        "Summary")
@@ -820,7 +832,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              refs)
             " ")))
          (current-roam-refs
-          (or 
+          (or
            (org-roam-get-keyword
             keyword)
            "")))
@@ -838,10 +850,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
-  (let ((org-id-extra-files
-         (org-roam-list-files)))
-    (org-hugo-export-wim-to-md)))
-
+  (when (not (string=
+              (buffer-file-name)
+              "/home/cashweaver/proj/roam/unread.org"))
+    (let ((org-id-extra-files
+           (org-roam-list-files)))
+      (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
@@ -851,29 +865,25 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   :after org
   :config
   (setq
-   org-roam-directory
-   (file-truename
-    "~/proj/roam")
-   cashweaver-org-roam-attachment-base-path
-   (file-truename
-    (format
-     "%s/attachments"
-     org-roam-directory))
-   org-roam-capture-templates
-   `(("d" "default" plain "%?" :target
-      (file+head
-       "${slug}.org"
-       ,(concat
-         "#+title: ${title}\n"
-         "#+author: Cash Weaver\n"
-         "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-         "#+startup: overview\n"
-         "#+hugo_auto_set_lastmod: t\n"
-         "\n\n"))
-      :unnarrowed t)))
-  (add-hook!
-   'org-roam-capture-new-node-hook
-   'cashweaver-org-roam-insert-attachment-path)
+   org-roam-directory (file-truename
+                       "~/proj/roam")
+   cashweaver-org-roam-attachment-base-path (file-truename
+                                             (format
+                                              "%s/attachments"
+                                              org-roam-directory))
+   org-roam-capture-templates `(("d" "default" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "\n\n"))
+                                 :unnarrowed t)))
+  (add-hook! 'org-roam-capture-new-node-hook
+             'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
 (org-roam-list-files)
@@ -1031,6 +1041,10 @@ See `org-hugo-tag-processing-functions'."
   (setq
    org-wild-notifier-alert-time '(10 2))
   (org-wild-notifier-mode))
+
+(after! writegood-mode
+  (setq
+   writeroom-width 10))
 
 (defun cashweaver-send-mail-function ()
   )

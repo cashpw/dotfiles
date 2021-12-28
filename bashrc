@@ -98,9 +98,8 @@ if ! shopt -oq posix; then
   fi
 fi
 
-
 function is_work() {
-  [[ "$HOME" == *"google"* ]]
+  [[ -d "/usr/local/google/home/cashweaver" ]]
 }
 
 export PATH="$HOME/.emacs.d/bin:$PATH"

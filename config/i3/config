@@ -7,9 +7,16 @@
 # System/Super/Win/Meta
 set $mod Mod4
 
-#set $monitor_north DP-1
-#set $monitor_south DP-2
-#set $monitor_west DP-3
+# ┌─────┐  ┌─────┐ ┌─────┐
+# │     │  │     │ │     │
+# │     │  │     └─┘     │
+# │  A  │  │      B      │
+# │     │  │     ┌─┐     │
+# │     │  │     │ │     │
+# └─────┘  └─────┘ └─────┘
+
+set $monitor_a DP-2
+set $monitor_b TwoPortrait
 
 ################################################################################
 #         Look and Feel
@@ -30,7 +37,7 @@ bindsym $mod+Shift+r restart
 
 # start a terminal
 bindsym $mod+Return exec rxvt-unicode
-bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "ssh cashweaver.sbo.corp.google.com"
+bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "ssh cashweaver.c.googlers.com"
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -127,16 +134,16 @@ bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
 # assign workspaces to monitors 
-#workspace 1 output $monitor_south
-#workspace 2 output $monitor_south
-#workspace 3 output $monitor_south
-#workspace 4 output $monitor_south
-#workspace 5 output $monitor_north
-#workspace 6 output $monitor_north
-#workspace 7 output $monitor_north
-#workspace 8 output $monitor_north
-#workspace 9 output $monitor_west
-#workspace 0 output $monitor_west
+workspace 1 output $monitor_b
+workspace 2 output $monitor_b
+workspace 3 output $monitor_b
+workspace 4 output $monitor_b
+workspace 5 output $monitor_b
+workspace 6 output $monitor_b
+workspace 7 output $monitor_a
+workspace 8 output $monitor_a
+workspace 9 output $monitor_a
+workspace 0 output $monitor_a
 
 ################################################################################
 #         Status Bar
@@ -154,8 +161,9 @@ hide_edge_borders both
 ################################################################################
 
 # Open development configuration and browser
-#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; gnome-terminal; workspace 10; exec chromium-browser'
-exec --no-startup-id redshift -O 3000
+#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; gnome-terminal; workspace 0; exec chromium-browser; redshift -O 3000'
+exec --no-startup-id i3-msg 'workspace 1; rxvt-unicode; workspace 0; exec chromium-browser; redshift -O 3000'
+#exec --no-startup-id redshift -O 3000
 
 ################################################################################
 #         Modes
