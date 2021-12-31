@@ -114,7 +114,7 @@
   :config
   (setq
    anki-editor-remove-single-paragraph-tags t
-   anki-editor-use-math-jax t))
+   anki-editor-latex-style 'mathjax))
 
 (defun cashweaver-anki-editor-insert-note ()
   (interactive)
@@ -562,6 +562,22 @@
              offset-days
              time))))
 
+(defun cashweaver-org-goto-most-recent-timestamp-in-current-buffer ()
+  "`goto-char' the most recent timestamp in the buffer"
+  (interactive)
+  (let ((timestamps
+         (cl-sort
+          (org-element-map
+              (org-element-parse-buffer)
+              'timestamp
+            (lambda (timestamp)
+              `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
+          'org-time>
+          :key 'car)))
+    (goto-char
+     (cdr
+      (pop timestamps)))))
+
 (after! org
   (setq
    org-capture-templates
@@ -631,21 +647,13 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   "Return a filenaem for an org-roam node.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
-  (let ((timestamp
-         (format-time-string
-          "%Y%m%d%H%M%S"
-          (or time
-              (current-time))
-          (or time-zone
-              (current-time-zone))))
-        (slug
+  (let ((slug
          (org-roam-node-slug
           (org-roam-node-create
            :title title))))
     (format
-     "%s/%s-%s.org"
+     "%s/%s.org"
      org-roam-directory
-     timestamp
      slug)))
 ;;(cashweaver-org-roam-make-filepath "This is the foo")
 
@@ -698,8 +706,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            "%s/%s"
            cashweaver-org-roam-attachment-base-path
            id))
-         (created
-          (format ))
+         (created-date
+          (cashweaver-get-date
+           "[%Y-%m-%d %a %H:%M]"))
          (all-properties
           (append
            `(("ID" . ,id)
@@ -713,7 +722,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (point-max))
       (cashweaver-org-mode-insert-options
        `(("TITLE" . ,title)
-         ("STARTUP" . "overview")))
+         ("STARTUP" . "overview")
+         ("AUTHOR" . "Cash Weaver")
+         ("DATE" . ,created-date)
+         ("HUGO_AUTO_SET_LASTMOD" . "t")))
       (org-insert-heading)
       (insert
        "Summary")
@@ -820,7 +832,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              refs)
             " ")))
          (current-roam-refs
-          (or 
+          (or
            (org-roam-get-keyword
             keyword)
            "")))
@@ -838,10 +850,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
-  (let ((org-id-extra-files
-         (org-roam-list-files)))
-    (org-hugo-export-wim-to-md)))
-
+  (when (not (string=
+              (buffer-file-name)
+              "/home/cashweaver/proj/roam/unread.org"))
+    (let ((org-id-extra-files
+           (org-roam-list-files)))
+      (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
@@ -851,29 +865,25 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   :after org
   :config
   (setq
-   org-roam-directory
-   (file-truename
-    "~/proj/roam")
-   cashweaver-org-roam-attachment-base-path
-   (file-truename
-    (format
-     "%s/attachments"
-     org-roam-directory))
-   org-roam-capture-templates
-   `(("d" "default" plain "%?" :target
-      (file+head
-       "${slug}.org"
-       ,(concat
-         "#+title: ${title}\n"
-         "#+author: Cash Weaver\n"
-         "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-         "#+startup: overview\n"
-         "#+hugo_auto_set_lastmod: t\n"
-         "\n\n"))
-      :unnarrowed t)))
-  (add-hook!
-   'org-roam-capture-new-node-hook
-   'cashweaver-org-roam-insert-attachment-path)
+   org-roam-directory (file-truename
+                       "~/proj/roam")
+   cashweaver-org-roam-attachment-base-path (file-truename
+                                             (format
+                                              "%s/attachments"
+                                              org-roam-directory))
+   org-roam-capture-templates `(("d" "default" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "\n\n"))
+                                 :unnarrowed t)))
+  (add-hook! 'org-roam-capture-new-node-hook
+             'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
 (org-roam-list-files)
@@ -1032,6 +1042,12 @@ See `org-hugo-tag-processing-functions'."
    org-wild-notifier-alert-time '(10 2))
   (org-wild-notifier-mode))
 
+(after! writegood-mode
+  (setq
+   writeroom-width 10))
+
+(after! svg-tag-mode)
+
 (defun cashweaver-send-mail-function ()
   )
 
@@ -1109,71 +1125,41 @@ See `org-hugo-tag-processing-functions'."
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
      (:prefix ("h" . "hour")
+      (:prefix ("0" . "0?:??")
+       :desc "00:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "00:00" "00:45"))
+       :desc "01:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
+       :desc "02:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "02:00" "02:45"))
+       :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
+       :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
+       :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
+       :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
+       :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
+       :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
+       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))
       (:prefix ("1" . "1?:??")
-       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "10:00"
-                                   "10:50"))
-       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "11:00"
-                                   "11:50"))
-       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "12:00"
-                                   "12:50"))
-       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "13:00"
-                                   "13:50"))
-       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "14:00"
-                                   "14:50"))
-       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "15:00"
-                                   "15:50"))
-       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "16:00"
-                                   "16:50"))
-       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "17:00"
-                                   "17:50"))
-       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "18:00"
-                                   "18:50"))
-       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "19:00"
-                                   "19:50")))
+       :desc "01:00" :n "RET" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
+       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "10:00" "10:45"))
+       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "11:00" "11:45"))
+       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "12:00" "12:45"))
+       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "13:00" "13:45"))
+       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "14:00" "14:45"))
+       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "15:00" "15:45"))
+       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "16:00" "16:45"))
+       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "17:00" "17:45"))
+       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "18:00" "18:45"))
+       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "19:00" "19:45")))
       (:prefix ("2" . "2?:??")
-       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "20:00"
-                                   "20:50"))
-       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "21:00"
-                                   "21:50"))
-       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "22:00"
-                                   "22:50"))
-       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                   "23:00"
-                                   "23:50")))
-      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "03:00"
-                                  "03:50"))
-      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "04:00"
-                                  "04:50"))
-      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "05:00"
-                                  "05:50"))
-      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "06:00"
-                                  "06:50"))
-      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "07:00"
-                                  "07:50"))
-      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "08:00"
-                                  "08:50"))
-      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to
-                                  "09:00"
-                                  "09:50")))))
+       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "20:00" "20:45"))
+       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "21:00" "21:45"))
+       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "22:00" "22:45"))
+       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "23:00" "23:45")))
+      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
+      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
+      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
+      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
+      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
+      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
+      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
    (:prefix ("m")
