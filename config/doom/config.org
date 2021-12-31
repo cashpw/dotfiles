@@ -94,6 +94,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#writeroom-mode][=writeroom-mode=]]
     - [[#package-22][Package]]
     - [[#config-17][Config]]
+  - [[#svg-tag-mode][=svg-tag-mode=]]
+    - [[#package-23][Package]]
+    - [[#config-18][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -1039,8 +1042,14 @@ A large number of angry people.
 ** =org-gcal=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
-(package! org-gcal)
+(package! org-gcal
+  :recipe (:host github
+           :repo "cashweaver/org-gcal.el"))
 #+end_src
+
+#+RESULTS:
+| org-gcal | :modules | ((:private . packages) (:private . modules) (:private . config) (:private . modules)) | :recipe | (:host github :repo cashweaver/org-gcal.el) |
+
 ** =org-mime=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
@@ -1996,12 +2005,28 @@ See `org-hugo-tag-processing-functions'."
 #+RESULTS:
 : 10
 
+** =svg-tag-mode=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! svg-tag-mode)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! svg-tag-mode
+  :config
+  (setq
+   svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
+#+end_src
+
+
 * Mail
 
 #+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-send-mail-function ()
-  )
-
+(defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()
   "Converts an org-mode message to HTML and sends."

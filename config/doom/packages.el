@@ -97,7 +97,9 @@
 
 (package! org-ql)
 
-(package! org-gcal)
+(package! org-gcal
+  :recipe (:host github
+           :repo "cashweaver/org-gcal.el"))
 
 (package! org-mime)
 
@@ -121,6 +123,8 @@
 (package! ox-hugo)
 
 (package! org-wild-notifier)
+
+(package! svg-tag-mode)
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))

@@ -1046,6 +1046,8 @@ See `org-hugo-tag-processing-functions'."
   (setq
    writeroom-width 10))
 
+(after! svg-tag-mode)
+
 (defun cashweaver-send-mail-function ()
   )
 
