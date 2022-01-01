@@ -126,5 +126,12 @@
 
 (package! svg-tag-mode)
 
+(package! org-download)
+
+(package! ol-doi
+  :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
+           :branch "main"
+           :files ("lisp/ol-doi.el")))
+
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))
