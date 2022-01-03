@@ -885,6 +885,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          (org-entry-get
           (point)
           "ROAM_REFS")))
+    (message roam-refs)
     (if (s-starts-with-p
          "http"
          roam-refs)
@@ -1176,9 +1177,11 @@ See `org-hugo-tag-processing-functions'."
    org-wild-notifier-alert-time '(10 2))
   (org-wild-notifier-mode))
 
-(after! writegood-mode
+(use-package! writeroom-mode
+  :config
   (setq
-   writeroom-width 10))
+   +zen-mixed-pitch-modes '()
+   writeroom-width 30))
 
 (use-package! svg-tag-mode
   :config

@@ -1834,6 +1834,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        :contents-end
        link)))))
 
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
@@ -1841,6 +1845,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          (org-entry-get
           (point)
           "ROAM_REFS")))
+    (message roam-refs)
     (if (s-starts-with-p
          "http"
          roam-refs)
@@ -1848,7 +1853,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message
        "Not an http(s) ref (%s)"
        roam-refs))))
+#+end_src
 
+#+RESULTS:
+: cashweaver-org-roam-open-ref
+
+#+begin_src emacs-lisp :tangle config.el
 ;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
 (defun cashweaver-org-roam-insert-attachment-path ()
   (let ((dir
@@ -2216,13 +2226,15 @@ See `org-hugo-tag-processing-functions'."
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(after! writegood-mode
+(use-package! writeroom-mode
+  :config
   (setq
-   writeroom-width 10))
+   +zen-mixed-pitch-modes '()
+   writeroom-width 30))
 #+end_src
 
 #+RESULTS:
-: 10
+: t
 
 ** =svg-tag-mode=
 
