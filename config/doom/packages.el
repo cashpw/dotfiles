@@ -133,7 +133,7 @@
            :branch "main"
            :files ("lisp/ol-doi.el")))
 
-(package! pdf-view)
+(package! pdf-tools)
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))
