@@ -850,12 +850,16 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
-  (when (not (string=
+  (when (not (or
+              (string=
+               (buffer-file-name)
+               "/home/cashweaver/proj/roam/unread.org")
+             (string=
               (buffer-file-name)
-              "/home/cashweaver/proj/roam/unread.org"))
-    (let ((org-id-extra-files
-           (org-roam-list-files)))
-      (org-hugo-export-wim-to-md))))
+              "/home/cashweaver/proj/roam/unread.org_archive")))
+  (let ((org-id-extra-files
+         (org-roam-list-files)))
+    (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
