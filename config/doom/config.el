@@ -302,12 +302,12 @@
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    (unless (org-get-repeat)
-      (unless
-          (seq-contains-p
-           cashweaver-org-non-archival-filepaths
-           buffer-file-name)
-        (org-archive-subtree-default)))))
+    (unless (or (org-get-repeat)
+                (seq-contains-p
+                 cashweaver-org-non-archival-filepaths
+                 buffer-file-name))
+      (debug)
+      (org-archive-subtree-default))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress ehavior"
@@ -421,14 +421,21 @@
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-         (today-weekday-name (cashweaver-get-date "%A")))
+         (today-hh-mm (cashweaver-get-date "%H:%M"))
+         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
     (org-insert-heading-respect-content)
     (insert
-     (format "%s %s :week%s:quarter%s:"
+     (format "[%s %s] :week%s:quarter%s:"
              today-yyyy-mm-dd
-             today-weekday-name
+             today-weekday-abbreviated-name
              today-week-number
-             today-quarter-number))))
+             today-quarter-number))
+    (org-set-property
+     "Created"
+     (format "[%s %s %s]"
+             today-yyyy-mm-dd
+             today-weekday-abbreviated-name
+             today-hh-mm))))
 
 (defun cashweaver-org-mode-insert-heading-for-this-week ()
   "Insert a heading for this week, with relevant tags."
@@ -578,6 +585,41 @@
      (cdr
       (pop timestamps)))))
 
+(defun cashweaver-org-mode-set-filetag (value)
+  "Add another option; requires at least one option to already be present."
+  (message "---")
+  (goto-char
+   (point-min))
+  (if (search-forward-regexp
+       "#\\+\\(FILETAGS\\|filetags\\): "
+       ;; bound
+       nil
+       ;; noerror
+       t)
+      (progn
+        (end-of-line)
+        (insert (format "%s:" value)))
+    (progn
+      ;; Add filetags beneath the title; assumes there is a title
+      (goto-char
+       (point-min))
+      (when (search-forward-regexp
+          "^#\\+\\(TITLE\\|title\\):")
+        (end-of-line)
+        (newline)
+        (cashweaver-org-mode-insert-option
+         "FILETAGS"
+         (format ":%s:"
+                 value))))))
+
+(defun cashweaver-org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE)."
+  (insert
+   (format
+    "#+%s: %s\n"
+    option
+    value)))
+
 (after! org
   (setq
    org-capture-templates
@@ -633,15 +675,63 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 (use-package! ol-notmuch
   :after org)
 
-(defun cashweaver-org-roam--add-title-headline-when-exporting (backend)
-  "TODO"
-  (when (and (equal backend 'hugo)
-             (org-roam-file-p))
-    (insert "foocashweaverfoo")))
+(defun cashweaver-org-roam--get-filetags (&optional node-id)
+  "Return a list of all tags used in roam.
 
-;;(remove-hook!
- ;;'org-export-before-processing-hook
- ;;#'cashweaver-org-roam--add-title-headline-when-exporting)
+Optionally: Exclude tags currently in use in the provided NODE-ID."
+  (if node-id
+      (org-roam-db-query
+       [:select :distinct [tag]
+        :from tags
+        :where tag :not-in [:select tag
+                            :from tags
+                            :where (= node_id $s1)]]
+       node-id)
+    (org-roam-db-query
+     [:select :distinct tag
+      :from tags])))
+
+(defun cashweaver-org-roam--set-filetag (&optional node-id)
+  "Add a filetag in the current file."
+  (let ((tag
+         (completing-read
+          "Select tag: "
+          (cashweaver-org-roam--get-filetags node-id)
+          )))
+    (cashweaver-org-mode-set-filetag tag)))
+
+;;(org-roam-db-query "SELECT DISTINCT tag FROM tags;")
+;; "007bbe54-0e36-4af5-b2ec-cf7762299a1f"
+
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    [:select :distinct [tag]
+;;     :from tags
+;;     :where (= node_id $s1)]
+;;    current-file-id))
+
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    (format
+;;     ;; "SELECT DISTINCT tag
+;;     ;; FROM tags
+;;     ;; WHERE NOT IN (
+;;     ;; SELECT tag
+;;     ;; FROM tags
+;;     ;; WHERE node_id = '\"%s\"'
+;;     ;; )"
+;;     "SELECT DISTINCT tag
+;; FROM tags
+;; WHERE node_id = '\"%s\"'"
+;;     current-file-id)))
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    [:select :distinct [tag]
+;;     :from tags
+;;     :where tag :not-in [:select tag
+;;                         :from tags
+;;                         :where (= node_id $s1)]]
+;;    current-file-id))
 
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
@@ -655,11 +745,28 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      "%s/%s.org"
      org-roam-directory
      slug)))
-;;(cashweaver-org-roam-make-filepath "This is the foo")
+
+(defun cashweaver-org-mode-add-option (option value)
+  "Add another option; requires at least one option to already be present.
+
+TODO: move to org-mode section"
+  (goto-char
+   (point-max))
+  (insert "foo")
+  (when (search-backward-regexp
+         "#\\+[A-Za-z_]+:"
+         ;; bound
+         nil
+         ;; noerror
+         t)
+    (cashweaver-org-mode-insert-option
+     option
+     value)))
 
 (defun cashweaver-org-mode-insert-option (option value)
-  "Insert an org-mode option (#+OPTION: VALUE)."
-  (interactive)
+  "Insert an org-mode option (#+OPTION: VALUE).
+
+TODO: move to org-mode section"
   (insert
    (format
     "#+%s: %s\n"
@@ -668,7 +775,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (defun cashweaver-org-mode-insert-options (options)
   "Insert an alist of org-mode options (#+OPTION: VALUE)."
-  (interactive)
   (cl-loop for (option . value) in options
            do (cashweaver-org-mode-insert-option
                option
@@ -676,7 +782,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (defun cashweaver-org-mode-insert-property (property value)
   "Insert an org-mode property (:PROPERTY: VALUE)."
-  (interactive)
   (insert
    (format
     ":%s: %s\n"
@@ -787,6 +892,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          (org-entry-get
           (point)
           "ROAM_REFS")))
+    (message roam-refs)
     (if (s-starts-with-p
          "http"
          roam-refs)
@@ -806,6 +912,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (org-set-property
        "DIR"
        dir))))
+
 
 
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
@@ -890,7 +997,36 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
-(org-roam-list-files)
+(defun cashweaver-org-roam-set-filetag ()
+  "Add a filetag to the current roam file."
+  (interactive))
+
+(defun run-function-in-file (filepath function &optional arguments)
+  (let ((args (or arguments
+                  nil)))
+    (save-excursion
+      (find-file filepath)
+      (apply function arguments)
+      (write-file filepath)
+      (kill-buffer (current-buffer)))))
+
+(defun cashweaver-org-hugo-export-wim-to-md ()
+  (org-hugo-export-wim-to-md-after-save))
+
+(defun cashweaver-org-hugo-export-all (directory)
+  (mapc (lambda (filepath)
+          (run-function-in-file
+           filepath
+           'cashweaver-org-hugo-export-wim-to-md))
+        (directory-files
+         directory
+         ;; full
+         t
+         ;; match
+         ".org$")))
+
+;;(cashweaver-org-hugo-export-all
+ ;;"/home/cashweaver/proj/roam")
 
 (use-package! ox-pandoc
   :after (:all org)
@@ -1046,13 +1182,22 @@ See `org-hugo-tag-processing-functions'."
    org-wild-notifier-alert-time '(10 2))
   (org-wild-notifier-mode))
 
-(after! writegood-mode
+(use-package! writeroom-mode
+  :config
   (setq
-   writeroom-width 10))
+   +zen-mixed-pitch-modes '()
+   writeroom-width 30))
 
-(defun cashweaver-send-mail-function ()
-  )
+(use-package! svg-tag-mode
+  :config
+  (setq
+   svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 
+(use-package! org-download)
+
+(use-package! ol-doi)
+
+(defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()
   "Converts an org-mode message to HTML and sends."
@@ -1164,8 +1309,18 @@ See `org-hugo-tag-processing-functions'."
       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
-   (:prefix ("m")
+
+   (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    :desc "Tag" :n "q" (cmd! ()
+                             (when (org-roam-file-p)
+                               (let ((node-id (org-roam-node-id
+                                               (org-roam-node-at-point))))
+
+                                 (cashweaver-org-roam--set-filetag
+                                  node-id)
+                                 )))
+    ;;#'cashweaver-org-roam--set-filetag
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done

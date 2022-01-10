@@ -63,6 +63,7 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
     - [[#general-1][General]]
     - [[#agenda][Agenda]]
     - [[#publish][Publish]]
+    - [[#links][Links]]
     - [[#helper-methods][Helper Methods]]
     - [[#capture-templates][Capture Templates]]
   - [[#org-noter][=org-noter=]]
@@ -94,6 +95,15 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#writeroom-mode][=writeroom-mode=]]
     - [[#package-22][Package]]
     - [[#config-17][Config]]
+  - [[#svg-tag-mode][=svg-tag-mode=]]
+    - [[#package-23][Package]]
+    - [[#config-18][Config]]
+  - [[#org-download][=org-download=]]
+    - [[#package-24][Package]]
+    - [[#config-19][Config]]
+  - [[#ol-doi][=ol-doi=]]
+    - [[#package-25][Package]]
+    - [[#config-20][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -642,7 +652,7 @@ grammar
 
 ** =cashweaver-is-work-p=
 
-This file contains the my base configuration for emacs. I have other config files, nameely =config-work.org=, which extend this file for specific environments.
+This file contains the my base configuration for emacs. I have other config files, namely =config-work.org=, which extend this file for specific environments.
 
 #+name: cashweaver-work-config-dir
 #+begin_src emacs-lisp
@@ -682,6 +692,9 @@ This file contains the my base configuration for emacs. I have other config file
  doom-theme 'doom-tomorrow-night
  show-trailing-whitespace t)
 #+end_src
+
+#+RESULTS:
+: t
 
 * Dates and time
 
@@ -1039,8 +1052,14 @@ A large number of angry people.
 ** =org-gcal=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
-(package! org-gcal)
+(package! org-gcal
+  :recipe (:host github
+           :repo "cashweaver/org-gcal.el"))
 #+end_src
+
+#+RESULTS:
+| org-gcal | :modules | ((:private . packages) (:private . modules) (:private . config) (:private . modules)) | :recipe | (:host github :repo cashweaver/org-gcal.el) |
+
 ** =org-mime=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
@@ -1064,12 +1083,12 @@ A large number of angry people.
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    (unless (org-get-repeat)
-      (unless
-          (seq-contains-p
-           cashweaver-org-non-archival-filepaths
-           buffer-file-name)
-        (org-archive-subtree-default)))))
+    (unless (or (org-get-repeat)
+                (seq-contains-p
+                 cashweaver-org-non-archival-filepaths
+                 buffer-file-name))
+      (debug)
+      (org-archive-subtree-default))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress ehavior"
@@ -1192,6 +1211,55 @@ A large number of angry people.
 
 #+RESULTS:
 
+*** Links
+**** ISBN
+#+begin_src emacs-lisp config.el
+;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
+
+(defvar org-link-isbn-server-url
+  "https://books.google.com/books?vid=ISBN"
+  "The URL of the ISBN server.")
+
+(defun org-link-isbn-open (path arg)
+  "Open a \"ISBN\" type link."
+  (browse-url
+   (url-encode-url
+    (concat
+     org-link-isbn-server-url
+     path)) arg))
+
+(defun org-link-doi-export (path desc backend info)
+  "Export a \"ISBN\" type link."
+  (let ((uri
+         (concat org-link-isbn-server-url path)))
+    (pcase backend
+      (`html
+       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
+      (`latex
+       (if desc (format "\\href{%s}{%s}" uri desc)
+         (format "\\url{%s}" uri)))
+      (`ascii
+       (if (not desc) (format "<%s>" uri)
+         (concat (format "[%s]" desc)
+                 (and (not (plist-get info :ascii-links-to-notes))
+                      (format " (<%s>)" uri)))))
+      (`texinfo
+       (if (not desc) (format "@uref{%s}" uri)
+         (format "@uref{%s, %s}" uri desc)))
+      (_ uri))))
+
+(org-link-set-parameters "isbn"
+                         :follow #'org-link-isbn-open
+                         :export #'org-link-isbn-export)
+#+end_src
+
+#+RESULTS:
+| :follow | org-link-isbn-open | :export | org-link-isbn-export |
+
+**** DOI
+
+Provided in [[*=ol-doi=][=ol-doi=]].
+
 *** Helper Methods
 **** Create a heading for today
 
@@ -1202,14 +1270,21 @@ A large number of angry people.
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-         (today-weekday-name (cashweaver-get-date "%A")))
+         (today-hh-mm (cashweaver-get-date "%H:%M"))
+         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
     (org-insert-heading-respect-content)
     (insert
-     (format "%s %s :week%s:quarter%s:"
+     (format "[%s %s] :week%s:quarter%s:"
              today-yyyy-mm-dd
-             today-weekday-name
+             today-weekday-abbreviated-name
              today-week-number
-             today-quarter-number))))
+             today-quarter-number))
+    (org-set-property
+     "Created"
+     (format "[%s %s %s]"
+             today-yyyy-mm-dd
+             today-weekday-abbreviated-name
+             today-hh-mm))))
 
 (defun cashweaver-org-mode-insert-heading-for-this-week ()
   "Insert a heading for this week, with relevant tags."
@@ -1397,6 +1472,48 @@ A large number of angry people.
      (cdr
       (pop timestamps)))))
 #+end_src
+**** Edit FILETAGS
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-mode-set-filetag (value)
+  "Add another option; requires at least one option to already be present."
+  (message "---")
+  (goto-char
+   (point-min))
+  (if (search-forward-regexp
+       "#\\+\\(FILETAGS\\|filetags\\): "
+       ;; bound
+       nil
+       ;; noerror
+       t)
+      (progn
+        (end-of-line)
+        (insert (format "%s:" value)))
+    (progn
+      ;; Add filetags beneath the title; assumes there is a title
+      (goto-char
+       (point-min))
+      (when (search-forward-regexp
+          "^#\\+\\(TITLE\\|title\\):")
+        (end-of-line)
+        (newline)
+        (cashweaver-org-mode-insert-option
+         "FILETAGS"
+         (format ":%s:"
+                 value))))))
+
+(defun cashweaver-org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE)."
+  (insert
+   (format
+    "#+%s: %s\n"
+    option
+    value)))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-mode-insert-option
+
 *** Capture Templates
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1502,17 +1619,76 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
 *** Config
 
+
 #+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-org-roam--add-title-headline-when-exporting (backend)
-  "TODO"
-  (when (and (equal backend 'hugo)
-             (org-roam-file-p))
-    (insert "foocashweaverfoo")))
+(defun cashweaver-org-roam--get-filetags (&optional node-id)
+  "Return a list of all tags used in roam.
 
-;;(remove-hook!
- ;;'org-export-before-processing-hook
- ;;#'cashweaver-org-roam--add-title-headline-when-exporting)
+Optionally: Exclude tags currently in use in the provided NODE-ID."
+  (if node-id
+      (org-roam-db-query
+       [:select :distinct [tag]
+        :from tags
+        :where tag :not-in [:select tag
+                            :from tags
+                            :where (= node_id $s1)]]
+       node-id)
+    (org-roam-db-query
+     [:select :distinct tag
+      :from tags])))
 
+(defun cashweaver-org-roam--set-filetag (&optional node-id)
+  "Add a filetag in the current file."
+  (let ((tag
+         (completing-read
+          "Select tag: "
+          (cashweaver-org-roam--get-filetags node-id)
+          )))
+    (cashweaver-org-mode-set-filetag tag)))
+
+;;(org-roam-db-query "SELECT DISTINCT tag FROM tags;")
+;; "007bbe54-0e36-4af5-b2ec-cf7762299a1f"
+
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    [:select :distinct [tag]
+;;     :from tags
+;;     :where (= node_id $s1)]
+;;    current-file-id))
+
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    (format
+;;     ;; "SELECT DISTINCT tag
+;;     ;; FROM tags
+;;     ;; WHERE NOT IN (
+;;     ;; SELECT tag
+;;     ;; FROM tags
+;;     ;; WHERE node_id = '\"%s\"'
+;;     ;; )"
+;;     "SELECT DISTINCT tag
+;; FROM tags
+;; WHERE node_id = '\"%s\"'"
+;;     current-file-id)))
+;; (let ((current-file-id "6a214828-bea5-47be-bac7-0f0235b0ff3c"))
+;;   (org-roam-db-query
+;;    [:select :distinct [tag]
+;;     :from tags
+;;     :where tag :not-in [:select tag
+;;                         :from tags
+;;                         :where (= node_id $s1)]]
+;;    current-file-id))
+
+
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-roam--set-filetag
+
+
+
+
+#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
 
@@ -1525,11 +1701,28 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      "%s/%s.org"
      org-roam-directory
      slug)))
-;;(cashweaver-org-roam-make-filepath "This is the foo")
+
+(defun cashweaver-org-mode-add-option (option value)
+  "Add another option; requires at least one option to already be present.
+
+TODO: move to org-mode section"
+  (goto-char
+   (point-max))
+  (insert "foo")
+  (when (search-backward-regexp
+         "#\\+[A-Za-z_]+:"
+         ;; bound
+         nil
+         ;; noerror
+         t)
+    (cashweaver-org-mode-insert-option
+     option
+     value)))
 
 (defun cashweaver-org-mode-insert-option (option value)
-  "Insert an org-mode option (#+OPTION: VALUE)."
-  (interactive)
+  "Insert an org-mode option (#+OPTION: VALUE).
+
+TODO: move to org-mode section"
   (insert
    (format
     "#+%s: %s\n"
@@ -1538,7 +1731,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (defun cashweaver-org-mode-insert-options (options)
   "Insert an alist of org-mode options (#+OPTION: VALUE)."
-  (interactive)
   (cl-loop for (option . value) in options
            do (cashweaver-org-mode-insert-option
                option
@@ -1546,7 +1738,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 (defun cashweaver-org-mode-insert-property (property value)
   "Insert an org-mode property (:PROPERTY: VALUE)."
-  (interactive)
   (insert
    (format
     ":%s: %s\n"
@@ -1650,6 +1841,10 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        :contents-end
        link)))))
 
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
@@ -1657,6 +1852,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          (org-entry-get
           (point)
           "ROAM_REFS")))
+    (message roam-refs)
     (if (s-starts-with-p
          "http"
          roam-refs)
@@ -1664,7 +1860,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message
        "Not an http(s) ref (%s)"
        roam-refs))))
+#+end_src
 
+#+RESULTS:
+: cashweaver-org-roam-open-ref
+
+#+begin_src emacs-lisp :tangle config.el
 ;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
 (defun cashweaver-org-roam-insert-attachment-path ()
   (let ((dir
@@ -1676,6 +1877,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (org-set-property
        "DIR"
        dir))))
+
 
 
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
@@ -1760,11 +1962,46 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
-(org-roam-list-files)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-roam-set-filetag ()
+  "Add a filetag to the current roam file."
+  (interactive))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(defun run-function-in-file (filepath function &optional arguments)
+  (let ((args (or arguments
+                  nil)))
+    (save-excursion
+      (find-file filepath)
+      (apply function arguments)
+      (write-file filepath)
+      (kill-buffer (current-buffer)))))
+
+(defun cashweaver-org-hugo-export-wim-to-md ()
+  (org-hugo-export-wim-to-md-after-save))
+
+(defun cashweaver-org-hugo-export-all (directory)
+  (mapc (lambda (filepath)
+          (run-function-in-file
+           filepath
+           'cashweaver-org-hugo-export-wim-to-md))
+        (directory-files
+         directory
+         ;; full
+         t
+         ;; match
+         ".org$")))
+
+;;(cashweaver-org-hugo-export-all
+ ;;"/home/cashweaver/proj/roam")
 #+end_src
 
 #+RESULTS:
-| /home/cashweaver/proj/roam/psychophysiologic_symptom_relief_therapy.org | /home/cashweaver/proj/roam/theory_of_change.org | /home/cashweaver/proj/roam/deregulating_distraction_moving_towards_the_goal_and_level_hopping.org | /home/cashweaver/proj/roam/how_to_read_a_paper_2016_pdf.org | /home/cashweaver/proj/roam/noticing_the_taste_of_lotus.org | /home/cashweaver/proj/roam/meaningful_rest.org | /home/cashweaver/proj/roam/polyphasic_sleep_40_day_trial_results.org | /home/cashweaver/proj/roam/monica_open_source_personal_crm.org | /home/cashweaver/proj/roam/productivity_notes_from_sam_altman.org | /home/cashweaver/proj/roam/key_practices_for_achieving_large_professional_goals.org | /home/cashweaver/proj/roam/habits_always_form.org | /home/cashweaver/proj/roam/create_an_oauth2_client_id.org | /home/cashweaver/proj/roam/ask_hn_what_was_the_best_decision_you_made_in_your_career.org | /home/cashweaver/proj/roam/deep_work_hypothesis.org | /home/cashweaver/proj/roam/three_kinds_of_non_fiction_books.org | /home/cashweaver/proj/roam/career_moat.org | /home/cashweaver/proj/roam/unread.org | /home/cashweaver/proj/roam/be_impatient.org | /home/cashweaver/proj/roam/read_gmail_in_emacs_with_mbsync_and_mu4e.org | /home/cashweaver/proj/roam/exceed_your_level.org | /home/cashweaver/proj/roam/three_paths_in_the_tech_industry_founder_executive_or_employee.org | /home/cashweaver/proj/roam/deep_work.org | /home/cashweaver/proj/roam/a.org | /home/cashweaver/proj/roam/readme.org | /home/cashweaver/proj/roam/the_basic_problem_of_democracy_1919.org | /home/cashweaver/proj/roam/monthly_newsletter_as_a_thinking_tool.org | /home/cashweaver/proj/roam/how_i_write_my_blog.org | /home/cashweaver/proj/roam/idea_queue.org | /home/cashweaver/proj/roam/humans_are_not_automatically_strategic.org | /home/cashweaver/proj/roam/at_least_two_of_the_same.org | /home/cashweaver/proj/roam/attention_is_your_scarcest_resource.org | /home/cashweaver/proj/roam/attention_capital_theory.org | /home/cashweaver/proj/roam/write_thin_to_write_fast.org | /home/cashweaver/proj/roam/learned_blankness.org | /home/cashweaver/proj/roam/mindfulness_based_stress_reduction.org | /home/cashweaver/proj/roam/three_components_of_emotion.org | /home/cashweaver/proj/roam/tsuyoku_naritai_i_want_to_become_stronger.org | /home/cashweaver/proj/roam/the_first_lesson.org | /home/cashweaver/proj/roam/there_s_no_speed_limit.org | /home/cashweaver/proj/roam/read_gmail_in_emacs_with_notmuch_and_lieer.org |
+: cashweaver-org-hugo-export-all
+>>>>>>> 22f7358b460c335d4fa762c6bb9ee1cbbb5a54b3
 
 ** =org-super-agenda=
 *** Package
@@ -1992,20 +2229,76 @@ See `org-hugo-tag-processing-functions'."
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(after! writegood-mode
+(use-package! writeroom-mode
+  :config
   (setq
-   writeroom-width 10))
+   +zen-mixed-pitch-modes '()
+   writeroom-width 30))
 #+end_src
 
 #+RESULTS:
-: 10
+: t
+
+** =svg-tag-mode=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! svg-tag-mode)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! svg-tag-mode
+  :config
+  (setq
+   svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
+#+end_src
+
+#+RESULTS:
+: t
+
+** =org-download=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-download)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! org-download)
+#+end_src
+
+#+RESULTS:
+: t
+** =ol-doi=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! ol-doi
+  :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
+           :branch "main"
+           :files ("lisp/ol-doi.el")))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! ol-doi)
+#+end_src
+
+#+RESULTS:
+: ol-doi
 
 * Mail
 
 #+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-send-mail-function ()
-  )
-
+(defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()
   "Converts an org-mode message to HTML and sends."
@@ -2136,8 +2429,18 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
    (:prefix ("M" . "Mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
-   (:prefix ("m")
+
+   (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    :desc "Tag" :n "q" (cmd! ()
+                             (when (org-roam-file-p)
+                               (let ((node-id (org-roam-node-id
+                                               (org-roam-node-at-point))))
+
+                                 (cashweaver-org-roam--set-filetag
+                                  node-id)
+                                 )))
+    ;;#'cashweaver-org-roam--set-filetag
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done

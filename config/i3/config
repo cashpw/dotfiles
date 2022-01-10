@@ -15,7 +15,7 @@ set $mod Mod4
 # │     │  │     │ │     │
 # └─────┘  └─────┘ └─────┘
 
-set $monitor_a DP-2
+set $monitor_a HDMI-1
 set $monitor_b TwoPortrait
 
 ################################################################################
@@ -239,8 +239,8 @@ bindsym $mod+b mode "$mode_brightness"
 # Screenshots
 set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
 mode "$mode_screenshot" {
-  bindsym s exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select.sh, mode "default"
-  bindsym c exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
+  bindsym s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select.sh, mode "default"
+  bindsym c exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"

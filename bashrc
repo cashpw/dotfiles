@@ -105,7 +105,12 @@ function is_work() {
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export DOOMDIR="$HOME/.config/doom"
 set -o vi
-export PATH="$HOME/bin:$PATH"
+export PATH="$PATH:$HOME/bin"
+
+export DENO_INSTALL="/home/cashweaver/.deno"
+export PATH="$DENO_INSTALL/bin:$PATH"
+
+#export PATH="$PATH:/usr/local/go/bin"
 if [[ -f "/usr/share/doc/fzf/examples/key-bindings.bash" ]]; then
   source /usr/share/doc/fzf/examples/key-bindings.bash
 fi

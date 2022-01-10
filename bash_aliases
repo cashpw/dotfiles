@@ -15,3 +15,5 @@ alias ..5="cd ../../../../../"
 
 alias sba='source ~/.bash_aliases'
 alias sp='source ~/.profile'
+
+alias v='nvim'
