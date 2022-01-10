@@ -104,6 +104,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#ol-doi][=ol-doi=]]
     - [[#package-25][Package]]
     - [[#config-20][Config]]
+  - [[#pdf-tools-1][=pdf-tools=]]
+    - [[#package-26][Package]]
+    - [[#config-21][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -2294,6 +2297,20 @@ See `org-hugo-tag-processing-functions'."
 
 #+RESULTS:
 : ol-doi
+
+** =pdf-tools=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! pdf-tools)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! pdf-tools)
+#+end_src
 
 * Mail
 
