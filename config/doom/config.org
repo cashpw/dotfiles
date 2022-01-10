@@ -1925,18 +1925,16 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
-  (interactive)
-  (when (not
-         (or
-          (string=
-           (buffer-file-name)
-           "/home/cashweaver/proj/roam/unread.org")
-          (string=
-           (buffer-file-name)
-           "/home/cashweaver/proj/roam/unread.org_archive")))
-    (let ((org-id-extra-files
-           (org-roam-list-files)))
-      (org-hugo-export-wim-to-md))))
+  (when (not (or
+              (string=
+               (buffer-file-name)
+               "/home/cashweaver/proj/roam/unread.org")
+             (string=
+              (buffer-file-name)
+              "/home/cashweaver/proj/roam/unread.org_archive")))
+  (let ((org-id-extra-files
+         (org-roam-list-files)))
+    (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
@@ -1968,9 +1966,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (org-roam-db-autosync-mode))
 
 #+end_src
-
-#+RESULTS:
-: t
 
 #+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-roam-set-filetag ()
@@ -2009,6 +2004,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 #+RESULTS:
 : cashweaver-org-hugo-export-all
+>>>>>>> 22f7358b460c335d4fa762c6bb9ee1cbbb5a54b3
 
 ** =org-super-agenda=
 *** Package

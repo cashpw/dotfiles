@@ -8,6 +8,8 @@
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
+source ~/.scripts/identify_device/identify_device.sh
+
 # if running bash
 if [ -n "$BASH_VERSION" ]; then
     # include .bashrc if it exists
@@ -30,17 +32,12 @@ eval $(dircolors $HOME/.config/dircolors/dircolors-solarized/dircolors.256dark)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-function is_work() {
-  [[ -d "/usr/local/google/home/cashweaver" ]]
-}
-
 if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   preferred_screenlayout_filepath=""
-  if is_work; then
+  if is_local_work; then
     preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
-  else
-    preferred_screenlayout_filepath="$HOME/.screenlayout/preferred.sh"
   fi
+
   if [[ -f "${preferred_screenlayout_filepath}" ]]; then
     source "${preferred_screenlayout_filepath}"
   fi
