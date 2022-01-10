@@ -1199,6 +1199,8 @@ See `org-hugo-tag-processing-functions'."
 
 (use-package! ol-doi)
 
+(use-package! pdf-view)
+
 (defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()

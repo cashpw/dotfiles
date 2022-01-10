@@ -104,6 +104,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#ol-doi][=ol-doi=]]
     - [[#package-25][Package]]
     - [[#config-20][Config]]
+  - [[#pdf-view][=pdf-view=]]
+    - [[#package-26][Package]]
+    - [[#config-21][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -2298,6 +2301,20 @@ See `org-hugo-tag-processing-functions'."
 
 #+RESULTS:
 : ol-doi
+
+** =pdf-view=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! pdf-view)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! pdf-view)
+#+end_src
 
 * Mail
 
