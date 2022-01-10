@@ -1083,12 +1083,12 @@ A large number of angry people.
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    (unless (org-get-repeat)
-      (unless
-          (seq-contains-p
-           cashweaver-org-non-archival-filepaths
-           buffer-file-name)
-        (org-archive-subtree-default)))))
+    (unless (or (org-get-repeat)
+                (seq-contains-p
+                 cashweaver-org-non-archival-filepaths
+                 buffer-file-name))
+      (debug)
+      (org-archive-subtree-default))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress ehavior"
@@ -1270,14 +1270,21 @@ Provided in [[*=ol-doi=][=ol-doi=]].
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-         (today-weekday-name (cashweaver-get-date "%A")))
+         (today-hh-mm (cashweaver-get-date "%H:%M"))
+         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
     (org-insert-heading-respect-content)
     (insert
-     (format "%s %s :week%s:quarter%s:"
+     (format "[%s %s] :week%s:quarter%s:"
              today-yyyy-mm-dd
-             today-weekday-name
+             today-weekday-abbreviated-name
              today-week-number
-             today-quarter-number))))
+             today-quarter-number))
+    (org-set-property
+     "Created"
+     (format "[%s %s %s]"
+             today-yyyy-mm-dd
+             today-weekday-abbreviated-name
+             today-hh-mm))))
 
 (defun cashweaver-org-mode-insert-heading-for-this-week ()
   "Insert a heading for this week, with relevant tags."
