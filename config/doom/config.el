@@ -306,7 +306,6 @@
                 (seq-contains-p
                  cashweaver-org-non-archival-filepaths
                  buffer-file-name))
-      (debug)
       (org-archive-subtree-default))))
 
 (defun cashweaver-org-mode-when-inprogress ()
@@ -317,6 +316,7 @@
 (after! org
   :config
   (setq
+   org-export-with-tags nil
    org-ellipsis " ▾ "
    org-log-done 'time
    ;; Start the org agenda mini-calendar on Monday.
@@ -733,6 +733,7 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
 ;;                         :where (= node_id $s1)]]
 ;;    current-file-id))
 
+
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
 
@@ -885,6 +886,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        :contents-end
        link)))))
 
+
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
@@ -900,6 +902,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message
        "Not an http(s) ref (%s)"
        roam-refs))))
+
 
 ;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
 (defun cashweaver-org-roam-insert-attachment-path ()
@@ -966,7 +969,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
               "/home/cashweaver/proj/roam/unread.org_archive")))
   (let ((org-id-extra-files
          (org-roam-list-files)))
-    (org-hugo-export-wim-to-md))))
+    (org-hugo-export-wim-to-md)
+    )))
 
 (add-hook!
  'before-save-hook
@@ -996,10 +1000,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (add-hook! 'org-roam-capture-new-node-hook
              'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
-
-(defun cashweaver-org-roam-set-filetag ()
-  "Add a filetag to the current roam file."
-  (interactive))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -1196,6 +1196,8 @@ See `org-hugo-tag-processing-functions'."
 (use-package! org-download)
 
 (use-package! ol-doi)
+
+(use-package! pdf-tools)
 
 (defun cashweaver-send-mail-function ())
 
