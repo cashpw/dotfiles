@@ -110,6 +110,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#org-transclusion][=org-transclusion=]]
     - [[#package-27][Package]]
     - [[#config-22][Config]]
+  - [[#orgaggregate][=orgaggregate=]]
+    - [[#package-28][Package]]
+    - [[#config-23][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -1416,22 +1419,47 @@ Provided in [[*=ol-doi=][=ol-doi=]].
 **** Goto most recent timestamp in buffer
 
 #+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-org-goto-most-recent-timestamp-in-current-buffer ()
-  "`goto-char' the most recent timestamp in the buffer"
+(defun cashweaver-org-get-timestamps-in-time-order ()
+  "Return a list of timestamps from the current buffer in time order."
+  (cl-sort
+   (org-element-map
+       (org-element-parse-buffer)
+       'timestamp
+     (lambda (timestamp)
+       `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
+   'org-time>
+   :key 'car))
+
+(defun cashweaver-org-goto-most-recent-timestamp ()
+  "`goto-char' the most recent timestamp in the current buffer."
   (interactive)
   (let ((timestamps
-         (cl-sort
-          (org-element-map
-              (org-element-parse-buffer)
-              'timestamp
-            (lambda (timestamp)
-              `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
-          'org-time>
-          :key 'car)))
+         (cashweaver-org-get-timestamps-in-time-order)))
     (goto-char
      (cdr
       (pop timestamps)))))
+
+(defun cashweaver-org-goto-most-recent-timestamp-with-property (property)
+  "`goto-char' the most recent timestamp in the current buffer with a non-nil value for the provided property."
+  (interactive)
+  (let ((timestamps
+         (cashweaver-org-get-timestamps-in-time-order)))
+    (goto-char
+     (cdr
+      (pop timestamps)))
+    (while (and timestamps
+                (not
+                 (org-entry-get
+                  (point)
+                  property)))
+      (goto-char
+       (cdr
+        (pop timestamps))))))
 #+end_src
+
+#+RESULTS:
+: cashweaver-org-goto-most-recent-timestamp-with-property
+
 **** Edit FILETAGS
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2249,6 +2277,20 @@ See `org-hugo-tag-processing-functions'."
 
 #+RESULTS:
 : t
+
+** =orgaggregate=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! orgtbl-aggregate)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! orgtbl-aggregate)
+#+end_src
 
 * Mail
 

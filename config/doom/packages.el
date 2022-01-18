@@ -137,5 +137,7 @@
 
 (package! org-transclusion)
 
+(package! orgtbl-aggregate)
+
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))

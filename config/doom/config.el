@@ -110,11 +110,12 @@
    ; offset-days
    -1))
 
-(use-package! anki-editor
-  :config
-  (setq
-   anki-editor-remove-single-paragraph-tags t
-   anki-editor-latex-style 'mathjax))
+;; Too early load error
+;; (use-package! anki-editor
+;;   :config
+;;   (setq
+;;    anki-editor-remove-single-paragraph-tags t
+;;    anki-editor-latex-style 'mathjax))
 
 (defun cashweaver-anki-editor-insert-note ()
   (interactive)
@@ -127,20 +128,6 @@
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
-
-(after! gnus-alias
-  (setq
-   gnus-alias-identity-alist '(("work"
-                                ;; Refers to
-                                nil
-                                "Cash Weaver <cashweaver@google.com>"
-                                ;; Organization
-                                nil
-                                ;; Extra headers
-                                nil
-                                ;; Body
-                                nil "~/.email_signature"))
-   gnus-alias-default-identity "work"))
 
 ;(use-package! calfw-cal
 ;  :config
@@ -292,7 +279,8 @@
 
 (use-package! operate-on-number)
 
-(use-package! org-mime)
+;; Too early load error
+;; (use-package! org-mime)
 
 (setq
  cashweaver-org-non-archival-filepaths
@@ -569,21 +557,42 @@
              offset-days
              time))))
 
-(defun cashweaver-org-goto-most-recent-timestamp-in-current-buffer ()
-  "`goto-char' the most recent timestamp in the buffer"
+(defun cashweaver-org-get-timestamps-in-time-order ()
+  "Return a list of timestamps from the current buffer in time order."
+  (cl-sort
+   (org-element-map
+       (org-element-parse-buffer)
+       'timestamp
+     (lambda (timestamp)
+       `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
+   'org-time>
+   :key 'car))
+
+(defun cashweaver-org-goto-most-recent-timestamp ()
+  "`goto-char' the most recent timestamp in the current buffer."
   (interactive)
   (let ((timestamps
-         (cl-sort
-          (org-element-map
-              (org-element-parse-buffer)
-              'timestamp
-            (lambda (timestamp)
-              `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
-          'org-time>
-          :key 'car)))
+         (cashweaver-org-get-timestamps-in-time-order)))
     (goto-char
      (cdr
       (pop timestamps)))))
+
+(defun cashweaver-org-goto-most-recent-timestamp-with-property (property)
+  "`goto-char' the most recent timestamp in the current buffer with a non-nil value for the provided property."
+  (interactive)
+  (let ((timestamps
+         (cashweaver-org-get-timestamps-in-time-order)))
+    (goto-char
+     (cdr
+      (pop timestamps)))
+    (while (and timestamps
+                (not
+                 (org-entry-get
+                  (point)
+                  property)))
+      (goto-char
+       (cdr
+        (pop timestamps))))))
 
 (defun cashweaver-org-mode-set-filetag (value)
   "Add another option; requires at least one option to already be present."
@@ -1037,6 +1046,13 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      (?d "to docx." org-pandoc-export-to-docx)
      (?m "to markdown." org-pandoc-export-to-markdown)
      (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (defconst org-pandoc-publish-options
+    (mapcar
+     'org-pandoc-pan-to-pub
+     (append
+      org-pandoc-valid-options
+      org-pandoc-colon-separated-options
+      org-pandoc-file-options)))
   (when (cashweaver-is-work-p)
     (setq
      org-pandoc-options-for-docx
@@ -1088,14 +1104,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (defun org-pandoc-pub-to-pan (o)
   (intern
    (substring (symbol-name o) 12)))
-
-(defconst org-pandoc-publish-options
-  (mapcar
-   'org-pandoc-pan-to-pub
-   (append
-    org-pandoc-valid-options
-    org-pandoc-colon-separated-options
-    org-pandoc-file-options)))
 
 (defun org-pandoc-plist-to-alist (plist)
   (let ((alist '()))
@@ -1176,11 +1184,12 @@ See `org-hugo-tag-processing-functions'."
    'org-hugo-tag-processing-functions
    'cashweaver-org-hugo--tag-processing-fn-roam-tags))
 
-(use-package! org-wild-notifier
-  :config
-  (setq
-   org-wild-notifier-alert-time '(10 2))
-  (org-wild-notifier-mode))
+;; Too early load error
+;; (use-package! org-wild-notifier
+;;   :config
+;;   (setq
+;;    org-wild-notifier-alert-time '(10 2))
+;;   (org-wild-notifier-mode))
 
 (use-package! writeroom-mode
   :config
@@ -1193,11 +1202,35 @@ See `org-hugo-tag-processing-functions'."
   (setq
    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 
-(use-package! org-download)
+;; Too early load error
+;; (use-package! org-download)
 
 (use-package! ol-doi)
 
 (use-package! pdf-tools)
+
+(use-package! org-transclusion
+  :after org
+  :config
+  (setq
+   org-transclusion-exclude-elements '(property-drawer
+                                       keyword)
+   org-transclusion-extensions-loaded t
+   org-transclusion-extensions '(org-transclusion-src-lines
+                                 org-transclusion-font-lock
+                                 org-transclusion-indent-mode))
+  (add-hook! 'org-mode-hook 'org-transclusion-mode)
+  ;; (set-face-attribute
+  ;;  'org-transclusion-fringe nil
+  ;;  :foreground "white"
+  ;;  :background nil)
+  (define-fringe-bitmap 'org-transclusion-fringe-bitmap
+    [17 34 68 136 68 34 17]
+    nil nil 'center)
+  ;; Re-load extensions to activate `org-transclusion-indent-mode'.
+  (org-transclusion-load-extensions-maybe t))
+
+(use-package! orgtbl-aggregate)
 
 (defun cashweaver-send-mail-function ())
 
@@ -1309,7 +1342,17 @@ See `org-hugo-tag-processing-functions'."
       :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
       :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
-   (:prefix ("M" . "Mail")
+
+   (:prefix ("l")
+    (:prefix ("T" . "transclusion")
+     :n "a" #'org-transclusion-add
+     :n "A" #'org-transclusion-add-all
+     :n "i" #'org-transclusion-make-from-link
+     :n "l" #'org-transclusion-live-sync-start
+     :n "r" #'org-transclusion-remove
+     :n "R" #'org-transclusion-remove-all))
+
+   (:prefix ("M" . "mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
 
    (:prefix ("m" . "org-roam")
