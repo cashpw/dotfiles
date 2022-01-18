@@ -751,11 +751,12 @@ This file contains the my base configuration for emacs. I have other config file
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(use-package! anki-editor
-  :config
-  (setq
-   anki-editor-remove-single-paragraph-tags t
-   anki-editor-latex-style 'mathjax))
+;; Too early load error
+;; (use-package! anki-editor
+;;   :config
+;;   (setq
+;;    anki-editor-remove-single-paragraph-tags t
+;;    anki-editor-latex-style 'mathjax))
 
 (defun cashweaver-anki-editor-insert-note ()
   (interactive)
@@ -1055,7 +1056,8 @@ A large number of angry people.
 #+end_src
 *** Config
 #+begin_src emacs-lisp :tangle config.el
-(use-package! org-mime)
+;; Too early load error
+;; (use-package! org-mime)
 #+end_src
 
 ** =org-mode=
@@ -2144,11 +2146,12 @@ See `org-hugo-tag-processing-functions'."
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(use-package! org-wild-notifier
-  :config
-  (setq
-   org-wild-notifier-alert-time '(10 2))
-  (org-wild-notifier-mode))
+;; Too early load error
+;; (use-package! org-wild-notifier
+;;   :config
+;;   (setq
+;;    org-wild-notifier-alert-time '(10 2))
+;;   (org-wild-notifier-mode))
 #+end_src
 
 ** =writeroom-mode=
@@ -2195,7 +2198,8 @@ See `org-hugo-tag-processing-functions'."
 *** Config
 
 #+begin_src emacs-lisp :tangle config.el
-(use-package! org-download)
+;; Too early load error
+;; (use-package! org-download)
 #+end_src
 ** =ol-doi=
 
