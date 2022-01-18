@@ -780,23 +780,6 @@ This file contains the my base configuration for emacs. I have other config file
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 #+end_src
-**** Work :work:
-
-#+begin_src emacs-lisp :tangle config.el
-(after! gnus-alias
-  (setq
-   gnus-alias-identity-alist '(("work"
-                                ;; Refers to
-                                nil
-                                "Cash Weaver <cashweaver@google.com>"
-                                ;; Organization
-                                nil
-                                ;; Extra headers
-                                nil
-                                ;; Body
-                                nil "~/.email_signature"))
-   gnus-alias-default-identity "work"))
-#+end_src
 
 ** =calfw=
 *** Package
