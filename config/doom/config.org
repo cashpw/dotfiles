@@ -107,6 +107,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#pdf-tools-1][=pdf-tools=]]
     - [[#package-26][Package]]
     - [[#config-21][Config]]
+  - [[#org-transclusion][=org-transclusion=]]
+    - [[#package-27][Package]]
+    - [[#config-22][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -2226,6 +2229,41 @@ See `org-hugo-tag-processing-functions'."
 (use-package! pdf-tools)
 #+end_src
 
+** =org-transclusion=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-transclusion)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! org-transclusion
+  :after org
+  :config
+  (setq
+   org-transclusion-exclude-elements '(property-drawer
+                                       keyword)
+   org-transclusion-extensions-loaded t
+   org-transclusion-extensions '(org-transclusion-src-lines
+                                 org-transclusion-font-lock
+                                 org-transclusion-indent-mode))
+  (add-hook! 'org-mode-hook 'org-transclusion-mode)
+  ;; (set-face-attribute
+  ;;  'org-transclusion-fringe nil
+  ;;  :foreground "white"
+  ;;  :background nil)
+  (define-fringe-bitmap 'org-transclusion-fringe-bitmap
+    [17 34 68 136 68 34 17]
+    nil nil 'center)
+  ;; Re-load extensions to activate `org-transclusion-indent-mode'.
+  (org-transclusion-load-extensions-maybe t))
+#+end_src
+
+#+RESULTS:
+: t
+
 * Mail
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2353,7 +2391,17 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
       :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
       :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
-   (:prefix ("M" . "Mail")
+
+   (:prefix ("l")
+    (:prefix ("T" . "transclusion")
+     :n "a" #'org-transclusion-add
+     :n "A" #'org-transclusion-add-all
+     :n "i" #'org-transclusion-make-from-link
+     :n "l" #'org-transclusion-live-sync-start
+     :n "r" #'org-transclusion-remove
+     :n "R" #'org-transclusion-remove-all))
+
+   (:prefix ("M" . "mail")
     :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
 
    (:prefix ("m" . "org-roam")
