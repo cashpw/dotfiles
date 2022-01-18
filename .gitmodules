@@ -7,3 +7,6 @@
 [submodule "config/dircolors/dircolors-solarized"]
 	path = config/dircolors/dircolors-solarized
 	url = https://github.com/seebi/dircolors-solarized.git
+[submodule "scripts/local-open"]
+	path = scripts/local-open
+	url = https://github.com/cashweaver/local-open
