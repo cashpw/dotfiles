@@ -135,5 +135,7 @@
 
 (package! pdf-tools)
 
+(package! org-transclusion)
+
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))
