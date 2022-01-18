@@ -652,10 +652,6 @@ grammar
 <<cashweaver-home-dir>>
 #+end_src
 
-
-#+RESULTS:
-: /usr/local/google/home/cashweaver
-
 ** =cashweaver-is-work-p=
 
 This file contains the my base configuration for emacs. I have other config files, namely =config-work.org=, which extend this file for specific environments.
@@ -670,9 +666,6 @@ This file contains the my base configuration for emacs. I have other config file
   ".config/doom")
  "Full path to work Emacs cofiguration files.")
 #+end_src
-
-#+RESULTS: cashweaver-work-config-dir
-: /usr/local/google/home/cashweaver/.config/doom
 
 #+name: cashweaver-is-work-p
 #+begin_src emacs-lisp
@@ -698,9 +691,6 @@ This file contains the my base configuration for emacs. I have other config file
  doom-theme 'doom-tomorrow-night
  show-trailing-whitespace t)
 #+end_src
-
-#+RESULTS:
-: t
 
 * Dates and time
 
@@ -775,9 +765,6 @@ This file contains the my base configuration for emacs. I have other config file
     (point-min)
     (anki-editor-insert-note)))
 #+end_src
-
-#+RESULTS:
-: cashweaver-anki-editor-insert-note
 
 ** =aggressive-indent=
 *** Package
@@ -1034,8 +1021,6 @@ A large number of angry people.
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
 
-#+RESULTS:
-
 ** =operate-on-number=
 *** Package
 #+begin_src emacs-lisp :tangle packages.el
@@ -1062,9 +1047,6 @@ A large number of angry people.
   :recipe (:host github
            :repo "cashweaver/org-gcal.el"))
 #+end_src
-
-#+RESULTS:
-| org-gcal | :modules | ((:private . packages) (:private . modules) (:private . config) (:private . modules)) | :recipe | (:host github :repo cashweaver/org-gcal.el) |
 
 ** =org-mime=
 *** Package
@@ -1093,7 +1075,6 @@ A large number of angry people.
                 (seq-contains-p
                  cashweaver-org-non-archival-filepaths
                  buffer-file-name))
-      (debug)
       (org-archive-subtree-default))))
 
 (defun cashweaver-org-mode-when-inprogress ()
@@ -1104,6 +1085,7 @@ A large number of angry people.
 (after! org
   :config
   (setq
+   org-export-with-tags nil
    org-ellipsis " ▾ "
    org-log-done 'time
    ;; Start the org agenda mini-calendar on Monday.
@@ -1168,8 +1150,6 @@ A large number of angry people.
    'cashweaver-org-mode-when-done))
 #+end_src
 
-#+RESULTS:
-
 *** Agenda
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1215,8 +1195,6 @@ A large number of angry people.
 
 #+end_src
 
-#+RESULTS:
-
 *** Links
 **** ISBN
 #+begin_src emacs-lisp config.el
@@ -1258,9 +1236,6 @@ A large number of angry people.
                          :follow #'org-link-isbn-open
                          :export #'org-link-isbn-export)
 #+end_src
-
-#+RESULTS:
-| :follow | org-link-isbn-open | :export | org-link-isbn-export |
 
 **** DOI
 
@@ -1307,9 +1282,6 @@ Provided in [[*=ol-doi=][=ol-doi=]].
              today-quarter-number))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-mode-insert-heading-for-this-week
-
 **** Scheduling task for my calendar blocks
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1338,9 +1310,6 @@ Provided in [[*=ol-doi=][=ol-doi=]].
                               start-time
                               end-time))))
 #+end_src
-
-#+RESULTS:
-: cashweaver-org-schedule-today-from-to
 
 **** Schedule task
 
@@ -1542,9 +1511,6 @@ Provided in [[*=ol-doi=][=ol-doi=]].
     value)))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-mode-insert-option
-
 *** Capture Templates
 
 #+begin_src emacs-lisp :tangle config.el
@@ -1590,9 +1556,6 @@ Provided in [[*=ol-doi=][=ol-doi=]].
                       (evil-org-append-line 1))))))))
 #+end_src
 
-#+RESULTS:
-| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
-
 ** =org-noter=
 *** Package
 
@@ -1618,9 +1581,6 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
     (set-buffer currenb)
     (org-noter-insert-note)))
 #+end_src
-
-#+RESULTS:
-: cashweaver-org-noter-insert-selected-text-inside-note-content
 
 ** =org-notmuch=
 *** Package
@@ -1711,15 +1671,6 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
 ;;    current-file-id))
 
 
-#+end_src
-
-#+RESULTS:
-: cashweaver-org-roam--set-filetag
-
-
-
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
 
@@ -1872,9 +1823,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        :contents-end
        link)))))
 
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el
 
 (defun cashweaver-org-roam-open-ref ()
   "Open the ROAM_REF."
@@ -1891,12 +1839,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message
        "Not an http(s) ref (%s)"
        roam-refs))))
-#+end_src
 
-#+RESULTS:
-: cashweaver-org-roam-open-ref
 
-#+begin_src emacs-lisp :tangle config.el
 ;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
 (defun cashweaver-org-roam-insert-attachment-path ()
   (let ((dir
@@ -1962,7 +1906,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
               "/home/cashweaver/proj/roam/unread.org_archive")))
   (let ((org-id-extra-files
          (org-roam-list-files)))
-    (org-hugo-export-wim-to-md))))
+    (org-hugo-export-wim-to-md)
+    )))
 
 (add-hook!
  'before-save-hook
@@ -1993,15 +1938,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              'cashweaver-org-roam-insert-attachment-path)
   (org-roam-db-autosync-mode))
 
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-org-roam-set-filetag ()
-  "Add a filetag to the current roam file."
-  (interactive))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
@@ -2029,10 +1965,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;;(cashweaver-org-hugo-export-all
  ;;"/home/cashweaver/proj/roam")
 #+end_src
-
-#+RESULTS:
-: cashweaver-org-hugo-export-all
->>>>>>> 22f7358b460c335d4fa762c6bb9ee1cbbb5a54b3
 
 ** =org-super-agenda=
 *** Package
@@ -2140,9 +2072,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
 
-#+RESULTS:
-: org-pandoc-publish-to-plain
-
 ** =pdf-tools=
 *** Package
 DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
@@ -2231,9 +2160,6 @@ See `org-hugo-tag-processing-functions'."
    'cashweaver-org-hugo--tag-processing-fn-roam-tags))
 #+end_src
 
-#+RESULTS:
-: t
-
 ** =org-wild-notifier=
 *** Package
 
@@ -2267,9 +2193,6 @@ See `org-hugo-tag-processing-functions'."
    writeroom-width 30))
 #+end_src
 
-#+RESULTS:
-: t
-
 ** =svg-tag-mode=
 
 *** Package
@@ -2287,9 +2210,6 @@ See `org-hugo-tag-processing-functions'."
    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 #+end_src
 
-#+RESULTS:
-: t
-
 ** =org-download=
 
 *** Package
@@ -2303,9 +2223,6 @@ See `org-hugo-tag-processing-functions'."
 #+begin_src emacs-lisp :tangle config.el
 (use-package! org-download)
 #+end_src
-
-#+RESULTS:
-: t
 ** =ol-doi=
 
 *** Package
@@ -2322,9 +2239,6 @@ See `org-hugo-tag-processing-functions'."
 #+begin_src emacs-lisp :tangle config.el
 (use-package! ol-doi)
 #+end_src
-
-#+RESULTS:
-: ol-doi
 
 ** =pdf-tools=
 
@@ -2408,9 +2322,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
   (evil-define-key mode keymap key sym))
 #+end_src
 
-#+RESULTS:
-: evil-lambda-key
-
 ** General
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2429,8 +2340,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
  :map global-map
  "M-N" #'operate-on-number-at-point)
 #+end_src
-
-#+RESULTS:
 
 ** =org-mode=
 
@@ -2509,8 +2418,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
     :n "i" #'org-insert-structure-template)))
 #+end_src
 
-#+RESULTS:
-
 ** =notmuch=
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2557,8 +2464,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 
 #+end_src
 
-#+RESULTS:
-
 ** =pdf-fiew-mode-map=
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2571,8 +2476,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
 #+end_src
-
-#+RESULTS:
 
 * Load Additional Config Files
 ** =config-work.el=
