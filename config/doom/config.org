@@ -107,6 +107,9 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#pdf-tools-1][=pdf-tools=]]
     - [[#package-26][Package]]
     - [[#config-21][Config]]
+  - [[#orgaggregate][=orgaggregate=]]
+    - [[#package-27][Package]]
+    - [[#config-22][Config]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -2310,6 +2313,20 @@ See `org-hugo-tag-processing-functions'."
 
 #+begin_src emacs-lisp :tangle config.el
 (use-package! pdf-tools)
+#+end_src
+
+** =orgaggregate=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! orgtbl-aggregate)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! orgtbl-aggregate)
 #+end_src
 
 * Mail
