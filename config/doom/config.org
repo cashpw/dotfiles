@@ -1967,6 +1967,13 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      (?d "to docx." org-pandoc-export-to-docx)
      (?m "to markdown." org-pandoc-export-to-markdown)
      (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (defconst org-pandoc-publish-options
+    (mapcar
+     'org-pandoc-pan-to-pub
+     (append
+      org-pandoc-valid-options
+      org-pandoc-colon-separated-options
+      org-pandoc-file-options)))
   (when (cashweaver-is-work-p)
     (setq
      org-pandoc-options-for-docx
@@ -2018,14 +2025,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (defun org-pandoc-pub-to-pan (o)
   (intern
    (substring (symbol-name o) 12)))
-
-(defconst org-pandoc-publish-options
-  (mapcar
-   'org-pandoc-pan-to-pub
-   (append
-    org-pandoc-valid-options
-    org-pandoc-colon-separated-options
-    org-pandoc-file-options)))
 
 (defun org-pandoc-plist-to-alist (plist)
   (let ((alist '()))
