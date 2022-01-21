@@ -129,17 +129,21 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 
 As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
 
+#+begin_example
 #+begin_src md :tangle foo.md
 # Foo
 #+end_src
+#+end_example
 
 Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
 
+#+begin_example
 #+begin_src md :tangle foo.md
 1. Orange
 1. Blue
 1. Red
 #+end_src
+#+end_example
 
 Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
 
