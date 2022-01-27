@@ -74,9 +74,14 @@
   cashweaver-home-dir-work
   ".config/doom")
  "Full path to work Emacs cofiguration files.")
+
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p cashweaver-work-config-dir))
+
+(setq cashweaver-home-dir (if (cashweaver-is-work-p)
+                         cashweaver-home-dir-work
+                       cashweaver-home-dir-home))
 
 (setq
  doom-theme 'doom-tomorrow-night
@@ -286,6 +291,8 @@
  cashweaver-org-non-archival-filepaths
  '())
 
+
+
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
@@ -368,8 +375,27 @@
    'org-after-todo-state-change-hook
    'cashweaver-org-mode-when-done))
 
+(defun cashweaver-org-mode-buffer-property-get (property-name)
+  (org-with-point-at 1
+    (when (re-search-forward
+           (concat "^#\\+" property-name ": \\(.*\\)")
+           (point-max) t)
+      (buffer-substring-no-properties
+       (match-beginning 1)
+       (match-end 1)))))
+
 (after! org-agenda
   (setq
+   org-duration-units `(("m" . 1)
+                        ("min" . 1)
+                        ("mins" . 1)
+                        ("h" . 60)
+                        ("d" . ,(* 60 24))
+                        ("w" . ,(* 60 24 7))
+                        ("mo" . ,(* 60 24 30))
+                        ("mos" . ,(* 60 24 30))
+                        ("M" . ,(* 60 24 30))
+                        ("y" . ,(* 60 24 365.25)))
    org-agenda-skip-scheduled-if-deadline-is-shown t
    org-agenda-skip-scheduled-if-done t
    org-agenda-skip-scheduled-if-done t
@@ -403,27 +429,48 @@
 ;; :section-numbers t
 ;; :with-toc nil))))
 
-(defun cashweaver-org-mode-insert-heading-for-today ()
-  "Insert a heading for today's date, with relevant tags."
-  (interactive)
+(defun cashweaver-org-mode--heading-text-for-today ()
+  "Return the heading text for today as a string."
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-         (today-hh-mm (cashweaver-get-date "%H:%M"))
          (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (org-insert-heading-respect-content)
+    (format "[%s %s] :week%s:quarter%s:"
+            today-yyyy-mm-dd
+            today-weekday-abbreviated-name
+            today-week-number
+            today-quarter-number)))
+
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top)
+  "Insert a heading for today's date, with relevant tags."
+  (interactive)
+  (let ((heading-text
+         (cashweaver-org-mode--heading-text-for-today))
+        (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
+        (today-hh-mm (cashweaver-get-date "%H:%M"))
+        (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
+    (if top
+        (org-insert-heading nil t t)
+      (org-insert-heading-respect-content))
     (insert
-     (format "[%s %s] :week%s:quarter%s:"
-             today-yyyy-mm-dd
-             today-weekday-abbreviated-name
-             today-week-number
-             today-quarter-number))
+     heading-text)
     (org-set-property
      "Created"
      (format "[%s %s %s]"
              today-yyyy-mm-dd
              today-weekday-abbreviated-name
              today-hh-mm))))
+
+(defun cashweaver-org-mode-heading-marker-for-today ()
+  "Return t if a heading for today exists.
+
+Refer to `cashweaver-org-mode-insert-heading-for-today'."
+  (let ((headline-text
+         (cashweaver-org-mode--heading-text-for-today))
+        (headline-marker
+         (org-find-exact-headline-in-buffer
+          headline-text)))
+    headline-marker))
 
 (defun cashweaver-org-mode-insert-heading-for-this-week ()
   "Insert a heading for this week, with relevant tags."
@@ -438,6 +485,31 @@
              today-week-number
              today-week-number
              today-quarter-number))))
+
+(setq
+ cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
+
+(defun cashweaver-org-schedule-for-block (block-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
 
 (setq
  cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
@@ -963,6 +1035,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            roam-refs)))))
 
 ;; Override
+;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
 ;;
 ;; 1. Export even on first save from org-capture.
 ;; 2. Make roam files known to org exporter.
@@ -973,13 +1046,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
               (string=
                (buffer-file-name)
                "/home/cashweaver/proj/roam/unread.org")
-             (string=
-              (buffer-file-name)
-              "/home/cashweaver/proj/roam/unread.org_archive")))
-  (let ((org-id-extra-files
-         (org-roam-list-files)))
-    (org-hugo-export-wim-to-md)
-    )))
+              (string=
+               (buffer-file-name)
+               "/home/cashweaver/proj/roam/unread.org_archive")))
+    (let ((org-id-extra-files
+           (org-roam-list-files)))
+      (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
@@ -1232,6 +1304,8 @@ See `org-hugo-tag-processing-functions'."
 
 (use-package! orgtbl-aggregate)
 
+(use-package! command-log-mode)
+
 (defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()
@@ -1298,7 +1372,9 @@ See `org-hugo-tag-processing-functions'."
    :localleader
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
-
+   (:prefix ("c")
+    :n "E" #'org-clock-modify-effort-estimate
+    :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
      :n "d" #'cashweaver-org-mode-insert-heading-for-today
@@ -1306,6 +1382,8 @@ See `org-hugo-tag-processing-functions'."
     (:prefix ("S")
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
+     (:prefix ("d" . "day")
+      :desc "Monday" :n "m" )
      (:prefix ("h" . "hour")
       (:prefix ("0" . "0?:??")
        :desc "00:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "00:00" "00:45"))

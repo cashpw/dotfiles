@@ -66,9 +66,14 @@
   cashweaver-home-dir-work
   ".config/doom")
  "Full path to work Emacs cofiguration files.")
+
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p cashweaver-work-config-dir))
+
+(setq cashweaver-home-dir (if (cashweaver-is-work-p)
+                         cashweaver-home-dir-work
+                       cashweaver-home-dir-home))
 
 (defvar
   cashweaver--local-package-path
@@ -99,7 +104,7 @@
 
 (package! org-gcal
   :recipe (:host github
-           :repo "cashweaver/org-gcal.el"))
+           :repo "kidd/org-gcal.el"))
 
 (package! org-mime)
 
@@ -138,6 +143,8 @@
 (package! org-transclusion)
 
 (package! orgtbl-aggregate)
+
+(package! command-log-mode)
 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))

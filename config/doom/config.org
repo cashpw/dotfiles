@@ -18,7 +18,6 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 - [[#general][General]]
   - [[#user-information][User Information]]
   - [[#home-directory][Home Directory]]
-  - [[#cashweaver-is-work-p][=cashweaver-is-work-p=]]
 - [[#theme-and-visual][Theme and Visual]]
 - [[#dates-and-time][Dates and time]]
   - [[#utility-functions][Utility functions]]
@@ -113,6 +112,11 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
   - [[#orgaggregate][=orgaggregate=]]
     - [[#package-28][Package]]
     - [[#config-23][Config]]
+    - [[#usage][Usage]]
+  - [[#command-log-mode][=command-log-mode=]]
+    - [[#package-29][Package]]
+    - [[#config-24][Config]]
+    - [[#usage-1][Usage]]
 - [[#mail][Mail]]
 - [[#key-bindings][Key bindings]]
   - [[#general-2][General]]
@@ -129,21 +133,17 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 
 As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
 
-#+begin_example
 #+begin_src md :tangle foo.md
 # Foo
 #+end_src
-#+end_example
 
 Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
 
-#+begin_example
 #+begin_src md :tangle foo.md
 1. Orange
 1. Blue
 1. Red
 #+end_src
-#+end_example
 
 Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
 
@@ -154,6 +154,7 @@ Now we can run =org-babel-tangle= to extract the content of these two blocks and
 1. Blue
 1. Red
 #+end_src
+
 ** Tangled Files
 
 This single file tangles the following files:
@@ -640,31 +641,17 @@ grammar
  user-full-name "Cash Weaver"
  user-mail-address "cashweaver@google.com")
 #+end_src
+
 ** Home Directory
 
-#+name: cashweaver-home-dir
+#+name: cashweaver-work-dir
 #+begin_src emacs-lisp
 (setq
  cashweaver-home-dir-home
  "/home/cashweaver"
  cashweaver-home-dir-work
  "/usr/local/google/home/cashweaver")
-#+end_src
 
-#+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashweaver-home-dir>>
-#+end_src
-
-#+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashweaver-home-dir>>
-#+end_src
-
-** =cashweaver-is-work-p=
-
-This file contains the my base configuration for emacs. I have other config files, namely =config-work.org=, which extend this file for specific environments.
-
-#+name: cashweaver-work-config-dir
-#+begin_src emacs-lisp
 (defvar
  cashweaver-work-config-dir
  (format
@@ -672,23 +659,22 @@ This file contains the my base configuration for emacs. I have other config file
   cashweaver-home-dir-work
   ".config/doom")
  "Full path to work Emacs cofiguration files.")
-#+end_src
 
-#+name: cashweaver-is-work-p
-#+begin_src emacs-lisp
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p cashweaver-work-config-dir))
+
+(setq cashweaver-home-dir (if (cashweaver-is-work-p)
+                         cashweaver-home-dir-work
+                       cashweaver-home-dir-home))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashweaver-work-config-dir>>
-<<cashweaver-is-work-p>>
+<<cashweaver-work-dir>>
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashweaver-work-config-dir>>
-<<cashweaver-is-work-p>>
+<<cashweaver-work-dir>>
 #+end_src
 
 * Theme and Visual
@@ -1036,8 +1022,11 @@ A large number of angry people.
 #+begin_src emacs-lisp :tangle packages.el
 (package! org-gcal
   :recipe (:host github
-           :repo "cashweaver/org-gcal.el"))
+           :repo "kidd/org-gcal.el"))
 #+end_src
+
+#+RESULTS:
+| org-gcal | :modules | ((:private . config) (:private . modules)) | :recipe | (:host github :repo kidd/org-gcal.el) |
 
 ** =org-mime=
 *** Package
@@ -1058,6 +1047,8 @@ A large number of angry people.
 (setq
  cashweaver-org-non-archival-filepaths
  '())
+
+
 
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
@@ -1145,8 +1136,27 @@ A large number of angry people.
 *** Agenda
 
 #+begin_src emacs-lisp :tangle config.el
+(defun cashweaver-org-mode-buffer-property-get (property-name)
+  (org-with-point-at 1
+    (when (re-search-forward
+           (concat "^#\\+" property-name ": \\(.*\\)")
+           (point-max) t)
+      (buffer-substring-no-properties
+       (match-beginning 1)
+       (match-end 1)))))
+
 (after! org-agenda
   (setq
+   org-duration-units `(("m" . 1)
+                        ("min" . 1)
+                        ("mins" . 1)
+                        ("h" . 60)
+                        ("d" . ,(* 60 24))
+                        ("w" . ,(* 60 24 7))
+                        ("mo" . ,(* 60 24 30))
+                        ("mos" . ,(* 60 24 30))
+                        ("M" . ,(* 60 24 30))
+                        ("y" . ,(* 60 24 365.25)))
    org-agenda-skip-scheduled-if-deadline-is-shown t
    org-agenda-skip-scheduled-if-done t
    org-agenda-skip-scheduled-if-done t
@@ -1158,6 +1168,8 @@ A large number of angry people.
    org-agenda-span 1
    org-agenda-start-on-weekday nil))
 #+end_src
+
+#+RESULTS:
 
 *** Publish
 
@@ -1237,27 +1249,48 @@ Provided in [[*=ol-doi=][=ol-doi=]].
 **** Create a heading for today
 
 #+begin_src emacs-lisp :tangle config.el
-(defun cashweaver-org-mode-insert-heading-for-today ()
-  "Insert a heading for today's date, with relevant tags."
-  (interactive)
+(defun cashweaver-org-mode--heading-text-for-today ()
+  "Return the heading text for today as a string."
   (let* ((today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-         (today-hh-mm (cashweaver-get-date "%H:%M"))
          (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (org-insert-heading-respect-content)
+    (format "[%s %s] :week%s:quarter%s:"
+            today-yyyy-mm-dd
+            today-weekday-abbreviated-name
+            today-week-number
+            today-quarter-number)))
+
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top)
+  "Insert a heading for today's date, with relevant tags."
+  (interactive)
+  (let ((heading-text
+         (cashweaver-org-mode--heading-text-for-today))
+        (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
+        (today-hh-mm (cashweaver-get-date "%H:%M"))
+        (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
+    (if top
+        (org-insert-heading nil t t)
+      (org-insert-heading-respect-content))
     (insert
-     (format "[%s %s] :week%s:quarter%s:"
-             today-yyyy-mm-dd
-             today-weekday-abbreviated-name
-             today-week-number
-             today-quarter-number))
+     heading-text)
     (org-set-property
      "Created"
      (format "[%s %s %s]"
              today-yyyy-mm-dd
              today-weekday-abbreviated-name
              today-hh-mm))))
+
+(defun cashweaver-org-mode-heading-marker-for-today ()
+  "Return t if a heading for today exists.
+
+Refer to `cashweaver-org-mode-insert-heading-for-today'."
+  (let ((headline-text
+         (cashweaver-org-mode--heading-text-for-today))
+        (headline-marker
+         (org-find-exact-headline-in-buffer
+          headline-text)))
+    headline-marker))
 
 (defun cashweaver-org-mode-insert-heading-for-this-week ()
   "Insert a heading for this week, with relevant tags."
@@ -1272,6 +1305,38 @@ Provided in [[*=ol-doi=][=ol-doi=]].
              today-week-number
              today-week-number
              today-quarter-number))))
+#+end_src
+
+#+RESULTS:
+: cashweaver-org-mode-insert-heading-for-this-week
+
+**** Scheduling task for my calendar blocks
+
+#+begin_src emacs-lisp :tangle config.el
+(setq
+ cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
+
+(defun cashweaver-org-schedule-for-block (block-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
 #+end_src
 
 **** Scheduling task for my calendar blocks
@@ -1602,7 +1667,6 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
 *** Config
 
-
 #+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
@@ -1883,6 +1947,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            roam-refs)))))
 
 ;; Override
+;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
 ;;
 ;; 1. Export even on first save from org-capture.
 ;; 2. Make roam files known to org exporter.
@@ -1892,14 +1957,15 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (when (not (or
               (string=
                (buffer-file-name)
-               "/home/cashweaver/proj/roam/unread.org")
-             (string=
-              (buffer-file-name)
-              "/home/cashweaver/proj/roam/unread.org_archive")))
-  (let ((org-id-extra-files
-         (org-roam-list-files)))
-    (org-hugo-export-wim-to-md)
-    )))
+               (format "%s/proj/roam/unread.org"
+                       cashweaver-home-dir))
+              (string=
+               (buffer-file-name)
+               (format "%s/proj/roam/unread.org_archive"
+                       cashweaver-home-dir))))
+    (let ((org-id-extra-files
+           (org-roam-list-files)))
+      (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
@@ -1957,6 +2023,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;;(cashweaver-org-hugo-export-all
  ;;"/home/cashweaver/proj/roam")
 #+end_src
+
+#+RESULTS:
+: cashweaver-org-hugo-export-all
 
 ** =org-super-agenda=
 *** Package
@@ -2296,6 +2365,36 @@ See `org-hugo-tag-processing-functions'."
 (use-package! orgtbl-aggregate)
 #+end_src
 
+*** Usage
+
+[[github:tbanel/orgaggregate][tbanel/orgaggregate]]
+
+** =command-log-mode=
+
+For showing which keys I'm pressing during screencasts or pairing sessions.
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! command-log-mode)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config.el
+(use-package! command-log-mode)
+#+end_src
+
+*** Usage
+
+#+begin_src emacs-lisp
+;; Enable the global mode
+(global-command-log-mode)
+
+;; Toggle the log buffer
+(clm/toggle-command-log-buffer)
+#+end_src
+
 * Mail
 
 #+begin_src emacs-lisp :tangle config.el
@@ -2379,7 +2478,9 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :localleader
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
-
+   (:prefix ("c")
+    :n "E" #'org-clock-modify-effort-estimate
+    :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
      :n "d" #'cashweaver-org-mode-insert-heading-for-today
@@ -2387,6 +2488,8 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
     (:prefix ("S")
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
+     (:prefix ("d" . "day")
+      :desc "Monday" :n "m" )
      (:prefix ("h" . "hour")
       (:prefix ("0" . "0?:??")
        :desc "00:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "00:00" "00:45"))
@@ -2455,6 +2558,8 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 #+end_src
+
+#+RESULTS:
 
 ** =notmuch=
 
@@ -2531,4 +2636,4 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 #+end_src
 * Footnotes
 
-[fn:1] 1. [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]]
+[fn:1] [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]
