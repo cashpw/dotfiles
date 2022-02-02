@@ -1,8 +1,7 @@
 #+title: Emacs Config: Base
 #+author: Cash Weaver
-#+email: cashweaver@google.com
+#+email: cashbweaver@gmail.com
 #+STARTUP: overview
-#+filetags: :foo:bar:
 
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
 
@@ -126,6 +125,10 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 - [[#load-additional-config-files][Load Additional Config Files]]
   - [[#config-workel][=config-work.el=]]
   - [[#packages-workel][=packages-work.el=]]
+- [[#wishlist][Wishlist]]
+  - [[#create-roam-node-from-link-at-point][Create roam node from link at point]]
+  - [[#change-file-structure][Change file structure]]
+  - [[#see-if-i-can-extract-anything-else-from-config-workorg][See if I can extract anything else from =config-work.org=]]
 - [[#footnotes][Footnotes]]
 
 * Introduction
@@ -1166,10 +1169,21 @@ A large number of angry people.
    org-agenda-compact-blocks t
    org-agenda-start-day nil ;; i.e. today
    org-agenda-span 1
-   org-agenda-start-on-weekday nil))
+   org-agenda-start-on-weekday nil
+
+   cashweaver-roam-agenda-files (seq-difference
+                                 (f-glob
+                                  (format "%s/proj/roam/*.org"
+                                          cashweaver-home-dir))
+                                 `(,(format "%s/proj/roam/unread.org"
+                                           cashweaver-home-dir)))
+
+   org-agenda-files (append
+                     cashweaver-roam-agenda-files)))
 #+end_src
 
 #+RESULTS:
+| /usr/local/google/home/cashweaver/proj/roam/1_rule.org | /usr/local/google/home/cashweaver/proj/roam/a.org | /usr/local/google/home/cashweaver/proj/roam/a_potter_s_workbook.org | /usr/local/google/home/cashweaver/proj/roam/ask_hn_how_do_you_learn_complex_dense_technical_information.org | /usr/local/google/home/cashweaver/proj/roam/ask_hn_what_was_the_best_decision_you_made_in_your_career.org | /usr/local/google/home/cashweaver/proj/roam/at_least_two_of_the_same.org | /usr/local/google/home/cashweaver/proj/roam/attention_capital_theory.org | /usr/local/google/home/cashweaver/proj/roam/attention_is_your_scarcest_resource.org | /usr/local/google/home/cashweaver/proj/roam/be_impatient.org | /usr/local/google/home/cashweaver/proj/roam/bloom_s_taxomomy_cognitive_domain.org | /usr/local/google/home/cashweaver/proj/roam/book_review_hoover.org | /usr/local/google/home/cashweaver/proj/roam/book_review_the_seven_principles_for_making_marriage_work.org | /usr/local/google/home/cashweaver/proj/roam/breathing_and_exercise_strength_training_for_your_diaphragm_2018.org | /usr/local/google/home/cashweaver/proj/roam/career_moat.org | /usr/local/google/home/cashweaver/proj/roam/ceramics_exercises.org | /usr/local/google/home/cashweaver/proj/roam/ceramics_pottery_resources.org | /usr/local/google/home/cashweaver/proj/roam/ceramists_potters_i_follow.org | /usr/local/google/home/cashweaver/proj/roam/create_an_oauth2_client_id.org | /usr/local/google/home/cashweaver/proj/roam/cultivate_the_skill_of_undivided_attention_or_deep_work_2019.org | /usr/local/google/home/cashweaver/proj/roam/deep_work.org | /usr/local/google/home/cashweaver/proj/roam/deep_work_hypothesis.org | /usr/local/google/home/cashweaver/proj/roam/defunctionalisation_an_underappreciated_tool_for_writing_good_software.org | /usr/local/google/home/cashweaver/proj/roam/deregulating_distraction_moving_towards_the_goal_and_level_hopping.org | /usr/local/google/home/cashweaver/proj/roam/desirable_difficulty.org | /usr/local/google/home/cashweaver/proj/roam/dnd_notes.org | /usr/local/google/home/cashweaver/proj/roam/documenting_your_work.org | /usr/local/google/home/cashweaver/proj/roam/dunning_kruger_effect.org | /usr/local/google/home/cashweaver/proj/roam/exceed_your_level.org | /usr/local/google/home/cashweaver/proj/roam/for_then_against_high_saturated_fat_diets.org | /usr/local/google/home/cashweaver/proj/roam/goals_for_2021.org | /usr/local/google/home/cashweaver/proj/roam/goals_for_2022.org | /usr/local/google/home/cashweaver/proj/roam/habits_always_form.org | /usr/local/google/home/cashweaver/proj/roam/how_i_became_a_better_programmer_2017.org | /usr/local/google/home/cashweaver/proj/roam/how_i_write_my_blog.org | /usr/local/google/home/cashweaver/proj/roam/how_to_read_a_paper_2016_pdf.org | /usr/local/google/home/cashweaver/proj/roam/how_to_write_usefully.org | /usr/local/google/home/cashweaver/proj/roam/humans_are_not_automatically_strategic.org | /usr/local/google/home/cashweaver/proj/roam/idea_queue.org | /usr/local/google/home/cashweaver/proj/roam/if_i_had_more_time_i_would_have_written_a_shorter_letter.org | /usr/local/google/home/cashweaver/proj/roam/improving_as_a_software_engineer.org | /usr/local/google/home/cashweaver/proj/roam/item_specific_processing.org | /usr/local/google/home/cashweaver/proj/roam/key_practices_for_achieving_large_professional_goals.org | /usr/local/google/home/cashweaver/proj/roam/lagging_indicator.org | /usr/local/google/home/cashweaver/proj/roam/law_of_triviality.org | /usr/local/google/home/cashweaver/proj/roam/leading_indicator.org | /usr/local/google/home/cashweaver/proj/roam/learned_blankness.org | /usr/local/google/home/cashweaver/proj/roam/levels_of_seniority.org | /usr/local/google/home/cashweaver/proj/roam/meaningful_rest.org | /usr/local/google/home/cashweaver/proj/roam/memory_in_educational_settings.org | /usr/local/google/home/cashweaver/proj/roam/mindfulness_based_stress_reduction.org | /usr/local/google/home/cashweaver/proj/roam/monica_open_source_personal_crm.org | /usr/local/google/home/cashweaver/proj/roam/monthly_newsletter_as_a_thinking_tool.org | /usr/local/google/home/cashweaver/proj/roam/my_favourite_git_commit.org | /usr/local/google/home/cashweaver/proj/roam/my_least_favorite_git_commit.org | /usr/local/google/home/cashweaver/proj/roam/noticing_the_taste_of_lotus.org | /usr/local/google/home/cashweaver/proj/roam/passive_house.org | /usr/local/google/home/cashweaver/proj/roam/permastore.org | /usr/local/google/home/cashweaver/proj/roam/polyphasic_sleep_40_day_trial_results.org | /usr/local/google/home/cashweaver/proj/roam/productivity_notes_from_sam_altman.org | /usr/local/google/home/cashweaver/proj/roam/psychophysiologic_symptom_relief_therapy.org | /usr/local/google/home/cashweaver/proj/roam/read_gmail_in_emacs_with_mbsync_and_mu4e.org | /usr/local/google/home/cashweaver/proj/roam/read_gmail_in_emacs_with_notmuch_and_lieer.org | /usr/local/google/home/cashweaver/proj/roam/readme.org | /usr/local/google/home/cashweaver/proj/roam/relational_processing.org | /usr/local/google/home/cashweaver/proj/roam/retrospective_2021.org | /usr/local/google/home/cashweaver/proj/roam/rules_must_always_be_evaluated_for_their_power_to_oppress.org | /usr/local/google/home/cashweaver/proj/roam/s_tier.org | /usr/local/google/home/cashweaver/proj/roam/smallest_word.org | /usr/local/google/home/cashweaver/proj/roam/smart_goals.org | /usr/local/google/home/cashweaver/proj/roam/socratic_grilling.org | /usr/local/google/home/cashweaver/proj/roam/somebody_else_s_problem.org | /usr/local/google/home/cashweaver/proj/roam/spaced_repetition.org | /usr/local/google/home/cashweaver/proj/roam/spacing_effect.org | /usr/local/google/home/cashweaver/proj/roam/testing_effect.org | /usr/local/google/home/cashweaver/proj/roam/the_basic_problem_of_democracy_1919.org | /usr/local/google/home/cashweaver/proj/roam/the_correct_response_to_uncertainty_is_not_half_speed.org | /usr/local/google/home/cashweaver/proj/roam/the_first_lesson.org | /usr/local/google/home/cashweaver/proj/roam/the_myth_of_the_myth_of_the_10x_programmer.org | /usr/local/google/home/cashweaver/proj/roam/the_shorter_and_plainer_the_better.org | /usr/local/google/home/cashweaver/proj/roam/the_ultimate_guide_for_becomming_an_idea_machine.org | /usr/local/google/home/cashweaver/proj/roam/theory_of_change.org | /usr/local/google/home/cashweaver/proj/roam/there_s_no_speed_limit.org | /usr/local/google/home/cashweaver/proj/roam/three_components_of_emotion.org | /usr/local/google/home/cashweaver/proj/roam/three_kinds_of_non_fiction_books.org | /usr/local/google/home/cashweaver/proj/roam/three_paths_in_the_tech_industry_founder_executive_or_employee.org | /usr/local/google/home/cashweaver/proj/roam/to_get_good_go_after_the_metagame.org | /usr/local/google/home/cashweaver/proj/roam/tsuyoku_naritai_i_want_to_become_stronger.org | /usr/local/google/home/cashweaver/proj/roam/use_plain_language.org | /usr/local/google/home/cashweaver/proj/roam/use_the_smallest_word_that_does_the_job.org | /usr/local/google/home/cashweaver/proj/roam/what_distinguishes_great_software_engineers_2019_pdf.org | /usr/local/google/home/cashweaver/proj/roam/write_prolifically_write_succinctly.org | /usr/local/google/home/cashweaver/proj/roam/write_thin_to_write_fast.org |
 
 *** Publish
 
@@ -1684,6 +1698,10 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
      [:select :distinct tag
       :from tags])))
 
+;; TODO
+(defun cashweaver-org-roam--get-all-drafts ()
+  "Return a list of nodes which are marked as drafts.")
+
 (defun cashweaver-org-roam--set-filetag (&optional node-id)
   "Add a filetag in the current file."
   (let ((tag
@@ -1824,16 +1842,18 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
-         ("HUGO_AUTO_SET_LASTMOD" . "t")))
+         ("HUGO_AUTO_SET_LASTMOD" . "t")
+         ("HUGO_DRAFT" . "t")))
+      (insert "")
       (org-insert-heading)
       (insert
-       "Summary")
+       "TODO Summary")
       (org-insert-heading)
       (insert
-       "Notes")
+       "TODO Notes")
       (org-insert-heading)
       (insert
-       "Thoughts"))))
+       "TODO Thoughts"))))
 
 (defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
@@ -1909,7 +1929,34 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        "DIR"
        dir))))
 
+(defun cashewaver-org-roam--append-to-custom-front-matter (key value)
+  "Append the provided KEY and VALUE to hugo_custom_front_matter."
+  (when (org-roam-file-p)
+    (let
+        ((keyword
+          "HUGO_CUSTOM_FRONT_MATTER")
+         (current-value
+          (org-collect-keywords
+           keyword)))
+      (message current-value)
+    (org-roam-set-keyword
+     (downcase keyword)
+     (format "%s %s"
+             key
+             value)))))
 
+(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+  "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
+  (interactive)
+  (when (org-roam-file-p)
+    (when-let
+        ((option
+          "HUGO_ALIASES")
+         (raw-roam-aliases
+          (org-export-get-node-property
+            :ROAM_ALIASES
+            (org-element-parse-buffer))))
+      (message raw-roam-aliases))))
 
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
@@ -1990,6 +2037,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
                                     "#+hugo_auto_set_lastmod: t\n"
+                                    "#+hugo_draft: t\n"
                                     "\n\n"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
@@ -2020,12 +2068,38 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ;; match
          ".org$")))
 
+(defun cashweaver-org-roam-set-filetag ()
+  "Set the filetag option based on org-roam tags."
+  (interactive)
+  (when (org-roam-file-p)
+    (let ((node-id (org-roam-node-id
+                    (org-roam-node-at-point))))
+      (cashweaver-org-roam--set-filetag
+       node-id))))
+
+(defun cashweaver-org-roam-insert-tag-link ()
+  "Insert a link to the selected tag"
+  (interactive)
+  (let ((tag
+         (completing-read
+          "Select tag: "
+          (cashweaver-org-roam--get-filetags)
+          )))
+    (insert
+     (format "[[/tags/%s][%s]]"
+             (downcase
+              (nth 0
+                   (org-hugo--tag-processing-fn-replace-with-hyphens-maybe
+                    `(,tag)
+                    `(:hugo-prefer-hyphen-in-tags ,org-hugo-prefer-hyphen-in-tags))))
+             tag))))
+
 ;;(cashweaver-org-hugo-export-all
- ;;"/home/cashweaver/proj/roam")
+;;"/home/cashweaver/proj/roam")
 #+end_src
 
 #+RESULTS:
-: cashweaver-org-hugo-export-all
+: cashweaver-org-roam-insert-tag-link
 
 ** =org-super-agenda=
 *** Package
@@ -2541,14 +2615,15 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    (:prefix ("l" . "link")
+     :n "q" #'cashweaver-org-roam-insert-tag-link)
     :desc "Tag" :n "q" (cmd! ()
                              (when (org-roam-file-p)
                                (let ((node-id (org-roam-node-id
                                                (org-roam-node-at-point))))
 
                                  (cashweaver-org-roam--set-filetag
-                                  node-id)
-                                 )))
+                                  node-id))))
     ;;#'cashweaver-org-roam--set-filetag
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point
@@ -2634,6 +2709,22 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
 (if (cashweaver-is-work-p)
     (load (concat cashweaver-work-config-dir "/packages-work.el")))
 #+end_src
+
+* Wishlist
+
+** TODO Create roam node from link at point
+:PROPERTIES:
+:Effort:   1h
+:END:
+Create a new roam node using the link at point. Pull the title used at the URL under the link; let the user override if they want to. Include the link in the node's refs.
+
+** TODO Change file structure
+
+- config.org: Base configuration that loads other configuration files.
+- config-base.org: 99% of this file right now
+- config-work.org
+** TODO See if I can extract anything else from =config-work.org=
+
 * Footnotes
 
 [fn:1] [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]

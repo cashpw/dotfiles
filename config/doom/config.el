@@ -405,7 +405,17 @@
    org-agenda-compact-blocks t
    org-agenda-start-day nil ;; i.e. today
    org-agenda-span 1
-   org-agenda-start-on-weekday nil))
+   org-agenda-start-on-weekday nil
+
+   cashweaver-roam-agenda-files (seq-difference
+                                 (f-glob
+                                  (format "%s/proj/roam/*.org"
+                                          cashweaver-home-dir))
+                                 `(,(format "%s/proj/roam/unread.org"
+                                           cashweaver-home-dir)))
+
+   org-agenda-files (append
+                     cashweaver-roam-agenda-files)))
 
 (after! org
   (setq
@@ -772,6 +782,10 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
      [:select :distinct tag
       :from tags])))
 
+;; TODO
+(defun cashweaver-org-roam--get-all-drafts ()
+  "Return a list of nodes which are marked as drafts.")
+
 (defun cashweaver-org-roam--set-filetag (&optional node-id)
   "Add a filetag in the current file."
   (let ((tag
@@ -912,16 +926,18 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
-         ("HUGO_AUTO_SET_LASTMOD" . "t")))
+         ("HUGO_AUTO_SET_LASTMOD" . "t")
+         ("HUGO_DRAFT" . "t")))
+      (insert "")
       (org-insert-heading)
       (insert
-       "Summary")
+       "TODO Summary")
       (org-insert-heading)
       (insert
-       "Notes")
+       "TODO Notes")
       (org-insert-heading)
       (insert
-       "Thoughts"))))
+       "TODO Thoughts"))))
 
 (defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
@@ -1045,10 +1061,12 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
   (when (not (or
               (string=
                (buffer-file-name)
-               "/home/cashweaver/proj/roam/unread.org")
+               (format "%s/proj/roam/unread.org"
+                       cashweaver-home-dir))
               (string=
                (buffer-file-name)
-               "/home/cashweaver/proj/roam/unread.org_archive")))
+               (format "%s/proj/roam/unread.org_archive"
+                       cashweaver-home-dir))))
     (let ((org-id-extra-files
            (org-roam-list-files)))
       (org-hugo-export-wim-to-md))))
@@ -1076,6 +1094,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
                                     "#+hugo_auto_set_lastmod: t\n"
+                                    "#+hugo_draft: t\n"
                                     "\n\n"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
@@ -1106,8 +1125,34 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ;; match
          ".org$")))
 
+(defun cashweaver-org-roam-set-filetag ()
+  "Set the filetag option based on org-roam tags."
+  (interactive)
+  (when (org-roam-file-p)
+    (let ((node-id (org-roam-node-id
+                    (org-roam-node-at-point))))
+      (cashweaver-org-roam--set-filetag
+       node-id))))
+
+(defun cashweaver-org-roam-insert-tag-link ()
+  "Insert a link to the selected tag"
+  (interactive)
+  (let ((tag
+         (completing-read
+          "Select tag: "
+          (cashweaver-org-roam--get-filetags)
+          )))
+    (insert
+     (format "[[/tags/%s][%s]]"
+             (downcase
+              (nth 0
+              (org-hugo--tag-processing-fn-replace-with-hyphens-maybe
+               `(,tag)
+               `(:hugo-prefer-hyphen-in-tags ,org-hugo-prefer-hyphen-in-tags))))
+             tag))))
+
 ;;(cashweaver-org-hugo-export-all
- ;;"/home/cashweaver/proj/roam")
+;;"/home/cashweaver/proj/roam")
 
 (use-package! ox-pandoc
   :after (:all org)
@@ -1435,14 +1480,15 @@ See `org-hugo-tag-processing-functions'."
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    (:prefix ("l" . "link")
+     :n "q" #'cashweaver-org-roam-insert-tag-link)
     :desc "Tag" :n "q" (cmd! ()
                              (when (org-roam-file-p)
                                (let ((node-id (org-roam-node-id
                                                (org-roam-node-at-point))))
 
                                  (cashweaver-org-roam--set-filetag
-                                  node-id)
-                                 )))
+                                  node-id))))
     ;;#'cashweaver-org-roam--set-filetag
     :desc "Create node from headline link" :n "N" (cmd! ()
                                                         (cashweaver-org-roam-new-node-from-link-heading-at-point

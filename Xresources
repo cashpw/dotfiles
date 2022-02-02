@@ -71,5 +71,5 @@ URxvt.keysym.Control-Shift-V: perl:pasta:paste
 !! Comment this if you do not want copy when text is selected
 URxvt.clipboard.autocopy: true
 
-Xcursor.size: 16
-!Xft.dpi: 192
+!Xcursor.size: 16
+Xft.dpi: 192

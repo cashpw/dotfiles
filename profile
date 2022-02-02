@@ -42,3 +42,5 @@ if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
     source "${preferred_screenlayout_filepath}"
   fi
 fi
+
+/usr/bin/setxkbmap -option "ctrl:swapcaps"
