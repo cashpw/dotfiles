@@ -1,297 +1,4 @@
-#+title: Emacs Config: Base
-#+author: Cash Weaver
-#+email: cashbweaver@gmail.com
-#+STARTUP: overview
-
-This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
-
-* Table of Contents :TOC_3:noexport:
-- [[#introduction][Introduction]]
-  - [[#example-of-literate-programming][Example of Literate Programming]]
-  - [[#tangled-files][Tangled Files]]
-    - [[#work][Work]]
-  - [[#function-and-variable-naming-convention][Function and Variable Naming Convention]]
-- [[#doom-emacs][Doom Emacs]]
-  - [[#configuration-file-headers][Configuration File headers]]
-  - [[#initel][=init.el=]]
-- [[#general][General]]
-  - [[#user-information][User Information]]
-  - [[#home-directory][Home Directory]]
-- [[#theme-and-visual][Theme and Visual]]
-- [[#dates-and-time][Dates and time]]
-  - [[#utility-functions][Utility functions]]
-- [[#packages][Packages]]
-  - [[#anki-editor][=anki-editor=]]
-    - [[#package][Package]]
-    - [[#config][Config]]
-  - [[#aggressive-indent][=aggressive-indent=]]
-    - [[#package-1][Package]]
-  - [[#calfw][=calfw=]]
-    - [[#package-2][Package]]
-    - [[#config-1][Config]]
-  - [[#doct-declarative-org-capture-template][=doct= (Declarative Org Capture Template)]]
-    - [[#package-3][Package]]
-    - [[#config-2][Config]]
-  - [[#free-keys][=free-keys=]]
-    - [[#package-4][Package]]
-    - [[#config-3][Config]]
-  - [[#gnus-alias][=gnus-alias=]]
-    - [[#package-5][Package]]
-    - [[#config-4][Config]]
-  - [[#langtool][=langtool=]]
-    - [[#package-6][Package]]
-    - [[#languagetool][=LanguageTool=]]
-    - [[#config-5][Config]]
-  - [[#writegood-mode][=writegood-mode=]]
-    - [[#package-7][Package]]
-  - [[#notmuch][=notmuch=]]
-    - [[#package-8][Package]]
-    - [[#config-6][Config]]
-  - [[#operate-on-number][=operate-on-number=]]
-    - [[#package-9][Package]]
-    - [[#config-7][Config]]
-  - [[#org-ql][=org-ql=]]
-    - [[#package-10][Package]]
-  - [[#org-gcal][=org-gcal=]]
-    - [[#package-11][Package]]
-  - [[#org-mime][=org-mime=]]
-    - [[#package-12][Package]]
-    - [[#config-8][Config]]
-  - [[#org-mode][=org-mode=]]
-    - [[#general-1][General]]
-    - [[#agenda][Agenda]]
-    - [[#publish][Publish]]
-    - [[#links][Links]]
-    - [[#helper-methods][Helper Methods]]
-    - [[#capture-templates][Capture Templates]]
-  - [[#org-noter][=org-noter=]]
-    - [[#package-13][Package]]
-    - [[#config-9][Config]]
-  - [[#org-notmuch][=org-notmuch=]]
-    - [[#package-14][Package]]
-    - [[#config-10][Config]]
-  - [[#org-roam][=org-roam=]]
-    - [[#package-15][Package]]
-    - [[#config-11][Config]]
-  - [[#org-super-agenda][=org-super-agenda=]]
-    - [[#package-16][Package]]
-  - [[#ox-pandoc][=ox-pandoc=]]
-    - [[#package-17][Package]]
-    - [[#config-12][Config]]
-  - [[#pdf-tools][=pdf-tools=]]
-    - [[#package-18][Package]]
-    - [[#config-13][Config]]
-  - [[#alert][=alert=]]
-    - [[#package-19][Package]]
-    - [[#config-14][Config]]
-  - [[#ox-hugo][=ox-hugo=]]
-    - [[#package-20][Package]]
-    - [[#config-15][Config]]
-  - [[#org-wild-notifier][=org-wild-notifier=]]
-    - [[#package-21][Package]]
-    - [[#config-16][Config]]
-  - [[#writeroom-mode][=writeroom-mode=]]
-    - [[#package-22][Package]]
-    - [[#config-17][Config]]
-  - [[#svg-tag-mode][=svg-tag-mode=]]
-    - [[#package-23][Package]]
-    - [[#config-18][Config]]
-  - [[#org-download][=org-download=]]
-    - [[#package-24][Package]]
-    - [[#config-19][Config]]
-  - [[#ol-doi][=ol-doi=]]
-    - [[#package-25][Package]]
-    - [[#config-20][Config]]
-  - [[#pdf-tools-1][=pdf-tools=]]
-    - [[#package-26][Package]]
-    - [[#config-21][Config]]
-  - [[#org-transclusion][=org-transclusion=]]
-    - [[#package-27][Package]]
-    - [[#config-22][Config]]
-  - [[#orgaggregate][=orgaggregate=]]
-    - [[#package-28][Package]]
-    - [[#config-23][Config]]
-    - [[#usage][Usage]]
-  - [[#command-log-mode][=command-log-mode=]]
-    - [[#package-29][Package]]
-    - [[#config-24][Config]]
-    - [[#usage-1][Usage]]
-- [[#mail][Mail]]
-- [[#key-bindings][Key bindings]]
-  - [[#general-2][General]]
-  - [[#org-mode-1][=org-mode=]]
-  - [[#notmuch-1][=notmuch=]]
-  - [[#pdf-fiew-mode-map][=pdf-fiew-mode-map=]]
-- [[#load-additional-config-files][Load Additional Config Files]]
-  - [[#config-workel][=config-work.el=]]
-  - [[#packages-workel][=packages-work.el=]]
-- [[#wishlist][Wishlist]]
-  - [[#create-roam-node-from-link-at-point][Create roam node from link at point]]
-  - [[#change-file-structure][Change file structure]]
-  - [[#see-if-i-can-extract-anything-else-from-config-workorg][See if I can extract anything else from =config-work.org=]]
-- [[#footnotes][Footnotes]]
-
-* Introduction
-** Example of Literate Programming
-
-As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
-
-#+begin_src md :tangle foo.md
-# Foo
-#+end_src
-
-Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
-
-#+begin_src md :tangle foo.md
-1. Orange
-1. Blue
-1. Red
-#+end_src
-
-Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
-
-#+begin_src md
-# Foo
-
-1. Orange
-1. Blue
-1. Red
-#+end_src
-
-** Tangled Files
-
-This single file tangles the following files:
-
-- =init.el= defines which of the existing Doom [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#modules][modules]] are loaded. A Doom module is a bundle of packages, configuration, and commands which are organized into a unit that can be toggled easily from this file.
-- =packages.el= defines which [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#package-management][packages]] should be installed, beyond those that are installed and loaded as part of the enabled modules.
-- =config.el= contains all [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#configuring-doom][custom configuration]] and code.
-
-*** Work :work:
-
-- =packages-work.el=: A version of =packages.el= which contains packages for my work environment.
-- =config-work.el=: A version of =config.el= which contains configuration for my work environment.
-
-** Function and Variable Naming Convention
-
-I prefix all of my own functions and variables with =cashweaver-= to prevent any unintentional overlaps.
-
-#+begin_src emacs-lisp
-(setq
- cashweaver-favorite-color "orange")
-#+end_src
-
-"Private" functions and variables -- those I wouldn't indend to be accessed directly -- are prefixed with =cashweaver--= (note the two =-='s).
-
-#+begin_src emacs-lisp
-(setq
- cashweaver--secret-color "blue")
-#+end_src
-
-Additionally, variables and functions which are in a "library"/group are prefixed with either =cashweaver-<library name>-= or =cashweaver-<library name>--=, depending on their intended visibility.
-
-#+begin_src emacs-lisp
-(setq
- cashweaver-colors-favorite "orange"
- cashweaver-colors--secret "blue")
-#+end_src
-
-* Doom Emacs
-
-I use [[https://github.com/hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll my entire config from scratch.
-
-** Configuration File headers
-
-There is some boilerplate which is present in the configuration files when you first create them using =doom install= which I like to preserve.
-
-#+HTMl: <details><summary>init.el</summary>
-#+attr_html: :collapsed t
-#+begin_src emacs-lisp :tangle init.el
-;;; init.el -*- lexical-binding: t; -*-
-
-;; DO NOT EDIT THIS FILE MANUALLY.
-;; This file is generated from doom.md. You should make your changes there and
-;; this file using org-babel-tangle.
-
-;; This file controls what Doom modules are enabled and what order they load
-;; in. Remember to run 'doom sync' after modifying it!
-
-;; NOTE Press 'SPC h d h' (or 'C-h d h' for non-vim users) to access Doom's
-;;      documentation. There you'll find a "Module Index" link where you'll find
-;;      a comprehensive list of Doom's modules and what flags they support.
-
-;; NOTE Move your cursor over a module's name (or its flags) and press 'K' (or
-;;      'C-c c k' for non-vim users) to view its documentation. This works on
-;;      flags as well (those symbols that start with a plus).
-;;
-;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
-;;      directory (for easy access to its source code).
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>packages.el</summary>
-#+attr_html: :collapsed t
-#+begin_src emacs-lisp :tangle packages.el
-;; -*- no-byte-compile: t; -*-
-;;; $DOOMDIR/packages.el
-
-;; DO NOT EDIT THIS FILE MANUALLY.
-;; This file is generated from doom.md. You should make your changes there and
-;; this file using org-babel-tangle.
-
-;; To install a package with Doom you must declare them here and run 'doom sync'
-;; on the command line, then restart Emacs for the changes to take effect -- or
-;; use 'M-x doom/reload'.
-
-
-;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
-;(package! some-package)
-
-;; To install a package directly from a remote git repo, you must specify a
-;; `:recipe'. You'll find documentation on what `:recipe' accepts here:
-;; https://github.com/raxod502/straight.el#the-recipe-format
-;(package! another-package
-;  :recipe (:host github :repo "username/repo"))
-
-;; If the package you are trying to install does not contain a PACKAGENAME.el
-;; file, or is located in a subdirectory of the repo, you'll need to specify
-;; `:files' in the `:recipe':
-;(package! this-package
-;  :recipe (:host github :repo "username/repo"
-;           :files ("some-file.el" "src/lisp/*.el")))
-
-;; If you'd like to disable a package included with Doom, you can do so here
-;; with the `:disable' property:
-;(package! builtin-package :disable t)
-
-;; You can override the recipe of a built in package without having to specify
-;; all the properties for `:recipe'. These will inherit the rest of its recipe
-;; from Doom or MELPA/ELPA/Emacsmirror:
-;(package! builtin-package :recipe (:nonrecursive t))
-;(package! builtin-package-2 :recipe (:repo "myfork/package"))
-
-;; Specify a `:branch' to install a package from a particular branch or tag.
-;; This is required for some packages whose default branch isn't 'master' (which
-;; our package manager can't deal with; see raxod502/straight.el#279)
-;(package! builtin-package :recipe (:branch "develop"))
-
-;; Use `:pin' to specify a particular commit to install.
-;(package! builtin-package :pin "1a2b3c4d5e")
-
-
-;; Doom's packages are pinned to a specific commit and updated from release to
-;; release. The `unpin!' macro allows you to unpin single packages...
-;(unpin! pinned-package)
-;; ...or multiple packages
-;(unpin! pinned-package another-pinned-package)
-;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
-;(unpin! t)
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>config.el</summary>
-#+attr_html: :collapsed t
-#+begin_src emacs-lisp :tangle config.el
-;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+;;; $DOOMDIR/config-personal.el -*- lexical-binding: t; -*-
 
 ;; DO NOT EDIT THIS FILE MANUALLY.
 ;; This file is generated from doom.md. You should make your changes there and
@@ -349,356 +56,25 @@ There is some boilerplate which is present in the configuration files when you f
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
-#+end_src
-#+HTMl: </details>
 
-** =init.el=
-
-#+HTMl: <details><summary>init.el</summary>
-#+attr_html: :collapsed t
-#+begin_src emacs-lisp :tangle init.el :noweb no-export
-(doom!
- :input
- <<doom-input>>
-
- :completion
- <<doom-completion>>
-
- :ui
- <<doom-ui>>
-
- :editor
- <<doom-editor>>
-
- :emacs
- <<doom-emacs>>
-
- :term
- <<doom-term>>
-
- :checkers
- <<doom-checkers>>
-
- :tools
- <<doom-tools>>
-
- :os
- <<doom-os>>
-
- :lang
- <<doom-lang>>
-
- :email
- <<doom-email>>
-
- :app
- <<doom-app>>
-
- :config
- <<doom-config>>
- )
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-input</summary>
-#+name: doom-input
-#+begin_src emacs-lisp
- ;;chinese
- ;;japanese
- ;;layout            ; auie,ctsrnm is the superior home row
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-completion</summary>
-#+name: doom-completion
-#+begin_src emacs-lisp
- company             ; the ultimate code completion backend
- ;;helm              ; the *other* search engine for love and life
- ;;ido               ; the other *other* search engine...
- ivy                 ; a search engine for love and life
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-ui</summary>
-#+name: doom-ui
-#+begin_src emacs-lisp
- ;;deft              ; notational velocity for Emacs
- doom                ; what makes DOOM look the way it does
- doom-dashboard      ; a nifty splash screen for Emacs
- doom-quit           ; DOOM quit-message prompts when you quit Emacs
- (emoji              ; 🙂
-  +ascii
-  +github
-  +unicode)
- ;;fill-column       ; a `fill-column' indicator
- hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
- ;;hydra
- ;;indent-guides     ; highlighted indent columns
- ;;ligatures         ; ligatures and symbols to make your code pretty again
- ;;minimap           ; show a map of the code on the side
- modeline            ; snazzy, Atom-inspired modeline, plus API
- ;;nav-flash         ; blink cursor line after big motions
- ;;neotree           ; a project drawer, like NERDTree for vim
- ophints             ; highlight the region an operation acts on
- (popup +defaults)   ; tame sudden yet inevitable temporary windows
- ;;tabs              ; a tab bar for Emacs
- ;;treemacs          ; a project drawer, like neotree but cooler
- unicode             ; extended unicode support for various languages
- vc-gutter           ; vcs diff in the fringe
- vi-tilde-fringe     ; fringe tildes to mark beyond EOB
- ;;window-select     ; visually switch windows
- workspaces          ; tab emulation, persistence & separate workspaces
- zen               ; distraction-free coding or writing
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-editor</summary>
-#+name: doom-editor
-#+begin_src emacs-lisp
- (evil +everywhere)  ; come to the dark side, we have cookies
- file-templates      ; auto-snippets for empty files
- fold                ; (nigh) universal code folding
- ;;(format +onsave)  ; automated prettiness
- ;;god               ; run Emacs commands without modifier keys
- lispy             ; vim for lisp, for people who don't like vim
- ;;multiple-cursors  ; editing in many places at once
- ;;objed             ; text object editing for the innocent
- ;;parinfer          ; turn lisp into python, sort of
- ;;rotate-text       ; cycle region at point between text candidates
- snippets            ; my elves. They type so I don't have to
- word-wrap           ; soft wrapping with language-aware indent
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-emacs</summary>
-#+name: doom-emacs
-#+begin_src emacs-lisp
- dired               ; making dired pretty [functional]
- electric            ; smarter, keyword-based electric-indent
- ;;ibuffer           ; interactive buffer management
- undo                ; persistent, smarter undo for your inevitable mistakes
- vc                  ; version-control and Emacs, sitting in a tree
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-term</summary>
-#+name: doom-term
-#+begin_src emacs-lisp
- ;;eshell            ; the elisp shell that works everywhere
- ;;shell             ; simple shell REPL for Emacs
- ;;term              ; basic terminal emulator for Emacs
- vterm               ; the best terminal emulation in Emacs
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-checkers</summary>
-#+name: doom-checkers
-#+begin_src emacs-lisp
-;; tasing you for every semicolon you forget
-syntax
-;; tasing you for misspelling mispelling
-(spell
- +flyspell
- +everywhere)
-;; tasing grammar mistake every you make
-grammar
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-tools</summary>
-#+name: doom-tools
-#+begin_src emacs-lisp
- ;;ansible
- ;;debugger          ; FIXME stepping through code, to help you add bugs
- ;;direnv
- ;;docker
- ;;editorconfig      ; let someone else argue about tabs vs spaces
- ;;ein               ; tame Jupyter notebooks with emacs
- (eval +overlay)     ; run code, run (also, repls)
- ;;gist              ; interacting with github gists
- lookup              ; navigate your code and its documentation
- ;;lsp
- magit               ; a git porcelain for Emacs
- ;;make              ; run make tasks from Emacs
- ;;pass              ; password manager for nerds
- pdf               ; pdf enhancements
- ;;prodigy           ; FIXME managing external services & code builders
- ;;rgb               ; creating color strings
- ;;taskrunner        ; taskrunner for all your projects
- ;;terraform         ; infrastructure as code
- ;;tmux              ; an API for interacting with tmux
- ;;upload            ; map local to remote projects via ssh/ftp
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-os</summary>
-#+name: doom-os
-#+begin_src emacs-lisp
- (:if IS-MAC macos)  ; improve compatibility with macOS
- ;;tty               ; improve the terminal Emacs experience
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-lang</summary>
-#+name: doom-lang
-#+begin_src emacs-lisp
- ;;agda              ; types of types of types of types...
- ;;cc                ; C/C++/Obj-C madness
- ;;clojure           ; java with a lisp
- ;;common-lisp       ; if you've seen one lisp, you've seen them all
- ;;coq               ; proofs-as-programs
- ;;crystal           ; ruby at the speed of c
- ;;csharp            ; unity, .NET, and mono shenanigans
- ;;data              ; config/data formats
- ;;(dart +flutter)   ; paint ui and not much else
- ;;elixir            ; erlang done right
- ;;elm               ; care for a cup of TEA?
- emacs-lisp          ; drown in parentheses
- ;;erlang            ; an elegant language for a more civilized age
- ;;ess               ; emacs speaks statistics
- ;;faust             ; dsp, but you get to keep your soul
- ;;fsharp            ; ML stands for Microsoft's Language
- ;;fstar             ; (dependent) types and (monadic) effects and Z3
- ;;gdscript          ; the language you waited for
- ;;(go +lsp)         ; the hipster dialect
- ;;(haskell +dante)  ; a language that's lazier than I am
- ;;hy                ; readability of scheme w/ speed of python
- ;;idris             ; a language you can depend on
- ;;json              ; At least it ain't XML
- java                ; the poster child for carpal tunnel syndrome
- javascript          ; all(hope(abandon(ye(who(enter(here))))))
- ;;julia             ; a better, faster MATLAB
- ;;kotlin            ; a better, slicker Java(Script)
- ;;latex             ; writing papers in Emacs has never been so fun
- ;;lean
- ;;factor
- ;;ledger            ; an accounting system in Emacs
- ;;lua               ; one-based indices? one-based indices
- markdown            ; writing docs for people to ignore
- ;;nim               ; python + lisp at the speed of c
- ;;nix               ; I hereby declare "nix geht mehr!"
- ;;ocaml             ; an objective camel
- (org                ; organize your plain life in plain text
-  +noter
-  +pretty
-  +roam2
-  +pandoc
-  +pomodoro)
- ;;php               ; perl's insecure younger brother
- ;;plantuml          ; diagrams for confusing people more
- ;;purescript        ; javascript, but functional
- python              ; beautiful is better than ugly
- ;;qt                ; the 'cutest' gui framework ever
- ;;racket            ; a DSL for DSLs
- ;;raku              ; the artist formerly known as perl6
- ;;rest              ; Emacs as a REST client
- ;;rst               ; ReST in peace
- ;;(ruby +rails)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
- ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
- ;;scala             ; java, but good
- ;;scheme            ; a fully conniving family of lisps
- sh                  ; she sells {ba,z,fi}sh shells on the C xor
- ;;sml
- ;;solidity          ; do you need a blockchain? No.
- ;;swift             ; who asked for emoji variables?
- ;;terra             ; Earth and Moon in alignment for performance.
- ;;web               ; the tubes
- yaml                ; JSON, but readable
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-email</summary>
-#+name: doom-email
-#+begin_src emacs-lisp
- ;;(mu4e +gmail)
- notmuch
- ;;(wanderlust +gmail)
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-app</summary>
-#+name: doom-app
-#+begin_src emacs-lisp
- ;;calendar
- ;;emms
- everywhere
- ;;irc               ; how neckbeards socialize
- ;;(rss +org)        ; emacs as an RSS reader
- ;;twitter           ; twitter client https://twitter.com/vnought
-#+end_src
-#+HTMl: </details>
-
-#+HTMl: <details><summary>doom-config</summary>
-#+name: doom-config
-#+begin_src emacs-lisp
- ;;literate
- (default +bindings +smartparens)
-#+end_src
-#+HTMl: </details>
-
-* General
-** User Information
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  user-full-name "Cash Weaver"
  user-mail-address "cashweaver@google.com")
-#+end_src
 
-** Home Directory
-
-#+name: cashweaver-work-dir
-#+begin_src emacs-lisp
 (setq
- cashweaver-home-dir-home
- "/home/cashweaver"
- cashweaver-home-dir-work
- "/usr/local/google/home/cashweaver")
+ cashweaver-path--roam-bibliography
+ (format "%s/proj/roam/bibliography.bib"
+         cashweaver-home-dir)
+ cashweaver-bibliographies `(,cashweaver-path--roam-bibliography))
 
-(defvar
- cashweaver-work-config-dir
- (format
-  "%s/%s"
-  cashweaver-home-dir-work
-  ".config/doom")
- "Full path to work Emacs cofiguration files.")
-
-(defun cashweaver-is-work-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p cashweaver-work-config-dir))
-
-(setq cashweaver-home-dir (if (cashweaver-is-work-p)
-                         cashweaver-home-dir-work
-                       cashweaver-home-dir-home))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashweaver-work-dir>>
-#+end_src
-
-#+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashweaver-work-dir>>
-#+end_src
-
-* Theme and Visual
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  doom-theme 'doom-tomorrow-night
  show-trailing-whitespace t)
-#+end_src
 
-* Dates and time
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  ;; Use YYYY-MM-DD date format.
  calendar-date-style 'iso)
-#+end_src
 
-** Utility functions
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-get-date (&optional date-format offset-days)
   "Return the (offset) date in format."
   (interactive)
@@ -722,31 +98,7 @@ grammar
    "%Y-%m-%d"
    ; offset-days
    -1))
-#+end_src
 
-* Packages
-
-#+begin_src emacs-lisp :tangle packages.el
-(defvar
-  cashweaver--local-package-path
-  (if (cashweaver-is-work-p)
-      "/usr/local/google/home/cashweaver/third_party"
-    "/home/cashweaver/third_party")
-  "Path to local emacs package files.")
-#+end_src
-
-** =anki-editor=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! anki-editor
-  :recipe (:host github
-           :repo "cashweaver/anki-editor"))
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 ;; Too early load error
 ;; (use-package! anki-editor
 ;;   :config
@@ -761,28 +113,11 @@ grammar
        "~/proj/anki-cards/anki.org")
     (point-min)
     (anki-editor-insert-note)))
-#+end_src
 
-** =aggressive-indent=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! aggressive-indent)
-#+end_src
-
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
-#+end_src
 
-** =calfw=
-*** Package
-Provided through =app/calendar= in =init.el=.
-
-*** Config
-#+begin_src emacs-lisp :tangle config.el
 ;(use-package! calfw-cal
 ;  :config
 ;  (setq
@@ -799,51 +134,17 @@ Provided through =app/calendar= in =init.el=.
 ;   :contents-sources
 ;   (list
 ;    (cfw:org-create-source "Green"))))
-#+end_src
 
-** =doct= ([[https://github.com/progfolio/doct][Declarative Org Capture Template]])
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! doct)
-#+end_src
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! doct
   :commands (doct))
-#+end_src
-** =free-keys=
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! free-keys
-  :recipe (:host github
-           :repo "Fuco1/free-keys"))
-#+end_src
 
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! free-keys)
-#+end_src
 
-** =gnus-alias=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! gnus-alias)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! gnus-alias
   :config
   (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
   (gnus-alias-init))
-#+end_src
-**** Work :work:
 
-#+begin_src emacs-lisp :tangle config.el
 (after! gnus-alias
   (setq
    gnus-alias-identity-alist '(("work"
@@ -857,27 +158,7 @@ Provided through =app/calendar= in =init.el=.
                                 ;; Body
                                 nil "~/.email_signature"))
    gnus-alias-default-identity "work"))
-#+end_src
 
-** =langtool=
-
-*** Package
-
-=langtool= is provided by =init.el=.
-
-*** =LanguageTool=
-
-Install =LanguageTool=:
-
-A large number of angry people.
-
-1. Download the [[https://languagetool.org/download/LanguageTool-stable.zip][latest stable build]].
-2. Store it somewhere on your system.
-3. Configure =langtool-language-tool-server-jar=.
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! langtool
   :init
   (setq
@@ -892,22 +173,7 @@ A large number of angry people.
    "en-US"
    langtool-mother-tongue
    "en"))
-#+end_src
 
-** =writegood-mode=
-
-*** Package
-
-=writegood-mode= is provided by =init.el=.
-
-** =notmuch=
-*** Package
-
-=notmuch= is provided by =init.el=.
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-notmuch-show-open-or-close-all ()
   "Toggle between showing and hiding all messages in the thread."
   (interactive))
@@ -999,74 +265,40 @@ A large number of angry people.
   ;; Prevent wrapping at 70 characters in email composition.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
-#+end_src
 
-** =operate-on-number=
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! operate-on-number
-  :recipe (:host github
-           :repo "knu/operate-on-number.el"))
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! operate-on-number)
-#+end_src
 
-** =org-ql=
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-ql)
-#+end_src
-** =org-gcal=
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-gcal
-  :recipe (:host github
-           :repo "kidd/org-gcal.el"))
-#+end_src
-
-#+RESULTS:
-| org-gcal | :modules | ((:private . config) (:private . modules)) | :recipe | (:host github :repo kidd/org-gcal.el) |
-
-** =org-mime=
-*** Package
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-mime)
-#+end_src
-*** Config
-#+begin_src emacs-lisp :tangle config.el
 ;; Too early load error
 ;; (use-package! org-mime)
-#+end_src
 
-** =org-mode=
-
-*** General
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
- cashweaver-org-non-archival-filepaths
- '())
+ cashweaver-org-archival-filepaths
+ `(,(format "%s/proj/roam/unread.org"
+           cashweaver-home-dir)))
 
-
+(defun cashweaver-org-mode-when-inprogress ()
+  "Handle inprogress behavior."
+  ;; Intentionally disabled for the moment. Leave the method here for reference.
+  ;; (cond ((string-equal
+  ;;         (org-get-todo-state)
+  ;;         "INPROGRESS")
+  ;;        (org-clock-in)
+  ;;        ))
+  )
 
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (when (org-entry-is-done-p)
-    (org-clock-out-if-current)
-    (unless (or (org-get-repeat)
-                (seq-contains-p
+  (cond ((org-entry-is-done-p)
+         (org-clock-out-if-current)
+         (cond ((org-get-repeat)
+                ;; Do nothing
+                nil)
+               ((seq-contains-p
                  cashweaver-org-non-archival-filepaths
-                 buffer-file-name))
-      (org-archive-subtree-default))))
-
-(defun cashweaver-org-mode-when-inprogress ()
-  "Handle inprogress ehavior"
-  (when (string-equal (org-get-todo-state) "INPROGRESS")
-    (org-clock-in)))
+                 buffer-file-name)
+                (org-archive-subtree-default))
+               (t
+                (org-cut-subtree))))))
 
 (after! org
   :config
@@ -1134,11 +366,7 @@ A large number of angry people.
   (add-hook!
    'org-after-todo-state-change-hook
    'cashweaver-org-mode-when-done))
-#+end_src
 
-*** Agenda
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-mode-buffer-property-get (property-name)
   (org-with-point-at 1
     (when (re-search-forward
@@ -1169,25 +397,8 @@ A large number of angry people.
    org-agenda-compact-blocks t
    org-agenda-start-day nil ;; i.e. today
    org-agenda-span 1
-   org-agenda-start-on-weekday nil
+   org-agenda-start-on-weekday nil))
 
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir))
-                                 `(,(format "%s/proj/roam/unread.org"
-                                           cashweaver-home-dir)))
-
-   org-agenda-files (append
-                     cashweaver-roam-agenda-files)))
-#+end_src
-
-#+RESULTS:
-| /usr/local/google/home/cashweaver/proj/roam/1_rule.org | /usr/local/google/home/cashweaver/proj/roam/a.org | /usr/local/google/home/cashweaver/proj/roam/a_potter_s_workbook.org | /usr/local/google/home/cashweaver/proj/roam/ask_hn_how_do_you_learn_complex_dense_technical_information.org | /usr/local/google/home/cashweaver/proj/roam/ask_hn_what_was_the_best_decision_you_made_in_your_career.org | /usr/local/google/home/cashweaver/proj/roam/at_least_two_of_the_same.org | /usr/local/google/home/cashweaver/proj/roam/attention_capital_theory.org | /usr/local/google/home/cashweaver/proj/roam/attention_is_your_scarcest_resource.org | /usr/local/google/home/cashweaver/proj/roam/be_impatient.org | /usr/local/google/home/cashweaver/proj/roam/bloom_s_taxomomy_cognitive_domain.org | /usr/local/google/home/cashweaver/proj/roam/book_review_hoover.org | /usr/local/google/home/cashweaver/proj/roam/book_review_the_seven_principles_for_making_marriage_work.org | /usr/local/google/home/cashweaver/proj/roam/breathing_and_exercise_strength_training_for_your_diaphragm_2018.org | /usr/local/google/home/cashweaver/proj/roam/career_moat.org | /usr/local/google/home/cashweaver/proj/roam/ceramics_exercises.org | /usr/local/google/home/cashweaver/proj/roam/ceramics_pottery_resources.org | /usr/local/google/home/cashweaver/proj/roam/ceramists_potters_i_follow.org | /usr/local/google/home/cashweaver/proj/roam/create_an_oauth2_client_id.org | /usr/local/google/home/cashweaver/proj/roam/cultivate_the_skill_of_undivided_attention_or_deep_work_2019.org | /usr/local/google/home/cashweaver/proj/roam/deep_work.org | /usr/local/google/home/cashweaver/proj/roam/deep_work_hypothesis.org | /usr/local/google/home/cashweaver/proj/roam/defunctionalisation_an_underappreciated_tool_for_writing_good_software.org | /usr/local/google/home/cashweaver/proj/roam/deregulating_distraction_moving_towards_the_goal_and_level_hopping.org | /usr/local/google/home/cashweaver/proj/roam/desirable_difficulty.org | /usr/local/google/home/cashweaver/proj/roam/dnd_notes.org | /usr/local/google/home/cashweaver/proj/roam/documenting_your_work.org | /usr/local/google/home/cashweaver/proj/roam/dunning_kruger_effect.org | /usr/local/google/home/cashweaver/proj/roam/exceed_your_level.org | /usr/local/google/home/cashweaver/proj/roam/for_then_against_high_saturated_fat_diets.org | /usr/local/google/home/cashweaver/proj/roam/goals_for_2021.org | /usr/local/google/home/cashweaver/proj/roam/goals_for_2022.org | /usr/local/google/home/cashweaver/proj/roam/habits_always_form.org | /usr/local/google/home/cashweaver/proj/roam/how_i_became_a_better_programmer_2017.org | /usr/local/google/home/cashweaver/proj/roam/how_i_write_my_blog.org | /usr/local/google/home/cashweaver/proj/roam/how_to_read_a_paper_2016_pdf.org | /usr/local/google/home/cashweaver/proj/roam/how_to_write_usefully.org | /usr/local/google/home/cashweaver/proj/roam/humans_are_not_automatically_strategic.org | /usr/local/google/home/cashweaver/proj/roam/idea_queue.org | /usr/local/google/home/cashweaver/proj/roam/if_i_had_more_time_i_would_have_written_a_shorter_letter.org | /usr/local/google/home/cashweaver/proj/roam/improving_as_a_software_engineer.org | /usr/local/google/home/cashweaver/proj/roam/item_specific_processing.org | /usr/local/google/home/cashweaver/proj/roam/key_practices_for_achieving_large_professional_goals.org | /usr/local/google/home/cashweaver/proj/roam/lagging_indicator.org | /usr/local/google/home/cashweaver/proj/roam/law_of_triviality.org | /usr/local/google/home/cashweaver/proj/roam/leading_indicator.org | /usr/local/google/home/cashweaver/proj/roam/learned_blankness.org | /usr/local/google/home/cashweaver/proj/roam/levels_of_seniority.org | /usr/local/google/home/cashweaver/proj/roam/meaningful_rest.org | /usr/local/google/home/cashweaver/proj/roam/memory_in_educational_settings.org | /usr/local/google/home/cashweaver/proj/roam/mindfulness_based_stress_reduction.org | /usr/local/google/home/cashweaver/proj/roam/monica_open_source_personal_crm.org | /usr/local/google/home/cashweaver/proj/roam/monthly_newsletter_as_a_thinking_tool.org | /usr/local/google/home/cashweaver/proj/roam/my_favourite_git_commit.org | /usr/local/google/home/cashweaver/proj/roam/my_least_favorite_git_commit.org | /usr/local/google/home/cashweaver/proj/roam/noticing_the_taste_of_lotus.org | /usr/local/google/home/cashweaver/proj/roam/passive_house.org | /usr/local/google/home/cashweaver/proj/roam/permastore.org | /usr/local/google/home/cashweaver/proj/roam/polyphasic_sleep_40_day_trial_results.org | /usr/local/google/home/cashweaver/proj/roam/productivity_notes_from_sam_altman.org | /usr/local/google/home/cashweaver/proj/roam/psychophysiologic_symptom_relief_therapy.org | /usr/local/google/home/cashweaver/proj/roam/read_gmail_in_emacs_with_mbsync_and_mu4e.org | /usr/local/google/home/cashweaver/proj/roam/read_gmail_in_emacs_with_notmuch_and_lieer.org | /usr/local/google/home/cashweaver/proj/roam/readme.org | /usr/local/google/home/cashweaver/proj/roam/relational_processing.org | /usr/local/google/home/cashweaver/proj/roam/retrospective_2021.org | /usr/local/google/home/cashweaver/proj/roam/rules_must_always_be_evaluated_for_their_power_to_oppress.org | /usr/local/google/home/cashweaver/proj/roam/s_tier.org | /usr/local/google/home/cashweaver/proj/roam/smallest_word.org | /usr/local/google/home/cashweaver/proj/roam/smart_goals.org | /usr/local/google/home/cashweaver/proj/roam/socratic_grilling.org | /usr/local/google/home/cashweaver/proj/roam/somebody_else_s_problem.org | /usr/local/google/home/cashweaver/proj/roam/spaced_repetition.org | /usr/local/google/home/cashweaver/proj/roam/spacing_effect.org | /usr/local/google/home/cashweaver/proj/roam/testing_effect.org | /usr/local/google/home/cashweaver/proj/roam/the_basic_problem_of_democracy_1919.org | /usr/local/google/home/cashweaver/proj/roam/the_correct_response_to_uncertainty_is_not_half_speed.org | /usr/local/google/home/cashweaver/proj/roam/the_first_lesson.org | /usr/local/google/home/cashweaver/proj/roam/the_myth_of_the_myth_of_the_10x_programmer.org | /usr/local/google/home/cashweaver/proj/roam/the_shorter_and_plainer_the_better.org | /usr/local/google/home/cashweaver/proj/roam/the_ultimate_guide_for_becomming_an_idea_machine.org | /usr/local/google/home/cashweaver/proj/roam/theory_of_change.org | /usr/local/google/home/cashweaver/proj/roam/there_s_no_speed_limit.org | /usr/local/google/home/cashweaver/proj/roam/three_components_of_emotion.org | /usr/local/google/home/cashweaver/proj/roam/three_kinds_of_non_fiction_books.org | /usr/local/google/home/cashweaver/proj/roam/three_paths_in_the_tech_industry_founder_executive_or_employee.org | /usr/local/google/home/cashweaver/proj/roam/to_get_good_go_after_the_metagame.org | /usr/local/google/home/cashweaver/proj/roam/tsuyoku_naritai_i_want_to_become_stronger.org | /usr/local/google/home/cashweaver/proj/roam/use_plain_language.org | /usr/local/google/home/cashweaver/proj/roam/use_the_smallest_word_that_does_the_job.org | /usr/local/google/home/cashweaver/proj/roam/what_distinguishes_great_software_engineers_2019_pdf.org | /usr/local/google/home/cashweaver/proj/roam/write_prolifically_write_succinctly.org | /usr/local/google/home/cashweaver/proj/roam/write_thin_to_write_fast.org |
-
-*** Publish
-
-#+begin_src emacs-lisp :tangle config.el
 (after! org
   (setq
    org-publish-project-alist
@@ -1210,59 +421,6 @@ A large number of angry people.
 ;; :section-numbers t
 ;; :with-toc nil))))
 
-
-#+end_src
-
-*** Links
-**** ISBN
-#+begin_src emacs-lisp config.el
-;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
-
-(defvar org-link-isbn-server-url
-  "https://books.google.com/books?vid=ISBN"
-  "The URL of the ISBN server.")
-
-(defun org-link-isbn-open (path arg)
-  "Open a \"ISBN\" type link."
-  (browse-url
-   (url-encode-url
-    (concat
-     org-link-isbn-server-url
-     path)) arg))
-
-(defun org-link-doi-export (path desc backend info)
-  "Export a \"ISBN\" type link."
-  (let ((uri
-         (concat org-link-isbn-server-url path)))
-    (pcase backend
-      (`html
-       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
-      (`latex
-       (if desc (format "\\href{%s}{%s}" uri desc)
-         (format "\\url{%s}" uri)))
-      (`ascii
-       (if (not desc) (format "<%s>" uri)
-         (concat (format "[%s]" desc)
-                 (and (not (plist-get info :ascii-links-to-notes))
-                      (format " (<%s>)" uri)))))
-      (`texinfo
-       (if (not desc) (format "@uref{%s}" uri)
-         (format "@uref{%s, %s}" uri desc)))
-      (_ uri))))
-
-(org-link-set-parameters "isbn"
-                         :follow #'org-link-isbn-open
-                         :export #'org-link-isbn-export)
-#+end_src
-
-**** DOI
-
-Provided in [[*=ol-doi=][=ol-doi=]].
-
-*** Helper Methods
-**** Create a heading for today
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-mode--heading-text-for-today ()
   "Return the heading text for today as a string."
   (let* ((today-week-number (cashweaver-get-date "%W"))
@@ -1319,14 +477,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
              today-week-number
              today-week-number
              today-quarter-number))))
-#+end_src
 
-#+RESULTS:
-: cashweaver-org-mode-insert-heading-for-this-week
-
-**** Scheduling task for my calendar blocks
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
  cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
@@ -1351,11 +502,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               date
                               start-time
                               end-time))))
-#+end_src
 
-**** Scheduling task for my calendar blocks
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
  cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
@@ -1380,11 +527,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               date
                               start-time
                               end-time))))
-#+end_src
 
-**** Schedule task
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org--schedule-today-at (start-time-as-string)
   "Schedule a task today at the specified time."
   (interactive "sWhen?: ")
@@ -1408,11 +551,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               minute))
     (message (number-to-string hour))
     ))
-#+end_src
 
-**** Schedule task for duration
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org--schedule-for (start-time end-time &optional date)
   (let ((date (or date "today")))
     (org-schedule nil (format "%s %s-%s"
@@ -1423,9 +562,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               ;date
                               ;start-time
                               ;end-time))))
-#+end_src
 
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
   (let* ((start-time-in-minutes-since-midnight
          (+ start-minute (* start-hour 60)))
@@ -1440,11 +577,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               start-minute
                               end-hour
                               end-minute))))
-#+end_src
 
-**** Scheduling task at start of pomodoro
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  cashweaver--schedule-pomodoro-one '(:start "09:00" :end "09:50")
  cashweaver--schedule-pomodoro-two '(:start "10:00" :end "10:50")
@@ -1456,9 +589,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
  cashweaver--schedule-pomodoro-eight '(:start "16:00" :end "16:50")
  cashweaver--schedule-pomodoro-nine '(:start "17:00" :end "17:50")
  cashweaver--schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
-#+end_src
 
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-schedule-at-pomodoro (pomodoro-time &optional date)
   (interactive)
   (let ((start-time (plist-get pomodoro-time :start)))
@@ -1466,11 +597,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     (org-schedule nil (format "%s %s"
                               date
                               start-time)))
-#+end_src
 
-**** Scheduling task in N hours
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-schedule-in-n-hours (offset-hours &optional date)
   (interactive)
   (let* ((time-list (parse-time-string (current-time-string)))
@@ -1482,11 +609,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               date
                               hour
                               current-minute))))
-#+end_src
 
-**** Scheduling task in N days
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-schedule-in-n-workdays (num-days &optional time)
   (interactive)
   (let*
@@ -1497,11 +620,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
      (format "%s %s"
              offset-days
              time))))
-#+end_src
 
-**** Goto most recent timestamp in buffer
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-get-timestamps-in-time-order ()
   "Return a list of timestamps from the current buffer in time order."
   (cl-sort
@@ -1538,14 +657,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
       (goto-char
        (cdr
         (pop timestamps))))))
-#+end_src
 
-#+RESULTS:
-: cashweaver-org-goto-most-recent-timestamp-with-property
-
-**** Edit FILETAGS
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-mode-set-filetag (value)
   "Add another option; requires at least one option to already be present."
   (message "---")
@@ -1580,11 +692,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     "#+%s: %s\n"
     option
     value)))
-#+end_src
 
-*** Capture Templates
-
-#+begin_src emacs-lisp :tangle config.el
 (after! org
   (setq
    org-capture-templates
@@ -1625,22 +733,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                         (insert field))
                       (outline-up-heading 1)
                       (evil-org-append-line 1))))))))
-#+end_src
 
-** =org-noter=
-*** Package
-
-I've customized org-noter to [[https://github.com/cashweaver/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]]
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-noter
-  :recipe (:host github
-           :repo "cashweaver/org-noter"))
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
 
@@ -1651,37 +744,34 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
     (org-noter-insert-precise-note)
     (set-buffer currenb)
     (org-noter-insert-note)))
-#+end_src
 
-** =org-notmuch=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! ol-notmuch
-  :recipe `(:local-repo
-            ,(format
-              "%s/%s"
-              cashweaver--local-package-path
-              "org-mode/contrib/lisp")
-            :files
-            ("ol-notmuch.el")))
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! ol-notmuch
   :after org)
-#+end_src
 
-** =org-roam=
-*** Package
+(use-package! org-super-agenda
+  :demand t
+  :after
+  (:all
+   org-agenda
+   evil
+   ;;evil-org
+   evil-org-agenda)
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   cashweaver-roam-agenda-files (seq-difference
+                                 (f-glob
+                                  (format "%s/proj/roam/*.org"
+                                          cashweaver-home-dir))
+                                 `(,(format "%s/proj/roam/unread.org"
+                                           cashweaver-home-dir)))
+   org-agenda-custom-commands '(("r" "Roam"
+                                 ((alltodo "" ((org-agenda-overriding-header "")
+                                               (org-agenda-files
+                                                cashweaver-roam-agenda-files))))))))
 
-=org-roam= is provided by =init.el=.
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
 
@@ -2096,28 +1186,32 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 ;;(cashweaver-org-hugo-export-all
 ;;"/home/cashweaver/proj/roam")
-#+end_src
 
-#+RESULTS:
-: cashweaver-org-roam-insert-tag-link
+(defun cashweaver/org-roam-node-from-cite (keys-entries)
+  "Create a roam node based on bibliography citation.
 
-** =org-super-agenda=
-*** Package
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
+  (let ((title (citar--format-entry-no-widths (cdr keys-entries)
+                                              "${author editor} :: ${title}")))
+    (org-roam-capture- :templates
+                       '(("r" "reference" plain "%?" :if-new
+                          (file+head "${citekey}.org"
+                                     ":PROPERTIES:
+:ROAM_REFS: [cite:@${citekey}]
+:END:
+#+title: ${title}\n
+#+author: Cash Weaver\n
+#+date: [%<%Y-%m-%d %a %H:%M>]\n
+#+startup: overview\n
+#+hugo_auto_set_lastmod: t\n
+#+hugo_draft: t\n\n")
+                          :immediate-finish t
+                          :unnarrowed t))
+                       :info (list :citekey (car keys-entries))
+                       :node (org-roam-node-create :title title)
+                       :props '(:finalize find-file))))
 
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-super-agenda)
-#+end_src
-
-** =ox-pandoc=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! ox-pandoc)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! ox-pandoc
   :after (:all org)
   :config
@@ -2204,43 +1298,15 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 (defun org-pandoc-publish-to-plain (plist filename pub-dir)
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
-#+end_src
 
-** =pdf-tools=
-*** Package
-DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
-
-=pdf-tools= is provided by =init.el=.
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! pdf-tools
   :config
   (pdf-tools-install))
-#+end_src
 
-** =alert=
-*** Package
-=alert= is provided by Doom Emacs.
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (setq
  alert-fade-time 60
  alert-default-style 'libnotify)
-#+end_src
 
-** =ox-hugo=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! ox-hugo)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-org-hugo--export-all-roam ()
   "Export all roam nodes."
   (interactive)
@@ -2292,114 +1358,32 @@ See `org-hugo-tag-processing-functions'."
   (add-to-list
    'org-hugo-tag-processing-functions
    'cashweaver-org-hugo--tag-processing-fn-roam-tags))
-#+end_src
 
-** =org-wild-notifier=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-wild-notifier)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 ;; Too early load error
 ;; (use-package! org-wild-notifier
 ;;   :config
 ;;   (setq
 ;;    org-wild-notifier-alert-time '(10 2))
 ;;   (org-wild-notifier-mode))
-#+end_src
 
-** =writeroom-mode=
-
-*** Package
-
-=init.el= provides =writeroom-mode=.
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! writeroom-mode
   :config
   (setq
    +zen-mixed-pitch-modes '()
    writeroom-width 30))
-#+end_src
 
-** =svg-tag-mode=
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! svg-tag-mode)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! svg-tag-mode
   :config
   (setq
    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
-#+end_src
 
-** =org-download=
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-download)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 ;; Too early load error
 ;; (use-package! org-download)
-#+end_src
-** =ol-doi=
 
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! ol-doi
-  :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
-           :branch "main"
-           :files ("lisp/ol-doi.el")))
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! ol-doi)
-#+end_src
 
-** =pdf-tools=
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! pdf-tools)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! pdf-tools)
-#+end_src
 
-** =org-transclusion=
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-transclusion)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! org-transclusion
   :after org
   :config
@@ -2420,58 +1404,26 @@ See `org-hugo-tag-processing-functions'."
     nil nil 'center)
   ;; Re-load extensions to activate `org-transclusion-indent-mode'.
   (org-transclusion-load-extensions-maybe t))
-#+end_src
 
-#+RESULTS:
-: t
-
-** =orgaggregate=
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! orgtbl-aggregate)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! orgtbl-aggregate)
-#+end_src
 
-*** Usage
-
-[[github:tbanel/orgaggregate][tbanel/orgaggregate]]
-
-** =command-log-mode=
-
-For showing which keys I'm pressing during screencasts or pairing sessions.
-
-*** Package
-
-#+begin_src emacs-lisp :tangle packages.el
-(package! command-log-mode)
-#+end_src
-
-*** Config
-
-#+begin_src emacs-lisp :tangle config.el
 (use-package! command-log-mode)
-#+end_src
 
-*** Usage
+(use-package! citar
+  :when (featurep! :completion vertico)
+  :config
+  (setq
+   citar-bibliography cashweaver-bibliographies))
 
-#+begin_src emacs-lisp
-;; Enable the global mode
-(global-command-log-mode)
+(use-package! oc
+  :after org citar
+  :config
+  (setq
+   org-cite-global-bibliography cashweaver-bibliographies
+   org-cite-insert-processor 'citar
+   org-cite-follow-processor 'citar
+   org-cite-activate-processor 'citar))
 
-;; Toggle the log buffer
-(clm/toggle-command-log-buffer)
-#+end_src
-
-* Mail
-
-#+begin_src emacs-lisp :tangle config.el
 (defun cashweaver-send-mail-function ())
 
 (defun cashweaver-mail-htmlize-and-send-org-mail ()
@@ -2508,24 +1460,14 @@ For showing which keys I'm pressing during screencasts or pairing sessions.
 (setq
  send-mail-function #'google-sendgmr-send-it
  message-send-mail-function #'google-sendgmr-send-it)
-#+end_src
 
-* Key bindings
-
-Key bindings, in my experience, don't benefit from the same "tangle-like" style of spreading them throughout the config. I prefer to have my key bindings all in one place.
-
-#+begin_src emacs-lisp :tangle config.el
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
   (set 'sym (make-symbol (documentation def)))
   (fset sym def)
   (evil-define-key mode keymap key sym))
-#+end_src
 
-** General
-
-#+begin_src emacs-lisp :tangle config.el
 (map!
  ;; Keep in alphabetical order.
  (:leader
@@ -2540,11 +1482,7 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
  ;; Keep in alphabetical order.
  :map global-map
  "M-N" #'operate-on-number-at-point)
-#+end_src
 
-** =org-mode=
-
-#+begin_src emacs-lisp :tangle config.el
 (after! org
   ;; Keep in alphabetical order.
   (map!
@@ -2632,13 +1570,7 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
     :desc "Publish all" :n "p" #'cashweaver-org-hugo-export-all)
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
-#+end_src
 
-#+RESULTS:
-
-** =notmuch=
-
-#+begin_src emacs-lisp :tangle config.el
 (after! notmuch
   ;; Keep in alphabetical order.
   (map!
@@ -2679,12 +1611,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
                                                            (interactive)
                                                            (cashweaver-notmuch-search-toggle-tag "waiting"))))
 
-
-#+end_src
-
-** =pdf-fiew-mode-map=
-
-#+begin_src emacs-lisp :tangle config.el
 (after! org-noter
   (map!
    :map pdf-view-mode-map
@@ -2693,38 +1619,3 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :n "n" #'org-noter-insert-note
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
-#+end_src
-
-* Load Additional Config Files
-** =config-work.el=
-
-#+begin_src emacs-lisp :tangle config.el :noweb no-export
-(if (cashweaver-is-work-p)
-    (load (concat cashweaver-work-config-dir "/config-work.el")))
-#+end_src
-
-** =packages-work.el=
-
-#+begin_src emacs-lisp :tangle packages.el :noweb no-export
-(if (cashweaver-is-work-p)
-    (load (concat cashweaver-work-config-dir "/packages-work.el")))
-#+end_src
-
-* Wishlist
-
-** TODO Create roam node from link at point
-:PROPERTIES:
-:Effort:   1h
-:END:
-Create a new roam node using the link at point. Pull the title used at the URL under the link; let the user override if they want to. Include the link in the node's refs.
-
-** TODO Change file structure
-
-- config.org: Base configuration that loads other configuration files.
-- config-base.org: 99% of this file right now
-- config-work.org
-** TODO See if I can extract anything else from =config-work.org=
-
-* Footnotes
-
-[fn:1] [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]

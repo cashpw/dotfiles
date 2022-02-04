@@ -1,0 +1,86 @@
+#+title: Emacs Config: Base
+#+author: Cash Weaver
+#+email: cashbweaver@gmail.com
+#+STARTUP: overview
+
+* Overview
+
+Welcome to my Emacs configuration! I've split my work and personal configuration files as (1) I need slighly different things in my work environment and (2) I depend on private plugins for work which I don't have the rights to publish. The work configuration files build on top of the personal ones.
+
+* Home Directory
+
+#+name: cashweaver-work-dir
+#+begin_src emacs-lisp
+(defvar
+  cashweaver-home-dir-path-personal
+  "/home/cashweaver"
+  "Path to home directory on my personal machine.")
+
+(defvar
+  cashweaver-home-dir-path-work
+  "/usr/local/google/home/cashweaver"
+  "Path to home directory on my work machine(s).")
+
+(defun cashweaver-is-work-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p
+   cashweaver-home-dir-work))
+
+(defvar
+  cashweaver-home-dir-path
+  (if (cashweaver-is-work-p)
+      cashweaver-home-dir-work
+    cashweaver-home-dir-home)
+  "Path to home directory.")
+
+(defvar
+  cashweaver-config-dir-path
+  (format
+   "%s/%s"
+   cashweaver-home-dir-path
+   ".config")
+  "Full path to configuration files.")
+
+(defvar
+  cashweaver-emacs-config-path
+  (format
+   "%s/%s"
+   cashweaver-config-dir-path
+   ".config/doom")
+  "Full path to Emacs configuration files.")
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+<<cashweaver-work-dir>>
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+<<cashweaver-work-dir>>
+#+end_src
+
+* Load Additional Config Files
+** Base
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+(load (concat cashweaver-work-config-dir "/config-personal.el"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+(load (concat cashweaver-work-config-dir "/packages-personal.el"))
+#+end_src
+
+** Work
+
+#+begin_src emacs-lisp :tangle config.el :noweb no-export
+(when (cashweaver-is-work-p)
+  (load
+   (format "%s/config-work.el"
+           cashweaver-work-config-dir)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+(when (cashweaver-is-work-p)
+  (load
+   (format "%s/packages-work.el"
+           cashweaver-work-config-dir)))
+#+end_src
