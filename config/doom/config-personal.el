@@ -1,7 +1,7 @@
 (setq
  ;; User information
  user-full-name "Cash Weaver"
- user-mail-address "cashbweaver@gmail.com"
+ user-mail-address "cashbweaver@gmail.com")
 
 (setq
  ;; Use YYYY-MM-DD date format.
@@ -584,6 +584,10 @@
   (setq
    org-export-with-tags nil))
 
+(defun org-pandoc-pan-to-pub (o)
+  (intern
+   (format ":org-pandoc-%s" o)))
+
 (use-package! ox-pandoc
   :after (:all org)
   :config
@@ -643,10 +647,6 @@
       (process-put process 'files (list tempfile))
       (process-put process 'output-file outfile)
       (process-put process 'local-hook-symbol local-hook-symbol))))
-
-(defun org-pandoc-pan-to-pub (o)
-  (intern
-   (format ":org-pandoc-%s" o)))
 
 (defun org-pandoc-pub-to-pan (o)
   (intern
@@ -1024,8 +1024,27 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
             (org-element-parse-buffer))))
       (message raw-roam-aliases))))
 
+(defun cashweaver-org-roam--process-ref-before-adding-to-front-matter (ref)
+  (cond
+   ((string-match-p "^\\[cite" ref)
+    nil
+    ;; (let ((citation
+    ;;        (save-excursion
+    ;;          (beginning-of-buffer)
+    ;;          (search-forward ref)
+    ;;          (org-element-citation-parser))))
+    ;;   (org-cite-export-citation
+    ;;    citation
+    ;;    nil
+    ;;    '(:cite-export nil)
+    ;;    ))
+    )
+   (t
+    ref)))
+
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
+  (interactive)
   (when (org-roam-file-p)
     (when-let*
         ((keyword
@@ -1038,14 +1057,20 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           (split-string
            raw-roam-refs
            " +"))
+         (valid-refs
+          (-filter
+           (lambda (ref)
+             (not (string-match-p "^\\[cite" ref)))
+           refs))
          (roam-refs
           (format
            "roam_refs '(%s)"
            (string-join
             (mapcar
              (lambda (ref)
-               (format "\"%s\"" ref))
-             refs)
+               (format "\"%s\""
+                       ref))
+             valid-refs)
             " ")))
          (current-roam-refs
           (or
@@ -1058,6 +1083,60 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           (org-roam-set-keyword
            (downcase keyword)
            roam-refs)))))
+
+(cl-defun cashweaver-org-roam--add-bibliography (&optional skip-if-present)
+  "Add #+print_bibiliography to the current buffer."
+  (when (not (org-roam-file-p))
+    (return-from
+        cashweaver-org-roam--add-bibliography))
+
+  (save-excursion
+    (beginning-of-buffer)
+    (when (not (search-forward
+              "[cite"
+              ;; bound
+              nil
+              ;; no-error
+              t))
+        (return-from
+            cashweaver-org-roam--add-bibliography)))
+
+  (let* ((skip-if-present
+         (or skip-if-present
+             t))
+        (option
+         "#+print_bibliography:")
+        (option-present-in-buffer
+         (save-excursion
+           (beginning-of-buffer)
+           (search-forward
+            option
+            ;; bound
+            nil
+            ;; no-error
+            t))))
+
+    (when (not skip-if-present)
+      (save-excursion
+        (end-of-buffer)
+      (insert (format "* Bibliography
+
+%s"
+                      option)))
+      (return-from
+          cashweaver-org-roam--add-bibliography))
+
+    (when (and skip-if-present
+               option-present-in-buffer)
+      (return-from
+          cashweaver-org-roam--add-bibliography))
+
+    (save-excursion
+      (end-of-buffer)
+      (insert (format "* Bibliography
+
+%s"
+                      option)))))
 
 ;; Override
 ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
@@ -1078,11 +1157,18 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                        cashweaver-home-dir-path))))
     (let ((org-id-extra-files
            (org-roam-list-files)))
+      ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+      ;; (cashweaver-org-roam--add-bibliography
+      ;;  ;; skip-if-present
+      ;;  t)
       (org-hugo-export-wim-to-md))))
 
 (add-hook!
  'before-save-hook
  #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+(add-hook!
+ 'before-save-hook
+ #'cashweaver-org-roam--add-bibliography)
 
 (use-package! org-roam
   :after org
