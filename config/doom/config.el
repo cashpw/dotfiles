@@ -11,13 +11,13 @@
 (defun cashweaver-is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p
-   cashweaver-home-dir-work))
+   cashweaver-home-dir-path-work))
 
 (defvar
   cashweaver-home-dir-path
   (if (cashweaver-is-work-p)
-      cashweaver-home-dir-work
-    cashweaver-home-dir-home)
+      cashweaver-home-dir-path-work
+    cashweaver-home-dir-path-personal)
   "Path to home directory.")
 
 (defvar
@@ -29,16 +29,16 @@
   "Full path to configuration files.")
 
 (defvar
-  cashweaver-emacs-config-path
+  cashweaver-emacs-config-dir-path
   (format
    "%s/%s"
    cashweaver-config-dir-path
-   ".config/doom")
+   "doom")
   "Full path to Emacs configuration files.")
 
-(load (concat cashweaver-work-config-dir "/config-personal.el"))
+(load (concat cashweaver-emacs-config-dir-path "/config-personal.el"))
 
 (when (cashweaver-is-work-p)
   (load
    (format "%s/config-work.el"
-           cashweaver-work-config-dir)))
+           cashweaver-emacs-config-dir-path)))

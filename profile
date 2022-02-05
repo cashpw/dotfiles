@@ -43,4 +43,4 @@ if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   fi
 fi
 
-/usr/bin/setxkbmap -option "ctrl:swapcaps"
+# /usr/bin/setxkbmap -option "ctrl:swapcaps"

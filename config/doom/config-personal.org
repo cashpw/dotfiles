@@ -1,144 +1,9 @@
-#+title: Emacs Config: Base
+#+title: Emacs Config: Personal
 #+author: Cash Weaver
 #+email: cashbweaver@gmail.com
 #+STARTUP: overview
 
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
-
-* Table of Contents :TOC_3:noexport:
-- [[#introduction][Introduction]]
-  - [[#example-of-literate-programming][Example of Literate Programming]]
-  - [[#tangled-files][Tangled Files]]
-    - [[#work][Work]]
-  - [[#function-and-variable-naming-convention][Function and Variable Naming Convention]]
-- [[#doom-emacs][Doom Emacs]]
-  - [[#configuration-file-headers][Configuration File headers]]
-  - [[#initel][=init.el=]]
-- [[#general][General]]
-  - [[#user-information][User Information]]
-  - [[#home-directory][Home Directory]]
-  - [[#citations][Citations]]
-    - [[#reformat-config-file-bundle-this-and-the-citar-and-oc-packages][Reformat config file; bundle this and the =citar= and =oc= packages]]
-- [[#theme-and-visual][Theme and Visual]]
-- [[#dates-and-time][Dates and time]]
-  - [[#utility-functions][Utility functions]]
-- [[#packages][Packages]]
-  - [[#anki-editor][=anki-editor=]]
-    - [[#package][Package]]
-    - [[#config][Config]]
-  - [[#aggressive-indent][=aggressive-indent=]]
-    - [[#package-1][Package]]
-  - [[#calfw][=calfw=]]
-    - [[#package-2][Package]]
-    - [[#config-1][Config]]
-  - [[#doct-declarative-org-capture-template][=doct= (Declarative Org Capture Template)]]
-    - [[#package-3][Package]]
-    - [[#config-2][Config]]
-  - [[#free-keys][=free-keys=]]
-    - [[#package-4][Package]]
-    - [[#config-3][Config]]
-  - [[#gnus-alias][=gnus-alias=]]
-    - [[#package-5][Package]]
-    - [[#config-4][Config]]
-  - [[#langtool][=langtool=]]
-    - [[#package-6][Package]]
-    - [[#languagetool][=LanguageTool=]]
-    - [[#config-5][Config]]
-  - [[#writegood-mode][=writegood-mode=]]
-    - [[#package-7][Package]]
-  - [[#notmuch][=notmuch=]]
-    - [[#package-8][Package]]
-    - [[#config-6][Config]]
-  - [[#operate-on-number][=operate-on-number=]]
-    - [[#package-9][Package]]
-    - [[#config-7][Config]]
-  - [[#org-ql][=org-ql=]]
-    - [[#package-10][Package]]
-  - [[#org-gcal][=org-gcal=]]
-    - [[#package-11][Package]]
-  - [[#org-mime][=org-mime=]]
-    - [[#package-12][Package]]
-    - [[#config-8][Config]]
-  - [[#org-mode][=org-mode=]]
-    - [[#general-1][General]]
-    - [[#agenda][Agenda]]
-    - [[#publish][Publish]]
-    - [[#links][Links]]
-    - [[#helper-methods][Helper Methods]]
-    - [[#capture-templates][Capture Templates]]
-  - [[#org-noter][=org-noter=]]
-    - [[#package-13][Package]]
-    - [[#config-9][Config]]
-  - [[#org-notmuch][=org-notmuch=]]
-    - [[#package-14][Package]]
-    - [[#config-10][Config]]
-  - [[#org-super-agenda][=org-super-agenda=]]
-    - [[#package-15][Package]]
-    - [[#config-11][Config]]
-  - [[#org-roam][=org-roam=]]
-    - [[#package-16][Package]]
-    - [[#config-12][Config]]
-  - [[#ox-pandoc][=ox-pandoc=]]
-    - [[#package-17][Package]]
-    - [[#config-13][Config]]
-  - [[#pdf-tools][=pdf-tools=]]
-    - [[#package-18][Package]]
-    - [[#config-14][Config]]
-  - [[#alert][=alert=]]
-    - [[#package-19][Package]]
-    - [[#config-15][Config]]
-  - [[#ox-hugo][=ox-hugo=]]
-    - [[#package-20][Package]]
-    - [[#config-16][Config]]
-  - [[#org-wild-notifier][=org-wild-notifier=]]
-    - [[#package-21][Package]]
-    - [[#config-17][Config]]
-  - [[#writeroom-mode][=writeroom-mode=]]
-    - [[#package-22][Package]]
-    - [[#config-18][Config]]
-  - [[#svg-tag-mode][=svg-tag-mode=]]
-    - [[#package-23][Package]]
-    - [[#config-19][Config]]
-  - [[#org-download][=org-download=]]
-    - [[#package-24][Package]]
-    - [[#config-20][Config]]
-  - [[#ol-doi][=ol-doi=]]
-    - [[#package-25][Package]]
-    - [[#config-21][Config]]
-  - [[#pdf-tools-1][=pdf-tools=]]
-    - [[#package-26][Package]]
-    - [[#config-22][Config]]
-  - [[#org-transclusion][=org-transclusion=]]
-    - [[#package-27][Package]]
-    - [[#config-23][Config]]
-  - [[#orgaggregate][=orgaggregate=]]
-    - [[#package-28][Package]]
-    - [[#config-24][Config]]
-    - [[#usage][Usage]]
-  - [[#command-log-mode][=command-log-mode=]]
-    - [[#package-29][Package]]
-    - [[#config-25][Config]]
-    - [[#usage-1][Usage]]
-  - [[#citar][=citar=]]
-    - [[#package-30][Package]]
-    - [[#config-26][Config]]
-  - [[#oc][=oc=]]
-    - [[#package-31][Package]]
-    - [[#config-27][Config]]
-- [[#mail][Mail]]
-- [[#key-bindings][Key bindings]]
-  - [[#general-2][General]]
-  - [[#org-mode-1][=org-mode=]]
-  - [[#notmuch-1][=notmuch=]]
-  - [[#pdf-fiew-mode-map][=pdf-fiew-mode-map=]]
-- [[#load-additional-config-files][Load Additional Config Files]]
-  - [[#config-workel][=config-work.el=]]
-  - [[#packages-workel][=packages-work.el=]]
-- [[#wishlist][Wishlist]]
-  - [[#create-roam-node-from-link-at-point][Create roam node from link at point]]
-  - [[#change-file-structure][Change file structure]]
-  - [[#see-if-i-can-extract-anything-else-from-config-workorg][See if I can extract anything else from =config-work.org=]]
-- [[#footnotes][Footnotes]]
 
 * Introduction
 ** Example of Literate Programming
@@ -661,7 +526,7 @@ everywhere
 (setq
  cashweaver-path--roam-bibliography
  (format "%s/proj/roam/bibliography.bib"
-         cashweaver-home-dir)
+         cashweaver-home-dir-path)
  cashweaver-bibliographies `(,cashweaver-path--roam-bibliography))
 #+end_src
 
@@ -1040,7 +905,7 @@ A large number of angry people.
 (setq
  cashweaver-org-archival-filepaths
  `(,(format "%s/proj/roam/unread.org"
-           cashweaver-home-dir)))
+           cashweaver-home-dir-path)))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
@@ -1689,9 +1554,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir))
+                                          cashweaver-home-dir-path))
                                  `(,(format "%s/proj/roam/unread.org"
-                                           cashweaver-home-dir)))
+                                           cashweaver-home-dir-path)))
    org-agenda-custom-commands '(("r" "Roam"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
@@ -2032,11 +1897,11 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
               (string=
                (buffer-file-name)
                (format "%s/proj/roam/unread.org"
-                       cashweaver-home-dir))
+                       cashweaver-home-dir-path))
               (string=
                (buffer-file-name)
                (format "%s/proj/roam/unread.org_archive"
-                       cashweaver-home-dir))))
+                       cashweaver-home-dir-path))))
     (let ((org-id-extra-files
            (org-roam-list-files)))
       (org-hugo-export-wim-to-md))))
