@@ -2648,6 +2648,14 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
 #+end_src
 
+* INPROGRESS New Hierarchy
+** Appearance
+** Applications
+*** Mail
+** Languages
+*** Org
+*** Java
+
 * Wishlist
 ** TODO [#4] Create roam node from link at point
 :PROPERTIES:
