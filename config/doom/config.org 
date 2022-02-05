@@ -9,7 +9,7 @@ Welcome to my Emacs configuration! I've split my work and personal configuration
 
 * Home Directory
 
-#+name: cashweaver-work-dir
+#+name: cashweaver-home-dir
 #+begin_src emacs-lisp
 (defvar
   cashweaver-home-dir-path-personal
@@ -51,15 +51,15 @@ Welcome to my Emacs configuration! I've split my work and personal configuration
 #+end_src
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashweaver-work-dir>>
+<<cashweaver-home-dir>>
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashweaver-work-dir>>
+<<cashweaver-home-dir>>
 #+end_src
 
 * Load Additional Config Files
-** Base
+** Personal
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 (load (concat cashweaver-work-config-dir "/config-personal.el"))
