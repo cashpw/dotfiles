@@ -1,3 +1,11 @@
+(package! free-keys
+  :recipe (:host github
+           :repo "Fuco1/free-keys"))
+
+(package! command-log-mode)
+
+(package! org-wild-notifier)
+
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages-personal.el
 
@@ -53,30 +61,21 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
-(defvar
-  cashweaver--local-package-path
-  (if (cashweaver-is-work-p)
-      "/usr/local/google/home/cashweaver/third_party"
-    "/home/cashweaver/third_party")
-  "Path to local emacs package files.")
+(package! svg-tag-mode)
+
+(package! gnus-alias)
+
+(package! aggressive-indent)
+
+(package! operate-on-number
+  :recipe (:host github
+           :repo "knu/operate-on-number.el"))
 
 (package! anki-editor
   :recipe (:host github
            :repo "cashweaver/anki-editor"))
 
-(package! aggressive-indent)
-
 (package! doct)
-
-(package! free-keys
-  :recipe (:host github
-           :repo "Fuco1/free-keys"))
-
-(package! gnus-alias)
-
-(package! operate-on-number
-  :recipe (:host github
-           :repo "knu/operate-on-number.el"))
 
 (package! org-ql)
 
@@ -90,26 +89,17 @@
   :recipe (:host github
            :repo "cashweaver/org-noter"))
 
-(package! ol-notmuch
-  :recipe `(:local-repo
-            ,(format
-              "%s/%s"
-              cashweaver--local-package-path
-              "org-mode/contrib/lisp")
-            :files
-            ("ol-notmuch.el")))
+(package! ol-notmuch)
 
 (package! org-super-agenda)
 
 (package! ox-pandoc)
 
-(package! ox-hugo)
-
-(package! org-wild-notifier)
-
-(package! svg-tag-mode)
-
 (package! org-download)
+
+(package! orgtbl-aggregate)
+
+(package! org-transclusion)
 
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
@@ -117,9 +107,3 @@
            :files ("lisp/ol-doi.el")))
 
 (package! pdf-tools)
-
-(package! org-transclusion)
-
-(package! orgtbl-aggregate)
-
-(package! command-log-mode)

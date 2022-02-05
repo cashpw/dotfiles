@@ -7,6 +7,63 @@
 
 Welcome to my Emacs configuration! I've split my work and personal configuration files as (1) I need slighly different things in my work environment and (2) I depend on private plugins for work which I don't have the rights to publish. The work configuration files build on top of the personal ones.
 
+* Introduction
+** Literate Programming
+
+My configuration files use literate programming. As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
+
+#+begin_example
+,#+begin_src md :tangle foo.md
+# Foo
+,#+end_src
+#+end_example
+
+Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
+
+#+begin_example
+,#+begin_src md :tangle foo.md
+1. Orange
+1. Blue
+1. Red
+,#+end_src
+#+end_example
+
+Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
+
+#+begin_example
+,#+begin_src md
+# Foo
+
+1. Orange
+1. Blue
+1. Red
+,#+end_src
+#+end_example
+
+** Function and Variable Naming Convention
+
+I prefix all of my own functions and variables with =cashweaver-= to prevent any unintentional overlaps.
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver-favorite-color "orange")
+#+end_src
+
+"Private" functions and variables -- those I wouldn't indend to be accessed directly -- are prefixed with =cashweaver--= (note the two =-='s).
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver--secret-color "blue")
+#+end_src
+
+Additionally, variables and functions which are in a "library"/group are prefixed with either =cashweaver-<library name>-= or =cashweaver-<library name>--=, depending on their intended visibility.
+
+#+begin_src emacs-lisp
+(setq
+ cashweaver-colors-favorite "orange"
+ cashweaver-colors--secret "blue")
+#+end_src
+
 * Home Directory
 
 #+name: cashweaver-home-dir
@@ -48,6 +105,7 @@ Welcome to my Emacs configuration! I've split my work and personal configuration
    cashweaver-config-dir-path
    "doom")
   "Full path to Emacs configuration files.")
+
 #+end_src
 
 #+RESULTS: cashweaver-home-dir
@@ -59,6 +117,17 @@ Welcome to my Emacs configuration! I've split my work and personal configuration
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
 <<cashweaver-home-dir>>
+#+end_src
+
+* Path to Local Packages
+
+#+begin_src emacs-lisp :tangle packages.el
+(defvar
+  cashweaver-third-party-path
+  (if (cashweaver-is-work-p)
+      "/usr/local/google/home/cashweaver/third_party"
+    "/home/cashweaver/third_party")
+  "Path to third-party files.")
 #+end_src
 
 * Load Additional Config Files

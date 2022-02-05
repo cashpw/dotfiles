@@ -36,6 +36,13 @@
    "doom")
   "Full path to Emacs configuration files.")
 
+(defvar
+  cashweaver-third-party-path
+  (if (cashweaver-is-work-p)
+      "/usr/local/google/home/cashweaver/third_party"
+    "/home/cashweaver/third_party")
+  "Path to third-party files.")
+
 (load (concat cashweaver-emacs-config-dir-path "/packages-personal.el"))
 
 (when (cashweaver-is-work-p)
