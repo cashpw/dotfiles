@@ -5,47 +5,49 @@
 
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
 
-* Introduction
-** Example of Literate Programming
+* INPROGRESS New Hierarchy
+** Introduction
+*** Example of Literate Programming
 
 As an example of literate programming with =org-mode=, let's generate a throw-away file, =foo.md=. First, we'll add the title:
 
-#+begin_src md :tangle foo.md
+#+begin_example
+,#+begin_src md :tangle foo.md
 # Foo
-#+end_src
+,#+end_src
+#+end_example
 
 Notice that I specified the syntax (=md=) and the file to output the content to (=foo.md=). Next, let's add a list of my favorite colors.
 
-#+begin_src md :tangle foo.md
+#+begin_example
+,#+begin_src md :tangle foo.md
 1. Orange
 1. Blue
 1. Red
-#+end_src
+,#+end_src
+#+end_example
 
 Now we can run =org-babel-tangle= to extract the content of these two blocks and create =foo.md=. The newly generated =foo.md= will contain:
 
-#+begin_src md
+#+begin_example
+,#+begin_src md
 # Foo
 
 1. Orange
 1. Blue
 1. Red
-#+end_src
+,#+end_src
+#+end_example
 
-** TODO Tangled Files
+*** Tangled Files
 
-This single file tangles the following files:
+Running =org-babel-tangle= in this file will create the following:
 
-- =init.el= defines which of the existing Doom [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#modules][modules]] are loaded. A Doom module is a bundle of packages, configuration, and commands which are organized into a unit that can be toggled easily from this file.
-- =packages-personal.el= defines which [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#package-management][packages]] should be installed, beyond those that are installed and loaded as part of the enabled modules.
-- =config-personal.el= contains all [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#configuring-doom][custom configuration]] and code.
+1. =init.el=: specifies which Doom [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#modules][modules]] I want to load.
+2. =packages-personal.el=: defines the additional [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#package-management][packages]], beyond those provided based on =init.el=, that I want installed.
+3. =config-personal.el=: contains all [[https://github.com/hlissner/doom-emacs/blob/develop/docs/getting_started.org#configuring-doom][custom configuration]] and code.
 
-*** TODO Work :work:
-
-- =packages-work.el=: A version of =packages-personal.el= which contains packages for my work environment.
-- =config-work.el=: A version of =config-personal.el= which contains configuration for my work environment.
-
-** Function and Variable Naming Convention
+*** TODO Function and Variable Naming Convention
 
 I prefix all of my own functions and variables with =cashweaver-= to prevent any unintentional overlaps.
 
@@ -68,14 +70,60 @@ Additionally, variables and functions which are in a "library"/group are prefixe
  cashweaver-colors-favorite "orange"
  cashweaver-colors--secret "blue")
 #+end_src
+** General
 
-* Doom Emacs
+*** User Information
 
-I use [[https://github.com/hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll my entire config from scratch.
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ ;; User information
+ user-full-name "Cash Weaver"
+ user-mail-address "cashbweaver@gmail.com"
+#+end_src
 
-** Configuration File headers
+*** Date and Time
 
-There is some boilerplate which is present in the configuration files when you first create them using =doom install= which I like to preserve.
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ ;; Use YYYY-MM-DD date format.
+ calendar-date-style 'iso)
+#+end_src
+
+**** Helper Functions
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashweaver-get-date (&optional date-format offset-days)
+  "Return the (offset) date in format."
+  (interactive)
+  (let ((date-format (or date-format "%Y-%m-%d"))
+        (offset-days (or offset-days 0)))
+    (shell-command-to-string
+     (format "echo -n $(date \"+%s\" --date=\"%d days\")" date-format offset-days))))
+
+(defun cashweaver-todays-date ()
+  "Return todays date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   0))
+
+(defun cashweaver-yesterdays-date ()
+  "Return yesterday's date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   -1))
+#+end_src
+
+** Doom Emacs
+
+I use [[https://github.com/hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
+
+*** Configuration File headers
+
+The base configuration files (=init.el=, =config.el=, and =packages.el=) include a bit of boilerplate when you first create them using =doom install=. I like to preserve this boilerplate.
 
 #+HTMl: <details><summary>init.el</summary>
 #+attr_html: :collapsed t
@@ -226,7 +274,7 @@ There is some boilerplate which is present in the configuration files when you f
 #+end_src
 #+HTMl: </details>
 
-** =init.el=
+*** =init.el=
 
 #+HTMl: <details><summary>init.el</summary>
 #+attr_html: :collapsed t
@@ -398,7 +446,7 @@ magit             ; a git porcelain for Emacs
 ;;pass              ; password manager for nerds
 pdf               ; pdf enhancements
 ;;prodigy           ; FIXME managing external services & code builders
-;;rgb               ; creating color strings
+rgb               ; creating color strings
 ;;taskrunner        ; taskrunner for all your projects
 ;;terraform         ; infrastructure as code
 ;;tmux              ; an API for interacting with tmux
@@ -454,11 +502,12 @@ markdown            ; writing docs for people to ignore
 ;;nix               ; I hereby declare "nix geht mehr!"
 ;;ocaml             ; an objective camel
 (org                ; organize your plain life in plain text
-+noter
-+pretty
-+roam2
-+pandoc
-+pomodoro)
+ +hugo
+ +noter
+ +pretty
+ +roam2
+ +pandoc
+ +pomodoro)
 ;;php               ; perl's insecure younger brother
 ;;plantuml          ; diagrams for confusing people more
 ;;purescript        ; javascript, but functional
@@ -510,16 +559,21 @@ everywhere
 (default +bindings +smartparens)
 #+end_src
 #+HTMl: </details>
-
-* General
-** User Information
+** Appearance
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
- user-full-name "Cash Weaver"
- user-mail-address "cashweaver@google.com")
+ doom-theme 'doom-tomorrow-night
+ show-trailing-whitespace t)
 #+end_src
 
+** Applications
+*** Mail
+** Languages
+*** Org
+*** Java
+
+* General
 ** Citations
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -534,50 +588,6 @@ everywhere
 | /usr/local/google/home/cashweaver/proj/roam/bibliography.bib |
 
 *** TODO Reformat config file; bundle this and the =citar= and =oc= packages
-
-* Theme and Visual
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(setq
- doom-theme 'doom-tomorrow-night
- show-trailing-whitespace t)
-#+end_src
-
-* Dates and time
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(setq
- ;; Use YYYY-MM-DD date format.
- calendar-date-style 'iso)
-#+end_src
-
-** Utility functions
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun cashweaver-get-date (&optional date-format offset-days)
-  "Return the (offset) date in format."
-  (interactive)
-  (let ((date-format (or date-format "%Y-%m-%d"))
-        (offset-days (or offset-days 0)))
-    (shell-command-to-string
-     (format "echo -n $(date \"+%s\" --date=\"%d days\")" date-format offset-days))))
-
-(defun cashweaver-todays-date ()
-  "Return todays date as YYYY-MM-DD."
-  (cashweaver-get-date
-   ; date-format
-   "%Y-%m-%d"
-   ; offset-days
-   0))
-
-(defun cashweaver-yesterdays-date ()
-  "Return yesterday's date as YYYY-MM-DD."
-  (cashweaver-get-date
-   ; date-format
-   "%Y-%m-%d"
-   ; offset-days
-   -1))
-#+end_src
 
 * Packages
 
@@ -2144,9 +2154,7 @@ DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
 ** =ox-hugo=
 *** Package
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! ox-hugo)
-#+end_src
+Doom emacs installs =ox-hugo=.
 
 *** Config
 
@@ -2647,14 +2655,6 @@ Key bindings, in my experience, don't benefit from the same "tangle-like" style 
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
 #+end_src
-
-* INPROGRESS New Hierarchy
-** Appearance
-** Applications
-*** Mail
-** Languages
-*** Org
-*** Java
 
 * Wishlist
 ** TODO [#4] Create roam node from link at point

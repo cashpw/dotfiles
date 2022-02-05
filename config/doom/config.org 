@@ -62,6 +62,9 @@ Welcome to my Emacs configuration! I've split my work and personal configuration
 #+end_src
 
 * Load Additional Config Files
+
+Configuration files should follow the naming convention =(config|packages)-<type>.el= (eg: =config-personal.el=).
+
 ** Personal
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
