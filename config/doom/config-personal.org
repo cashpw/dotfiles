@@ -1871,8 +1871,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
-         ("HUGO_AUTO_SET_LASTMOD" . "t")
-         ("HUGO_DRAFT" . "t")))
+         ("HUGO_AUTO_SET_LASTMOD" . "t")))
       (insert "")
       (org-insert-heading)
       (insert
@@ -2151,9 +2150,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                     "#+author: Cash Weaver\n"
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "#+hugo_draft: t\n"
-                                    "\n\n"))
+                                    "#+hugo_auto_set_lastmod: t\n"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
              'cashweaver-org-roam-insert-attachment-path)
@@ -2217,8 +2214,20 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
-  (let ((title (citar--format-entry-no-widths (cdr keys-entries)
-                                              "${author editor} :: ${title}")))
+  (let* ((author
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${author editor}"))
+         (citation-title
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${title}"))
+         (node-title
+          (s-format
+           "${author} :: ${title}"
+           'aget
+           `(("author" . ,author)
+             ("title" . ,citation-title)))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -2229,12 +2238,11 @@ See: https://jethrokuan.github.io/org-roam-guide"
 ,#+author: Cash Weaver\n
 ,#+date: [%<%Y-%m-%d %a %H:%M>]\n
 ,#+startup: overview\n
-,#+hugo_auto_set_lastmod: t\n
-,#+hugo_draft: t\n\n")
+,#+hugo_auto_set_lastmod: t\n")
                           :immediate-finish t
                           :unnarrowed t))
                        :info (list :citekey (car keys-entries))
-                       :node (org-roam-node-create :title title)
+                       :node (org-roam-node-create :title node-title)
                        :props '(:finalize find-file))))
 #+end_src
 
@@ -2274,7 +2282,22 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver-bibliographies))
+   citar-bibliography cashweaver-bibliographies)
+  (defun cashweaver/citar-full-names (names)
+    "Transform names like LastName, FirstName to FirstName LastName.
+
+Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
+    (when (stringp names)
+      (mapconcat
+       (lambda (name)
+         (if (eq 1 (length name))
+             (split-string name " ")
+           (let ((split-name (split-string name ", ")))
+             (cl-concatenate 'string (nth 1 split-name) " " (nth 0 split-name)))))
+       (split-string names " and ") ", ")))
+  (setq citar-display-transform-functions
+        '((t . citar-clean-string)
+          (("author" "editor") . cashweaver/citar-full-names))))
 #+end_src
 
 #+RESULTS:
