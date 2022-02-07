@@ -495,7 +495,8 @@
    org-agenda
    evil
    ;;evil-org
-   evil-org-agenda)
+   ;;evil-org-agenda
+   )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
@@ -506,7 +507,7 @@
                                   (format "%s/proj/roam/*.org"
                                           cashweaver-home-dir-path))
                                  `(,(format "%s/proj/roam/unread.org"
-                                           cashweaver-home-dir-path)))
+                                            cashweaver-home-dir-path)))
    org-agenda-custom-commands '(("r" "Roam"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
@@ -911,8 +912,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
          ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
-         ("HUGO_AUTO_SET_LASTMOD" . "t")
-         ("HUGO_DRAFT" . "t")))
+         ("HUGO_AUTO_SET_LASTMOD" . "t")))
       (insert "")
       (org-insert-heading)
       (insert
@@ -1015,6 +1015,36 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              value)))))
 
 (defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+  "Copy the list of ROAM_ALIASES into HUGO_ALIASES.
+
+Work in progress"
+  (interactive)
+  (when (org-roam-file-p)
+    (when-let*
+        ((option
+          "HUGO_ALIASES")
+         (raw-roam-aliases
+          (read (format "(%s)"
+                        (org-export-get-node-property
+                         :ROAM_ALIASES
+                         (org-element-parse-buffer)))))
+         (roam-aliases
+          (mapcar
+           #'downcase
+           (mapcar
+            (lambda (alias)
+              (replace-regexp-in-string
+               " "
+               "_"
+               alias))
+            raw-roam-aliases))))
+      ;;roam-aliases
+      roam-aliases
+      )))
+
+;; (cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases)
+
+(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
   (interactive)
   (when (org-roam-file-p)
@@ -1094,35 +1124,38 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
         cashweaver-org-roam--add-bibliography))
 
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char
+     (point-min))
     (when (not (search-forward
-              "[cite"
-              ;; bound
-              nil
-              ;; no-error
-              t))
-        (return-from
-            cashweaver-org-roam--add-bibliography)))
+                "[cite"
+                ;; bound
+                nil
+                ;; no-error
+                t))
+      (return-from
+          cashweaver-org-roam--add-bibliography)))
 
   (let* ((skip-if-present
-         (or skip-if-present
-             t))
-        (option
-         "#+print_bibliography:")
-        (option-present-in-buffer
-         (save-excursion
-           (beginning-of-buffer)
-           (search-forward
-            option
-            ;; bound
-            nil
-            ;; no-error
-            t))))
+          (or skip-if-present
+              t))
+         (option
+          "#+print_bibliography:")
+         (option-present-in-buffer
+          (save-excursion
+            (goto-char
+             (point-min))
+            (search-forward
+             option
+             ;; bound
+             nil
+             ;; no-error
+             t))))
 
     (when (not skip-if-present)
       (save-excursion
-        (end-of-buffer)
-      (insert option))
+        (goto-char
+         (point-max))
+        (insert option))
       (return-from
           cashweaver-org-roam--add-bibliography))
 
@@ -1132,7 +1165,8 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           cashweaver-org-roam--add-bibliography))
 
     (save-excursion
-      (end-of-buffer)
+      (goto-char
+       (point-max))
       (insert option))))
 
 ;; Override
@@ -1186,8 +1220,38 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
                                     "#+hugo_auto_set_lastmod: t\n"
-                                    "#+hugo_draft: t\n"
-                                    "\n\n"))
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("q" "quote" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :quote:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "#+begin_quote\n"
+                                    "TODO_QUOTE\n"
+                                    "\n"
+                                    "/[[https:foo][source]]/\n"
+                                    "#+end_quote\n"))
+                                 :unnarrowed t)
+
+                                ("p" "person" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :person:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "Among other things:\n"
+                                    "* TODO"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
              'cashweaver-org-roam-insert-attachment-path)
@@ -1251,8 +1315,34 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
 See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
-  (let ((title (citar--format-entry-no-widths (cdr keys-entries)
-                                              "${author editor} :: ${title}")))
+  (let* ((author
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${author editor journal}"))
+         (citation-title
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${title}"))
+         (source-url
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${howpublished}"))
+         (node-title
+          (cond
+           ((and
+             (not (string-empty-p citation-title))
+             (not (string-empty-p author)))
+            (s-format
+             "${author} :: ${title}"
+             'aget
+             `(("author" . ,author)
+               ("title" . ,citation-title))))
+           ((string-empty-p author)
+            citation-title)
+           ((string-empty-p citation-title)
+            "Something went wrong when extracting the title.")
+           (t
+            "Something went wrong when parsing the citation."))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -1263,12 +1353,18 @@ See: https://jethrokuan.github.io/org-roam-guide"
 #+author: Cash Weaver\n
 #+date: [%<%Y-%m-%d %a %H:%M>]\n
 #+startup: overview\n
+#+filetags: :reference:\n
 #+hugo_auto_set_lastmod: t\n
-#+hugo_draft: t\n\n")
+ \n
+TODO_AUTHOR, [cite:@${citekey}]\n
+ \n
+* Summary\n
+* Thoughts\n
+* Notes\n")
                           :immediate-finish t
                           :unnarrowed t))
                        :info (list :citekey (car keys-entries))
-                       :node (org-roam-node-create :title title)
+                       :node (org-roam-node-create :title node-title)
                        :props '(:finalize find-file))))
 
 (defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
@@ -1292,7 +1388,22 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver-bibliographies))
+   citar-bibliography cashweaver-bibliographies)
+  (defun cashweaver/citar-full-names (names)
+    "Transform names like LastName, FirstName to FirstName LastName.
+
+Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
+    (when (stringp names)
+      (mapconcat
+       (lambda (name)
+         (if (eq 1 (length name))
+             (split-string name " ")
+           (let ((split-name (split-string name ", ")))
+             (cl-concatenate 'string (nth 1 split-name) " " (nth 0 split-name)))))
+       (split-string names " and ") ", ")))
+  (setq citar-display-transform-functions
+        '((t . citar-clean-string)
+          (("author" "editor") . cashweaver/citar-full-names))))
 
 (use-package! oc
   :after org citar
@@ -1596,7 +1707,9 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
   :desc "Langtool" :n "t L" #'langtool-check
   (:prefix ("n")
    (:prefix ("A" . "Anki")
-    :n "n" #'anki-editor-insert-note))))
+    :n "n" #'anki-editor-insert-note)
+   (:prefix "r"
+    :n "C" #'cashweaver/org-roam-node-from-cite))))
 
 (map!
  ;; Keep in alphabetical order.
