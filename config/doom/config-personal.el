@@ -309,6 +309,7 @@
    writeroom-width 30))
 
 (after! aggressive-indent
+  :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
 (use-package! doct
@@ -331,48 +332,50 @@
 
 (after! org
   :config
-  org-priority-highest 0
-  org-priority-default 2
-  org-priority-lowest 4)
+  (setq
+   org-priority-highest 0
+   org-priority-default 2
+   org-priority-lowest 4))
 
 (after! org
   :config
-  org-todo-keywords
-  '((sequence
-     ;; A task that needs doing & is ready to do
-     "TODO(t)"
-     ;; A project, which usually contains other tasks
-     "PROJ(p)"
-     ;; A task that is in progress
-     "INPROGRESS(i)"
-     ;; Something external is holding up this task
-     "BLOCKED(b)"
-     ;; This task is paused/on hold because of me
-     "HOLD(h)"
-     "|"
-     ;; Task successfully completed
-     "DONE(d)"
-     ;; Task was moved
-     "MOVE(m)"
-     ;; Task was cancelled, aborted or is no longer applicable
-     "KILL(k)")
-    (sequence
-     ;; A task that needs doing
-     "[ ](T)"
-     ;; Task is in progress
-     "[-](S)"
-     ;; Task is being held up or paused
-     "[?](W)"
-     "|"
-     ;; Task was completed
-     "[X](D)"))
-  org-todo-keyword-faces
-  '(("[-]"  . +org-todo-active)
-    ("INPROGRESS" . +org-todo-active)
-    ("[?]"  . +org-todo-onhold)
-    ("BLOCKED" . +org-todo-onhold)
-    ("HOLD" . +org-todo-onhold)
-    ("PROJ" . +org-todo-project)))
+  (setq
+   org-todo-keywords
+   '((sequence
+      ;; A task that needs doing & is ready to do
+      "TODO(t)"
+      ;; A project, which usually contains other tasks
+      "PROJ(p)"
+      ;; A task that is in progress
+      "INPROGRESS(i)"
+      ;; Something external is holding up this task
+      "BLOCKED(b)"
+      ;; This task is paused/on hold because of me
+      "HOLD(h)"
+      "|"
+      ;; Task successfully completed
+      "DONE(d)"
+      ;; Task was moved
+      "MOVE(m)"
+      ;; Task was cancelled, aborted or is no longer applicable
+      "KILL(k)")
+     (sequence
+      ;; A task that needs doing
+      "[ ](T)"
+      ;; Task is in progress
+      "[-](S)"
+      ;; Task is being held up or paused
+      "[?](W)"
+      "|"
+      ;; Task was completed
+      "[X](D)"))
+   org-todo-keyword-faces
+   '(("[-]"  . +org-todo-active)
+     ("INPROGRESS" . +org-todo-active)
+     ("[?]"  . +org-todo-onhold)
+     ("BLOCKED" . +org-todo-onhold)
+     ("HOLD" . +org-todo-onhold)
+     ("PROJ" . +org-todo-project))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
@@ -1119,10 +1122,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
     (when (not skip-if-present)
       (save-excursion
         (end-of-buffer)
-      (insert (format "* Bibliography
-
-%s"
-                      option)))
+      (insert option))
       (return-from
           cashweaver-org-roam--add-bibliography))
 
@@ -1133,10 +1133,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 
     (save-excursion
       (end-of-buffer)
-      (insert (format "* Bibliography
-
-%s"
-                      option)))))
+      (insert option))))
 
 ;; Override
 ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
