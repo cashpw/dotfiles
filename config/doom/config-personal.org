@@ -907,6 +907,9 @@ Use =aggressive-indent= when editing =elisp=.
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 #+end_src
 
+#+RESULTS:
+| aggressive-indent-mode | doom--setq-lisp-indent-function-for-emacs-lisp-mode-h | doom--setq-outline-regexp-for-emacs-lisp-mode-h | doom--setq-mode-name-for-emacs-lisp-mode-h | doom--setq-tab-width-for-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | outline-minor-mode | rainbow-delimiters-mode | highlight-quoted-mode | +emacs-lisp-extend-imenu-h | +emacs-lisp-init-straight-maybe-h | +lookup--init-emacs-lisp-mode-handlers-h | doom--enable-+emacs-lisp-ert-mode-in-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | eros-mode | lispy-mode | +evil-embrace-lisp-mode-hook-h | embrace-emacs-lisp-mode-hook |
+
 *** Packages
 ** Java
 ** TODO Org
@@ -1365,11 +1368,13 @@ Record the current time when marking a heading as done.
      org-link-isbn-server-url
      path)) arg))
 
-(defun org-link-doi-export (path desc backend info)
+(defun org-link-isbn-export (path desc backend info)
   "Export a \"ISBN\" type link."
   (let ((uri
          (concat org-link-isbn-server-url path)))
     (pcase backend
+      (`md
+       (format "[%s](%s)" (or desc uri) uri))
       (`html
        (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
       (`latex
@@ -1390,6 +1395,9 @@ Record the current time when marking a heading as done.
                          :export #'org-link-isbn-export)
 #+end_src
 
+#+RESULTS:
+| :follow | org-link-isbn-open | :export | org-link-isbn-export |
+
 *** TODO Agendas
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1399,6 +1407,9 @@ Record the current time when marking a heading as done.
    calendar-week-start-day 1))
 #+end_src
 
+#+RESULTS:
+: 1
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-super-agenda
   :demand t
@@ -1407,7 +1418,8 @@ Record the current time when marking a heading as done.
    org-agenda
    evil
    ;;evil-org
-   evil-org-agenda)
+   ;;evil-org-agenda
+   )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
@@ -1418,12 +1430,15 @@ Record the current time when marking a heading as done.
                                   (format "%s/proj/roam/*.org"
                                           cashweaver-home-dir-path))
                                  `(,(format "%s/proj/roam/unread.org"
-                                           cashweaver-home-dir-path)))
+                                            cashweaver-home-dir-path)))
    org-agenda-custom-commands '(("r" "Roam"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
                                                 cashweaver-roam-agenda-files))))))))
 #+end_src
+
+#+RESULTS:
+| org-super-agenda-mode | +org-habit-resize-graph-h | org-fancy-priorities-mode | evil-org-agenda-mode |
 
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1974,6 +1989,36 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
              value)))))
 
 (defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+  "Copy the list of ROAM_ALIASES into HUGO_ALIASES.
+
+Work in progress"
+  (interactive)
+  (when (org-roam-file-p)
+    (when-let*
+        ((option
+          "HUGO_ALIASES")
+         (raw-roam-aliases
+          (read (format "(%s)"
+                        (org-export-get-node-property
+                         :ROAM_ALIASES
+                         (org-element-parse-buffer)))))
+         (roam-aliases
+          (mapcar
+           #'downcase
+           (mapcar
+            (lambda (alias)
+              (replace-regexp-in-string
+               " "
+               "_"
+               alias))
+            raw-roam-aliases))))
+      ;;roam-aliases
+      roam-aliases
+      )))
+
+;; (cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases)
+
+(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
   (interactive)
   (when (org-roam-file-p)
@@ -2053,38 +2098,38 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
         cashweaver-org-roam--add-bibliography))
 
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char
+     (point-min))
     (when (not (search-forward
-              "[cite"
-              ;; bound
-              nil
-              ;; no-error
-              t))
-        (return-from
-            cashweaver-org-roam--add-bibliography)))
+                "[cite"
+                ;; bound
+                nil
+                ;; no-error
+                t))
+      (return-from
+          cashweaver-org-roam--add-bibliography)))
 
   (let* ((skip-if-present
-         (or skip-if-present
-             t))
-        (option
-         "#+print_bibliography:")
-        (option-present-in-buffer
-         (save-excursion
-           (beginning-of-buffer)
-           (search-forward
-            option
-            ;; bound
-            nil
-            ;; no-error
-            t))))
+          (or skip-if-present
+              t))
+         (option
+          "#+print_bibliography:")
+         (option-present-in-buffer
+          (save-excursion
+            (goto-char
+             (point-min))
+            (search-forward
+             option
+             ;; bound
+             nil
+             ;; no-error
+             t))))
 
     (when (not skip-if-present)
       (save-excursion
-        (end-of-buffer)
-      (insert (format "* Bibliography
-
-%s"
-                      option)))
+        (goto-char
+         (point-max))
+        (insert option))
       (return-from
           cashweaver-org-roam--add-bibliography))
 
@@ -2094,11 +2139,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           cashweaver-org-roam--add-bibliography))
 
     (save-excursion
-      (end-of-buffer)
-      (insert (format "* Bibliography
-
-%s"
-                      option)))))
+      (goto-char
+       (point-max))
+      (insert option))))
 
 ;; Override
 ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
@@ -2150,7 +2193,39 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                                     "#+author: Cash Weaver\n"
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
-                                    "#+hugo_auto_set_lastmod: t\n"))
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("q" "quote" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :quote:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "#+begin_quote\n"
+                                    "TODO_QUOTE\n"
+                                    "\n"
+                                    "/[[https:foo][source]]/\n"
+                                    "#+end_quote\n"))
+                                 :unnarrowed t)
+
+                                ("p" "person" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :person:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "Among other things:\n"
+                                    "* TODO"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
              'cashweaver-org-roam-insert-attachment-path)
@@ -2217,17 +2292,31 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (let* ((author
           (citar--format-entry-no-widths
            (cdr keys-entries)
-           "${author editor}"))
+           "${author editor journal}"))
          (citation-title
           (citar--format-entry-no-widths
            (cdr keys-entries)
            "${title}"))
+         (source-url
+          (citar--format-entry-no-widths
+           (cdr keys-entries)
+           "${howpublished}"))
          (node-title
-          (s-format
-           "${author} :: ${title}"
-           'aget
-           `(("author" . ,author)
-             ("title" . ,citation-title)))))
+          (cond
+           ((and
+             (not (string-empty-p citation-title))
+             (not (string-empty-p author)))
+            (s-format
+             "${author} :: ${title}"
+             'aget
+             `(("author" . ,author)
+               ("title" . ,citation-title))))
+           ((string-empty-p author)
+            citation-title)
+           ((string-empty-p citation-title)
+            "Something went wrong when extracting the title.")
+           (t
+            "Something went wrong when parsing the citation."))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -2238,7 +2327,14 @@ See: https://jethrokuan.github.io/org-roam-guide"
 ,#+author: Cash Weaver\n
 ,#+date: [%<%Y-%m-%d %a %H:%M>]\n
 ,#+startup: overview\n
-,#+hugo_auto_set_lastmod: t\n")
+,#+filetags: :reference:\n
+,#+hugo_auto_set_lastmod: t\n
+ \n
+TODO_AUTHOR, [cite:@${citekey}]\n
+ \n
+,* Summary\n
+,* Thoughts\n
+,* Notes\n")
                           :immediate-finish t
                           :unnarrowed t))
                        :info (list :citekey (car keys-entries))
@@ -2696,13 +2792,17 @@ Key bindinds don't, in my experience, benefit from =:tangle=-ed blocks. I keep t
   :desc "Langtool" :n "t L" #'langtool-check
   (:prefix ("n")
    (:prefix ("A" . "Anki")
-    :n "n" #'anki-editor-insert-note))))
+    :n "n" #'anki-editor-insert-note)
+   (:prefix "r"
+    :n "C" #'cashweaver/org-roam-node-from-cite))))
 
 (map!
  ;; Keep in alphabetical order.
  :map global-map
  "M-N" #'operate-on-number-at-point)
 #+end_src
+
+#+RESULTS:
 
 ** =org-mode=
 
