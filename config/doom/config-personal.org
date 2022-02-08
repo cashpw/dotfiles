@@ -1168,16 +1168,21 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   :config
+  (setq
   org-priority-highest 0
   org-priority-default 2
-  org-priority-lowest 4)
+  org-priority-lowest 4))
 #+end_src
+
+#+RESULTS:
+: 4
 
 ***** Keywords
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   :config
+  (setq
   org-todo-keywords
   '((sequence
      ;; A task that needs doing & is ready to do
@@ -1213,8 +1218,12 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
     ("[?]"  . +org-todo-onhold)
     ("BLOCKED" . +org-todo-onhold)
     ("HOLD" . +org-todo-onhold)
-    ("PROJ" . +org-todo-project)))
+    ("PROJ" . +org-todo-project))))
 #+end_src
+
+#+RESULTS:
+: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
+
 ***** When marking a heading as ...
 ****** =INPROGRESS=
 
@@ -1341,8 +1350,19 @@ Record the current time when marking a heading as done.
                         (org-insert-heading nil)
                         (insert field))
                       (outline-up-heading 1)
-                      (evil-org-append-line 1))))))))
+                      (evil-org-append-line 1))))
+           ("Roam Idea"
+            :keys "r"
+            :file "~/proj/roam/idea_queue.org"
+            :template ("* TODO [#2] %?"
+                       ":PROPERTIES:"
+                       ":Created: %U"
+                       ":END:"))))))
 #+end_src
+
+#+RESULTS:
+| a | Anki      | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
+| r | Roam Idea | entry | (file ~/proj/roam/idea_queue.org)             | * TODO %?             |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 *** Links
 
@@ -1418,13 +1438,13 @@ Record the current time when marking a heading as done.
    org-agenda
    evil
    ;;evil-org
-   ;;evil-org-agenda
+   ;; evil-org-agenda
    )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
   (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
+   ;; org-super-agenda-header-map evil-org-agenda-mode-map
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"

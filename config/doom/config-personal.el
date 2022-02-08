@@ -331,12 +331,14 @@
 
 (after! org
   :config
+  (setq
   org-priority-highest 0
   org-priority-default 2
-  org-priority-lowest 4)
+  org-priority-lowest 4))
 
 (after! org
   :config
+  (setq
   org-todo-keywords
   '((sequence
      ;; A task that needs doing & is ready to do
@@ -372,7 +374,7 @@
     ("[?]"  . +org-todo-onhold)
     ("BLOCKED" . +org-todo-onhold)
     ("HOLD" . +org-todo-onhold)
-    ("PROJ" . +org-todo-project)))
+    ("PROJ" . +org-todo-project))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
@@ -476,7 +478,14 @@
                         (org-insert-heading nil)
                         (insert field))
                       (outline-up-heading 1)
-                      (evil-org-append-line 1))))))))
+                      (evil-org-append-line 1))))
+           ("Roam Idea"
+            :keys "r"
+            :file "~/proj/roam/idea_queue.org"
+            :template ("* TODO [#2] %?"
+                       ":PROPERTIES:"
+                       ":Created: %U"
+                       ":END:"))))))
 
 (use-package! ol-doi)
 
@@ -492,18 +501,19 @@
    org-agenda
    evil
    ;;evil-org
-   evil-org-agenda)
+   ;; evil-org-agenda
+   )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
   (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
+   ;; org-super-agenda-header-map evil-org-agenda-mode-map
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"
                                           cashweaver-home-dir-path))
                                  `(,(format "%s/proj/roam/unread.org"
-                                           cashweaver-home-dir-path)))
+                                            cashweaver-home-dir-path)))
    org-agenda-custom-commands '(("r" "Roam"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
@@ -1009,6 +1019,36 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      (format "%s %s"
              key
              value)))))
+
+(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+  "Copy the list of ROAM_ALIASES into HUGO_ALIASES.
+
+Work in progress"
+  (interactive)
+  (when (org-roam-file-p)
+    (when-let*
+        ((option
+          "HUGO_ALIASES")
+         (raw-roam-aliases
+          (read (format "(%s)"
+                        (org-export-get-node-property
+                         :ROAM_ALIASES
+                         (org-element-parse-buffer)))))
+         (roam-aliases
+          (mapcar
+           #'downcase
+           (mapcar
+            (lambda (alias)
+              (replace-regexp-in-string
+               " "
+               "_"
+               alias))
+            raw-roam-aliases))))
+      ;;roam-aliases
+      roam-aliases
+      )))
+
+;; (cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases)
 
 (defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
