@@ -331,48 +331,50 @@
 
 (after! org
   :config
-  org-priority-highest 0
-  org-priority-default 2
-  org-priority-lowest 4)
+  (setq
+   org-priority-highest 0
+   org-priority-default 2
+   org-priority-lowest 4))
 
 (after! org
   :config
-  org-todo-keywords
-  '((sequence
-     ;; A task that needs doing & is ready to do
-     "TODO(t)"
-     ;; A project, which usually contains other tasks
-     "PROJ(p)"
-     ;; A task that is in progress
-     "INPROGRESS(i)"
-     ;; Something external is holding up this task
-     "BLOCKED(b)"
-     ;; This task is paused/on hold because of me
-     "HOLD(h)"
-     "|"
-     ;; Task successfully completed
-     "DONE(d)"
-     ;; Task was moved
-     "MOVE(m)"
-     ;; Task was cancelled, aborted or is no longer applicable
-     "KILL(k)")
-    (sequence
-     ;; A task that needs doing
-     "[ ](T)"
-     ;; Task is in progress
-     "[-](S)"
-     ;; Task is being held up or paused
-     "[?](W)"
-     "|"
-     ;; Task was completed
-     "[X](D)"))
-  org-todo-keyword-faces
-  '(("[-]"  . +org-todo-active)
-    ("INPROGRESS" . +org-todo-active)
-    ("[?]"  . +org-todo-onhold)
-    ("BLOCKED" . +org-todo-onhold)
-    ("HOLD" . +org-todo-onhold)
-    ("PROJ" . +org-todo-project)))
+  (setq
+   org-todo-keywords
+   '((sequence
+      ;; A task that needs doing & is ready to do
+      "TODO(t)"
+      ;; A project, which usually contains other tasks
+      "PROJ(p)"
+      ;; A task that is in progress
+      "INPROGRESS(i)"
+      ;; Something external is holding up this task
+      "BLOCKED(b)"
+      ;; This task is paused/on hold because of me
+      "HOLD(h)"
+      "|"
+      ;; Task successfully completed
+      "DONE(d)"
+      ;; Task was moved
+      "MOVE(m)"
+      ;; Task was cancelled, aborted or is no longer applicable
+      "KILL(k)")
+     (sequence
+      ;; A task that needs doing
+      "[ ](T)"
+      ;; Task is in progress
+      "[-](S)"
+      ;; Task is being held up or paused
+      "[?](W)"
+      "|"
+      ;; Task was completed
+      "[X](D)"))
+   org-todo-keyword-faces
+   '(("[-]"  . +org-todo-active)
+     ("INPROGRESS" . +org-todo-active)
+     ("[?]"  . +org-todo-onhold)
+     ("BLOCKED" . +org-todo-onhold)
+     ("HOLD" . +org-todo-onhold)
+     ("PROJ" . +org-todo-project))))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
@@ -492,12 +494,13 @@
    org-agenda
    evil
    ;;evil-org
-   evil-org-agenda)
+   ;; evil-org-agenda
+   )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
   (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
+   ;; org-super-agenda-header-map evil-org-agenda-mode-map
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"
