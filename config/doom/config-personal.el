@@ -482,7 +482,7 @@
                       (evil-org-append-line 1))))
            ("Roam Idea"
             :keys "r"
-            :file "~/proj/roam/idea_queue.org"
+            :file "~/proj/roam/todos.org"
             :template ("* TODO [#2] %?"
                        ":PROPERTIES:"
                        ":Created: %U"

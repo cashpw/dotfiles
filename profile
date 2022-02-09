@@ -34,7 +34,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   preferred_screenlayout_filepath=""
-  if is_local_work; then
+  if is_work_desktop; then
     preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
   fi
 
@@ -43,4 +43,6 @@ if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   fi
 fi
 
-# /usr/bin/setxkbmap -option "ctrl:swapcaps"
+if is_work_laptop; then
+  /usr/bin/setxkbmap -option "ctrl:swapcaps"
+fi

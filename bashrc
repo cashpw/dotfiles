@@ -98,6 +98,15 @@ if ! shopt -oq posix; then
   fi
 fi
 
+function is_work_laptop() {
+  inxi --machine | grep -q "Type: Laptop"
+}
+function is_work_desktop() {
+  inxi --machine | grep -q "Type: Desktop"
+}
+function is_work_cloudtop() {
+  inxi --machine | grep -q "Type: Kvm"
+}
 function is_work() {
   [[ -d "/usr/local/google/home/cashweaver" ]]
 }
