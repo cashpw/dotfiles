@@ -1354,7 +1354,7 @@ Record the current time when marking a heading as done.
                       (evil-org-append-line 1))))
            ("Roam Idea"
             :keys "r"
-            :file "~/proj/roam/idea_queue.org"
+            :file "~/proj/roam/todos.org"
             :template ("* TODO [#2] %?"
                        ":PROPERTIES:"
                        ":Created: %U"
@@ -1363,7 +1363,7 @@ Record the current time when marking a heading as done.
 
 #+RESULTS:
 | a | Anki      | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
-| r | Roam Idea | entry | (file ~/proj/roam/idea_queue.org)             | * TODO %?             |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| r | Roam Idea | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 *** Links
 
