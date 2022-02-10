@@ -1352,7 +1352,7 @@ Record the current time when marking a heading as done.
                         (insert field))
                       (outline-up-heading 1)
                       (evil-org-append-line 1))))
-           ("Roam Idea"
+           ("Roam"
             :keys "r"
             :file "~/proj/roam/todos.org"
             :template ("* TODO [#2] %?"
@@ -1362,8 +1362,8 @@ Record the current time when marking a heading as done.
 #+end_src
 
 #+RESULTS:
-| a | Anki      | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
-| r | Roam Idea | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
+| r | Roam | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 *** Links
 
@@ -1432,6 +1432,9 @@ Record the current time when marking a heading as done.
 : 1
 
 #+begin_src emacs-lisp :tangle config-personal.el
+(use-package! evil-org-agenda)
+(use-package! evil)
+(use-package! org-agenda)
 (use-package! org-super-agenda
   :demand t
   :after
@@ -1439,23 +1442,59 @@ Record the current time when marking a heading as done.
    org-agenda
    evil
    ;;evil-org
-   ;; evil-org-agenda
+   evil-org-agenda
    )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
   (setq
-   ;; org-super-agenda-header-map evil-org-agenda-mode-map
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   cashweaver-roam-unread-file (s-format
+                                "${home-dir-path}/proj/roam/unread.org"
+                                'aget
+                                `(("home-dir-path" . ,cashweaver-home-dir-path)))
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"
                                           cashweaver-home-dir-path))
-                                 `(,(format "%s/proj/roam/unread.org"
-                                            cashweaver-home-dir-path)))
-   org-agenda-custom-commands '(("r" "Roam"
+                                 `(,cashweaver-roam-unread-file))
+   org-agenda-custom-commands '(("R" "Roam Unread"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
-                                                cashweaver-roam-agenda-files))))))))
+                                                `(,cashweaver-roam-unread-file))
+                                               (org-super-agenda-groups
+                                                '((:and (:tag "essay"
+                                                         :not (:tag "someday")))
+                                                  ;; (:take 10 (:name "Discussions"
+                                                  ;;            :and (:tag "discussion"
+                                                  ;;                  :not (:tag "someday"))))
+                                                  ;; (:take 10 (:name "Books"
+                                                  ;;            :and (:tag "book"
+                                                  ;;                  :not (:tag "someday"))))
+                                                  ;; (:take 10 (:name "Link Groups"
+                                                  ;;            :and (:tag "link_group"
+                                                  ;;                  :not (:tag "someday"))))
+                                                  ;; (:take 10 (:name "Classes"
+                                                  ;;            :and (:tag "class"
+                                                  ;;                  :not (:tag "someday"))))
+                                                  ;; (:take 10 (:name "Someday"
+                                                  ;;            :tag "someday"))
+                                                  (:discard
+                                                   (:todo t))))))))
+
+                                ("r" "Roam"
+                                 ((alltodo "" ((org-agenda-overriding-header "")
+                                               (org-agenda-files
+                                                cashweaver-roam-agenda-files)
+                                               (org-super-agenda-groups
+                                                '((:name "Concepts"
+                                                   :tag "concept")
+                                                  (:name "References"
+                                                   :tag "reference")
+                                                  (:name "Quotes"
+                                                   :tag "quote")
+                                                  (:name "People"
+                                                   :tag "person"))))))))))
 #+end_src
 
 #+RESULTS:
@@ -2172,22 +2211,33 @@ Work in progress"
 ;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
-  (when (not (or
-              (string=
-               (buffer-file-name)
-               (format "%s/proj/roam/unread.org"
-                       cashweaver-home-dir-path))
-              (string=
-               (buffer-file-name)
-               (format "%s/proj/roam/unread.org_archive"
-                       cashweaver-home-dir-path))))
-    (let ((org-id-extra-files
-           (org-roam-list-files)))
-      ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-      ;; (cashweaver-org-roam--add-bibliography
-      ;;  ;; skip-if-present
-      ;;  t)
-      (org-hugo-export-wim-to-md))))
+  (let ((paths-no-export
+         `(,(s-format
+             "${home-dir-path}/proj/roam/unread.org"
+             'aget
+             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+           ,(s-format
+             "${home-dir-path}/proj/roam/unread.org"
+             'aget
+             `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
+           ,(s-format
+             "${home-dir-path}/proj/roam/unread.org_archive"
+             'aget
+             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+           ,(s-format
+             "${home-dir-path}/proj/roam/unread.org_archive"
+             'aget
+             `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))))
+    (when (not (member
+                (buffer-file-name)
+                paths-no-export))
+      (let ((org-id-extra-files
+             (org-roam-list-files)))
+        ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+        ;; (cashweaver-org-roam--add-bibliography
+        ;;  ;; skip-if-present
+        ;;  t)
+        (org-hugo-export-wim-to-md)))))
 
 (add-hook!
  'before-save-hook
