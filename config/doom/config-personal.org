@@ -1428,6 +1428,57 @@ Record the current time when marking a heading as done.
 #+RESULTS:
 | :follow | org-link-isbn-open | :export | org-link-isbn-export |
 
+**** Google Sheets
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defvar cashweaver/org-link--google-sheets-base-url
+  "https://docs.google.com/spreadsheets/d/"
+  "The base url for Google Sheets")
+
+(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
+  "Return a url to Google Sheets for the provided SHEET-ID."
+  (s-format
+   "${base-url}/${id}"
+   'aget
+   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
+     ("id" . ,sheet-id))))
+
+(defun cashweaver/org-link--google-sheets-open (path arg)
+  (browse-url
+   (url-encode-url
+    (cashweaver/org-link--google-sheets-build-url
+     path))
+   arg))
+
+(defun cashweaver/org-link--google-sheets-export (path desc backend info)
+  "Export a Google Sheets link."
+  (let ((uri
+         (cashweaver/org-link--google-sheets-build-url
+          path)))
+    (pcase backend
+      (`md
+       (s-format
+        "[${description}}](${uri})"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      ('html
+       (s-format
+        "<a href=\"${uri}\">${description}</a>"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      (_
+       uri))))
+
+(org-link-set-parameters
+ "google-sheets"
+ :follow #'cashweaver/org-link--google-sheets-open
+ :export #'cashweaver/org-link--google-sheets-export)
+#+end_src
+
+#+RESULTS:
+
 *** TODO Agendas
 
 #+begin_src emacs-lisp :tangle config-personal.el
