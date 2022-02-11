@@ -1801,8 +1801,74 @@ See `org-hugo-tag-processing-functions'."
 *** Notes
 **** TODO Roam
 
-
 #+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-roam
+  :after org
+  :config
+  (setq
+   org-roam-directory (file-truename
+                       "~/proj/roam")
+   cashweaver-org-roam-attachment-base-path (file-truename
+                                             (format
+                                              "%s/attachments"
+                                              org-roam-directory))
+   org-roam-capture-templates `(("c" "concept" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :concept:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"))
+                                 :unnarrowed t)
+
+                                ("d" "default" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("p" "person" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :person:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "Among other things:\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("q" "quote" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :quote:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "#+begin_quote\n"
+                                    "TODO_QUOTE\n"
+                                    "\n"
+                                    "/[[https:foo][source]]/\n"
+                                    "#+end_quote\n"))
+                                 :unnarrowed t)))
+  (org-roam-db-autosync-mode))
+
+
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
 
@@ -2048,6 +2114,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (org-set-property
        "DIR"
        dir))))
+(after! org-roam
+  (add-hook! 'org-roam-capture-new-node-hook
+              'cashweaver-org-roam-insert-attachment-path))
 
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
@@ -2262,74 +2331,6 @@ Work in progress"
 (add-hook!
  'before-save-hook
  #'cashweaver-org-roam--add-bibliography)
-
-(use-package! org-roam
-  :after org
-  :config
-  (setq
-   org-roam-directory (file-truename
-                       "~/proj/roam")
-   cashweaver-org-roam-attachment-base-path (file-truename
-                                             (format
-                                              "%s/attachments"
-                                              org-roam-directory))
-   org-roam-capture-templates `(("c" "concept" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :concept:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"))
-                                 :unnarrowed t)
-
-                                ("d" "default" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "* TODO"))
-                                 :unnarrowed t)
-
-                                ("p" "person" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :person:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "Among other things:\n"
-                                    "* TODO"))
-                                 :unnarrowed t)
-
-                                ("q" "quote" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :quote:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "#+begin_quote\n"
-                                    "TODO_QUOTE\n"
-                                    "\n"
-                                    "/[[https:foo][source]]/\n"
-                                    "#+end_quote\n"))
-                                 :unnarrowed t)))
-  (add-hook! 'org-roam-capture-new-node-hook
-             'cashweaver-org-roam-insert-attachment-path)
-  (org-roam-db-autosync-mode))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
