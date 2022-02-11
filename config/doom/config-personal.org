@@ -1226,6 +1226,17 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 : (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
 
 ***** When marking a heading as ...
+
+Save the buffer whenever I make change the state of a todo item. Note: The buffer [[https://emacs.stackexchange.com/questions/55899/how-to-save-a-org-buffer-everytime-the-todo-state-changes#comment87667_55900][will appear modified even after running this snippet]].
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(add-hook!
+ 'org-after-todo-state-change-hook
+ 'save-buffer)
+#+end_src
+
+#+RESULTS:
+
 ****** =INPROGRESS=
 
 #+begin_src emacs-lisp :tangle config-personal.el
