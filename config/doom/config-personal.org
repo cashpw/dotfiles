@@ -72,6 +72,10 @@ Show free bindings in current buffer.
 
 For showing which keys I'm pressing during screencasts, presentations, or pairing sessions.
 
+Alternatives include:
+
+- [[https://gitlab.com/screenkey/screenkey][screenkey]]: "A screencast tool to display your keys inspired by Screenflick"
+
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
