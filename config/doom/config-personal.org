@@ -1463,22 +1463,25 @@ Record the current time when marking a heading as done.
                                                (org-agenda-files
                                                 `(,cashweaver-roam-unread-file))
                                                (org-super-agenda-groups
-                                                '((:and (:tag "essay"
-                                                         :not (:tag "someday")))
-                                                  ;; (:take 10 (:name "Discussions"
-                                                  ;;            :and (:tag "discussion"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Books"
-                                                  ;;            :and (:tag "book"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Link Groups"
-                                                  ;;            :and (:tag "link_group"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Classes"
-                                                  ;;            :and (:tag "class"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Someday"
-                                                  ;;            :tag "someday"))
+                                                '(
+                                                  (:name "Essays (10)"
+                                                   :take (10 (:and (:tag "essay"
+                                                                    :not (:tag "someday")))))
+
+                                                  (:name "Discussions (10)"
+                                                   :take (10 (:and (:tag "discussion"
+                                                                    :not (:tag "someday")))))
+                                                  (:name "Books (10)"
+                                                   :take (10 (:and (:tag "book"
+                                                                    :not (:tag "someday")))))
+                                                  (:name "Link Groups (10)"
+                                                   :take (10 (:and (:tag "link_group"
+                                                                    :not (:tag "someday")))))
+                                                  (:name "Classes (10)"
+                                                   :take (10 (:and (:tag "class"
+                                                                    :not (:tag "someday")))))
+                                                  (:name "Someday (10)"
+                                                   :take (10 (:tag "someday")))
                                                   (:discard
                                                    (:todo t))))))))
 
@@ -1489,17 +1492,31 @@ Record the current time when marking a heading as done.
                                                (org-super-agenda-groups
                                                 '((:name "Concepts"
                                                    :tag "concept")
-                                                  (:name "References"
-                                                   :tag "reference")
+                                                  (:take (10 (:name "References"
+                                                              :tag "reference")))
+                                                  ;; (:name "References"
+                                                  ;;  :tag "reference")
                                                   (:name "Quotes"
                                                    :tag "quote")
                                                   (:name "People"
                                                    :tag "person"))))))))))
+
+(cl-defun org-super-agenda--group-dispatch-take (items (n group))
+;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
+  "Take N ITEMS that match selectors in GROUP.
+If N is positive, take the first N items, otherwise take the last N items.
+Note: the ordering of entries is not guaranteed to be preserved, so this may
+not always show the expected results."
+  (message (format "%s" group))
+  (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
+          (take-fn (if (cl-minusp n) #'-take-last #'-take))
+          (placement (if (cl-minusp n) "Last" "First"))
+          (name (format "%s %d %s" placement (abs n) name)))
+    (list name non-matching (funcall take-fn (abs n) matching))))
 #+end_src
 
 #+RESULTS:
-| org-super-agenda-mode | +org-habit-resize-graph-h | org-fancy-priorities-mode | evil-org-agenda-mode |
-
+: org-super-agenda--group-dispatch-take
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver-org-mode-buffer-property-get (property-name)
