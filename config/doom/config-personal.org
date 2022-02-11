@@ -1252,24 +1252,44 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar
- cashweaver-org-archival-filepaths
+ cashweaver/org-mode--filepaths-to-archive-when-done
  `(,(format "%s/proj/roam/unread.org"
            cashweaver-home-dir-path))
  "TODOs in these file paths get archived when they're marked as done.")
 
+(defvar
+  cashweaver/org-mode--filepaths-to-noop-when-done
+  '()
+  "TODOs in these file paths won't get cut when they're marked as done.")
+
+(defun cashweaver/org-mode--should-archive-todo-when-done-p (file-path)
+  "Return non-nil if we should archive todo items in the prodived FILE-PATH."
+  (seq-contains-p
+   cashweaver/org-mode--filepaths-to-archive-when-done
+   file-path))
+
+(defun cashweaver/org-mode--should-noop-todo-when-done-p (file-path)
+  "Return non-nil if we should do nothing to todo items in the prodived FILE-PATH."
+  (or (org-get-repeat)
+      (seq-contains-p
+       cashweaver/org-mode--filepaths-to-noop-when-done
+       file-path)))
+
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (cond ((org-entry-is-done-p)
-         (org-clock-out-if-current)
-         (cond ((org-get-repeat)
-                ;; Do nothing
-                nil)
-               ((seq-contains-p
-                 cashweaver-org-archival-filepaths
-                 buffer-file-name)
-                (org-archive-subtree-default))
-               (t
-                (org-cut-subtree))))))
+  (cond
+   ((org-entry-is-done-p)
+    (org-clock-out-if-current)
+    (cond
+     ((cashweaver/org-mode--should-noop-todo-when-done-p
+       buffer-file-name)
+      ;; Do nothing
+      nil)
+     ((cashweaver/org-mode--should-archive-todo-p
+       buffer-file-name)
+      (org-archive-subtree-default))
+     (t
+      (org-cut-subtree))))))
 
 (after! org
   :config
