@@ -1296,7 +1296,7 @@ Save the buffer whenever I make change the state of a todo item. Note: The buffe
        buffer-file-name)
       ;; Do nothing
       nil)
-     ((cashweaver/org-mode--should-archive-todo-p
+     ((cashweaver/org-mode--should-archive-todo-when-done-p
        buffer-file-name)
       (org-archive-subtree-default))
      (t
