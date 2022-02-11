@@ -2229,7 +2229,6 @@ Work in progress"
 ;;
 ;; 1. Export even on first save from org-capture.
 ;; 2. Make roam files known to org exporter.
-;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
   (when (not (or
