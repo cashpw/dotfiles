@@ -1659,6 +1659,24 @@ Record the current time when marking a heading as done.
   (delete-blank-lines)
   (delete-blank-lines))
 
+(defun cashweaver-remove-toml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "\\+\\+\\+\\(.\\|\n\\)*\\+\\+\\+"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun cashweaver-remove-yaml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-yaml-header))
+
+(defun cashweaver-remove-toml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-toml-header))
+
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
   "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
   (setq
