@@ -3052,6 +3052,21 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 :PROPERTIES:
 :Effort:   4h
 :END:
+
+* Bucket
+
+Bits that I haven't yet filed into a larger heading
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashweaver/reload-dir-locals-for-current-buffer ()
+  "reload dir locals for the current buffer"
+  (interactive)
+  (let ((enable-local-variables :all))
+    (hack-dir-local-variables-non-file-buffer)))
+#+end_src
+
+#+RESULTS:
+: cashweaver/reload-dir-locals-for-current-buffer
+
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]
