@@ -1512,7 +1512,36 @@ Record the current time when marking a heading as done.
 #+end_src
 
 #+RESULTS:
-:   #+RESULTS:
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! evil)
+(use-package! evil-org-agenda)
+(use-package! org-super-agenda
+  :demand t
+  :after
+  (:all
+   org-agenda
+   evil
+   ;;evil-org
+   evil-org-agenda
+   )
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   cashweaver-roam-agenda-files (seq-difference
+                                 (f-glob
+                                  (format "%s/proj/roam/*.org"
+                                          cashweaver-home-dir-path))
+                                 `(,(format "%s/proj/roam/unread.org"
+                                            cashweaver-home-dir-path)))
+   org-agenda-custom-commands '(("r" "Roam"
+                                 ((alltodo "" ((org-agenda-overriding-header "")
+                                               (org-agenda-files
+                                                cashweaver-roam-agenda-files))))))))
+#+end_src
+
+#+RESULTS:
 
 
 #+begin_src emacs-lisp :tangle config-personal.el
