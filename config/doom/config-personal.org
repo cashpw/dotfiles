@@ -1050,6 +1050,14 @@ This package provides a query language for Org files. It offers two syntax style
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-ql)
 #+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-ql)
+#+end_src
+
+#+RESULTS:
+: org-ql
+
 **** =org-gcal=
 #+begin_quote
 org-gcal offers
@@ -1319,6 +1327,17 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 : (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
 
 ***** When marking a heading as ...
+
+Save the buffer whenever I make change the state of a todo item. Note: The buffer [[https://emacs.stackexchange.com/questions/55899/how-to-save-a-org-buffer-everytime-the-todo-state-changes#comment87667_55900][will appear modified even after running this snippet]].
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(add-hook!
+ 'org-after-todo-state-change-hook
+ 'save-buffer)
+#+end_src
+
+#+RESULTS:
+
 ****** =INPROGRESS=
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1345,24 +1364,44 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar
- cashweaver-org-archival-filepaths
+ cashweaver/org-mode--filepaths-to-archive-when-done
  `(,(format "%s/proj/roam/unread.org"
            cashweaver-home-dir-path))
  "TODOs in these file paths get archived when they're marked as done.")
 
+(defvar
+  cashweaver/org-mode--filepaths-to-noop-when-done
+  '()
+  "TODOs in these file paths won't get cut when they're marked as done.")
+
+(defun cashweaver/org-mode--should-archive-todo-when-done-p (file-path)
+  "Return non-nil if we should archive todo items in the prodived FILE-PATH."
+  (seq-contains-p
+   cashweaver/org-mode--filepaths-to-archive-when-done
+   file-path))
+
+(defun cashweaver/org-mode--should-noop-todo-when-done-p (file-path)
+  "Return non-nil if we should do nothing to todo items in the prodived FILE-PATH."
+  (or (org-get-repeat)
+      (seq-contains-p
+       cashweaver/org-mode--filepaths-to-noop-when-done
+       file-path)))
+
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (cond ((org-entry-is-done-p)
-         (org-clock-out-if-current)
-         (cond ((org-get-repeat)
-                ;; Do nothing
-                nil)
-               ((seq-contains-p
-                 cashweaver-org-archival-filepaths
-                 buffer-file-name)
-                (org-archive-subtree-default))
-               (t
-                (org-cut-subtree))))))
+  (cond
+   ((org-entry-is-done-p)
+    (org-clock-out-if-current)
+    (cond
+     ((cashweaver/org-mode--should-noop-todo-when-done-p
+       buffer-file-name)
+      ;; Do nothing
+      nil)
+     ((cashweaver/org-mode--should-archive-todo-when-done-p
+       buffer-file-name)
+      (org-archive-subtree-default))
+     (t
+      (org-cut-subtree))))))
 
 (after! org
   :config
@@ -1370,6 +1409,8 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
    'org-after-todo-state-change-hook
    'cashweaver-org-mode-when-done))
 #+end_src
+
+#+RESULTS:
 
 Record the current time when marking a heading as done.
 
@@ -1459,7 +1500,6 @@ Record the current time when marking a heading as done.
 | r | Roam | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 *** Links
-
 **** Digital Object Identifier (DOI)
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1512,21 +1552,73 @@ Record the current time when marking a heading as done.
 #+RESULTS:
 | :follow | org-link-isbn-open | :export | org-link-isbn-export |
 
+**** Google Sheets
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defvar cashweaver/org-link--google-sheets-base-url
+  "https://docs.google.com/spreadsheets/d/"
+  "The base url for Google Sheets")
+
+(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
+  "Return a url to Google Sheets for the provided SHEET-ID."
+  (s-format
+   "${base-url}/${id}"
+   'aget
+   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
+     ("id" . ,sheet-id))))
+
+(defun cashweaver/org-link--google-sheets-open (path arg)
+  (browse-url
+   (url-encode-url
+    (cashweaver/org-link--google-sheets-build-url
+     path))
+   arg))
+
+(defun cashweaver/org-link--google-sheets-export (path desc backend info)
+  "Export a Google Sheets link."
+  (let ((uri
+         (cashweaver/org-link--google-sheets-build-url
+          path)))
+    (pcase backend
+      (`md
+       (s-format
+        "[${description}}](${uri})"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      ('html
+       (s-format
+        "<a href=\"${uri}\">${description}</a>"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      (_
+       uri))))
+
+(org-link-set-parameters
+ "google-sheets"
+ :follow #'cashweaver/org-link--google-sheets-open
+ :export #'cashweaver/org-link--google-sheets-export)
+#+end_src
+
+#+RESULTS:
+
 *** TODO Agendas
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   :config
   (setq
-   calendar-week-start-day 1))
+   calendar-week-start-day 1
+   org-agenda-entry-text-maxlines 30
+   org-agenda-entry-text-leaders "  "
+   ))
 #+end_src
 
 #+RESULTS:
-: 1
-
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! evil-org-agenda)
 (use-package! evil)
+(use-package! evil-org-agenda)
 (use-package! org-agenda)
 (use-package! org-super-agenda
   :demand t
@@ -1607,9 +1699,6 @@ not always show the expected results."
           (name (format "%s %d %s" placement (abs n) name)))
     (list name non-matching (funcall take-fn (abs n) matching))))
 #+end_src
-
-#+RESULTS:
-: org-super-agenda--group-dispatch-take
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver-org-mode-buffer-property-get (property-name)
@@ -1734,8 +1823,8 @@ not always show the expected results."
        (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
        (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
-    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
-    ;;'cashweaver-remove-yaml-header)
+    (add-hook! 'org-pandoc-after-processing-markdown-hook
+    'cashweaver-remove-yaml-header)
     ))
 
 (defun cashweaver-remove-yaml-header ()
@@ -1747,6 +1836,24 @@ not always show the expected results."
   (goto-char (point-min))
   (delete-blank-lines)
   (delete-blank-lines))
+
+(defun cashweaver-remove-toml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "\\+\\+\\+\\(.\\|\n\\)*\\+\\+\\+"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun cashweaver-remove-yaml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-yaml-header))
+
+(defun cashweaver-remove-toml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-toml-header))
 
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
   "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
@@ -2387,7 +2494,6 @@ Work in progress"
 ;;
 ;; 1. Export even on first save from org-capture.
 ;; 2. Make roam files known to org exporter.
-;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
 (defun org-hugo-export-wim-to-md-after-save ()
   "See `org-hugo-export-wim-to-md-after-save'."
   (let ((paths-no-export
@@ -2511,6 +2617,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
             "Something went wrong when extracting the title.")
            (t
             "Something went wrong when parsing the citation."))))
+
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -2613,23 +2720,32 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 **** Create a heading for today
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(defun cashweaver-org-mode--heading-text-for-today ()
+(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading)
   "Return the heading text for today as a string."
-  (let* ((today-week-number (cashweaver-get-date "%W"))
+  (let* ((time-in-heading (or time-in-heading
+                              nil))
+         (today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
          (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (format "[%s %s] :week%s:quarter%s:"
+    (format "[%s %s%s] :week%s:quarter%s:"
             today-yyyy-mm-dd
             today-weekday-abbreviated-name
+            (if time-in-heading
+                (format " %s"
+                        (cashweaver-get-date "%H:%M"))
+              "")
             today-week-number
             today-quarter-number)))
 
-(defun cashweaver-org-mode-insert-heading-for-today (&optional top)
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading)
   "Insert a heading for today's date, with relevant tags."
   (interactive)
   (let ((heading-text
-         (cashweaver-org-mode--heading-text-for-today))
+         (cashweaver-org-mode--heading-text-for-today
+          ;; top
+          nil
+          time-in-heading))
         (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
         (today-hh-mm (cashweaver-get-date "%H:%M"))
         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
@@ -2947,7 +3063,8 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
-     :n "d" #'cashweaver-org-mode-insert-heading-for-today
+     :n "t" #'cashweaver-org-mode-insert-heading-for-today
+     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t))
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
     (:prefix ("S")
      (:prefix ("." . "today")
@@ -3024,7 +3141,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     :n "i" #'org-insert-structure-template)))
 #+end_src
 
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org-noter
   (map!
@@ -3081,6 +3197,21 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 :PROPERTIES:
 :Effort:   4h
 :END:
+
+* Bucket
+
+Bits that I haven't yet filed into a larger heading
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashweaver/reload-dir-locals-for-current-buffer ()
+  "reload dir locals for the current buffer"
+  (interactive)
+  (let ((enable-local-variables :all))
+    (hack-dir-local-variables-non-file-buffer)))
+#+end_src
+
+#+RESULTS:
+: cashweaver/reload-dir-locals-for-current-buffer
+
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]
