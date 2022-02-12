@@ -479,7 +479,14 @@
                         (org-insert-heading nil)
                         (insert field))
                       (outline-up-heading 1)
-                      (evil-org-append-line 1))))))))
+                      (evil-org-append-line 1))))
+           ("Roam"
+            :keys "r"
+            :file "~/proj/roam/todos.org"
+            :template ("* TODO [#2] %?"
+                       ":PROPERTIES:"
+                       ":Created: %U"
+                       ":END:"))))))
 
 (use-package! ol-doi)
 
@@ -488,6 +495,9 @@
   (setq
    calendar-week-start-day 1))
 
+(use-package! evil-org-agenda)
+(use-package! evil)
+(use-package! org-agenda)
 (use-package! org-super-agenda
   :demand t
   :after
@@ -495,23 +505,51 @@
    org-agenda
    evil
    ;;evil-org
-   ;;evil-org-agenda
+   evil-org-agenda
    )
   :hook
   ((org-agenda-mode . org-super-agenda-mode))
   :config
   (setq
    org-super-agenda-header-map evil-org-agenda-mode-map
+   cashweaver-roam-unread-file (s-format
+                                "${home-dir-path}/proj/roam/unread.org"
+                                'aget
+                                `(("home-dir-path" . cashweaver-home-dir-path)))
    cashweaver-roam-agenda-files (seq-difference
                                  (f-glob
                                   (format "%s/proj/roam/*.org"
                                           cashweaver-home-dir-path))
-                                 `(,(format "%s/proj/roam/unread.org"
-                                            cashweaver-home-dir-path)))
-   org-agenda-custom-commands '(("r" "Roam"
+                                 `(,cashweaver-roam-unread-file))
+   org-agenda-custom-commands '(("R" "Roam Unread"
                                  ((alltodo "" ((org-agenda-overriding-header "")
                                                (org-agenda-files
-                                                cashweaver-roam-agenda-files))))))))
+                                                cashweaver-roam-unread-file)
+                                               (org-super-agenda-groups
+                                                '((:name "Link Groups"
+                                                   :tag "link-group")
+                                                  (:name "Essays"
+                                                   :tag "essay")
+                                                  (:name "Discussions"
+                                                   :tag "discussion")
+                                                  (:name "Books"
+                                                   :tag "book")
+                                                  (:name "Classes"
+                                                   :tag "class")))))))
+                                ("r" "Roam"
+                                 ((alltodo "" ((org-agenda-overriding-header "")
+                                               (org-agenda-files
+                                                cashweaver-roam-agenda-files)
+                                               (org-super-agenda-groups
+                                                '(
+                                                  (:name "Concepts"
+                                                   :tag "concept")
+                                                  (:name "References"
+                                                   :tag "reference")
+                                                  (:name "Quotes"
+                                                   :tag "quote")
+                                                  (:name "People"
+                                                   :tag "person"))))))))))
 
 (defun cashweaver-org-mode-buffer-property-get (property-name)
   (org-with-point-at 1
@@ -1211,7 +1249,19 @@ Work in progress"
                                              (format
                                               "%s/attachments"
                                               org-roam-directory))
-   org-roam-capture-templates `(("d" "default" plain "%?" :target
+   org-roam-capture-templates `(("c" "concept" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :concept:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"))
+                                 :unnarrowed t)
+
+                                ("d" "default" plain "%?" :target
                                  (file+head
                                   "${slug}.org"
                                   ,(concat
@@ -1220,6 +1270,20 @@ Work in progress"
                                     "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
                                     "#+startup: overview\n"
                                     "#+hugo_auto_set_lastmod: t\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("p" "person" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :person:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "Among other things:\n"
                                     "* TODO"))
                                  :unnarrowed t)
 
@@ -1238,20 +1302,6 @@ Work in progress"
                                     "\n"
                                     "/[[https:foo][source]]/\n"
                                     "#+end_quote\n"))
-                                 :unnarrowed t)
-
-                                ("p" "person" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :person:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "Among other things:\n"
-                                    "* TODO"))
                                  :unnarrowed t)))
   (add-hook! 'org-roam-capture-new-node-hook
              'cashweaver-org-roam-insert-attachment-path)

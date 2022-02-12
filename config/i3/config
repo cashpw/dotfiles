@@ -282,13 +282,16 @@ mode "$mode_sound" {
 bindsym $mod+s mode "$mode_sound"
 
 ################################################################################
-#         Programs
+#         Programs / Windows
 ################################################################################
 
 # Determine the window's class by running `xprop WM_CLASS` and clicking on the
 # window.
 
 for_window [class=".*"] border none
+
+assign [class="Zotero"] 6
+assign [class="google-chrome"] 0
 
 ################################################################################
 #         Keybindings
@@ -302,3 +305,6 @@ bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.s
 ################################################################################
 
 #set $scripts_path "/home/cashweaver/.scripts"
+exec rxvt-unicode
+exec ~/third_party/Zotero_linux-x86_64/zotero
+exec google-chrome
