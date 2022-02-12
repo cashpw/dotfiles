@@ -957,6 +957,14 @@ This package provides a query language for Org files. It offers two syntax style
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-ql)
 #+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-ql)
+#+end_src
+
+#+RESULTS:
+: org-ql
+
 **** =org-gcal=
 #+begin_quote
 org-gcal offers
@@ -1309,6 +1317,8 @@ Save the buffer whenever I make change the state of a todo item. Note: The buffe
    'cashweaver-org-mode-when-done))
 #+end_src
 
+#+RESULTS:
+
 Record the current time when marking a heading as done.
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1386,7 +1396,6 @@ Record the current time when marking a heading as done.
 #+end_src
 
 *** Links
-
 **** Digital Object Identifier (DOI)
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1496,41 +1505,14 @@ Record the current time when marking a heading as done.
 (after! org
   :config
   (setq
-   calendar-week-start-day 1))
+   calendar-week-start-day 1
+   org-agenda-entry-text-maxlines 30
+   org-agenda-entry-text-leaders "  "
+   ))
 #+end_src
 
 #+RESULTS:
-: 1
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-super-agenda
-  :demand t
-  :after
-  (:all
-   org-agenda
-   evil
-   ;;evil-org
-   ;;evil-org-agenda
-   )
-  :hook
-  ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir-path))
-                                 `(,(format "%s/proj/roam/unread.org"
-                                            cashweaver-home-dir-path)))
-   org-agenda-custom-commands '(("r" "Roam"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-agenda-files))))))))
-#+end_src
-
-#+RESULTS:
-| org-super-agenda-mode | +org-habit-resize-graph-h | org-fancy-priorities-mode | evil-org-agenda-mode |
+:   #+RESULTS:
 
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1656,8 +1638,8 @@ Record the current time when marking a heading as done.
        (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
        (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
-    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
-    ;;'cashweaver-remove-yaml-header)
+    (add-hook! 'org-pandoc-after-processing-markdown-hook
+    'cashweaver-remove-yaml-header)
     ))
 
 (defun cashweaver-remove-yaml-header ()
@@ -2426,6 +2408,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
             "Something went wrong when extracting the title.")
            (t
             "Something went wrong when parsing the citation."))))
+
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -2528,23 +2511,32 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 **** Create a heading for today
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(defun cashweaver-org-mode--heading-text-for-today ()
+(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading)
   "Return the heading text for today as a string."
-  (let* ((today-week-number (cashweaver-get-date "%W"))
+  (let* ((time-in-heading (or time-in-heading
+                              nil))
+         (today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
          (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (format "[%s %s] :week%s:quarter%s:"
+    (format "[%s %s%s] :week%s:quarter%s:"
             today-yyyy-mm-dd
             today-weekday-abbreviated-name
+            (if time-in-heading
+                (format " %s"
+                        (cashweaver-get-date "%H:%M"))
+              "")
             today-week-number
             today-quarter-number)))
 
-(defun cashweaver-org-mode-insert-heading-for-today (&optional top)
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading)
   "Insert a heading for today's date, with relevant tags."
   (interactive)
   (let ((heading-text
-         (cashweaver-org-mode--heading-text-for-today))
+         (cashweaver-org-mode--heading-text-for-today
+          ;; top
+          nil
+          time-in-heading))
         (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
         (today-hh-mm (cashweaver-get-date "%H:%M"))
         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
@@ -2928,7 +2920,8 @@ Key bindinds don't, in my experience, benefit from =:tangle=-ed blocks. I keep t
     :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
-     :n "d" #'cashweaver-org-mode-insert-heading-for-today
+     :n "t" #'cashweaver-org-mode-insert-heading-for-today
+     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t))
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
     (:prefix ("S")
      (:prefix ("." . "today")
@@ -3004,6 +2997,8 @@ Key bindinds don't, in my experience, benefit from =:tangle=-ed blocks. I keep t
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 #+end_src
+
+#+RESULTS:
 
 ** =notmuch=
 
