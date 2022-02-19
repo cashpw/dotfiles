@@ -82,7 +82,12 @@ For showing which keys I'm pressing during screencasts or pairing sessions.
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! command-log-mode)
+(use-package! command-log-mode
+  :config
+  (setq
+   command-log-mode-open-log-turns-on-mode t
+   command-log-mode-window-size 80
+   command-log-mode-is-global t))
 #+end_src
 
 **** Usage
@@ -781,9 +786,6 @@ I need to use a different =send-mail-function= when sending email at work. I ove
  message-send-mail-function #'cashweaver-message-send-mail-function)
 #+end_src
 
-#+RESULTS:
-: cashweaver-message-send-mail-function
-
 ** Calendar
 *** Packages
 **** =calfw=
@@ -908,9 +910,6 @@ Use =aggressive-indent= when editing =elisp=.
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 #+end_src
 
-#+RESULTS:
-| aggressive-indent-mode | doom--setq-lisp-indent-function-for-emacs-lisp-mode-h | doom--setq-outline-regexp-for-emacs-lisp-mode-h | doom--setq-mode-name-for-emacs-lisp-mode-h | doom--setq-tab-width-for-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | outline-minor-mode | rainbow-delimiters-mode | highlight-quoted-mode | +emacs-lisp-extend-imenu-h | +emacs-lisp-init-straight-maybe-h | +lookup--init-emacs-lisp-mode-handlers-h | doom--enable-+emacs-lisp-ert-mode-in-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | eros-mode | lispy-mode | +evil-embrace-lisp-mode-hook-h | embrace-emacs-lisp-mode-hook |
-
 *** Packages
 ** Java
 ** TODO Org
@@ -961,9 +960,6 @@ This package provides a query language for Org files. It offers two syntax style
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-ql)
 #+end_src
-
-#+RESULTS:
-: org-ql
 
 **** =org-gcal=
 #+begin_quote
@@ -1166,9 +1162,6 @@ TODO Explain
                            (org-agenda-files :maxlevel . 9)))
 #+end_src
 
-#+RESULTS:
-: ((nil :maxlevel . 9) (org-agenda-files :maxlevel . 9))
-
 **** TODOs
 ***** Priorities
 
@@ -1182,9 +1175,6 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
    org-priority-default 2
    org-priority-lowest 4))
 #+end_src
-
-#+RESULTS:
-: 4
 
 ***** Keywords
 
@@ -1230,9 +1220,6 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
      ("PROJ" . +org-todo-project))))
 #+end_src
 
-#+RESULTS:
-: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
-
 ***** When marking a heading as ...
 
 Save the buffer whenever I make change the state of a todo item. Note: The buffer [[https://emacs.stackexchange.com/questions/55899/how-to-save-a-org-buffer-everytime-the-todo-state-changes#comment87667_55900][will appear modified even after running this snippet]].
@@ -1242,8 +1229,6 @@ Save the buffer whenever I make change the state of a todo item. Note: The buffe
  'org-after-todo-state-change-hook
  'save-buffer)
 #+end_src
-
-#+RESULTS:
 
 ****** =INPROGRESS=
 
@@ -1316,8 +1301,6 @@ Save the buffer whenever I make change the state of a todo item. Note: The buffe
    'org-after-todo-state-change-hook
    'cashweaver-org-mode-when-done))
 #+end_src
-
-#+RESULTS:
 
 Record the current time when marking a heading as done.
 
@@ -1402,10 +1385,6 @@ Record the current time when marking a heading as done.
                        ":END:"))))))
 #+end_src
 
-#+RESULTS:
-| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
-| r | Roam | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-
 *** Links
 **** Digital Object Identifier (DOI)
 
@@ -1456,15 +1435,15 @@ Record the current time when marking a heading as done.
                          :export #'org-link-isbn-export)
 #+end_src
 
-#+RESULTS:
-| :follow | org-link-isbn-open | :export | org-link-isbn-export |
-
 **** Google Sheets
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar cashweaver/org-link--google-sheets-base-url
-  "https://docs.google.com/spreadsheets/d/"
+  "https://docs.google.com/spreadsheets/d"
   "The base url for Google Sheets")
+(defvar cashweaver/org-link--google-sheets-type
+  "google-sheets"
+  "TODO")
 
 (defun cashweaver/org-link--google-sheets-build-url (sheet-id)
   "Return a url to Google Sheets for the provided SHEET-ID."
@@ -1473,6 +1452,15 @@ Record the current time when marking a heading as done.
    'aget
    `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
      ("id" . ,sheet-id))))
+
+(defun cashweaver/org-link--google-sheets-build-org-link (sheet-id description)
+  "Return a url to Google Sheets for the provided SHEET-ID."
+  (s-format
+   "[[${type}:${id}][${description}]]"
+   'aget
+   `(("type" . ,cashweaver/org-link--google-sheets-type)
+     ("id" . ,sheet-id)
+     ("description" . ,description))))
 
 (defun cashweaver/org-link--google-sheets-open (path arg)
   (browse-url
@@ -1503,12 +1491,10 @@ Record the current time when marking a heading as done.
        uri))))
 
 (org-link-set-parameters
- "google-sheets"
+ cashweaver/org-link--google-sheets-type
  :follow #'cashweaver/org-link--google-sheets-open
  :export #'cashweaver/org-link--google-sheets-export)
 #+end_src
-
-#+RESULTS:
 
 *** TODO Agendas
 
@@ -1520,73 +1506,6 @@ Record the current time when marking a heading as done.
    org-agenda-entry-text-maxlines 30
    org-agenda-entry-text-leaders "  "
    ))
-#+end_src
-
-#+RESULTS:
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! evil)
-(use-package! evil-org-agenda)
-(use-package! org-agenda)
-(use-package! org-super-agenda
-  :demand t
-  :after
-  (:all
-   org-agenda
-   evil
-   ;;evil-org
-   evil-org-agenda
-   )
-  :hook
-  ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   cashweaver-roam-unread-file (s-format
-                                "${home-dir-path}/proj/roam/unread.org"
-                                'aget
-                                `(("home-dir-path" . ,cashweaver-home-dir-path)))
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir-path))
-                                 `(,cashweaver-roam-unread-file))
-   org-agenda-custom-commands '(("R" "Roam Unread"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                `(,cashweaver-roam-unread-file))
-                                               (org-super-agenda-groups
-                                                '((:and (:tag "essay"
-                                                         :not (:tag "someday")))
-                                                  ;; (:take 10 (:name "Discussions"
-                                                  ;;            :and (:tag "discussion"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Books"
-                                                  ;;            :and (:tag "book"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Link Groups"
-                                                  ;;            :and (:tag "link_group"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Classes"
-                                                  ;;            :and (:tag "class"
-                                                  ;;                  :not (:tag "someday"))))
-                                                  ;; (:take 10 (:name "Someday"
-                                                  ;;            :tag "someday"))
-                                                  (:discard
-                                                   (:todo t))))))))
-
-                                ("r" "Roam"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-agenda-files)
-                                               (org-super-agenda-groups
-                                                '((:name "Concepts"
-                                                   :tag "concept")
-                                                  (:name "References"
-                                                   :tag "reference")
-                                                  (:name "Quotes"
-                                                   :tag "quote")
-                                                  (:name "People"
-                                                   :tag "person"))))))))))
 #+end_src
 
 #+RESULTS:
@@ -1793,9 +1712,6 @@ Record the current time when marking a heading as done.
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
-
-#+RESULTS:
-: org-pandoc-publish-to-plain
 
 **** TODO Hugo
 
@@ -2534,9 +2450,6 @@ TODO_AUTHOR, [cite:@${citekey}]\n
                        :props '(:finalize find-file))))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam-node-from-cite
-
 **** Annotate PDFs
 
 ***** TODO Config
@@ -2588,9 +2501,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
           (("author" "editor") . cashweaver/citar-full-names))))
 #+end_src
 
-#+RESULTS:
-: t
-
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -2603,9 +2513,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 #+end_src
-
-#+RESULTS:
-: t
 
 *** Helper Methods
 **** Create a heading for today
@@ -2677,9 +2584,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
              today-week-number
              today-quarter-number))))
 #+end_src
-
-#+RESULTS:
-: cashweaver-org-mode-insert-heading-for-this-week
 
 **** Scheduling task for my calendar blocks
 
@@ -2897,9 +2801,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
         (pop timestamps))))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-goto-most-recent-timestamp-with-property
-
 **** Edit FILETAGS
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3003,7 +2904,14 @@ Key bindinds don't, in my experience, benefit from =:tangle=-ed blocks. I keep t
  "M-N" #'operate-on-number-at-point)
 #+end_src
 
-#+RESULTS:
+** =evil-mode= Visual State
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(map!
+ :map evil-visual-state-map
+ "C-r" #'cashweaver/global-replace-in-selection)
+#+end_src
+
 
 ** =org-mode=
 
@@ -3098,8 +3006,6 @@ Key bindinds don't, in my experience, benefit from =:tangle=-ed blocks. I keep t
     :n "i" #'org-insert-structure-template)))
 #+end_src
 
-#+RESULTS:
-
 ** =notmuch=
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3187,8 +3093,57 @@ Bits that I haven't yet filed into a larger heading
     (hack-dir-local-variables-non-file-buffer)))
 #+end_src
 
-#+RESULTS:
-: cashweaver/reload-dir-locals-for-current-buffer
+#+begin_src emacs-lisp
+;; https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit #heading=h.hy2rqfrcolct
+
+(setq
+ cashweaver/rewrite-links--match--google-sheets "https?://docs.google.com/spreadsheets/d/\\([A-Za-z0-9-_]+\\)"
+ cashweaver/rewrite-links-matches `((,cashweaver/rewrite-links--match--google-docs . "google-docs")))
+
+(defun cashweaver/rewrite-links ()
+  "Rewrite raw links in the current buffer into org links."
+  (interactive)
+  (save-excursion
+    (goto-char
+     (point-min))
+    (while
+        (search-forward-regexp
+         cashweaver/rewrite-links--match--google-sheets
+         ;; bound
+         nil
+         ;; noerror
+         t)
+      (replace-match
+       (cashweaver/org-link--google-sheets-build-org-link
+        ;; sheet-id
+        (match-string 1)
+        ;; description
+        "Google Sheet")
+       )))
+
+  ;; (let ((link-regexps
+  ;;        `(,cashweaver/rewrite-links--match--google-docs)))
+  ;;   ())
+  )
+
+(cashweaver/rewrite-links)
+#+end_src
+
+https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM
+https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit
+https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit#heading=h.hy2rqfrcolct
+
+https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM
+https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit
+https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit#heading=h.hy2rqfrcolct
+
+#+begin_src emacs-lisp
+(defun cashweaver/global-replace-in-selection ()
+  (interactive)
+  (evil-yank (mark) (point) nil ?\")
+  (evil-ex (format "%%s/%s/"
+                   (evil-get-register ?\"))))
+#+end_src
 
 * Footnotes
 
