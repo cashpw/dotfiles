@@ -1603,9 +1603,9 @@ See: https://jethrokuan.github.io/org-roam-guide"
  \n
 TODO_AUTHOR, [cite:@${citekey}]\n
  \n
-* Summary\n
-* Thoughts\n
-* Notes\n")
+* TODO Summary\n
+* TODO Thoughts\n
+* TODO Notes\n")
                           :immediate-finish t
                           :unnarrowed t))
                        :info (list :citekey (car keys-entries))
