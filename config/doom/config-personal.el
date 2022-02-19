@@ -2049,6 +2049,81 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
   :config
   (pdf-tools-install))
 
+(defvar cashweaver/project-paths
+  '()
+  "List of paths to projects/important directories.")
+
+(defun cashweaver/get-proj-dir-paths (&optional projects-to-exclude proj-dir-path)
+  "Return a list of absolute paths to project directories.
+
+Exclude project names listed in PROJECTS-TO-EXCLUDE."
+  (let*
+      ((projects-to-exclude (or projects-to-exclude '()))
+       (proj-dir-path (or proj-dir-path
+                          (format "%s/proj"
+                                  cashweaver-home-dir-path)))
+       (proj-names
+        (remove-if
+         (lambda (file-name)
+           (or
+            (member file-name projects-to-exclude)
+            (string= ".." file-name)
+            (string= "." file-name)
+            (not (f-dir?
+             (expand-file-name
+              file-name
+              proj-dir-path)))))
+         (directory-files
+          proj-dir-path)))
+       (absolute-proj-dir-paths
+        (mapcar
+         (lambda (proj-name)
+           (format "%s/%s"
+                   proj-dir-path
+                   proj-name))
+         proj-names)))
+    absolute-proj-dir-paths))
+
+(add-to-list
+ 'cashweaver/project-paths
+  (cashweaver/get-proj-dir-paths))
+
+(defvar cashweaver/gdrive-mount-dir-path
+  "/mnt/cashbweaver-gdrive"
+  "Absoltue path to personal Google Drive mount.")
+
+(defvar cashweaver/gdrive-notes-dir-path
+  (format "%s/notes"
+          cashweaver/gdrive-mount-dir-path)
+  "Absolute path to personal notes directory in Google Drive.")
+
+(add-to-list
+ 'cashweaver/project-paths
+ cashweaver/gdrive-notes-dir-path)
+
+(defun cashweaver/maybe-add-trailing-forward-slash (str)
+  "Return STR with a trailing slash (added if it was missing)."
+  (if (s-ends-with? "/" str)
+      str
+    (format "%s/" str)))
+(defun cashweaver/get-flattened-known-project-paths ()
+  "Return a list of all known project paths"
+  (mapcar
+   (lambda (path)
+     (cashweaver/maybe-add-trailing-forward-slash path))
+   (flatten-tree
+    cashweaver/project-paths)))
+
+(defun cashweaver/projectile-refresh-known-paths ()
+  "Refresh the paths which projectile knows about."
+  (interactive)
+  (projectile-clear-known-projects)
+  (setq projectile-known-projects
+        (cashweaver/get-flattened-known-project-paths)))
+
+(after! projectile
+  (cashweaver/projectile-refresh-known-paths))
+
 (defun cashweaver/reload-dir-locals-for-current-buffer ()
   "reload dir locals for the current buffer"
   (interactive)
