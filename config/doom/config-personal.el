@@ -33,7 +33,12 @@
 
 (use-package! free-keys)
 
-(use-package! command-log-mode)
+(use-package! command-log-mode
+  :config
+  (setq
+   command-log-mode-open-log-turns-on-mode t
+   command-log-mode-window-size 80
+   command-log-mode-is-global t))
 
 (setq
  alert-fade-time 60
@@ -45,6 +50,36 @@
 ;;   (setq
 ;;    org-wild-notifier-alert-time '(10 2))
 ;;   (org-wild-notifier-mode))
+
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+(defun evil-lambda-key (mode keymap key def)
+  "Wrap `evil-define-key' to provide documentation."
+  (set 'sym (make-symbol (documentation def)))
+  (fset sym def)
+  (evil-define-key mode keymap key sym))
+
+(map!
+ ;; Keep in alphabetical order.
+ (:leader
+  :desc "at point" :n "h h" #'helpful-at-point
+  :desc "Store email link" :n "n L" #'org-notmuch-store-link
+  :desc "Langtool" :n "t L" #'langtool-check
+  (:prefix ("n")
+   (:prefix ("A" . "Anki")
+    :n "n" #'anki-editor-insert-note)
+   (:prefix "r"
+    :n "C" #'cashweaver/org-roam-node-from-cite))
+  (:prefix ("t")
+   :n "k" #'clm/toggle-command-log-buffer)))
+
+(map!
+ ;; Keep in alphabetical order.
+ :map global-map
+ "M-N" #'operate-on-number-at-point)
+
+(map!
+ :map evil-visual-state-map
+ "C-r" #'cashweaver/replace-selection)
 
 ;;; $DOOMDIR/config-personal.el -*- lexical-binding: t; -*-
 
@@ -268,6 +303,46 @@
  send-mail-function #'cashweaver-send-mail-function
  message-send-mail-function #'cashweaver-message-send-mail-function)
 
+(after! notmuch
+  ;; Keep in alphabetical order.
+  (map!
+   :map notmuch-message-mode-map
+   :localleader
+
+   "M t" #'cashweaver-mail-toggle-org-message-mode)
+
+  (map!
+   :map notmuch-show-mode-map
+
+   "M-RET" #'cashweaver-notmuch-show-open-or-close-all)
+
+  ;; Reply-all should be the default.
+  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
+  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+
+  ;; Easy archive for my most-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+
+  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+
+  ;; Helpers for toggling often-used tags.
+  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+                                                           "Toggle p0"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+                                                           "Toggle Read!"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+                                                           "Toggle waiting"
+                                                           (interactive)
+                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+
 ;(use-package! calfw-cal
 ;  :config
 ;  (setq
@@ -308,12 +383,14 @@
    +zen-mixed-pitch-modes '()
    writeroom-width 30))
 
-(after! aggressive-indent
+(use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
 (use-package! doct
   :commands (doct))
+
+(use-package! org-ql)
 
 ;; Too early load error
 ;; (use-package! org-mime)
@@ -322,13 +399,13 @@
 ;; (use-package! org-download)
 
 (after! org
-  :config
   (setq
    org-ellipsis " ▾ "
    org-hide-leading-stars t))
 
-(setq org-refile-targets '((nil :maxlevel . 9)
-                           (org-agenda-files :maxlevel . 9)))
+(after! org
+  (setq org-refile-targets '((nil :maxlevel . 9)
+                             (org-agenda-files :maxlevel . 9))))
 
 (after! org
   :config
@@ -377,6 +454,11 @@
      ("HOLD" . +org-todo-onhold)
      ("PROJ" . +org-todo-project))))
 
+(after! org
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'save-buffer))
+
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
   ;; Intentionally disabled for the moment. Leave the method here for reference.
@@ -394,24 +476,44 @@
    'cashweaver-org-mode-when-inprogress))
 
 (defvar
- cashweaver-org-archival-filepaths
+ cashweaver/org-mode--filepaths-to-archive-when-done
  `(,(format "%s/proj/roam/unread.org"
            cashweaver-home-dir-path))
  "TODOs in these file paths get archived when they're marked as done.")
 
+(defvar
+  cashweaver/org-mode--filepaths-to-noop-when-done
+  '()
+  "TODOs in these file paths won't get cut when they're marked as done.")
+
+(defun cashweaver/org-mode--should-archive-todo-when-done-p (file-path)
+  "Return non-nil if we should archive todo items in the prodived FILE-PATH."
+  (seq-contains-p
+   cashweaver/org-mode--filepaths-to-archive-when-done
+   file-path))
+
+(defun cashweaver/org-mode--should-noop-todo-when-done-p (file-path)
+  "Return non-nil if we should do nothing to todo items in the prodived FILE-PATH."
+  (or (org-get-repeat)
+      (seq-contains-p
+       cashweaver/org-mode--filepaths-to-noop-when-done
+       file-path)))
+
 (defun cashweaver-org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (cond ((org-entry-is-done-p)
-         (org-clock-out-if-current)
-         (cond ((org-get-repeat)
-                ;; Do nothing
-                nil)
-               ((seq-contains-p
-                 cashweaver-org-archival-filepaths
-                 buffer-file-name)
-                (org-archive-subtree-default))
-               (t
-                (org-cut-subtree))))))
+  (cond
+   ((org-entry-is-done-p)
+    (org-clock-out-if-current)
+    (cond
+     ((cashweaver/org-mode--should-noop-todo-when-done-p
+       buffer-file-name)
+      ;; Do nothing
+      nil)
+     ((cashweaver/org-mode--should-archive-todo-when-done-p
+       buffer-file-name)
+      (org-archive-subtree-default))
+     (t
+      (org-cut-subtree))))))
 
 (after! org
   :config
@@ -483,73 +585,125 @@
            ("Roam"
             :keys "r"
             :file "~/proj/roam/todos.org"
-            :template ("* TODO [#2] %?"
+            :template ("* TODO [#2] %{prefix}%?%{tags}"
                        ":PROPERTIES:"
                        ":Created: %U"
-                       ":END:"))))))
+                       ":END:")
+            :children (("Basic"
+                        :keys "r"
+                        :prefix ""
+                        :tags "")
+                       ("Node idea"
+                        :keys "i"
+                        :prefix "Node idea: "
+                        :tags " :idea:")))))))
 
 (use-package! ol-doi)
+
+;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
+
+(defvar org-link-isbn-server-url
+  "https://books.google.com/books?vid=ISBN"
+  "The URL of the ISBN server.")
+
+(defun org-link-isbn-open (path arg)
+  "Open a \"ISBN\" type link."
+  (browse-url
+   (url-encode-url
+    (concat
+     org-link-isbn-server-url
+     path)) arg))
+
+(defun org-link-isbn-export (path desc backend info)
+  "Export a \"ISBN\" type link."
+  (let ((uri
+         (concat org-link-isbn-server-url path)))
+    (pcase backend
+      (`md
+       (format "[%s](%s)" (or desc uri) uri))
+      (`html
+       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
+      (`latex
+       (if desc (format "\\href{%s}{%s}" uri desc)
+         (format "\\url{%s}" uri)))
+      (`ascii
+       (if (not desc) (format "<%s>" uri)
+         (concat (format "[%s]" desc)
+                 (and (not (plist-get info :ascii-links-to-notes))
+                      (format " (<%s>)" uri)))))
+      (`texinfo
+       (if (not desc) (format "@uref{%s}" uri)
+         (format "@uref{%s, %s}" uri desc)))
+      (_ uri))))
+
+(org-link-set-parameters "isbn"
+                         :follow #'org-link-isbn-open
+                         :export #'org-link-isbn-export)
+
+(defvar cashweaver/org-link--google-sheets-base-url
+  "https://docs.google.com/spreadsheets/d"
+  "The base url for Google Sheets")
+(defvar cashweaver/org-link--google-sheets-type
+  "google-sheets"
+  "TODO")
+
+(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
+  "Return a url to Google Sheets for the provided SHEET-ID."
+  (s-format
+   "${base-url}/${id}"
+   'aget
+   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
+     ("id" . ,sheet-id))))
+
+(defun cashweaver/org-link--google-sheets-build-org-link (sheet-id description)
+  "Return a url to Google Sheets for the provided SHEET-ID."
+  (s-format
+   "[[${type}:${id}][${description}]]"
+   'aget
+   `(("type" . ,cashweaver/org-link--google-sheets-type)
+     ("id" . ,sheet-id)
+     ("description" . ,description))))
+
+(defun cashweaver/org-link--google-sheets-open (path arg)
+  (browse-url
+   (url-encode-url
+    (cashweaver/org-link--google-sheets-build-url
+     path))
+   arg))
+
+(defun cashweaver/org-link--google-sheets-export (path desc backend info)
+  "Export a Google Sheets link."
+  (let ((uri
+         (cashweaver/org-link--google-sheets-build-url
+          path)))
+    (pcase backend
+      (`md
+       (s-format
+        "[${description}}](${uri})"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      ('html
+       (s-format
+        "<a href=\"${uri}\">${description}</a>"
+        'aget
+        `(("description" . ,desc)
+          ("uri" . ,uri))))
+      (_
+       uri))))
+
+(org-link-set-parameters
+ cashweaver/org-link--google-sheets-type
+ :follow #'cashweaver/org-link--google-sheets-open
+ :export #'cashweaver/org-link--google-sheets-export)
 
 (after! org
   :config
   (setq
-   calendar-week-start-day 1))
-
-(use-package! evil-org-agenda)
-(use-package! evil)
-(use-package! org-agenda)
-(use-package! org-super-agenda
-  :demand t
-  :after
-  (:all
-   org-agenda
-   evil
-   ;;evil-org
-   evil-org-agenda
-   )
-  :hook
-  ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   cashweaver-roam-unread-file (s-format
-                                "${home-dir-path}/proj/roam/unread.org"
-                                'aget
-                                `(("home-dir-path" . cashweaver-home-dir-path)))
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir-path))
-                                 `(,cashweaver-roam-unread-file))
-   org-agenda-custom-commands '(("R" "Roam Unread"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-unread-file)
-                                               (org-super-agenda-groups
-                                                '((:name "Link Groups"
-                                                   :tag "link-group")
-                                                  (:name "Essays"
-                                                   :tag "essay")
-                                                  (:name "Discussions"
-                                                   :tag "discussion")
-                                                  (:name "Books"
-                                                   :tag "book")
-                                                  (:name "Classes"
-                                                   :tag "class")))))))
-                                ("r" "Roam"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-agenda-files)
-                                               (org-super-agenda-groups
-                                                '(
-                                                  (:name "Concepts"
-                                                   :tag "concept")
-                                                  (:name "References"
-                                                   :tag "reference")
-                                                  (:name "Quotes"
-                                                   :tag "quote")
-                                                  (:name "People"
-                                                   :tag "person"))))))))))
+   calendar-week-start-day 1
+   org-agenda-entry-text-maxlines 30
+   org-agenda-entry-text-leaders "  "
+   ))
 
 (defun cashweaver-org-mode-buffer-property-get (property-name)
   (org-with-point-at 1
@@ -653,8 +807,8 @@
        (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
        (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
-    ;;(add-hook! 'org-pandoc-after-processing-markdown-hook
-    ;;'cashweaver-remove-yaml-header)
+    (add-hook! 'org-pandoc-after-processing-markdown-hook
+    'cashweaver-remove-yaml-header)
     ))
 
 (defun cashweaver-remove-yaml-header ()
@@ -666,6 +820,24 @@
   (goto-char (point-min))
   (delete-blank-lines)
   (delete-blank-lines))
+
+(defun cashweaver-remove-toml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "\\+\\+\\+\\(.\\|\n\\)*\\+\\+\\+"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun cashweaver-remove-yaml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-yaml-header))
+
+(defun cashweaver-remove-toml-front-matter-current-buffer ()
+  (interactive)
+  (cashweaver-remove-toml-header))
 
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
   "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
@@ -789,6 +961,124 @@ See `org-hugo-tag-processing-functions'."
 
 (use-package! ol-notmuch
   :after org)
+
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save
+  '()
+  "List of org-roam file paths which should NOT be exported after they are saved.")
+
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter
+  '()
+  "List of org-roam file paths which should NOT have references mirrored to front matter.")
+
+(use-package! org-roam
+  :after org
+  :config
+  (setq
+   org-roam-directory (file-truename
+                       "~/proj/roam")
+   cashweaver-org-roam-attachment-base-path (file-truename
+                                             (format
+                                              "%s/attachments"
+                                              org-roam-directory))
+   ;; TODO: Convert these to use doct
+   org-roam-capture-templates `(("c" "concept" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :concept:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"))
+                                 :unnarrowed t)
+
+                                ("d" "default" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("p" "person" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :person:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "Among other things:\n"
+                                    "* TODO"))
+                                 :unnarrowed t)
+
+                                ("q" "quote" plain "%?" :target
+                                 (file+head
+                                  "${slug}.org"
+                                  ,(concat
+                                    "#+title: ${title}\n"
+                                    "#+author: Cash Weaver\n"
+                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
+                                    "#+startup: overview\n"
+                                    "#+filetags: :quote:\n"
+                                    "#+hugo_auto_set_lastmod: t\n"
+                                    "#+begin_quote\n"
+                                    "TODO_QUOTE\n"
+                                    "\n"
+                                    "/[[https:foo][source]]/\n"
+                                    "#+end_quote\n"))
+                                 :unnarrowed t)))
+
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save `(,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter cashweaver/org-roam--file-path-exceptions-to-export-after-save
+
+  ;; Override
+  ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
+  ;;
+  ;; 1. Export even on first save from org-capture.
+  ;; 2. Make roam files known to org exporter.
+  (defun org-hugo-export-wim-to-md-after-save ()
+    "See `org-hugo-export-wim-to-md-after-save'."
+    (let ((paths-no-export
+           cashweaver/org-roam--file-path-exceptions-to-export-after-save))
+      (when (not (member
+                  (buffer-file-name)
+                  paths-no-export))
+        (let ((org-id-extra-files
+               (org-roam-list-files)))
+          (org-hugo-export-wim-to-md)))))
+
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--add-bibliography)
+  (org-roam-db-autosync-mode))
 
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
@@ -1035,6 +1325,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (org-set-property
        "DIR"
        dir))))
+(after! org-roam
+  (add-hook! 'org-roam-capture-new-node-hook
+              'cashweaver-org-roam-insert-attachment-path))
 
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
@@ -1116,7 +1409,10 @@ Work in progress"
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
-  (when (org-roam-file-p)
+  (when (and (org-roam-file-p)
+             (not (member
+                   (buffer-file-name)
+                   cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter)))
     (when-let*
         ((keyword
           "HUGO_CUSTOM_FRONT_MATTER")
@@ -1207,106 +1503,6 @@ Work in progress"
        (point-max))
       (insert option))))
 
-;; Override
-;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
-;;
-;; 1. Export even on first save from org-capture.
-;; 2. Make roam files known to org exporter.
-;; 3. Mirror ROAM_REFS to hugo_custom_front_matter
-(defun org-hugo-export-wim-to-md-after-save ()
-  "See `org-hugo-export-wim-to-md-after-save'."
-  (when (not (or
-              (string=
-               (buffer-file-name)
-               (format "%s/proj/roam/unread.org"
-                       cashweaver-home-dir-path))
-              (string=
-               (buffer-file-name)
-               (format "%s/proj/roam/unread.org_archive"
-                       cashweaver-home-dir-path))))
-    (let ((org-id-extra-files
-           (org-roam-list-files)))
-      ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-      ;; (cashweaver-org-roam--add-bibliography
-      ;;  ;; skip-if-present
-      ;;  t)
-      (org-hugo-export-wim-to-md))))
-
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--add-bibliography)
-
-(use-package! org-roam
-  :after org
-  :config
-  (setq
-   org-roam-directory (file-truename
-                       "~/proj/roam")
-   cashweaver-org-roam-attachment-base-path (file-truename
-                                             (format
-                                              "%s/attachments"
-                                              org-roam-directory))
-   org-roam-capture-templates `(("c" "concept" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :concept:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"))
-                                 :unnarrowed t)
-
-                                ("d" "default" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "* TODO"))
-                                 :unnarrowed t)
-
-                                ("p" "person" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :person:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "Among other things:\n"
-                                    "* TODO"))
-                                 :unnarrowed t)
-
-                                ("q" "quote" plain "%?" :target
-                                 (file+head
-                                  "${slug}.org"
-                                  ,(concat
-                                    "#+title: ${title}\n"
-                                    "#+author: Cash Weaver\n"
-                                    "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                                    "#+startup: overview\n"
-                                    "#+filetags: :quote:\n"
-                                    "#+hugo_auto_set_lastmod: t\n"
-                                    "#+begin_quote\n"
-                                    "TODO_QUOTE\n"
-                                    "\n"
-                                    "/[[https:foo][source]]/\n"
-                                    "#+end_quote\n"))
-                                 :unnarrowed t)))
-  (add-hook! 'org-roam-capture-new-node-hook
-             'cashweaver-org-roam-insert-attachment-path)
-  (org-roam-db-autosync-mode))
-
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
@@ -1357,8 +1553,6 @@ Work in progress"
                     `(:hugo-prefer-hyphen-in-tags ,org-hugo-prefer-hyphen-in-tags))))
              tag))))
 
-;;(cashweaver-org-hugo-export-all
-;;"/home/cashweaver/proj/roam")
 
 (defun cashweaver/org-roam-node-from-cite (keys-entries)
   "Create a roam node based on bibliography citation.
@@ -1383,7 +1577,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
              (not (string-empty-p citation-title))
              (not (string-empty-p author)))
             (s-format
-             "${author} :: ${title}"
+             "${author} | ${title}"
              'aget
              `(("author" . ,author)
                ("title" . ,citation-title))))
@@ -1393,6 +1587,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
             "Something went wrong when extracting the title.")
            (t
             "Something went wrong when parsing the citation."))))
+
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -1464,23 +1659,32 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 
-(defun cashweaver-org-mode--heading-text-for-today ()
+(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading)
   "Return the heading text for today as a string."
-  (let* ((today-week-number (cashweaver-get-date "%W"))
+  (let* ((time-in-heading (or time-in-heading
+                              nil))
+         (today-week-number (cashweaver-get-date "%W"))
          (today-quarter-number (cashweaver-get-date "%q"))
          (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
          (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (format "[%s %s] :week%s:quarter%s:"
+    (format "[%s %s%s] :week%s:quarter%s:"
             today-yyyy-mm-dd
             today-weekday-abbreviated-name
+            (if time-in-heading
+                (format " %s"
+                        (cashweaver-get-date "%H:%M"))
+              "")
             today-week-number
             today-quarter-number)))
 
-(defun cashweaver-org-mode-insert-heading-for-today (&optional top)
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading)
   "Insert a heading for today's date, with relevant tags."
   (interactive)
   (let ((heading-text
-         (cashweaver-org-mode--heading-text-for-today))
+         (cashweaver-org-mode--heading-text-for-today
+          ;; top
+          nil
+          time-in-heading))
         (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
         (today-hh-mm (cashweaver-get-date "%H:%M"))
         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
@@ -1736,35 +1940,10 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     option
     value)))
 
-(use-package! pdf-tools)
-
-(use-package! pdf-tools
-  :config
-  (pdf-tools-install))
-
-; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
-(defun evil-lambda-key (mode keymap key def)
-  "Wrap `evil-define-key' to provide documentation."
-  (set 'sym (make-symbol (documentation def)))
-  (fset sym def)
-  (evil-define-key mode keymap key sym))
-
-(map!
- ;; Keep in alphabetical order.
- (:leader
-  :desc "at point" :n "h h" #'helpful-at-point
-  :desc "Store email link" :n "n L" #'org-notmuch-store-link
-  :desc "Langtool" :n "t L" #'langtool-check
-  (:prefix ("n")
-   (:prefix ("A" . "Anki")
-    :n "n" #'anki-editor-insert-note)
-   (:prefix "r"
-    :n "C" #'cashweaver/org-roam-node-from-cite))))
-
-(map!
- ;; Keep in alphabetical order.
- :map global-map
- "M-N" #'operate-on-number-at-point)
+(defun cashweaver/org-remove-all-results-blocks ()
+  "Removes all result blocks; basically an alias"
+  (interactive)
+  (org-babel-remove-result-one-or-many t))
 
 (after! org
   ;; Keep in alphabetical order.
@@ -1778,7 +1957,8 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
-     :n "d" #'cashweaver-org-mode-insert-heading-for-today
+     :n "t" #'cashweaver-org-mode-insert-heading-for-today
+     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t))
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
     (:prefix ("S")
      (:prefix ("." . "today")
@@ -1854,46 +2034,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 
-(after! notmuch
-  ;; Keep in alphabetical order.
-  (map!
-   :map notmuch-message-mode-map
-   :localleader
-
-   "M t" #'cashweaver-mail-toggle-org-message-mode)
-
-  (map!
-   :map notmuch-show-mode-map
-
-   "M-RET" #'cashweaver-notmuch-show-open-or-close-all)
-
-  ;; Reply-all should be the default.
-  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
-  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
-
-  ;; Easy archive for my most-used tags.
-  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-
-  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
-  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
-  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
-
-  ;; Helpers for toggling often-used tags.
-  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
-                                                           "Toggle p0"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
-                                                           "Toggle Read!"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
-  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
-                                                           "Toggle waiting"
-                                                           (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
-
 (after! org-noter
   (map!
    :map pdf-view-mode-map
@@ -1902,3 +2042,15 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
    :n "n" #'org-noter-insert-note
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
+
+(use-package! pdf-tools)
+
+(use-package! pdf-tools
+  :config
+  (pdf-tools-install))
+
+(defun cashweaver/reload-dir-locals-for-current-buffer ()
+  "reload dir locals for the current buffer"
+  (interactive)
+  (let ((enable-local-variables :all))
+    (hack-dir-local-variables-non-file-buffer)))

@@ -46,3 +46,7 @@ fi
 if is_work_laptop; then
   /usr/bin/setxkbmap -option "ctrl:swapcaps"
 fi
+
+if is_work_desktop; then
+  bash ~/.scrips-work/restart-audio.sh
+fi
