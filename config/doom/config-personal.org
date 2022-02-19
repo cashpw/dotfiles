@@ -93,9 +93,6 @@ Alternatives include:
    command-log-mode-is-global t))
 #+end_src
 
-#+RESULTS:
-: t
-
 **** Usage
 
 #+begin_src emacs-lisp
@@ -827,9 +824,6 @@ I need to use a different =send-mail-function= when sending email at work. I ove
  send-mail-function #'cashweaver-send-mail-function
  message-send-mail-function #'cashweaver-message-send-mail-function)
 #+end_src
-
-#+RESULTS:
-: cashweaver-message-send-mail-function
 *** Keybindings
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -996,13 +990,10 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
 Use =aggressive-indent= when editing =elisp=.
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(after! aggressive-indent
+(use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 #+end_src
-
-#+RESULTS:
-| aggressive-indent-mode | doom--setq-lisp-indent-function-for-emacs-lisp-mode-h | doom--setq-outline-regexp-for-emacs-lisp-mode-h | doom--setq-mode-name-for-emacs-lisp-mode-h | doom--setq-tab-width-for-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | outline-minor-mode | rainbow-delimiters-mode | highlight-quoted-mode | +emacs-lisp-extend-imenu-h | +emacs-lisp-init-straight-maybe-h | +lookup--init-emacs-lisp-mode-handlers-h | doom--enable-+emacs-lisp-ert-mode-in-emacs-lisp-mode-h | (closure ((hook . emacs-lisp-mode-hook) (--dolist-tail--) t) (&rest _) (add-hook 'flycheck-mode-hook #'flycheck-cask-setup nil t)) | eros-mode | lispy-mode | +evil-embrace-lisp-mode-hook-h | embrace-emacs-lisp-mode-hook |
 
 *** Packages
 ** Java
@@ -1054,9 +1045,6 @@ This package provides a query language for Org files. It offers two syntax style
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-ql)
 #+end_src
-
-#+RESULTS:
-: org-ql
 
 **** =org-gcal=
 #+begin_quote
@@ -1244,7 +1232,6 @@ Digital Object Identifier link support.
 *** Appearance
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
-  :config
   (setq
    org-ellipsis " ▾ "
    org-hide-leading-stars t))
@@ -1255,12 +1242,10 @@ Digital Object Identifier link support.
 TODO Explain
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(setq org-refile-targets '((nil :maxlevel . 9)
-                           (org-agenda-files :maxlevel . 9)))
+(after! org
+  (setq org-refile-targets '((nil :maxlevel . 9)
+                             (org-agenda-files :maxlevel . 9))))
 #+end_src
-
-#+RESULTS:
-: ((nil :maxlevel . 9) (org-agenda-files :maxlevel . 9))
 
 **** TODOs
 ***** Priorities
@@ -1275,9 +1260,6 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
    org-priority-default 2
    org-priority-lowest 4))
 #+end_src
-
-#+RESULTS:
-: 4
 
 ***** Keywords
 
@@ -1323,20 +1305,16 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
      ("PROJ" . +org-todo-project))))
 #+end_src
 
-#+RESULTS:
-: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
-
 ***** When marking a heading as ...
 
 Save the buffer whenever I make change the state of a todo item. Note: The buffer [[https://emacs.stackexchange.com/questions/55899/how-to-save-a-org-buffer-everytime-the-todo-state-changes#comment87667_55900][will appear modified even after running this snippet]].
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(add-hook!
- 'org-after-todo-state-change-hook
- 'save-buffer)
+(after! org
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'save-buffer))
 #+end_src
-
-#+RESULTS:
 
 ****** =INPROGRESS=
 
@@ -1409,8 +1387,6 @@ Save the buffer whenever I make change the state of a todo item. Note: The buffe
    'org-after-todo-state-change-hook
    'cashweaver-org-mode-when-done))
 #+end_src
-
-#+RESULTS:
 
 Record the current time when marking a heading as done.
 
@@ -1489,15 +1465,19 @@ Record the current time when marking a heading as done.
            ("Roam"
             :keys "r"
             :file "~/proj/roam/todos.org"
-            :template ("* TODO [#2] %?"
+            :template ("* TODO [#2] %{prefix}%?%{tags}"
                        ":PROPERTIES:"
                        ":Created: %U"
-                       ":END:"))))))
+                       ":END:")
+            :children (("Basic"
+                        :keys "r"
+                        :prefix ""
+                        :tags "")
+                       ("Node idea"
+                        :keys "i"
+                        :prefix "Node idea: "
+                        :tags " :idea:")))))))
 #+end_src
-
-#+RESULTS:
-| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
-| r | Roam | entry | (file ~/proj/roam/todos.org)                  | * TODO [#2] %?        |       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 *** Links
 **** Digital Object Identifier (DOI)
@@ -1507,7 +1487,7 @@ Record the current time when marking a heading as done.
 #+end_src
 
 **** ISBN
-#+begin_src emacs-lisp config-personal.el
+#+begin_src emacs-lisp :tangle config-personal.el
 ;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
 
 (defvar org-link-isbn-server-url
@@ -1548,9 +1528,6 @@ Record the current time when marking a heading as done.
                          :follow #'org-link-isbn-open
                          :export #'org-link-isbn-export)
 #+end_src
-
-#+RESULTS:
-| :follow | org-link-isbn-open | :export | org-link-isbn-export |
 
 **** Google Sheets
 
@@ -1601,8 +1578,6 @@ Record the current time when marking a heading as done.
  :export #'cashweaver/org-link--google-sheets-export)
 #+end_src
 
-#+RESULTS:
-
 *** TODO Agendas
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1613,91 +1588,6 @@ Record the current time when marking a heading as done.
    org-agenda-entry-text-maxlines 30
    org-agenda-entry-text-leaders "  "
    ))
-#+end_src
-
-#+RESULTS:
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! evil)
-(use-package! evil-org-agenda)
-(use-package! org-agenda)
-(use-package! org-super-agenda
-  :demand t
-  :after
-  (:all
-   org-agenda
-   evil
-   ;;evil-org
-   evil-org-agenda
-   )
-  :hook
-  ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   cashweaver-roam-unread-file (s-format
-                                "${home-dir-path}/proj/roam/unread.org"
-                                'aget
-                                `(("home-dir-path" . ,cashweaver-home-dir-path)))
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir-path))
-                                 `(,cashweaver-roam-unread-file))
-   org-agenda-custom-commands '(("R" "Roam Unread"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                `(,cashweaver-roam-unread-file))
-                                               (org-super-agenda-groups
-                                                '(
-                                                  (:name "Essays (10)"
-                                                   :take (10 (:and (:tag "essay"
-                                                                    :not (:tag "someday")))))
-
-                                                  (:name "Discussions (10)"
-                                                   :take (10 (:and (:tag "discussion"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Books (10)"
-                                                   :take (10 (:and (:tag "book"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Link Groups (10)"
-                                                   :take (10 (:and (:tag "link_group"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Classes (10)"
-                                                   :take (10 (:and (:tag "class"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Someday (10)"
-                                                   :take (10 (:tag "someday")))
-                                                  (:discard
-                                                   (:todo t))))))))
-
-                                ("r" "Roam"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-agenda-files)
-                                               (org-super-agenda-groups
-                                                '((:name "Concepts"
-                                                   :tag "concept")
-                                                  (:take (10 (:name "References"
-                                                              :tag "reference")))
-                                                  ;; (:name "References"
-                                                  ;;  :tag "reference")
-                                                  (:name "Quotes"
-                                                   :tag "quote")
-                                                  (:name "People"
-                                                   :tag "person"))))))))))
-
-(cl-defun org-super-agenda--group-dispatch-take (items (n group))
-;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
-  "Take N ITEMS that match selectors in GROUP.
-If N is positive, take the first N items, otherwise take the last N items.
-Note: the ordering of entries is not guaranteed to be preserved, so this may
-not always show the expected results."
-  (message (format "%s" group))
-  (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
-          (take-fn (if (cl-minusp n) #'-take-last #'-take))
-          (placement (if (cl-minusp n) "Last" "First"))
-          (name (format "%s %d %s" placement (abs n) name)))
-    (list name non-matching (funcall take-fn (abs n) matching))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1902,9 +1792,6 @@ not always show the expected results."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
 
-#+RESULTS:
-: org-pandoc-publish-to-plain
-
 **** TODO Hugo
 
 ***** Config
@@ -2002,6 +1889,16 @@ See `org-hugo-tag-processing-functions'."
 **** TODO Roam
 
 #+begin_src emacs-lisp :tangle config-personal.el
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save
+  '()
+  "List of org-roam file paths which should NOT be exported after they are saved.")
+
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter
+  '()
+  "List of org-roam file paths which should NOT have references mirrored to front matter.")
+
 (use-package! org-roam
   :after org
   :config
@@ -2012,6 +1909,7 @@ See `org-hugo-tag-processing-functions'."
                                              (format
                                               "%s/attachments"
                                               org-roam-directory))
+   ;; TODO: Convert these to use doct
    org-roam-capture-templates `(("c" "concept" plain "%?" :target
                                  (file+head
                                   "${slug}.org"
@@ -2066,8 +1964,48 @@ See `org-hugo-tag-processing-functions'."
                                     "/[[https:foo][source]]/\n"
                                     "#+end_quote\n"))
                                  :unnarrowed t)))
-  (org-roam-db-autosync-mode))
 
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save `(,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter cashweaver/org-roam--file-path-exceptions-to-export-after-save
+
+  ;; Override
+  ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
+  ;;
+  ;; 1. Export even on first save from org-capture.
+  ;; 2. Make roam files known to org exporter.
+  (defun org-hugo-export-wim-to-md-after-save ()
+    "See `org-hugo-export-wim-to-md-after-save'."
+    (let ((paths-no-export
+           cashweaver/org-roam--file-path-exceptions-to-export-after-save))
+      (when (not (member
+                  (buffer-file-name)
+                  paths-no-export))
+        (let ((org-id-extra-files
+               (org-roam-list-files)))
+          (org-hugo-export-wim-to-md)))))
+
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--add-bibliography)
+  (org-roam-db-autosync-mode))
 
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
@@ -2398,7 +2336,10 @@ Work in progress"
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
-  (when (org-roam-file-p)
+  (when (and (org-roam-file-p)
+             (not (member
+                   (buffer-file-name)
+                   cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter)))
     (when-let*
         ((keyword
           "HUGO_CUSTOM_FRONT_MATTER")
@@ -2489,48 +2430,6 @@ Work in progress"
        (point-max))
       (insert option))))
 
-;; Override
-;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
-;;
-;; 1. Export even on first save from org-capture.
-;; 2. Make roam files known to org exporter.
-(defun org-hugo-export-wim-to-md-after-save ()
-  "See `org-hugo-export-wim-to-md-after-save'."
-  (let ((paths-no-export
-         `(,(s-format
-             "${home-dir-path}/proj/roam/unread.org"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org_archive"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org_archive"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))))
-    (when (not (member
-                (buffer-file-name)
-                paths-no-export))
-      (let ((org-id-extra-files
-             (org-roam-list-files)))
-        ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-        ;; (cashweaver-org-roam--add-bibliography
-        ;;  ;; skip-if-present
-        ;;  t)
-        (org-hugo-export-wim-to-md)))))
-
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--add-bibliography)
-
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
@@ -2581,8 +2480,6 @@ Work in progress"
                     `(:hugo-prefer-hyphen-in-tags ,org-hugo-prefer-hyphen-in-tags))))
              tag))))
 
-;;(cashweaver-org-hugo-export-all
-;;"/home/cashweaver/proj/roam")
 
 (defun cashweaver/org-roam-node-from-cite (keys-entries)
   "Create a roam node based on bibliography citation.
@@ -2607,7 +2504,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
              (not (string-empty-p citation-title))
              (not (string-empty-p author)))
             (s-format
-             "${author} :: ${title}"
+             "${author} | ${title}"
              'aget
              `(("author" . ,author)
                ("title" . ,citation-title))))
@@ -2643,8 +2540,6 @@ TODO_AUTHOR, [cite:@${citekey}]\n
                        :props '(:finalize find-file))))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam-node-from-cite
 
 **** Annotate PDFs
 
@@ -2697,9 +2592,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
           (("author" "editor") . cashweaver/citar-full-names))))
 #+end_src
 
-#+RESULTS:
-: t
-
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -2712,9 +2604,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 #+end_src
-
-#+RESULTS:
-: t
 
 *** Helper Methods
 **** Create a heading for today
@@ -2786,9 +2675,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
              today-week-number
              today-quarter-number))))
 #+end_src
-
-#+RESULTS:
-: cashweaver-org-mode-insert-heading-for-this-week
 
 **** Scheduling task for my calendar blocks
 
@@ -3006,9 +2892,6 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
         (pop timestamps))))))
 #+end_src
 
-#+RESULTS:
-: cashweaver-org-goto-most-recent-timestamp-with-property
-
 **** Edit FILETAGS
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3046,6 +2929,15 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     "#+%s: %s\n"
     option
     value)))
+#+end_src
+
+**** Removing RESULT blocks
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashweaver/org-remove-all-results-blocks ()
+  "Removes all result blocks; basically an alias"
+  (interactive)
+  (org-babel-remove-result-one-or-many t))
 #+end_src
 
 *** Keybindings
@@ -3208,9 +3100,6 @@ Bits that I haven't yet filed into a larger heading
   (let ((enable-local-variables :all))
     (hack-dir-local-variables-non-file-buffer)))
 #+end_src
-
-#+RESULTS:
-: cashweaver/reload-dir-locals-for-current-buffer
 
 * Footnotes
 

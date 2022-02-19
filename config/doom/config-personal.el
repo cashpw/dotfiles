@@ -379,7 +379,7 @@
    +zen-mixed-pitch-modes '()
    writeroom-width 30))
 
-(after! aggressive-indent
+(use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
@@ -395,13 +395,13 @@
 ;; (use-package! org-download)
 
 (after! org
-  :config
   (setq
    org-ellipsis " ▾ "
    org-hide-leading-stars t))
 
-(setq org-refile-targets '((nil :maxlevel . 9)
-                           (org-agenda-files :maxlevel . 9)))
+(after! org
+  (setq org-refile-targets '((nil :maxlevel . 9)
+                             (org-agenda-files :maxlevel . 9))))
 
 (after! org
   :config
@@ -450,9 +450,10 @@
      ("HOLD" . +org-todo-onhold)
      ("PROJ" . +org-todo-project))))
 
-(add-hook!
- 'org-after-todo-state-change-hook
- 'save-buffer)
+(after! org
+  (add-hook!
+   'org-after-todo-state-change-hook
+   'save-buffer))
 
 (defun cashweaver-org-mode-when-inprogress ()
   "Handle inprogress behavior."
@@ -580,12 +581,60 @@
            ("Roam"
             :keys "r"
             :file "~/proj/roam/todos.org"
-            :template ("* TODO [#2] %?"
+            :template ("* TODO [#2] %{prefix}%?%{tags}"
                        ":PROPERTIES:"
                        ":Created: %U"
-                       ":END:"))))))
+                       ":END:")
+            :children (("Basic"
+                        :keys "r"
+                        :prefix ""
+                        :tags "")
+                       ("Node idea"
+                        :keys "i"
+                        :prefix "Node idea: "
+                        :tags " :idea:")))))))
 
 (use-package! ol-doi)
+
+;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
+
+(defvar org-link-isbn-server-url
+  "https://books.google.com/books?vid=ISBN"
+  "The URL of the ISBN server.")
+
+(defun org-link-isbn-open (path arg)
+  "Open a \"ISBN\" type link."
+  (browse-url
+   (url-encode-url
+    (concat
+     org-link-isbn-server-url
+     path)) arg))
+
+(defun org-link-isbn-export (path desc backend info)
+  "Export a \"ISBN\" type link."
+  (let ((uri
+         (concat org-link-isbn-server-url path)))
+    (pcase backend
+      (`md
+       (format "[%s](%s)" (or desc uri) uri))
+      (`html
+       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
+      (`latex
+       (if desc (format "\\href{%s}{%s}" uri desc)
+         (format "\\url{%s}" uri)))
+      (`ascii
+       (if (not desc) (format "<%s>" uri)
+         (concat (format "[%s]" desc)
+                 (and (not (plist-get info :ascii-links-to-notes))
+                      (format " (<%s>)" uri)))))
+      (`texinfo
+       (if (not desc) (format "@uref{%s}" uri)
+         (format "@uref{%s, %s}" uri desc)))
+      (_ uri))))
+
+(org-link-set-parameters "isbn"
+                         :follow #'org-link-isbn-open
+                         :export #'org-link-isbn-export)
 
 (defvar cashweaver/org-link--google-sheets-base-url
   "https://docs.google.com/spreadsheets/d/"
@@ -639,88 +688,6 @@
    org-agenda-entry-text-maxlines 30
    org-agenda-entry-text-leaders "  "
    ))
-
-(use-package! evil)
-(use-package! evil-org-agenda)
-(use-package! org-agenda)
-(use-package! org-super-agenda
-  :demand t
-  :after
-  (:all
-   org-agenda
-   evil
-   ;;evil-org
-   evil-org-agenda
-   )
-  :hook
-  ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   cashweaver-roam-unread-file (s-format
-                                "${home-dir-path}/proj/roam/unread.org"
-                                'aget
-                                `(("home-dir-path" . ,cashweaver-home-dir-path)))
-   cashweaver-roam-agenda-files (seq-difference
-                                 (f-glob
-                                  (format "%s/proj/roam/*.org"
-                                          cashweaver-home-dir-path))
-                                 `(,cashweaver-roam-unread-file))
-   org-agenda-custom-commands '(("R" "Roam Unread"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                `(,cashweaver-roam-unread-file))
-                                               (org-super-agenda-groups
-                                                '(
-                                                  (:name "Essays (10)"
-                                                   :take (10 (:and (:tag "essay"
-                                                                    :not (:tag "someday")))))
-
-                                                  (:name "Discussions (10)"
-                                                   :take (10 (:and (:tag "discussion"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Books (10)"
-                                                   :take (10 (:and (:tag "book"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Link Groups (10)"
-                                                   :take (10 (:and (:tag "link_group"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Classes (10)"
-                                                   :take (10 (:and (:tag "class"
-                                                                    :not (:tag "someday")))))
-                                                  (:name "Someday (10)"
-                                                   :take (10 (:tag "someday")))
-                                                  (:discard
-                                                   (:todo t))))))))
-
-                                ("r" "Roam"
-                                 ((alltodo "" ((org-agenda-overriding-header "")
-                                               (org-agenda-files
-                                                cashweaver-roam-agenda-files)
-                                               (org-super-agenda-groups
-                                                '((:name "Concepts"
-                                                   :tag "concept")
-                                                  (:take (10 (:name "References"
-                                                              :tag "reference")))
-                                                  ;; (:name "References"
-                                                  ;;  :tag "reference")
-                                                  (:name "Quotes"
-                                                   :tag "quote")
-                                                  (:name "People"
-                                                   :tag "person"))))))))))
-
-(cl-defun org-super-agenda--group-dispatch-take (items (n group))
-;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
-  "Take N ITEMS that match selectors in GROUP.
-If N is positive, take the first N items, otherwise take the last N items.
-Note: the ordering of entries is not guaranteed to be preserved, so this may
-not always show the expected results."
-  (message (format "%s" group))
-  (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
-          (take-fn (if (cl-minusp n) #'-take-last #'-take))
-          (placement (if (cl-minusp n) "Last" "First"))
-          (name (format "%s %d %s" placement (abs n) name)))
-    (list name non-matching (funcall take-fn (abs n) matching))))
 
 (defun cashweaver-org-mode-buffer-property-get (property-name)
   (org-with-point-at 1
@@ -979,6 +946,16 @@ See `org-hugo-tag-processing-functions'."
 (use-package! ol-notmuch
   :after org)
 
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save
+  '()
+  "List of org-roam file paths which should NOT be exported after they are saved.")
+
+(defvar
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter
+  '()
+  "List of org-roam file paths which should NOT have references mirrored to front matter.")
+
 (use-package! org-roam
   :after org
   :config
@@ -989,6 +966,7 @@ See `org-hugo-tag-processing-functions'."
                                              (format
                                               "%s/attachments"
                                               org-roam-directory))
+   ;; TODO: Convert these to use doct
    org-roam-capture-templates `(("c" "concept" plain "%?" :target
                                  (file+head
                                   "${slug}.org"
@@ -1043,8 +1021,48 @@ See `org-hugo-tag-processing-functions'."
                                     "/[[https:foo][source]]/\n"
                                     "#+end_quote\n"))
                                  :unnarrowed t)))
-  (org-roam-db-autosync-mode))
 
+  cashweaver/org-roam--file-path-exceptions-to-export-after-save `(,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                                   ,(s-format
+                                                                     "${home-dir-path}/proj/roam/unread.org_archive"
+                                                                     'aget
+                                                                     `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))
+  cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter cashweaver/org-roam--file-path-exceptions-to-export-after-save
+
+  ;; Override
+  ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
+  ;;
+  ;; 1. Export even on first save from org-capture.
+  ;; 2. Make roam files known to org exporter.
+  (defun org-hugo-export-wim-to-md-after-save ()
+    "See `org-hugo-export-wim-to-md-after-save'."
+    (let ((paths-no-export
+           cashweaver/org-roam--file-path-exceptions-to-export-after-save))
+      (when (not (member
+                  (buffer-file-name)
+                  paths-no-export))
+        (let ((org-id-extra-files
+               (org-roam-list-files)))
+          (org-hugo-export-wim-to-md)))))
+
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
+  (add-hook!
+   'before-save-hook
+   #'cashweaver-org-roam--add-bibliography)
+  (org-roam-db-autosync-mode))
 
 (defun cashweaver-org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
@@ -1375,7 +1393,10 @@ Work in progress"
 (defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
-  (when (org-roam-file-p)
+  (when (and (org-roam-file-p)
+             (not (member
+                   (buffer-file-name)
+                   cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter)))
     (when-let*
         ((keyword
           "HUGO_CUSTOM_FRONT_MATTER")
@@ -1466,48 +1487,6 @@ Work in progress"
        (point-max))
       (insert option))))
 
-;; Override
-;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
-;;
-;; 1. Export even on first save from org-capture.
-;; 2. Make roam files known to org exporter.
-(defun org-hugo-export-wim-to-md-after-save ()
-  "See `org-hugo-export-wim-to-md-after-save'."
-  (let ((paths-no-export
-         `(,(s-format
-             "${home-dir-path}/proj/roam/unread.org"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org_archive"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
-           ,(s-format
-             "${home-dir-path}/proj/roam/unread.org_archive"
-             'aget
-             `(("home-dir-path" . ,cashweaver-home-dir-path-personal))))))
-    (when (not (member
-                (buffer-file-name)
-                paths-no-export))
-      (let ((org-id-extra-files
-             (org-roam-list-files)))
-        ;; (cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-        ;; (cashweaver-org-roam--add-bibliography
-        ;;  ;; skip-if-present
-        ;;  t)
-        (org-hugo-export-wim-to-md)))))
-
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--mirror-roam-refs-to-front-matter)
-(add-hook!
- 'before-save-hook
- #'cashweaver-org-roam--add-bibliography)
-
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
@@ -1558,8 +1537,6 @@ Work in progress"
                     `(:hugo-prefer-hyphen-in-tags ,org-hugo-prefer-hyphen-in-tags))))
              tag))))
 
-;;(cashweaver-org-hugo-export-all
-;;"/home/cashweaver/proj/roam")
 
 (defun cashweaver/org-roam-node-from-cite (keys-entries)
   "Create a roam node based on bibliography citation.
@@ -1584,7 +1561,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
              (not (string-empty-p citation-title))
              (not (string-empty-p author)))
             (s-format
-             "${author} :: ${title}"
+             "${author} | ${title}"
              'aget
              `(("author" . ,author)
                ("title" . ,citation-title))))
@@ -1946,6 +1923,11 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     "#+%s: %s\n"
     option
     value)))
+
+(defun cashweaver/org-remove-all-results-blocks ()
+  "Removes all result blocks; basically an alias"
+  (interactive)
+  (org-babel-remove-result-one-or-many t))
 
 (after! org
   ;; Keep in alphabetical order.
