@@ -1,6 +1,3 @@
-:PROPERTIES:
-:LAST_MODIFIED: [2022-02-25 Fri 13:39]
-:END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
 #+email: cashbweaver@gmail.com
@@ -13,7 +10,6 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
- ;; User information
  user-full-name "Cash Weaver"
  user-mail-address "cashbweaver@gmail.com")
 #+end_src
@@ -29,30 +25,44 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 *** Helper Functions
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(defun cashweaver-get-date (&optional date-format offset-days)
+(defun cashweaver/format-time (&optional time-format offset-days)
   "Return the (offset) date in format."
   (interactive)
-  (let ((date-format (or date-format "%Y-%m-%d"))
-        (offset-days (or offset-days 0)))
-    (shell-command-to-string
-     (format "echo -n $(date \"+%s\" --date=\"%d days\")" date-format offset-days))))
+  (let* ((time-format
+         (or time-format
+             "%Y-%m-%d"))
+        (offset-days
+         (if offset-days
+             offset-days
+           0))
+        (time
+         (cond
+          ((= offset-days
+              0)
+           (current-time))
+          (t
+           (time-add
+            (current-time)
+            (days-to-time offset-days))))))
+    (format-time-string
+     time-format
+     time)))
 
 (defun cashweaver-todays-date ()
   "Return todays date as YYYY-MM-DD."
-  (cashweaver-get-date
-   ; date-format
+  (cashweaver/format-time
    "%Y-%m-%d"
-   ; offset-days
+   ;; offset-days
    0))
 
 (defun cashweaver-yesterdays-date ()
   "Return yesterday's date as YYYY-MM-DD."
-  (cashweaver-get-date
-   ; date-format
+  (cashweaver/format-time
    "%Y-%m-%d"
-   ; offset-days
+   ;; offset-days
    -1))
 #+end_src
+
 ** Packages
 *** =free-keys=
 
@@ -180,7 +190,7 @@ Doom Emacs provides =alert=.
 #+begin_src emacs-lisp :tangle config-personal.el
 (map!
  :map evil-visual-state-map
- "C-r" #'cashweaver/replace-selection)
+ :n "C-r" #'cashweaver/replace-selection)
 #+end_src
 
 * Doom Emacs
@@ -761,7 +771,7 @@ Doom emacs provides =notmuch= through =init.el=.
                              :query "tag:draft")
                             (:name "calendar-events"
                              :key "c"
-                             :query "tag:Calendar-Events AND tag:inbox")
+                             :query "tag:Calendar-Events AND (tag:inbox OR tag:p0)")
                             (:name "calendar-events (all)"
                              :key "C"
                              :query "tag:Calendar-Events"))
@@ -785,6 +795,7 @@ Doom emacs provides =notmuch= through =init.el=.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
+
 *** Compose in =org-mode=
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1384,9 +1395,8 @@ Does nothing if such a heading is absent."
   (org-set-property
    ;; TODO: Convert this to a defcustom.
    "CREATED_AT"
-   (format-time-string
-    "[%Y-%m-%d %a %H:%M:%S]"
-    (current-time))))
+   (cashweaver/format-time
+    "[%Y-%m-%d %a %H:%M:%S]")))
 
 (cl-defun cashweaver/contacts-file? (&optional file)
   "Contacts files are roam files."
@@ -1453,14 +1463,15 @@ Does nothing if such a heading is absent."
            (birthday-has-passed-this-year
             (string<
              (format "%s%s%s" current-year birth-month birth-day)
-             (format-time-string "%Y%m%d" (current-time))))
+             (cashweaver/format-time
+              "%Y%m%d")))
            (reminder-year
             (if birthday-has-passed-this-year
                 next-year
               current-year))
            (reminder-scheduled-date
             (s-format
-             "<${year}-${month}-${day} ++1y>"
+             "<${year}-${month}-${day} +1y>"
              'aget
              `(("year" . ,reminder-year)
                ("month" . ,birth-month)
@@ -1488,22 +1499,80 @@ Does nothing if such a heading is absent."
         (`(("TITLE" . ,val))
          (car val))))))
 
-(cashweaver/contacts--create-birthday-reminder)
+(defcustom cashweaver/contacts-field-birthday
+  "BIRTHDAY"
+  "Birthday field used in contact properties.")
+
+(defun cashweaver/contacts-aniversaries (contact-file-directory &optional field)
+  "Compute FIELD anniversaries for each contact.
+
+Based on `org-contacts-anniversaries'."
+  (let ((field
+         (or field
+             cashweaver/contacts-field-birthday))
+        (contact-files
+         (org-roam--list-files
+          (expand-file-name
+           contact-file-directory))))
+    ;; (loop for file in contact-files
+    ;;       for anniversary = (let ((anniversary
+    ;;                                ))))
+    ))
+
+(defun cashweaver/contacts--get-contacts ()
+  (let ((org-roam-directory
+         "~/proj/people")
+        (org-roam-db-location
+         "~/proj/people/org-roam.db"))
+    (when (emacsql-live-p
+           (org-roam-db--get-connection))
+      (emacsql-close
+       (org-roam-db--get-connection)))
+    (org-roam-db)
+    (org-roam-db-query
+     [:select *
+      :from nodes])))
+
+
+;; (cashweaver/contacts--create-birthday-reminder)
 ;; (cashweaver/contacts--create-top-level-heading-if-absent "foo")
 ;; (cashweaver/contacts--get-name)
 ;; (cashweaver/contacts--list-top-level-headings)
 #+end_src
 
-#+RESULTS:
-
 ***** TODO Move this to separate package file.
 
+**** =org-gtasks=
+
+#+begin_quote
+Export/import all Google Tasks to org files.
+
+https://github.com/JulienMasson/org-gtasks
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-gtasks
+  :recipe (:host github
+           :repo "JulienMasson/org-gtasks"))
+#+end_src
+
+**** =org-vcard=
+
+#+begin_quote
+=org-vcard= is a package for exporting and importing [[https://en.wikipedia.org/wiki/Vcard][vCards]] from within [[https://www.gnu.org/software/emacs/][GNU Emacs]]' [[http://orgmode.org/][Org mode]].
+
+https://github.com/flexibeast/org-vcard#table-of-contents
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-vcard)
+#+end_src
 
 *** Appearance
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   (setq
-   org-ellipsis " ▾ "
+   org-ellipsis " ▾"
    org-hide-leading-stars t))
 #+end_src
 
@@ -2003,21 +2072,29 @@ Record the current time when marking a heading as done.
   "Remove the 'front matter'/YAML header content from the current buffer."
   (goto-char (point-min))
   (replace-regexp
-   "---\\(.\\|\n\\)*---"
+   "---\\(.\\|\n\\)*?---"
    "")
   (goto-char (point-min))
   (delete-blank-lines)
   (delete-blank-lines))
 
 (defun cashweaver-remove-toml-header ()
-  "Remove the 'front matter'/YAML header content from the current buffer."
+  "Remove the 'front matter'/TOML header content from the current buffer."
   (goto-char (point-min))
   (replace-regexp
-   "\\+\\+\\+\\(.\\|\n\\)*\\+\\+\\+"
+   "\\+\\+\\+\\(.\\|\n\\)*?\\+\\+\\+"
    "")
   (goto-char (point-min))
   (delete-blank-lines)
   (delete-blank-lines))
+
+(defun cashweaver-get-toml-header ()
+  "Return the 'front matter'/TOML header content from the current buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward-regexp
+     "\\+\\+\\+\n\\(\\(.\\|\n\\)*?\\)\\+\\+\\+")
+    (match-string 1)))
 
 (defun cashweaver-remove-yaml-front-matter-current-buffer ()
   (interactive)
@@ -2350,9 +2427,6 @@ Reference: https://superuser.com/a/604264"
     (org-roam-db-sync)))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam--set-root
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/org-set-last-modified ()
   (interactive)
@@ -2362,16 +2436,14 @@ Reference: https://superuser.com/a/604264"
        (point-min))
       (org-set-property
        "LAST_MODIFIED"
-       (format-time-string "[%Y-%m-%d %a %H:%M]")))))
+       (cashweaver/format-time
+        "[%Y-%m-%d %a %H:%M]")))))
 
 ;; (after! org
 ;;   (add-hook!
 ;;     'before-save-hook
 ;;     (cashweaver/org-set-last-modified)))
 #+end_src
-
-#+RESULTS:
-: cashweaver/org-set-last-modified
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar
@@ -2387,6 +2459,8 @@ Reference: https://superuser.com/a/604264"
 (use-package! org-roam
   :after org
   :config
+  (setq
+   cashweaver/org-hugo-replace-front-matter-with-title nil)
   (cashweaver/org-roam--set-root "notes")
 
   ;; Override
@@ -2398,12 +2472,15 @@ Reference: https://superuser.com/a/604264"
     "See `org-hugo-export-wim-to-md-after-save'."
     (let ((paths-no-export
            cashweaver/org-roam--file-path-exceptions-to-export-after-save))
-      (when (not (member
-                  (buffer-file-name)
-                  paths-no-export))
+      (unless (member
+               (buffer-file-name)
+               paths-no-export)
         (let ((org-id-extra-files
-               (org-roam-list-files)))
-          (org-hugo-export-wim-to-md)))))
+               (org-roam-list-files))
+              (export-file-path
+               (org-hugo-export-wim-to-md)))
+          (when cashweaver/org-hugo-replace-front-matter-with-title
+            )))))
 
   (org-roam-db-autosync-mode))
 
@@ -2547,18 +2624,12 @@ PROPERTIES is expected to be an alist of additional properties to include.
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
   (let* ((id
           (org-id-new))
-         (dir
-          (format
-           "%s/%s"
-           cashweaver-org-roam-attachment-base-path
-           id))
          (created-date
-          (cashweaver-get-date
+          (cashweaver/format-time
            "[%Y-%m-%d %a %H:%M]"))
          (all-properties
           (append
-           `(("ID" . ,id)
-             ("DIR" . ,dir))
+           `(("ID" . ,id))
            properties)))
     (with-temp-file
         file-path
@@ -2645,20 +2716,23 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        roam-refs))))
 
 
-;; TODO Consolidate this and the bit in `cashweaver-org-roam-new-node'
-(defun cashweaver-org-roam-insert-attachment-path ()
-  (let ((dir
-         (format
-          "%s/%s"
-          cashweaver-org-roam-attachment-base-path
-          (org-id-get))))
-    (save-excursion
-      (org-set-property
-       "DIR"
-       dir))))
-(after! org-roam
-  (add-hook! 'org-roam-capture-new-node-hook
-              'cashweaver-org-roam-insert-attachment-path))
+;; This bit is no longer necessary as I've discovered .dir-locals.el.
+;; Setting `org-attach-directory' in .dir-locals.el has the desired
+;; effect of this function.
+;;
+;; (defun cashweaver-org-roam-insert-attachment-path ()
+;;   (let ((dir
+;;          (format
+;;           "%s/%s"
+;;           cashweaver-org-roam-attachment-base-path
+;;           (org-id-get))))
+;;     (save-excursion
+;;       (org-set-property
+;;        "DIR"
+;;        dir))))
+;; (after! org-roam
+;;   (remove-hook! 'org-roam-capture-new-node-hook
+;;               'cashweaver-org-roam-insert-attachment-path))
 
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
@@ -2670,11 +2744,11 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
           (org-collect-keywords
            keyword)))
       (message current-value)
-    (org-roam-set-keyword
-     (downcase keyword)
-     (format "%s %s"
-             key
-             value)))))
+      (org-roam-set-keyword
+       (downcase keyword)
+       (format "%s %s"
+               key
+               value)))))
 
 (defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES.
@@ -2941,9 +3015,6 @@ TODO_AUTHOR, [cite:@${citekey}]\n
                        :props '(:finalize find-file))))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam-node-from-cite
-
 #+begin_src emacs-lisp
 (cashweaver-org-hugo-export-all
  (format "%s/proj/roam"
@@ -3018,44 +3089,70 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 **** Create a heading for today
 
 #+begin_src emacs-lisp :tangle config-personal.el
-
-(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading)
+(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading include-all-tags)
   "Return the heading text for today as a string."
-  (let* ((time-in-heading (or time-in-heading
-                              nil))
-         (today-week-number (cashweaver-get-date "%W"))
-         (today-quarter-number (cashweaver-get-date "%q"))
-         (today-year (cashweaver-get-date "%Y"))
-         (today-month-number (cashweaver-get-date "%m"))
-         (today-day-number (cashweaver-get-date "%d"))
-         (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
-    (s-format
-     "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] :${year}week${week-number}:${year}Q${quarter-number}:"
-     'aget
-     `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
-                                today-year
-                                today-month-number
-                                today-day-number))
-       ("short-weekday" . ,today-weekday-abbreviated-name)
-       ("year" . ,today-year)
-       ("week-number" . ,today-week-number)
-       ("quarter-number" . ,today-quarter-number)
-       ("hour-minute" . ,(if time-in-heading
-                             (format " %s"
-                                     (cashweaver-get-date "%H:%M"))
-                           ""))))))
+  (let* ((time-in-heading
+          (or time-in-heading
+              nil))
+         (include-all-tags
+          (or include-all-tags
+              nil))
+         (today-week-number
+          (cashweaver/format-time
+           "%W"))
+         (today-quarter-number
+          (cashweaver/format-time
+           "%q"))
+         (today-year
+          (cashweaver/format-time
+           "%Y"))
+         (today-month-number
+          (cashweaver/format-time
+           "%m"))
+         (today-day-number
+          (cashweaver/format-time
+           "%d"))
+         (today-weekday-abbreviated-name
+          (cashweaver/format-time
+           "%a"))
+         (tags
+          (if include-all-tags
+              (s-format
+               ":${year}:${year}week${week-number}:${year}Q${quarter-number}:"
+               'aget
+               `(("year" . ,today-year)
+                 ("week-number" . ,today-week-number)
+                 ("quarter-number" . ,today-quarter-number)))
+            ""))))
+  (s-format
+   "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] ${tags}"
+   'aget
+   `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
+                              today-year
+                              today-month-number
+                              today-day-number))
+     ("short-weekday" . ,today-weekday-abbreviated-name)
+     ("year" . ,today-year)
+     ("week-number" . ,today-week-number)
+     ("quarter-number" . ,today-quarter-number)
+     ("hour-minute" . ,(if time-in-heading
+                           (format " %s"
+                                   (cashweaver/format-time "%H:%M"))
+                         ""))
+     ("tags" . ,tags))))
 
-(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading)
+(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
   "Insert a heading for today's date, with relevant tags."
   (interactive)
   (let ((heading-text
          (cashweaver-org-mode--heading-text-for-today
           ;; top
           nil
-          time-in-heading))
-        (today-yyyy-mm-dd (cashweaver-get-date "%Y-%m-%d"))
-        (today-hh-mm (cashweaver-get-date "%H:%M"))
-        (today-weekday-abbreviated-name (cashweaver-get-date "%a")))
+          time-in-heading
+          include-all-tags))
+        (today-yyyy-mm-dd (cashweaver/format-time "%Y-%m-%d"))
+        (today-hh-mm (cashweaver/format-time "%H:%M"))
+        (today-weekday-abbreviated-name (cashweaver/format-time "%a")))
     (if top
         (org-insert-heading nil t t)
       (org-insert-heading-respect-content))
@@ -3079,24 +3176,41 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
           headline-text)))
     headline-marker))
 
-(defun cashweaver-org-mode-insert-heading-for-this-week ()
+(defun cashweaver-org-mode-insert-heading-for-this-week (&optional include-all-tags)
   "Insert a heading for this week, with relevant tags."
   (interactive)
-  (let* ((today-week-number (cashweaver-get-date "%W"))
-         (today-quarter-number (cashweaver-get-date "%q"))
-         (today-year (cashweaver-get-date "%Y")))
+  (let* ((include-all-tags
+          (or include-all-tags
+              nil))
+         (today-week-number
+          (cashweaver/format-time "%W"))
+         (today-quarter-number
+          (cashweaver/format-time "%q"))
+         (today-year
+          (cashweaver/format-time "%Y"))
+         (tags
+          (if include-all-tags
+              (s-format
+               ":${year}:${year}week${week-number}:${year}Q${quarter-number}:"
+               'aget
+               `(("year" . ,today-year)
+                 ("week-number" . ,today-week-number)
+                 ("quarter-number" . ,today-quarter-number)))
+            (s-format
+             ":${year}week${week-number}:"
+             'aget
+             `(("year" . ,today-year)
+               ("week-number" . ,today-week-number))))))
     (org-insert-heading-respect-content)
     (insert
      (s-format
-      "${year} Week ${week-number} :${year}week${week-number}:${year}Q${quarter-number}:"
+      "${year} Week ${week-number} ${tags}"
       'aget
       `(("year" . ,today-year)
         ("week-number" . ,today-week-number)
-        ("quarter-number" . ,today-quarter-number))))))
+        ("tags" . ,tags))))))
 #+end_src
-:PROPERTIES:
-:Created:  [2022-02-22 Tue 20:50]
-:END:
+
 **** Scheduling task for my calendar blocks
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3376,8 +3490,14 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
-     :n "t" #'cashweaver-org-mode-insert-heading-for-today
-     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t))
+     :n "t" (cmd! (cashweaver-org-mode-insert-heading-for-today
+                   ;; top
+                   nil
+                   ;; time-in-heading
+                   nil
+                   ;; include-all-tags
+                   nil))
+     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t t))
      :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
     (:prefix ("S")
      (:prefix ("." . "today")
@@ -3483,6 +3603,45 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
   :after org-protocol)
 #+end_src
 
+*** =org-gtasks=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashweaver/org-gtasks--get-client-secret ()
+  "Return client secret for Cash Weaver's Google Tasks."
+  (replace-regexp-in-string
+   "\n"
+   ""
+   (with-temp-buffer
+     (insert-file-contents
+      (file-truename
+       "~/.config/org-gtasks/client-secret"))
+     (buffer-string))))
+
+;; (use-package! org-gtasks
+;;   :after org
+;;   :config
+;;   (setq
+;;    cashweaver/org-gtasks-client-id "TODO"
+;;    cashweaver/org-gtasks-client-secret (cashweaver/org-gtasks--get-client-secret)
+;;    org-gtasks-accounts '())
+;;   (org-gtasks-register-account
+;;    :name "People"
+;;    :directory "~/proj/people"
+;;    :client-id cashweaver/org-gtasks-client-id
+;;    :client-secret cashweaver/org-gtasks-client-secret))
+#+end_src
+
+#+RESULTS:
+: cashweaver/org-gtasks--get-client-secret
+
+*** Contacts
+
+**** =org-vcard=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-vcard)
+#+end_src
+
 ** TODO Portable Document Format (PDF)
 *** Packages
 **** =pdf-tools=
@@ -3510,6 +3669,18 @@ DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
 (use-package! pdf-tools
   :config
   (pdf-tools-install))
+#+end_src
+
+** TOML
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! toml
+  :recipe (:host github
+           :repo "gongo/emacs-toml"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! toml)
 #+end_src
 
 * File Management and Navigation
@@ -3582,6 +3753,7 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
   (if (s-ends-with? "/" str)
       str
     (format "%s/" str)))
+
 (defun cashweaver/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
   (mapcar
@@ -3623,7 +3795,7 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 
 Bits that I haven't yet filed into a larger heading
 
-** Rewrite "raw" links in buffer into org-mode links
+** INPROGRESS Rewrite "raw" links in buffer into org-mode links
 
 #+begin_src emacs-lisp
 ;; https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit #heading=h.hy2rqfrcolct
@@ -3671,7 +3843,7 @@ https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbA
 
 ** Replace selected text in buffer
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/replace-selection ()
   (interactive)
   (evil-yank (mark) (point) nil ?\")
@@ -3688,6 +3860,36 @@ https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbA
   (let ((enable-local-variables :all))
     (hack-dir-local-variables-non-file-buffer)))
 #+end_src
+
+** TOML
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! toml
+  :recipe (:host github
+           :repo "gongo/emacs-toml"))
+#+end_src
+
+#+RESULTS:
+| yamlmod | :modules | ((:private . config-personal) (:private . modules)) | :recipe | (:host github :repo perfectayush/emacs-yamlmod) |
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! toml)
+#+end_src
+
+#+begin_src emacs-lisp
+;; (yaml-parse-string "
+;; title = \"this is the title\"
+;; draft = false")
+(toml:read-from-string "
+title = \"this is the title\"
+author = [\"cashweaver\"]
+date = 2022-02-10T09:33:00-08:00
+draft = true")
+#+end_src
+
+#+RESULTS:
+: ((enabled . t) (author cashweaver) (title . this is the title))
+
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]
