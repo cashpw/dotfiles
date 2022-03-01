@@ -93,6 +93,8 @@
 
 (package! org-super-agenda)
 
+(unpin! org-roam)
+
 (package! ox-pandoc)
 
 (package! org-download)
@@ -106,4 +108,26 @@
            :branch "main"
            :files ("lisp/ol-doi.el")))
 
+;;(package! org-protocol)
+
+(package! org-protocol-capture-html
+  :recipe (:host github
+           :repo "alphapapa/org-protocol-capture-html"))
+
+(package! org-roam-ui)
+
+(package! org-gtasks
+  :recipe (:host github
+           :repo "JulienMasson/org-gtasks"))
+
+(package! org-vcard)
+
 (package! pdf-tools)
+
+(package! toml
+  :recipe (:host github
+           :repo "gongo/emacs-toml"))
+
+(package! toml
+  :recipe (:host github
+           :repo "gongo/emacs-toml"))

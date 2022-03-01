@@ -1,0 +1,14 @@
+[Unit]
+Description=rclone for cashbweaver-gdrive
+AssertPathIsDirectory=/mnt/cashbweaver-gdrive
+After=networking.service
+
+[Service]
+Type=simple
+ExecStart=rclone mount --config=/home/cashweaver/.config/rclone/rclone.conf cashbweaver-gdrive: /mnt/cashbweaver-gdrive --allow-other
+ExecStop=/bin/fusermount -u /mnt/cashbweaver-gdrive
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.targetu
