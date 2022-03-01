@@ -29,14 +29,14 @@
      time-format
      time)))
 
-(defun cashweaver-todays-date ()
+(defun cashweaver/todays-date ()
   "Return todays date as YYYY-MM-DD."
   (cashweaver/format-time
    "%Y-%m-%d"
    ;; offset-days
    0))
 
-(defun cashweaver-yesterdays-date ()
+(defun cashweaver/yesterdays-date ()
   "Return yesterday's date as YYYY-MM-DD."
   (cashweaver/format-time
    "%Y-%m-%d"
@@ -182,37 +182,37 @@
                                 nil "~/.email_signature"))
    gnus-alias-default-identity "work"))
 
-(defun cashweaver-notmuch-show-open-or-close-all ()
+(defun cashweaver/notmuch-show-open-or-close-all ()
   "Toggle between showing and hiding all messages in the thread."
   (interactive))
 
-(defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
+(defun cashweaver/notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
   (interactive)
   (let ((thread-tags (notmuch-search-get-tags)))
     (member match-tag thread-tags)))
 
-(defun cashweaver-notmuch-search-toggle-tag (tag)
+(defun cashweaver/notmuch-search-toggle-tag (tag)
   "Toggle the provided tag."
   (interactive)
   (if (member tag (notmuch-search-get-tags))
       (notmuch-search-tag (list (concat "-" tag)))
     (notmuch-search-tag (list (concat "+" tag)))))
 
-(defun cashweaver-notmuch--search-thread-toggle-tag (key)
+(defun cashweaver/notmuch--search-thread-toggle-tag (key)
   "Toggle the specified tag(s)."
   (interactive "k")
-  (let ((tags (assoc key cashweaver-notmuch-tag-alist)))
+  (let ((tags (assoc key cashweaver/notmuch-tag-alist)))
     (apply 'notmuch-search-tag (cdr tags))))
 
-(defun cashweaver-notmuch-search-super-archive (&optional beg end)
+(defun cashweaver/notmuch-search-super-archive (&optional beg end)
   "Super archive the selected thread; based on `notmuch-search-archive-thread'."
   (interactive (notmuch-interactive-region))
-  (notmuch-search-tag cashweaver-notmuch-super-archive-tags beg end)
+  (notmuch-search-tag cashweaver/notmuch-super-archive-tags beg end)
   (when (eq beg end)
     (notmuch-search-next-thread)))
 
-(defun cashweaver-org-notmuch-capture-follow-up-mail()
+(defun cashweaver/org-notmuch-capture-follow-up-mail()
   "Capture mail to org mode."
   (interactive)
   (org-store-link nil)
@@ -264,7 +264,7 @@
                                ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
                                ("Read!" . '(:foreground "magenta3")))
    ;; Superset of `notmuch-archive-tags' for super archiving.
-   cashweaver-notmuch-super-archive-tags (append
+   cashweaver/notmuch-super-archive-tags (append
                                           notmuch-archive-tags
                                           '("-p0"
                                             "-waiting"
@@ -274,18 +274,18 @@
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 
-(defun cashweaver-mail-htmlize-and-send-org-mail ()
+(defun cashweaver/mail-htmlize-and-send-org-mail ()
   "Converts an org-mode message to HTML and sends."
   (message-mode))
 
-(defun cashweaver-compose-mail-org ()
+(defun cashweaver/compose-mail-org ()
   (interactive)
   (compose-mail)
   (message-goto-body)
   (setq *compose-html-org* t)
   (org-mode))
 
-(defun cashweaver-mail-toggle-org-message-mode ()
+(defun cashweaver/mail-toggle-org-message-mode ()
   (interactive)
   (if (derived-mode-p 'message-mode)
       (progn
@@ -297,7 +297,7 @@
       (notmuch-message-mode)
       (message "enabled notmuch-message-mode"))))
 
-(defun cashweaver-htmlize-and-send-mail-org ()
+(defun cashweaver/htmlize-and-send-mail-org ()
   (interactive)
   (when *compose-html-org*
     (setq *compose-html-org* nil)
@@ -305,17 +305,17 @@
     (org-mime-htmlize)
     (message-send-and-exit)))
 
-(defun cashweaver-send-mail-function (&rest args)
+(defun cashweaver/send-mail-function (&rest args)
   "Wrapper method for `send-mail-function' for easy overriding in work environment."
   (apply #'sendmail-query-once args))
 
-(defun cashweaver-message-send-mail-function (&rest args)
+(defun cashweaver/message-send-mail-function (&rest args)
   "Wrapper method for `message-send-mail-function' for easy overriding in work environment."
   (apply #'message--default-send-mail-function args))
 
 (setq
- send-mail-function #'cashweaver-send-mail-function
- message-send-mail-function #'cashweaver-message-send-mail-function)
+ send-mail-function #'cashweaver/send-mail-function
+ message-send-mail-function #'cashweaver/message-send-mail-function)
 
 (after! notmuch
   ;; Keep in alphabetical order.
@@ -323,12 +323,12 @@
    :map notmuch-message-mode-map
    :localleader
 
-   "M t" #'cashweaver-mail-toggle-org-message-mode)
+   "M t" #'cashweaver/mail-toggle-org-message-mode)
 
   (map!
    :map notmuch-show-mode-map
 
-   "M-RET" #'cashweaver-notmuch-show-open-or-close-all)
+   "M-RET" #'cashweaver/notmuch-show-open-or-close-all)
 
   ;; Reply-all should be the default.
   (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
@@ -336,8 +336,8 @@
 
   ;; Easy archive for my most-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
 
   ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
   (evil-define-key 'normal notmuch-search-mode-map "t" nil)
@@ -347,15 +347,15 @@
   (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
                                                            "Toggle p0"
                                                            (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "p0")))
+                                                           (cashweaver/notmuch-search-toggle-tag "p0")))
   (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
                                                            "Toggle Read!"
                                                            (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "Read!")))
+                                                           (cashweaver/notmuch-search-toggle-tag "Read!")))
   (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
                                                            "Toggle waiting"
                                                            (interactive)
-                                                           (cashweaver-notmuch-search-toggle-tag "waiting"))))
+                                                           (cashweaver/notmuch-search-toggle-tag "waiting"))))
 
 ;(use-package! calfw-cal
 ;  :config
@@ -366,7 +366,7 @@
 ;(use-package! calfw-ical)
 ;(use-package! calfw-org)
 ;
-;(defun cashweaver-calfw-open ()
+;(defun cashweaver/calfw-open ()
 ;  "Open my calendar"
 ;  (interactive)
 ;  (cfw:open-calendar-buffer
@@ -717,7 +717,7 @@ Based on `org-contacts-anniversaries'."
 ;;    'org-after-todo-state-change-hook
 ;;    'save-buffer))
 
-(defun cashweaver-org-mode-when-inprogress ()
+(defun cashweaver/org-mode-when-inprogress ()
   "Handle inprogress behavior."
   ;; Intentionally disabled for the moment. Leave the method here for reference.
   ;; (cond ((string-equal
@@ -731,12 +731,12 @@ Based on `org-contacts-anniversaries'."
   :config
   (add-hook!
    'org-after-todo-state-change-hook
-   'cashweaver-org-mode-when-inprogress))
+   'cashweaver/org-mode-when-inprogress))
 
 (defvar
  cashweaver/org-mode--filepaths-to-archive-when-done
  `(,(format "%s/proj/roam/unread.org"
-           cashweaver-home-dir-path))
+           cashweaver/home-dir-path))
  "TODOs in these file paths get archived when they're marked as done.")
 
 (defvar
@@ -757,7 +757,7 @@ Based on `org-contacts-anniversaries'."
        cashweaver/org-mode--filepaths-to-noop-when-done
        file-path)))
 
-(defun cashweaver-org-mode-when-done ()
+(defun cashweaver/org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (cond
    ((org-entry-is-done-p)
@@ -777,7 +777,7 @@ Based on `org-contacts-anniversaries'."
   :config
   (add-hook!
    'org-after-todo-state-change-hook
-   'cashweaver-org-mode-when-done))
+   'cashweaver/org-mode-when-done))
 
 (after! org
   :config
@@ -963,7 +963,7 @@ Based on `org-contacts-anniversaries'."
    org-agenda-entry-text-leaders "  "
    ))
 
-(defun cashweaver-org-mode-buffer-property-get (property-name)
+(defun cashweaver/org-mode-buffer-property-get (property-name)
   (org-with-point-at 1
     (when (re-search-forward
            (concat "^#\\+" property-name ": \\(.*\\)")
@@ -1025,7 +1025,7 @@ Based on `org-contacts-anniversaries'."
 ;;    anki-editor-remove-single-paragraph-tags t
 ;;    anki-editor-latex-style 'mathjax))
 
-(defun cashweaver-anki-editor-insert-note ()
+(defun cashweaver/anki-editor-insert-note ()
   (interactive)
   (with-current-buffer
       (find-file-noselect
@@ -1058,7 +1058,7 @@ Based on `org-contacts-anniversaries'."
       org-pandoc-valid-options
       org-pandoc-colon-separated-options
       org-pandoc-file-options)))
-  (when (cashweaver-is-work-p)
+  (when (cashweaver/is-work-p)
     (setq
      org-pandoc-options-for-docx
      '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
@@ -1066,10 +1066,10 @@ Based on `org-contacts-anniversaries'."
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
        (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
     (add-hook! 'org-pandoc-after-processing-markdown-hook
-    'cashweaver-remove-yaml-header)
+    'cashweaver/remove-yaml-header)
     ))
 
-(defun cashweaver-remove-yaml-header ()
+(defun cashweaver/remove-yaml-header ()
   "Remove the 'front matter'/YAML header content from the current buffer."
   (goto-char (point-min))
   (replace-regexp
@@ -1079,7 +1079,7 @@ Based on `org-contacts-anniversaries'."
   (delete-blank-lines)
   (delete-blank-lines))
 
-(defun cashweaver-remove-toml-header ()
+(defun cashweaver/remove-toml-header ()
   "Remove the 'front matter'/TOML header content from the current buffer."
   (goto-char (point-min))
   (replace-regexp
@@ -1089,7 +1089,7 @@ Based on `org-contacts-anniversaries'."
   (delete-blank-lines)
   (delete-blank-lines))
 
-(defun cashweaver-get-toml-header ()
+(defun cashweaver/get-toml-header ()
   "Return the 'front matter'/TOML header content from the current buffer."
   (save-excursion
     (goto-char (point-min))
@@ -1097,13 +1097,13 @@ Based on `org-contacts-anniversaries'."
      "\\+\\+\\+\n\\(\\(.\\|\n\\)*?\\)\\+\\+\\+")
     (match-string 1)))
 
-(defun cashweaver-remove-yaml-front-matter-current-buffer ()
+(defun cashweaver/remove-yaml-front-matter-current-buffer ()
   (interactive)
-  (cashweaver-remove-yaml-header))
+  (cashweaver/remove-yaml-header))
 
-(defun cashweaver-remove-toml-front-matter-current-buffer ()
+(defun cashweaver/remove-toml-front-matter-current-buffer ()
   (interactive)
-  (cashweaver-remove-toml-header))
+  (cashweaver/remove-toml-header))
 
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
   "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
@@ -1151,13 +1151,13 @@ Based on `org-contacts-anniversaries'."
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 
-(defun cashweaver-org-hugo--export-all-roam ()
+(defun cashweaver/org-hugo--export-all-roam ()
   "Export all roam nodes."
   (interactive)
   ;; TODO
   )
 
-(defun cashweaver-org-mode--split-tags-to-list (tags-as-string)
+(defun cashweaver/org-mode--split-tags-to-list (tags-as-string)
   "Strip the wrapping ':' from TAG; if present."
   (if tags-as-string
       (if (string-match
@@ -1169,7 +1169,7 @@ Based on `org-contacts-anniversaries'."
         nil)
     nil))
 
-(defun cashweaver-org-hugo--tag-processing-fn-roam-tags (tag-list info)
+(defun cashweaver/org-hugo--tag-processing-fn-roam-tags (tag-list info)
   "Add tags from filetags to tag-list for org-roam to ox-hugo compatibility.
 
 Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
@@ -1185,7 +1185,7 @@ See `org-hugo-tag-processing-functions'."
                   '("FILETAGS"))))))
              (filetag-list
               (or
-               (cashweaver-org-mode--split-tags-to-list
+               (cashweaver/org-mode--split-tags-to-list
                 filetags)
                '())))
         (append tag-list
@@ -1201,7 +1201,7 @@ See `org-hugo-tag-processing-functions'."
    org-hugo-allow-spaces-in-tags nil)
   (add-to-list
    'org-hugo-tag-processing-functions
-   'cashweaver-org-hugo--tag-processing-fn-roam-tags))
+   'cashweaver/org-hugo--tag-processing-fn-roam-tags))
 
 (after! org
   (setq
@@ -1326,19 +1326,19 @@ Reference: https://superuser.com/a/604264"
     :file-path-exceptions-to-export-after-save (,(s-format
                                                   "${home-dir-path}/proj/roam/unread.org"
                                                   'aget
-                                                  `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-work)))
                                                 ,(s-format
                                                   "${home-dir-path}/proj/roam/unread.org"
                                                   'aget
-                                                  `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))
+                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-personal)))
                                                 ,(s-format
                                                   "${home-dir-path}/proj/roam/unread.org_archive"
                                                   'aget
-                                                  `(("home-dir-path" . ,cashweaver-home-dir-path-work)))
+                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-work)))
                                                 ,(s-format
                                                   "${home-dir-path}/proj/roam/unread.org_archive"
                                                   'aget
-                                                  `(("home-dir-path" . ,cashweaver-home-dir-path-personal)))))
+                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-personal)))))
   "Configuration for notes.")
 
 (defcustom cashweaver/org-roam--people-config
@@ -1390,7 +1390,7 @@ Reference: https://superuser.com/a/604264"
     (setq
      org-roam-directory root-path
      org-roam-capture-templates capture-templates
-     cashweaver-org-roam-attachment-base-path (file-truename
+     cashweaver/org-roam-attachment-base-path (file-truename
                                                (format
                                                 "%s/attachments"
                                                 org-roam-directory))
@@ -1456,7 +1456,7 @@ Reference: https://superuser.com/a/604264"
   (when (org-roam-file-p)
     (cashweaver/replace-smart-quotes-in-buffer)))
 
-(defun cashweaver-org-roam--get-filetags (&optional node-id)
+(defun cashweaver/org-roam--get-filetags (&optional node-id)
   "Return a list of all tags used in roam.
 
 Optionally: Exclude tags currently in use in the provided NODE-ID."
@@ -1473,17 +1473,17 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
       :from tags])))
 
 ;; TODO
-(defun cashweaver-org-roam--get-all-drafts ()
+(defun cashweaver/org-roam--get-all-drafts ()
   "Return a list of nodes which are marked as drafts.")
 
-(defun cashweaver-org-roam--set-filetag (&optional node-id)
+(defun cashweaver/org-roam--set-filetag (&optional node-id)
   "Add a filetag in the current file."
   (let ((tag
          (completing-read
           "Select tag: "
-          (cashweaver-org-roam--get-filetags node-id)
+          (cashweaver/org-roam--get-filetags node-id)
           )))
-    (cashweaver-org-mode-set-filetag tag)))
+    (cashweaver/org-mode-set-filetag tag)))
 
 ;;(org-roam-db-query "SELECT DISTINCT tag FROM tags;")
 ;; "007bbe54-0e36-4af5-b2ec-cf7762299a1f"
@@ -1519,7 +1519,7 @@ Optionally: Exclude tags currently in use in the provided NODE-ID."
 ;;    current-file-id))
 
 
-(defun cashweaver-org-roam-make-filepath (title &optional time time-zone)
+(defun cashweaver/org-roam-make-filepath (title &optional time time-zone)
   "Return a filenaem for an org-roam node.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
@@ -1532,7 +1532,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
      org-roam-directory
      slug)))
 
-(defun cashweaver-org-mode-add-option (option value)
+(defun cashweaver/org-mode-add-option (option value)
   "Add another option; requires at least one option to already be present.
 
 TODO: move to org-mode section"
@@ -1545,11 +1545,11 @@ TODO: move to org-mode section"
          nil
          ;; noerror
          t)
-    (cashweaver-org-mode-insert-option
+    (cashweaver/org-mode-insert-option
      option
      value)))
 
-(defun cashweaver-org-mode-insert-option (option value)
+(defun cashweaver/org-mode-insert-option (option value)
   "Insert an org-mode option (#+OPTION: VALUE).
 
 TODO: move to org-mode section"
@@ -1559,14 +1559,14 @@ TODO: move to org-mode section"
     option
     value)))
 
-(defun cashweaver-org-mode-insert-options (options)
+(defun cashweaver/org-mode-insert-options (options)
   "Insert an alist of org-mode options (#+OPTION: VALUE)."
   (cl-loop for (option . value) in options
-           do (cashweaver-org-mode-insert-option
+           do (cashweaver/org-mode-insert-option
                option
                value)))
 
-(defun cashweaver-org-mode-insert-property (property value)
+(defun cashweaver/org-mode-insert-property (property value)
   "Insert an org-mode property (:PROPERTY: VALUE)."
   (insert
    (format
@@ -1574,7 +1574,7 @@ TODO: move to org-mode section"
     property
     value)))
 
-(defun cashweaver-org-mode-insert-properties (properties)
+(defun cashweaver/org-mode-insert-properties (properties)
   "Insert an alist of org-mode properties (:PROPERTY: VALUE).
 
 When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
@@ -1584,7 +1584,7 @@ When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
                property
                value)))
 
-(defun cashweaver-org-roam-new-node (file-path title &optional properties)
+(defun cashweaver/org-roam-new-node (file-path title &optional properties)
   "Build a new org-roam node in a temp file.
 
 PROPERTIES is expected to be an alist of additional properties to include.
@@ -1601,11 +1601,11 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            properties)))
     (with-temp-file
         file-path
-      (cashweaver-org-mode-insert-properties
+      (cashweaver/org-mode-insert-properties
        all-properties)
       (goto-char
        (point-max))
-      (cashweaver-org-mode-insert-options
+      (cashweaver/org-mode-insert-options
        `(("TITLE" . ,title)
          ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
@@ -1622,7 +1622,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (insert
        "TODO Thoughts"))))
 
-(defun cashweaver-org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
+(defun cashweaver/org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
   (interactive)
   (let* ((link
@@ -1636,13 +1636,13 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
            :raw-link
            link))
          (description
-          (cashweaver-org-mode-get-description-from-link-at-point))
+          (cashweaver/org-mode-get-description-from-link-at-point))
          (org-roam-node-file-path
-          (cashweaver-org-roam-make-filepath description)))
+          (cashweaver/org-roam-make-filepath description)))
     ;; TODO Replace with regexp?
     (unless (or (string= type "http")
                 (string= type "https")))
-    (cashweaver-org-roam-new-node
+    (cashweaver/org-roam-new-node
      org-roam-node-file-path
      description
      `(("ROAM_REFS" . ,url)))
@@ -1651,7 +1651,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
     (find-file
      org-roam-node-file-path)))
 
-(defun cashweaver-org-mode-get-description-from-link-at-point ()
+(defun cashweaver/org-mode-get-description-from-link-at-point ()
   "Reference: https://emacs.stackexchange.com/a/38297"
   (interactive)
   (let ((link
@@ -1667,7 +1667,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        link)))))
 
 
-(defun cashweaver-org-roam-open-ref ()
+(defun cashweaver/org-roam-open-ref ()
   "Open the ROAM_REF."
   (interactive)
   (let ((roam-refs
@@ -1688,11 +1688,11 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;; Setting `org-attach-directory' in .dir-locals.el has the desired
 ;; effect of this function.
 ;;
-;; (defun cashweaver-org-roam-insert-attachment-path ()
+;; (defun cashweaver/org-roam-insert-attachment-path ()
 ;;   (let ((dir
 ;;          (format
 ;;           "%s/%s"
-;;           cashweaver-org-roam-attachment-base-path
+;;           cashweaver/org-roam-attachment-base-path
 ;;           (org-id-get))))
 ;;     (save-excursion
 ;;       (org-set-property
@@ -1700,7 +1700,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
 ;;        dir))))
 ;; (after! org-roam
 ;;   (remove-hook! 'org-roam-capture-new-node-hook
-;;               'cashweaver-org-roam-insert-attachment-path))
+;;               'cashweaver/org-roam-insert-attachment-path))
 
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
@@ -1718,7 +1718,7 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
                key
                value)))))
 
-(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+(defun cashweaver/org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES.
 
 Work in progress"
@@ -1746,9 +1746,9 @@ Work in progress"
       roam-aliases
       )))
 
-;; (cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases)
+;; (cashweaver/org-roam--mirror-roam-aliases-to-hugo-aliases)
 
-(defun cashweaver-org-roam--mirror-roam-aliases-to-hugo-aliases ()
+(defun cashweaver/org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
   (interactive)
   (when (org-roam-file-p)
@@ -1761,7 +1761,7 @@ Work in progress"
             (org-element-parse-buffer))))
       (message raw-roam-aliases))))
 
-(defun cashweaver-org-roam--process-ref-before-adding-to-front-matter (ref)
+(defun cashweaver/org-roam--process-ref-before-adding-to-front-matter (ref)
   (cond
    ((string-match-p "^\\[cite" ref)
     nil
@@ -1779,7 +1779,7 @@ Work in progress"
    (t
     ref)))
 
-(defun cashweaver-org-roam--mirror-roam-refs-to-front-matter ()
+(defun cashweaver/org-roam--mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
   (when (and (org-roam-file-p)
@@ -1824,11 +1824,11 @@ Work in progress"
            (downcase keyword)
            roam-refs)))))
 
-(cl-defun cashweaver-org-roam--add-bibliography (&optional skip-if-present)
+(cl-defun cashweaver/org-roam--add-bibliography (&optional skip-if-present)
   "Add #+print_bibiliography to the current buffer."
   (when (not (org-roam-file-p))
     (return-from
-        cashweaver-org-roam--add-bibliography))
+        cashweaver/org-roam--add-bibliography))
 
   (save-excursion
     (goto-char
@@ -1840,7 +1840,7 @@ Work in progress"
                 ;; no-error
                 t))
       (return-from
-          cashweaver-org-roam--add-bibliography)))
+          cashweaver/org-roam--add-bibliography)))
 
   (let* ((skip-if-present
           (or skip-if-present
@@ -1864,12 +1864,12 @@ Work in progress"
          (point-max))
         (insert option))
       (return-from
-          cashweaver-org-roam--add-bibliography))
+          cashweaver/org-roam--add-bibliography))
 
     (when (and skip-if-present
                option-present-in-buffer)
       (return-from
-          cashweaver-org-roam--add-bibliography))
+          cashweaver/org-roam--add-bibliography))
 
     (save-excursion
       (goto-char
@@ -1885,11 +1885,11 @@ Work in progress"
       (write-file filepath)
       (kill-buffer (current-buffer)))))
 
-(defun cashweaver-org-hugo-export-all (directory)
+(defun cashweaver/org-hugo-export-all (directory)
   (mapc (lambda (filepath)
           (run-function-in-file
            filepath
-           'cashweaver-org-hugo-export-wim-to-md))
+           'cashweaver/org-hugo-export-wim-to-md))
         (directory-files
          directory
          ;; full
@@ -1897,22 +1897,22 @@ Work in progress"
          ;; match
          ".org$")))
 
-(defun cashweaver-org-roam-set-filetag ()
+(defun cashweaver/org-roam-set-filetag ()
   "Set the filetag option based on org-roam tags."
   (interactive)
   (when (org-roam-file-p)
     (let ((node-id (org-roam-node-id
                     (org-roam-node-at-point))))
-      (cashweaver-org-roam--set-filetag
+      (cashweaver/org-roam--set-filetag
        node-id))))
 
-(defun cashweaver-org-roam-insert-tag-link ()
+(defun cashweaver/org-roam-insert-tag-link ()
   "Insert a link to the selected tag"
   (interactive)
   (let ((tag
          (completing-read
           "Select tag: "
-          (cashweaver-org-roam--get-filetags)
+          (cashweaver/org-roam--get-filetags)
           )))
     (insert
      (format "[[/tags/%s][%s]]"
@@ -1982,7 +1982,7 @@ TODO_AUTHOR, [cite:@${citekey}]\n
                        :node (org-roam-node-create :title node-title)
                        :props '(:finalize find-file))))
 
-(defun cashweaver-org-noter-insert-selected-text-inside-note-content ()
+(defun cashweaver/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
 
 Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-700346146"
@@ -1994,16 +1994,16 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
     (org-noter-insert-note)))
 
 (setq
- cashweaver-path--roam-bibliography
+ cashweaver/path--roam-bibliography
  (format "%s/proj/roam/bibliography.bib"
-         cashweaver-home-dir-path)
- cashweaver-bibliographies `(,cashweaver-path--roam-bibliography))
+         cashweaver/home-dir-path)
+ cashweaver/bibliographies `(,cashweaver/path--roam-bibliography))
 
 (use-package! citar
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver-bibliographies)
+   citar-bibliography cashweaver/bibliographies)
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -2024,12 +2024,12 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
   :after org citar
   :config
   (setq
-   org-cite-global-bibliography cashweaver-bibliographies
+   org-cite-global-bibliography cashweaver/bibliographies
    org-cite-insert-processor 'citar
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 
-(defun cashweaver-org-mode--heading-text-for-today (&optinoal time-in-heading include-all-tags)
+(defun cashweaver/org-mode--heading-text-for-today (&optinoal time-in-heading include-all-tags)
   "Return the heading text for today as a string."
   (let* ((time-in-heading
           (or time-in-heading
@@ -2081,11 +2081,11 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
                          ""))
      ("tags" . ,tags))))
 
-(defun cashweaver-org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
+(defun cashweaver/org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
   "Insert a heading for today's date, with relevant tags."
   (interactive)
   (let ((heading-text
-         (cashweaver-org-mode--heading-text-for-today
+         (cashweaver/org-mode--heading-text-for-today
           ;; top
           nil
           time-in-heading
@@ -2105,18 +2105,18 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
              today-weekday-abbreviated-name
              today-hh-mm))))
 
-(defun cashweaver-org-mode-heading-marker-for-today ()
+(defun cashweaver/org-mode-heading-marker-for-today ()
   "Return t if a heading for today exists.
 
-Refer to `cashweaver-org-mode-insert-heading-for-today'."
+Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (let ((headline-text
-         (cashweaver-org-mode--heading-text-for-today))
+         (cashweaver/org-mode--heading-text-for-today))
         (headline-marker
          (org-find-exact-headline-in-buffer
           headline-text)))
     headline-marker))
 
-(defun cashweaver-org-mode-insert-heading-for-this-week (&optional include-all-tags)
+(defun cashweaver/org-mode-insert-heading-for-this-week (&optional include-all-tags)
   "Insert a heading for this week, with relevant tags."
   (interactive)
   (let* ((include-all-tags
@@ -2151,13 +2151,13 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
         ("tags" . ,tags))))))
 
 (setq
- cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
- cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
- cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
- cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
- cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
+ cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
 
-(defun cashweaver-org-schedule-for-block (block-time &optional date)
+(defun cashweaver/org-schedule-for-block (block-time &optional date)
   (interactive)
   (let ((start-time (plist-get block-time :start))
         (end-time (plist-get block-time :end))
@@ -2167,7 +2167,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               start-time
                               end-time))))
 
-(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
   (interactive)
   (let ((date (or date "today")))
     (org-schedule nil (format "%s %s-%s"
@@ -2176,13 +2176,13 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               end-time))))
 
 (setq
- cashweaver--schedule-block-day '(:start "07:00" :end "19:00")
- cashweaver--schedule-block-one '(:start "07:00" :end "09:00")
- cashweaver--schedule-block-two '(:start "09:00" :end "11:00")
- cashweaver--schedule-block-three '(:start "14:00" :end "16:00")
- cashweaver--schedule-block-four '(:start "16:00" :end "18:00"))
+ cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
 
-(defun cashweaver-org-schedule-for-block (block-time &optional date)
+(defun cashweaver/org-schedule-for-block (block-time &optional date)
   (interactive)
   (let ((start-time (plist-get block-time :start))
         (end-time (plist-get block-time :end))
@@ -2192,7 +2192,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               start-time
                               end-time))))
 
-(defun cashweaver-org-schedule-today-from-to (start-time end-time &optional date)
+(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
   (interactive)
   (let ((date (or date "today")))
     (org-schedule nil (format "%s %s-%s"
@@ -2200,7 +2200,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               start-time
                               end-time))))
 
-(defun cashweaver-org--schedule-today-at (start-time-as-string)
+(defun cashweaver/org--schedule-today-at (start-time-as-string)
   "Schedule a task today at the specified time."
   (interactive "sWhen?: ")
   (message start-time-as-string)
@@ -2224,7 +2224,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     (message (number-to-string hour))
     ))
 
-(defun cashweaver-org--schedule-for (start-time end-time &optional date)
+(defun cashweaver/org--schedule-for (start-time end-time &optional date)
   (let ((date (or date "today")))
     (org-schedule nil (format "%s %s-%s"
                               date
@@ -2235,7 +2235,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               ;start-time
                               ;end-time))))
 
-(defun cashweaver-org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
+(defun cashweaver/org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
   (let* ((start-time-in-minutes-since-midnight
          (+ start-minute (* start-hour 60)))
         (end-time-in-minutes-since-midnight
@@ -2251,18 +2251,18 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               end-minute))))
 
 (setq
- cashweaver--schedule-pomodoro-one '(:start "09:00" :end "09:50")
- cashweaver--schedule-pomodoro-two '(:start "10:00" :end "10:50")
- cashweaver--schedule-pomodoro-three '(:start "11:00" :end "11:50")
- cashweaver--schedule-pomodoro-four '(:start "12:00" :end "12:50")
- cashweaver--schedule-pomodoro-five '(:start "13:00" :end "13:50")
- cashweaver--schedule-pomodoro-six '(:start "14:00" :end "14:50")
- cashweaver--schedule-pomodoro-seven '(:start "15:00" :end "15:50")
- cashweaver--schedule-pomodoro-eight '(:start "16:00" :end "16:50")
- cashweaver--schedule-pomodoro-nine '(:start "17:00" :end "17:50")
- cashweaver--schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
+ cashweaver/-schedule-pomodoro-one '(:start "09:00" :end "09:50")
+ cashweaver/-schedule-pomodoro-two '(:start "10:00" :end "10:50")
+ cashweaver/-schedule-pomodoro-three '(:start "11:00" :end "11:50")
+ cashweaver/-schedule-pomodoro-four '(:start "12:00" :end "12:50")
+ cashweaver/-schedule-pomodoro-five '(:start "13:00" :end "13:50")
+ cashweaver/-schedule-pomodoro-six '(:start "14:00" :end "14:50")
+ cashweaver/-schedule-pomodoro-seven '(:start "15:00" :end "15:50")
+ cashweaver/-schedule-pomodoro-eight '(:start "16:00" :end "16:50")
+ cashweaver/-schedule-pomodoro-nine '(:start "17:00" :end "17:50")
+ cashweaver/-schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
 
-(defun cashweaver-org-schedule-at-pomodoro (pomodoro-time &optional date)
+(defun cashweaver/org-schedule-at-pomodoro (pomodoro-time &optional date)
   (interactive)
   (let ((start-time (plist-get pomodoro-time :start)))
         (date (or date "today")))
@@ -2270,7 +2270,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               date
                               start-time)))
 
-(defun cashweaver-org-schedule-in-n-hours (offset-hours &optional date)
+(defun cashweaver/org-schedule-in-n-hours (offset-hours &optional date)
   (interactive)
   (let* ((time-list (parse-time-string (current-time-string)))
          (current-hour (nth 2 time-list))
@@ -2282,7 +2282,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
                               hour
                               current-minute))))
 
-(defun cashweaver-org-schedule-in-n-workdays (num-days &optional time)
+(defun cashweaver/org-schedule-in-n-workdays (num-days &optional time)
   (interactive)
   (let*
       ((time (or time "09:00"))
@@ -2293,7 +2293,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
              offset-days
              time))))
 
-(defun cashweaver-org-get-timestamps-in-time-order ()
+(defun cashweaver/org-get-timestamps-in-time-order ()
   "Return a list of timestamps from the current buffer in time order."
   (cl-sort
    (org-element-map
@@ -2304,20 +2304,20 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
    'org-time>
    :key 'car))
 
-(defun cashweaver-org-goto-most-recent-timestamp ()
+(defun cashweaver/org-goto-most-recent-timestamp ()
   "`goto-char' the most recent timestamp in the current buffer."
   (interactive)
   (let ((timestamps
-         (cashweaver-org-get-timestamps-in-time-order)))
+         (cashweaver/org-get-timestamps-in-time-order)))
     (goto-char
      (cdr
       (pop timestamps)))))
 
-(defun cashweaver-org-goto-most-recent-timestamp-with-property (property)
+(defun cashweaver/org-goto-most-recent-timestamp-with-property (property)
   "`goto-char' the most recent timestamp in the current buffer with a non-nil value for the provided property."
   (interactive)
   (let ((timestamps
-         (cashweaver-org-get-timestamps-in-time-order)))
+         (cashweaver/org-get-timestamps-in-time-order)))
     (goto-char
      (cdr
       (pop timestamps)))
@@ -2330,7 +2330,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
        (cdr
         (pop timestamps))))))
 
-(defun cashweaver-org-mode-set-filetag (value)
+(defun cashweaver/org-mode-set-filetag (value)
   "Add another option; requires at least one option to already be present."
   (message "---")
   (goto-char
@@ -2352,12 +2352,12 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
           "^#\\+\\(TITLE\\|title\\):")
         (end-of-line)
         (newline)
-        (cashweaver-org-mode-insert-option
+        (cashweaver/org-mode-insert-option
          "FILETAGS"
          (format ":%s:"
                  value))))))
 
-(defun cashweaver-org-mode-insert-option (option value)
+(defun cashweaver/org-mode-insert-option (option value)
   "Insert an org-mode option (#+OPTION: VALUE)."
   (insert
    (format
@@ -2382,56 +2382,56 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
     :n "e" #'org-set-effort)
    (:prefix ("d")
     (:prefix ("h" . "insert heading")
-     :n "t" (cmd! (cashweaver-org-mode-insert-heading-for-today
+     :n "t" (cmd! (cashweaver/org-mode-insert-heading-for-today
                    ;; top
                    nil
                    ;; time-in-heading
                    nil
                    ;; include-all-tags
                    nil))
-     :n "T" (cmd! (cashweaver-org-mode-insert-heading-for-today nil t t))
-     :n "w" #'cashweaver-org-mode-insert-heading-for-this-week)
+     :n "T" (cmd! (cashweaver/org-mode-insert-heading-for-today nil t t))
+     :n "w" #'cashweaver/org-mode-insert-heading-for-this-week)
     (:prefix ("S")
      (:prefix ("." . "today")
-      :desc "at" :n "a" #'cashweaver-org--schedule-today-at)
+      :desc "at" :n "a" #'cashweaver/org--schedule-today-at)
      (:prefix ("d" . "day")
       :desc "Monday" :n "m" )
      (:prefix ("h" . "hour")
       (:prefix ("0" . "0?:??")
-       :desc "00:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "00:00" "00:45"))
-       :desc "01:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
-       :desc "02:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "02:00" "02:45"))
-       :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
-       :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
-       :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
-       :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
-       :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
-       :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
-       :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))
+       :desc "00:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "00:00" "00:45"))
+       :desc "01:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
+       :desc "02:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "02:00" "02:45"))
+       :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
+       :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
+       :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
+       :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
+       :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
+       :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
+       :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))
       (:prefix ("1" . "1?:??")
-       :desc "01:00" :n "RET" (cmd! (cashweaver-org-schedule-today-from-to "01:00" "01:45"))
-       :desc "10:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "10:00" "10:45"))
-       :desc "11:00" :n "1" (cmd! (cashweaver-org-schedule-today-from-to "11:00" "11:45"))
-       :desc "12:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "12:00" "12:45"))
-       :desc "13:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "13:00" "13:45"))
-       :desc "14:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "14:00" "14:45"))
-       :desc "15:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "15:00" "15:45"))
-       :desc "16:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "16:00" "16:45"))
-       :desc "17:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "17:00" "17:45"))
-       :desc "18:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "18:00" "18:45"))
-       :desc "19:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "19:00" "19:45")))
+       :desc "01:00" :n "RET" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
+       :desc "10:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "10:00" "10:45"))
+       :desc "11:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "11:00" "11:45"))
+       :desc "12:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "12:00" "12:45"))
+       :desc "13:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "13:00" "13:45"))
+       :desc "14:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "14:00" "14:45"))
+       :desc "15:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "15:00" "15:45"))
+       :desc "16:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "16:00" "16:45"))
+       :desc "17:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "17:00" "17:45"))
+       :desc "18:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "18:00" "18:45"))
+       :desc "19:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "19:00" "19:45")))
       (:prefix ("2" . "2?:??")
-       :desc "20:00" :n "0" (cmd! (cashweaver-org-schedule-today-from-to "20:00" "20:45"))
-       :desc "21:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "21:00" "21:45"))
-       :desc "22:00" :n "2" (cmd! (cashweaver-org-schedule-today-from-to "22:00" "22:45"))
-       :desc "23:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "23:00" "23:45")))
-      :desc "03:00" :n "3" (cmd! (cashweaver-org-schedule-today-from-to "03:00" "03:45"))
-      :desc "04:00" :n "4" (cmd! (cashweaver-org-schedule-today-from-to "04:00" "04:45"))
-      :desc "05:00" :n "5" (cmd! (cashweaver-org-schedule-today-from-to "05:00" "05:45"))
-      :desc "06:00" :n "6" (cmd! (cashweaver-org-schedule-today-from-to "06:00" "06:45"))
-      :desc "07:00" :n "7" (cmd! (cashweaver-org-schedule-today-from-to "07:00" "07:45"))
-      :desc "08:00" :n "8" (cmd! (cashweaver-org-schedule-today-from-to "08:00" "08:45"))
-      :desc "09:00" :n "9" (cmd! (cashweaver-org-schedule-today-from-to "09:00" "09:45")))))
+       :desc "20:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "20:00" "20:45"))
+       :desc "21:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "21:00" "21:45"))
+       :desc "22:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "22:00" "22:45"))
+       :desc "23:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "23:00" "23:45")))
+      :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
+      :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
+      :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
+      :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
+      :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
+      :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
+      :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))))
 
    (:prefix ("l")
     (:prefix ("T" . "transclusion")
@@ -2443,25 +2443,25 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
      :n "R" #'org-transclusion-remove-all))
 
    (:prefix ("M" . "mail")
-    :desc "switch to message-mode" :n "t" #'cashweaver-mail-toggle-org-message-mode)
+    :desc "switch to message-mode" :n "t" #'cashweaver/mail-toggle-org-message-mode)
 
    (:prefix ("m" . "org-roam")
-    :desc "Open ref" :n "O" #'cashweaver-org-roam-open-ref
+    :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref
     (:prefix ("l" . "link")
-     :n "q" #'cashweaver-org-roam-insert-tag-link)
+     :n "q" #'cashweaver/org-roam-insert-tag-link)
     :desc "Tag" :n "q" (cmd! ()
                              (when (org-roam-file-p)
                                (let ((node-id (org-roam-node-id
                                                (org-roam-node-at-point))))
 
-                                 (cashweaver-org-roam--set-filetag
+                                 (cashweaver/org-roam--set-filetag
                                   node-id))))
-    ;;#'cashweaver-org-roam--set-filetag
+    ;;#'cashweaver/org-roam--set-filetag
     :desc "Create node from headline link" :n "N" (cmd! ()
-                                                        (cashweaver-org-roam-new-node-from-link-heading-at-point
+                                                        (cashweaver/org-roam-new-node-from-link-heading-at-point
                                                          ;; mark-as-done
                                                          t))
-    :desc "Publish all" :n "p" #'cashweaver-org-hugo-export-all)
+    :desc "Publish all" :n "p" #'cashweaver/org-hugo-export-all)
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 
@@ -2472,7 +2472,7 @@ Refer to `cashweaver-org-mode-insert-heading-for-today'."
 
    :n "n" #'org-noter-insert-note
    :n "N" #'org-noter-insert-precise-note
-   :desc "Quote (precise)" :n "Q" #'cashweaver-org-noter-insert-selected-text-inside-note-content))
+   :desc "Quote (precise)" :n "Q" #'cashweaver/org-noter-insert-selected-text-inside-note-content))
 
 (use-package! org-protocol
   :config
@@ -2533,7 +2533,7 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
       ((projects-to-exclude (or projects-to-exclude '()))
        (proj-dir-path (or proj-dir-path
                           (format "%s/proj"
-                                  cashweaver-home-dir-path)))
+                                  cashweaver/home-dir-path)))
        (proj-names
         (remove-if
          (lambda (file-name)
