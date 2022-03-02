@@ -1094,7 +1094,7 @@ Based on `org-contacts-anniversaries'."
   (save-excursion
     (goto-char (point-min))
     (search-forward-regexp
-     "\\+\\+\\+\n\\(\\(.\\|\n\\)*?\\)\\+\\+\\+")
+     "\\+\\+\\+\n\\(\\(.\\|\n\\)*?\\)\n\\+\\+\\+")
     (match-string 1)))
 
 (defun cashweaver/remove-yaml-front-matter-current-buffer ()
@@ -1104,6 +1104,40 @@ Based on `org-contacts-anniversaries'."
 (defun cashweaver/remove-toml-front-matter-current-buffer ()
   (interactive)
   (cashweaver/remove-toml-header))
+
+
+(defun cashweaver/get-title-toml-front-matter ()
+  (interactive)
+  (let* ((toml-string
+          (cashweaver/get-toml-header))
+         (toml-lines
+          (split-string
+           toml-string
+           "\n"))
+         (title
+          (replace-regexp-in-string
+           "title = \"\\(.*\\)\""
+           "\\1"
+           (nth 0 (seq-filter
+                   (lambda (line)
+                     (s-starts-with?
+                      "title"
+                      line))
+                   toml-lines)))))
+    title))
+
+(defun cashweaver/replace-toml-front-matter-with-md-heading ()
+  (interactive)
+  (let ((title
+         (cashweaver/get-title-toml-front-matter)))
+    (cashweaver/remove-toml-header)
+    (save-excursion
+      (goto-char
+       (point-min))
+      (insert
+       (format
+        "# %s\n"
+        title)))))
 
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
   "Publish using Pandoc (https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338)."
