@@ -78,9 +78,7 @@
   :desc "Langtool" :n "t L" #'langtool-check
   (:prefix ("n")
    (:prefix ("A" . "Anki")
-    :n "n" #'anki-editor-insert-note)
-   (:prefix "r"
-    :n "C" #'cashweaver/org-roam-node-from-cite))
+    :n "d" #'anki-editor-delete-notes))
   (:prefix ("p")
    :n "u" #'cashweaver/projectile-refresh-known-paths)
   (:prefix ("t")
@@ -251,7 +249,7 @@
                             ;; Docs
                             (:key "D"
                              :name "docs"
-                             :query "tag:doc")
+                             :query "tag:doc AND tag:inbox")
                             ;; Inbox
                             (:key "i"
                              :name "inbox"
