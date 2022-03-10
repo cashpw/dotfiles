@@ -221,39 +221,57 @@
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
-   notmuch-saved-searches '((:name "inbox"
-                             :key "i"
-                             :query "tag:inbox")
-                            (:name "p0"
-                             :key "0"
+   notmuch-saved-searches '(
+                            ;; Priority 0
+                            (:key "0"
+                             :name "p0"
                              :query "tag:p0")
-                            (:name "bugs"
-                             :key "b"
-                             :query "tag:Bug AND tag:inbox")
-                            (:name "bugs (all)"
-                             :key "B"
-                             :query "tag:Bug")
-                            (:name "waiting"
-                             :key "w"
-                             :query "tag:waiting")
-                            (:name "automated"
-                             :key "a"
+                            ;; Automated (work)
+                            (:key "a"
+                             :name "automated"
                              :query "tag:Automated AND tag:inbox")
-                            (:name "to-read"
-                             :key "r"
-                             :query "tag:Read!")
-                            (:name "sent"
-                             :key "s"
-                             :query "tag:sent")
-                            (:name "drafts"
-                             :key "d"
-                             :query "tag:draft")
-                            (:name "calendar-events"
-                             :key "c"
+                            ;; Bugs
+                            (:key "b"
+                             :name "bugs"
+                             :query "tag:Bug AND tag:inbox")
+                            (:key "B"
+                             :name "bugs (all)"
+                             :query "tag:Bug")
+                            ;; Calendar
+                            (:key "c"
+                             :name "calendar-events"
                              :query "tag:Calendar-Events AND (tag:inbox OR tag:p0)")
-                            (:name "calendar-events (all)"
-                             :key "C"
-                             :query "tag:Calendar-Events"))
+                            (:key "C"
+                             :name "calendar-events (all)"
+                             :query "tag:Calendar-Events")
+                            ;; Drafts
+                            (:key "d"
+                             :name "drafts"
+                             :query "tag:draft")
+                            ;; Docs
+                            (:key "D"
+                             :name "docs"
+                             :query "tag:doc")
+                            ;; Inbox
+                            (:key "i"
+                             :name "inbox"
+                             :query "tag:inbox")
+                            (:key "I"
+                             :name "Archive"
+                             :query "-tag:inbox")
+                            ;; To read
+                            (:key "r"
+                             :name "To read"
+                             :query "tag:Read!")
+                            ;; Sent
+                            (:key "s"
+                             :name "sent"
+                             :query "tag:sent")
+                            ;; Waiting
+                            (:key "w"
+                             :name "waiting"
+                             :query "tag:waiting")
+                            )
    +notmuch-home-function (lambda ()
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
@@ -663,7 +681,8 @@ Based on `org-contacts-anniversaries'."
 
 (after! org
   (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))))
+                             (org-agenda-files :maxlevel . 9))
+        org-startup-folded t))
 
 (after! org
   :config
@@ -1046,6 +1065,7 @@ Based on `org-contacts-anniversaries'."
   :after (:all org)
   :config
   (setq
+   org-pandoc-format-extensions '(pipe_tables+raw_html)
    org-pandoc-menu-entry
    '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
      (?d "to docx." org-pandoc-export-to-docx)
@@ -1066,7 +1086,7 @@ Based on `org-contacts-anniversaries'."
        ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
        (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
     (add-hook! 'org-pandoc-after-processing-markdown-hook
-    'cashweaver/remove-yaml-header)
+               'cashweaver/remove-yaml-header)
     ))
 
 (defun cashweaver/remove-yaml-header ()
@@ -1136,7 +1156,7 @@ Based on `org-contacts-anniversaries'."
        (point-min))
       (insert
        (format
-        "# %s\n"
+        "# %s\n\n"
         title)))))
 
 (defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
@@ -1313,7 +1333,6 @@ Reference: https://superuser.com/a/604264"
                             "#+title: ${title}\n"
                             "#+author: Cash Weaver\n"
                             "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+startup: overview\n"
                             "#+filetags: :concept:\n"
                             "#+hugo_auto_set_lastmod: t\n"))
                           :unnarrowed t)
@@ -1324,7 +1343,6 @@ Reference: https://superuser.com/a/604264"
                             "#+title: ${title}\n"
                             "#+author: Cash Weaver\n"
                             "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+startup: overview\n"
                             "#+hugo_auto_set_lastmod: t\n"
                             "* TODO"))
                           :unnarrowed t)
@@ -1335,7 +1353,6 @@ Reference: https://superuser.com/a/604264"
                             "#+title: ${title}\n"
                             "#+author: Cash Weaver\n"
                             "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+startup: overview\n"
                             "#+filetags: :person:\n"
                             "#+hugo_auto_set_lastmod: t\n"
                             "Among other things:\n"
@@ -1348,7 +1365,6 @@ Reference: https://superuser.com/a/604264"
                             "#+title: ${title}\n"
                             "#+author: Cash Weaver\n"
                             "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+startup: overview\n"
                             "#+filetags: :quote:\n"
                             "#+hugo_auto_set_lastmod: t\n"
                             "#+begin_quote\n"
@@ -1385,7 +1401,6 @@ Reference: https://superuser.com/a/604264"
                             "#+title: ${title}\n"
                             "#+author: Cash Weaver\n"
                             "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+startup: overview\n"
                             ))
                          :unnarrowed t))
     :file-path-exceptions-to-export-after-save '())
@@ -1458,33 +1473,35 @@ Reference: https://superuser.com/a/604264"
   '()
   "List of org-roam file paths which should NOT have references mirrored to front matter.")
 
+(defun cashweaver/org-hugo-export-wim-to-md-after-save ()
+  "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
+
+The exporting happens only when Org Capture is not in progress."
+  (unless (eq real-this-command 'org-capture-finalize)
+    (save-excursion
+      (let ((paths-no-export
+             cashweaver/org-roam--file-path-exceptions-to-export-after-save))
+        (unless (member
+                 (buffer-file-name)
+                 paths-no-export)
+          (let ((org-id-extra-files
+                 (org-roam-list-files))
+                (export-file-path
+                 (org-hugo-export-wim-to-md)))
+            (when cashweaver/org-hugo-replace-front-matter-with-title
+              (with-current-buffer
+                  (get-file-buffer export-file-path)
+                (cashweaver/replace-toml-front-matter-with-md-heading)
+                (save-buffer)))))))))
+
 (use-package! org-roam
   :after org
   :config
   (setq
-   cashweaver/org-hugo-replace-front-matter-with-title nil)
-  (cashweaver/org-roam--set-root "notes")
+   cashweaver/org-hugo-replace-front-matter-with-title t)
 
-  ;; Override
-  ;; Error (after-save-hook): Error running hook "org-hugo-export-wim-to-md-after-save" because: (user-error [ox-hugo] unread.org_archive: The entire file is attempted to be exported, but it is missing the #+title keyword)
-  ;;
-  ;; 1. Export even on first save from org-capture.
-  ;; 2. Make roam files known to org exporter.
   (defun org-hugo-export-wim-to-md-after-save ()
-    "See `org-hugo-export-wim-to-md-after-save'."
-    (let ((paths-no-export
-           cashweaver/org-roam--file-path-exceptions-to-export-after-save))
-      (unless (member
-               (buffer-file-name)
-               paths-no-export)
-        (let ((org-id-extra-files
-               (org-roam-list-files))
-              (export-file-path
-               (org-hugo-export-wim-to-md)))
-          (when cashweaver/org-hugo-replace-front-matter-with-title
-            )))))
-
-  (org-roam-db-autosync-mode))
+    (cashweaver/org-hugo-export-wim-to-md-after-save)))
 
 (defun cashweaver/org-roam--rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
@@ -2001,7 +2018,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
 #+title: ${title}\n
 #+author: Cash Weaver\n
 #+date: [%<%Y-%m-%d %a %H:%M>]\n
-#+startup: overview\n
 #+filetags: :reference:\n
 #+hugo_auto_set_lastmod: t\n
  \n
@@ -2097,23 +2113,23 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
                `(("year" . ,today-year)
                  ("week-number" . ,today-week-number)
                  ("quarter-number" . ,today-quarter-number)))
-            ""))))
-  (s-format
-   "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] ${tags}"
-   'aget
-   `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
-                              today-year
-                              today-month-number
-                              today-day-number))
-     ("short-weekday" . ,today-weekday-abbreviated-name)
-     ("year" . ,today-year)
-     ("week-number" . ,today-week-number)
-     ("quarter-number" . ,today-quarter-number)
-     ("hour-minute" . ,(if time-in-heading
-                           (format " %s"
-                                   (cashweaver/format-time "%H:%M"))
-                         ""))
-     ("tags" . ,tags))))
+            "")))
+    (s-format
+     "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] ${tags}"
+     'aget
+     `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
+                                today-year
+                                today-month-number
+                                today-day-number))
+       ("short-weekday" . ,today-weekday-abbreviated-name)
+       ("year" . ,today-year)
+       ("week-number" . ,today-week-number)
+       ("quarter-number" . ,today-quarter-number)
+       ("hour-minute" . ,(if time-in-heading
+                             (format " %s"
+                                     (cashweaver/format-time "%H:%M"))
+                           ""))
+       ("tags" . ,tags)))))
 
 (defun cashweaver/org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
   "Insert a heading for today's date, with relevant tags."
@@ -2404,6 +2420,10 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (interactive)
   (org-babel-remove-result-one-or-many t))
 
+(after! org-super-agenda
+  (setq org-super-agenda-header-map
+        evil-org-agenda-mode-map))
+
 (after! org
   ;; Keep in alphabetical order.
   (map!
@@ -2644,3 +2664,9 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
     (hack-dir-local-variables-non-file-buffer)))
 
 (use-package! toml)
+
+(use-package! electric-case)
+
+;; (add-hook!
+;;  'java-mode-hook
+;;  'electric-case-java-init)

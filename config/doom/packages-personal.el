@@ -131,3 +131,7 @@
 (package! toml
   :recipe (:host github
            :repo "gongo/emacs-toml"))
+
+(package! electric-case
+  :recipe (:host github
+           :repo "zk-phi/electric-case"))
