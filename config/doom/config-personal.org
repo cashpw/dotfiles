@@ -2185,9 +2185,6 @@ Record the current time when marking a heading as done.
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 #+end_src
 
-#+RESULTS:
-: org-pandoc-publish-to-plain
-
 **** TODO Hugo
 
 ***** Config
@@ -2521,7 +2518,7 @@ Reference: https://superuser.com/a/604264"
 
   (org-roam-db-autosync-mode))
 
-(defun cashweaver/org-roam--rewrite-smart-to-ascii ()
+(defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
     (cashweaver/replace-smart-quotes-in-buffer)))
 
@@ -2848,7 +2845,7 @@ Work in progress"
    (t
     ref)))
 
-(defun cashweaver/org-roam--mirror-roam-refs-to-front-matter ()
+(defun cashweaver/org-roam-mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
   (when (and (org-roam-file-p)
@@ -2893,57 +2890,54 @@ Work in progress"
            (downcase keyword)
            roam-refs)))))
 
-(cl-defun cashweaver/org-roam--add-bibliography (&optional skip-if-present)
-  "Add #+print_bibiliography to the current buffer."
-  (when (not (org-roam-file-p))
-    (return-from
-        cashweaver/org-roam--add-bibliography))
-
-  (save-excursion
-    (goto-char
-     (point-min))
-    (when (not (search-forward
-                "[cite"
-                ;; bound
-                nil
-                ;; no-error
-                t))
-      (return-from
-          cashweaver/org-roam--add-bibliography)))
-
-  (let* ((skip-if-present
-          (or skip-if-present
-              t))
-         (option
-          "#+print_bibliography:")
-         (option-present-in-buffer
-          (save-excursion
-            (goto-char
-             (point-min))
-            (search-forward
-             option
-             ;; bound
-             nil
-             ;; no-error
-             t))))
-
-    (when (not skip-if-present)
-      (save-excursion
-        (goto-char
-         (point-max))
-        (insert option))
-      (return-from
-          cashweaver/org-roam--add-bibliography))
-
-    (when (and skip-if-present
-               option-present-in-buffer)
-      (return-from
-          cashweaver/org-roam--add-bibliography))
-
+(defun cashweaver/citation-present-in-buffer-p ()
+  "Return true if a citation is present in the current buffer, nil otherwise."
+  (let ((citation-prefix
+         "[cite"))
     (save-excursion
       (goto-char
-       (point-max))
-      (insert option))))
+       (point-min))
+      (search-forward
+       citation-prefix
+       ;; bound
+       nil
+       ;; no-error
+       t))))
+
+(defcustom cashweaver/org-roam--file-path-exceptions-to-add-bibliography
+  '()
+  "File paths which will not have a bibliography added by `cashweaver/org-roam-add-bibliography'.")
+
+(defun cashweaver/org-roam-add-bibliography (&optional skip-if-present)
+  "Add #+print_bibiliography to the current buffer."
+  (when (and (org-roam-file-p)
+             (not
+              (member
+               (buffer-file-name)
+               cashweaver/org-roam--file-path-exceptions-to-add-bibliography))
+             (cashweaver/citation-present-in-buffer-p))
+    (let* ((skip-if-present
+            (or skip-if-present
+                t))
+           (bibliography-option
+            "#+print_bibliography:")
+           (bibliography-present-in-buffer
+            (save-excursion
+              (goto-char
+               (point-min))
+              (search-forward
+               bibliography-option
+               ;; bound
+               nil
+               ;; no-error
+               t))))
+      (unless (and skip-if-present
+                   bibliography-present-in-buffer)
+        (save-excursion
+          (goto-char
+           (point-max))
+          (insert
+           bibliography-option))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -3668,9 +3662,6 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
 ;;    :client-secret cashweaver/org-gtasks-client-secret))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-gtasks--get-client-secret
-
 *** Contacts
 
 **** =org-vcard=
@@ -3906,9 +3897,6 @@ https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbA
            :repo "gongo/emacs-toml"))
 #+end_src
 
-#+RESULTS:
-| yamlmod | :modules | ((:private . config-personal) (:private . modules)) | :recipe | (:host github :repo perfectayush/emacs-yamlmod) |
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! toml)
 #+end_src
@@ -3923,9 +3911,6 @@ author = [\"cashweaver\"]
 date = 2022-02-10T09:33:00-08:00
 draft = true")
 #+end_src
-
-#+RESULTS:
-: ((enabled . t) (author cashweaver) (title . this is the title))
 
 * Footnotes
 
