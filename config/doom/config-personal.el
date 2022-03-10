@@ -821,59 +821,43 @@ Based on `org-contacts-anniversaries'."
 
 (after! org
   (setq
-   org-capture-templates
-   (doct '(("Anki"
-            :keys "a"
-            :file "~/proj/anki-cards/anki.org"
-            :olp ("Default")
-            :note-type (lambda ()
-                         (completing-read
-                          "Note type: "
-                          (sort
-                           (anki-editor-note-types)
-                           #'string-lessp)))
-            :note-type-prop anki-editor-prop-note-type
-            :template ("* %?"
-                       ":PROPERTIES:"
-                       ":ANKI_NOTE_TYPE: %{note-type}"
-                       ":END:")
-            :hook (lambda ()
-                    (let* ((note-type
-                            (org-entry-get
-                             (point)
-                             anki-editor-prop-note-type))
-                           (fields
-                            (anki-editor-api-call-result
-                             'modelFieldNames
-                             :modelName note-type))
-                           ;; Ignore the first field.
-                           ;; We'll set it as the title for the subtree.
-                           (first-field
-                            (pop fields))
-                           (second-field
-                            (pop fields)))
-                      (org-insert-subheading nil)
-                      (insert second-field)
-                      (dolist (field fields)
-                        (org-insert-heading nil)
-                        (insert field))
-                      (outline-up-heading 1)
-                      (evil-org-append-line 1))))
-           ("Roam"
-            :keys "r"
-            :file "~/proj/roam/todos.org"
-            :template ("* TODO [#2] %{prefix}%?%{tags}"
-                       ":PROPERTIES:"
-                       ":Created: %U"
-                       ":END:")
-            :children (("Basic"
-                        :keys "r"
-                        :prefix ""
-                        :tags "")
-                       ("Node idea"
-                        :keys "i"
-                        :prefix "Node idea: "
-                        :tags " :idea:")))))))
+   org-capture-templates (doct '(("Anki"
+                                  :keys "a"
+                                  :file "~/proj/anki-cards/anki.org"
+                                  :olp ("Default")
+                                  :note-type (lambda ()
+                                               (completing-read
+                                                "Note type: "
+                                                (sort
+                                                 (anki-editor-note-types)
+                                                 #'string-lessp)))
+                                  :note-type-prop anki-editor-prop-note-type
+                                  :template ("* %?"
+                                             ":PROPERTIES:"
+                                             ":ANKI_NOTE_TYPE: %{note-type}"
+                                             ":END:")
+                                  :hook (lambda ()
+                                          (let* ((note-type
+                                                  (org-entry-get
+                                                   (point)
+                                                   anki-editor-prop-note-type))
+                                                 (fields
+                                                  (anki-editor-api-call-result
+                                                   'modelFieldNames
+                                                   :modelName note-type))
+                                                 ;; Ignore the first field.
+                                                 ;; We'll set it as the title for the subtree.
+                                                 (first-field
+                                                  (pop fields))
+                                                 (second-field
+                                                  (pop fields)))
+                                            (org-insert-subheading nil)
+                                            (insert second-field)
+                                            (dolist (field fields)
+                                              (org-insert-heading nil)
+                                              (insert field))
+                                            (outline-up-heading 1)
+                                            (evil-org-append-line 1))))))))
 
 (use-package! ol-doi)
 
@@ -1038,11 +1022,11 @@ Based on `org-contacts-anniversaries'."
 (use-package! orgtbl-aggregate)
 
 ;; Too early load error
-;; (use-package! anki-editor
-;;   :config
-;;   (setq
-;;    anki-editor-remove-single-paragraph-tags t
-;;    anki-editor-latex-style 'mathjax))
+(use-package! anki-editor
+  :config
+  (setq
+   anki-editor-remove-single-paragraph-tags t
+   anki-editor-latex-style 'mathjax))
 
 (defun cashweaver/anki-editor-insert-note ()
   (interactive)
@@ -1503,7 +1487,7 @@ The exporting happens only when Org Capture is not in progress."
   (defun org-hugo-export-wim-to-md-after-save ()
     (cashweaver/org-hugo-export-wim-to-md-after-save)))
 
-(defun cashweaver/org-roam--rewrite-smart-to-ascii ()
+(defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
     (cashweaver/replace-smart-quotes-in-buffer)))
 
@@ -1830,7 +1814,7 @@ Work in progress"
    (t
     ref)))
 
-(defun cashweaver/org-roam--mirror-roam-refs-to-front-matter ()
+(defun cashweaver/org-roam-mirror-roam-refs-to-front-matter ()
   "Copy the list of ROAM_REFS into hugo_custom_front_matter."
   (interactive)
   (when (and (org-roam-file-p)
@@ -1875,57 +1859,54 @@ Work in progress"
            (downcase keyword)
            roam-refs)))))
 
-(cl-defun cashweaver/org-roam--add-bibliography (&optional skip-if-present)
-  "Add #+print_bibiliography to the current buffer."
-  (when (not (org-roam-file-p))
-    (return-from
-        cashweaver/org-roam--add-bibliography))
-
-  (save-excursion
-    (goto-char
-     (point-min))
-    (when (not (search-forward
-                "[cite"
-                ;; bound
-                nil
-                ;; no-error
-                t))
-      (return-from
-          cashweaver/org-roam--add-bibliography)))
-
-  (let* ((skip-if-present
-          (or skip-if-present
-              t))
-         (option
-          "#+print_bibliography:")
-         (option-present-in-buffer
-          (save-excursion
-            (goto-char
-             (point-min))
-            (search-forward
-             option
-             ;; bound
-             nil
-             ;; no-error
-             t))))
-
-    (when (not skip-if-present)
-      (save-excursion
-        (goto-char
-         (point-max))
-        (insert option))
-      (return-from
-          cashweaver/org-roam--add-bibliography))
-
-    (when (and skip-if-present
-               option-present-in-buffer)
-      (return-from
-          cashweaver/org-roam--add-bibliography))
-
+(defun cashweaver/citation-present-in-buffer-p ()
+  "Return true if a citation is present in the current buffer, nil otherwise."
+  (let ((citation-prefix
+         "[cite"))
     (save-excursion
       (goto-char
-       (point-max))
-      (insert option))))
+       (point-min))
+      (search-forward
+       citation-prefix
+       ;; bound
+       nil
+       ;; no-error
+       t))))
+
+(defcustom cashweaver/org-roam--file-path-exceptions-to-add-bibliography
+  '()
+  "File paths which will not have a bibliography added by `cashweaver/org-roam-add-bibliography'.")
+
+(defun cashweaver/org-roam-add-bibliography (&optional skip-if-present)
+  "Add #+print_bibiliography to the current buffer."
+  (when (and (org-roam-file-p)
+             (not
+              (member
+               (buffer-file-name)
+               cashweaver/org-roam--file-path-exceptions-to-add-bibliography))
+             (cashweaver/citation-present-in-buffer-p))
+    (let* ((skip-if-present
+            (or skip-if-present
+                t))
+           (bibliography-option
+            "#+print_bibliography:")
+           (bibliography-present-in-buffer
+            (save-excursion
+              (goto-char
+               (point-min))
+              (search-forward
+               bibliography-option
+               ;; bound
+               nil
+               ;; no-error
+               t))))
+      (unless (and skip-if-present
+                   bibliography-present-in-buffer)
+        (save-excursion
+          (goto-char
+           (point-max))
+          (insert
+           bibliography-option))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments

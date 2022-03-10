@@ -939,10 +939,6 @@ Provided through =app/calendar= in =init.el=.
 ;    (cfw:org-create-source "Green"))))
 #+end_src
 
-** Anki
-
-Also see [[*Anki]].
-
 * Languages
 ** General
 *** Packages
@@ -1781,59 +1777,43 @@ Record the current time when marking a heading as done.
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   (setq
-   org-capture-templates
-   (doct '(("Anki"
-            :keys "a"
-            :file "~/proj/anki-cards/anki.org"
-            :olp ("Default")
-            :note-type (lambda ()
-                         (completing-read
-                          "Note type: "
-                          (sort
-                           (anki-editor-note-types)
-                           #'string-lessp)))
-            :note-type-prop anki-editor-prop-note-type
-            :template ("* %?"
-                       ":PROPERTIES:"
-                       ":ANKI_NOTE_TYPE: %{note-type}"
-                       ":END:")
-            :hook (lambda ()
-                    (let* ((note-type
-                            (org-entry-get
-                             (point)
-                             anki-editor-prop-note-type))
-                           (fields
-                            (anki-editor-api-call-result
-                             'modelFieldNames
-                             :modelName note-type))
-                           ;; Ignore the first field.
-                           ;; We'll set it as the title for the subtree.
-                           (first-field
-                            (pop fields))
-                           (second-field
-                            (pop fields)))
-                      (org-insert-subheading nil)
-                      (insert second-field)
-                      (dolist (field fields)
-                        (org-insert-heading nil)
-                        (insert field))
-                      (outline-up-heading 1)
-                      (evil-org-append-line 1))))
-           ("Roam"
-            :keys "r"
-            :file "~/proj/roam/todos.org"
-            :template ("* TODO [#2] %{prefix}%?%{tags}"
-                       ":PROPERTIES:"
-                       ":Created: %U"
-                       ":END:")
-            :children (("Basic"
-                        :keys "r"
-                        :prefix ""
-                        :tags "")
-                       ("Node idea"
-                        :keys "i"
-                        :prefix "Node idea: "
-                        :tags " :idea:")))))))
+   org-capture-templates (doct '(("Anki"
+                                  :keys "a"
+                                  :file "~/proj/anki-cards/anki.org"
+                                  :olp ("Default")
+                                  :note-type (lambda ()
+                                               (completing-read
+                                                "Note type: "
+                                                (sort
+                                                 (anki-editor-note-types)
+                                                 #'string-lessp)))
+                                  :note-type-prop anki-editor-prop-note-type
+                                  :template ("* %?"
+                                             ":PROPERTIES:"
+                                             ":ANKI_NOTE_TYPE: %{note-type}"
+                                             ":END:")
+                                  :hook (lambda ()
+                                          (let* ((note-type
+                                                  (org-entry-get
+                                                   (point)
+                                                   anki-editor-prop-note-type))
+                                                 (fields
+                                                  (anki-editor-api-call-result
+                                                   'modelFieldNames
+                                                   :modelName note-type))
+                                                 ;; Ignore the first field.
+                                                 ;; We'll set it as the title for the subtree.
+                                                 (first-field
+                                                  (pop fields))
+                                                 (second-field
+                                                  (pop fields)))
+                                            (org-insert-subheading nil)
+                                            (insert second-field)
+                                            (dolist (field fields)
+                                              (org-insert-heading nil)
+                                              (insert field))
+                                            (outline-up-heading 1)
+                                            (evil-org-append-line 1))))))))
 #+end_src
 
 *** Links
@@ -2089,11 +2069,11 @@ Record the current time when marking a heading as done.
 
 #+begin_src emacs-lisp :tangle config-personal.el
 ;; Too early load error
-;; (use-package! anki-editor
-;;   :config
-;;   (setq
-;;    anki-editor-remove-single-paragraph-tags t
-;;    anki-editor-latex-style 'mathjax))
+(use-package! anki-editor
+  :config
+  (setq
+   anki-editor-remove-single-paragraph-tags t
+   anki-editor-latex-style 'mathjax))
 
 (defun cashweaver/anki-editor-insert-note ()
   (interactive)
@@ -3943,13 +3923,6 @@ Bits that I haven't yet filed into a larger heading
 (cashweaver/rewrite-links)
 #+end_src
 
-https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM
-https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit
-https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit#heading=h.hy2rqfrcolct
-
-https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM
-https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit
-https://docs.google.com/spreadsheets/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit#heading=h.hy2rqfrcolct
 
 ** Replace selected text in buffer
 
@@ -4014,4 +3987,3 @@ draft = true")
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]
-#+print_bibliography
