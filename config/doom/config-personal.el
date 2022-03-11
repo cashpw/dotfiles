@@ -680,7 +680,8 @@ Based on `org-contacts-anniversaries'."
 (after! org
   (setq org-refile-targets '((nil :maxlevel . 9)
                              (org-agenda-files :maxlevel . 9))
-        org-startup-folded t))
+        org-startup-folded t
+        org-log-repeat nil))
 
 (after! org
   :config
