@@ -740,36 +740,22 @@ Doom emacs provides =notmuch= through =init.el=.
   (setq
    notmuch-wash-wrap-lines-length 100
    notmuch-saved-searches '(
-                            ;; Priority 0
-                            (:key "0"
-                             :name "p0"
-                             :query "tag:p0")
                             ;; Automated (work)
                             (:key "a"
-                             :name "automated"
-                             :query "tag:Automated AND tag:inbox")
-                            ;; Bugs
-                            (:key "b"
-                             :name "bugs"
-                             :query "tag:Bug AND tag:inbox")
-                            (:key "B"
-                             :name "bugs (all)"
-                             :query "tag:Bug")
+                             :name "attn"
+                             :query "tag:attn")
                             ;; Calendar
                             (:key "c"
-                             :name "calendar-events"
-                             :query "tag:Calendar-Events AND (tag:inbox OR tag:p0)")
-                            (:key "C"
-                             :name "calendar-events (all)"
-                             :query "tag:Calendar-Events")
-                            ;; Drafts
+                             :name "calendar"
+                             :query "tag:calendar AND (tag:inbox OR tag:attn)")
+                            ;; Docs
                             (:key "d"
+                             :name "docs"
+                             :query "tag:docs AND tag:inbox")
+                            ;; Drafts
+                            (:key "D"
                              :name "drafts"
                              :query "tag:draft")
-                            ;; Docs
-                            (:key "D"
-                             :name "docs"
-                             :query "tag:doc AND tag:inbox")
                             ;; Inbox
                             (:key "i"
                              :name "inbox"
@@ -780,7 +766,15 @@ Doom emacs provides =notmuch= through =init.el=.
                             ;; To read
                             (:key "r"
                              :name "To read"
-                             :query "tag:Read!")
+                             :query "tag:to-read")
+                            ;; To me
+                            (:key "m"
+                             :name "To me"
+                             :query "tag:to-me")
+                            ;; To me
+                            (:key "M"
+                             :name "CC me"
+                             :query "tag:cc-me")
                             ;; Sent
                             (:key "s"
                              :name "sent"
@@ -794,22 +788,23 @@ Doom emacs provides =notmuch= through =init.el=.
                             (notmuch-search "tag:inbox"))
    notmuch-archive-tags '("-inbox"
                           "-unread")
-   notmuch-search-line-faces '(("p0" . '(:foreground "red3"))
-                               ("Bug" . '(:foreground "ivory4"))
+   notmuch-search-line-faces '(("attn" . '(:foreground "red3"))
                                ("waiting" . '(:foreground "orange3"))
-                               ("Calendar-Events" . '(:foreground "DeepSkyBlue3"))
-                               ("Read!" . '(:foreground "magenta3")))
+                               ("calendar" . '(:foreground "DeepSkyBlue3"))
+                               ("to-read" . '(:foreground "magenta3")))
    ;; Superset of `notmuch-archive-tags' for super archiving.
    cashweaver/notmuch-super-archive-tags (append
                                           notmuch-archive-tags
-                                          '("-p0"
+                                          '("-attn"
                                             "-waiting"
-                                            "-Read!")))
+                                            "-to-read")))
 
   ;; Prevent wrapping at 70 characters in email composition.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
+
+#+RESULTS:
 
 *** Compose in =org-mode=
 
