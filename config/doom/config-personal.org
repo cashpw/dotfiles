@@ -182,8 +182,6 @@ Doom Emacs provides =alert=.
  "M-N" #'operate-on-number-at-point)
 #+end_src
 
-#+RESULTS:
-
 *** =evil-mode= Visual State
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1592,8 +1590,11 @@ TODO Explain
 (after! org
   (setq org-refile-targets '((nil :maxlevel . 9)
                              (org-agenda-files :maxlevel . 9))
-        org-startup-folded t))
+        org-startup-folded t
+        org-log-repeat nil))
 #+end_src
+
+#+RESULTS:
 
 **** TODOs
 ***** Priorities
