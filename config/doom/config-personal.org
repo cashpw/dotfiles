@@ -1986,6 +1986,86 @@ Record the current time when marking a heading as done.
 *** TODO Agendas
 
 #+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-super-agenda
+  :demand t
+  :after
+  (:all
+   org-agenda
+   evil
+   evil-org-agenda)
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   ;; TODO: Move this variable
+   cashweaver/roam-dir-path (s-format
+                             "${home-dir-path}/proj/roam"
+                             'aget
+                             `(("home-dir-path" . ,cashweaver/home-dir-path)))
+   cashweaver/roam-unread-file-path (s-format
+                                     "${roam-dir-path}/unread.org"
+                                     'aget
+                                     `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   org-agenda-custom-commands '(("R"
+                                 "Roam Unread"
+                                 ((alltodo
+                                   ""
+                                   ((org-agenda-overriding-header "")
+                                    (org-agenda-files
+                                     `(,cashweaver/roam-unread-file-path))
+                                    (org-super-agenda-groups
+                                     `(
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "essay"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "discussion"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "book"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "link_group"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "class"
+                                         10)
+                                       (:name "someday (10)"
+                                        :take (10 (:and (:tag "someday"))))
+
+                                       (:discard
+                                        (:todo t)
+                                        )))))))))
+  (cl-defun org-super-agenda--group-dispatch-take (items (n group))
+    ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
+    "Take N ITEMS that match selectors in GROUP.
+If N is positive, take the first N items, otherwise take the last N items.
+Note: the ordering of entries is not guaranteed to be preserved, so this may
+not always show the expected results."
+    (message (format "%s" group))
+    (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
+            (take-fn (if (cl-minusp n) #'-take-last #'-take))
+            (placement (if (cl-minusp n) "Last" "First"))
+            (name (format "%s %d %s" placement (abs n) name)))
+      (list name non-matching (funcall take-fn (abs n) matching))))
+  )
+
+(defun cashweaver/org-super-agenda--roam-group (tag take)
+  "Return a plist TODO."
+  `(:name ,(format "%s (%d)"
+                  tag
+                  take)
+    :take (,take
+           (:and
+            (:tag ,tag
+             :not (:tag "someday"))))))
+#+end_src
+
+#+RESULTS:
+: cashweaver/org-super-agenda--roam-group
+
+#+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   :config
   (setq
@@ -2004,7 +2084,9 @@ Record the current time when marking a heading as done.
       (buffer-substring-no-properties
        (match-beginning 1)
        (match-end 1)))))
+#+end_src
 
+#+begin_src emacs-lisp :tangle config-personal.el
 (after! org-agenda
   (setq
    org-duration-units `(("m" . 1)
@@ -3558,12 +3640,6 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
 #+end_src
 
 *** Keybindings
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(after! org-super-agenda
-  (setq org-super-agenda-header-map
-        evil-org-agenda-mode-map))
-#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org

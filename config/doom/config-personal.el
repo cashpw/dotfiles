@@ -949,6 +949,81 @@ Based on `org-contacts-anniversaries'."
  :follow #'cashweaver/org-link--google-sheets-open
  :export #'cashweaver/org-link--google-sheets-export)
 
+(use-package! org-super-agenda
+  :demand t
+  :after
+  (:all
+   org-agenda
+   evil
+   evil-org-agenda)
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   ;; TODO: Move this variable
+   cashweaver/roam-dir-path (s-format
+                             "${home-dir-path}/proj/roam"
+                             'aget
+                             `(("home-dir-path" . ,cashweaver/home-dir-path)))
+   cashweaver/roam-unread-file-path (s-format
+                                     "${roam-dir-path}/unread.org"
+                                     'aget
+                                     `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   org-agenda-custom-commands '(("R"
+                                 "Roam Unread"
+                                 ((alltodo
+                                   ""
+                                   ((org-agenda-overriding-header "")
+                                    (org-agenda-files
+                                     `(,cashweaver/roam-unread-file-path))
+                                    (org-super-agenda-groups
+                                     `(
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "essay"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "discussion"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "book"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "link_group"
+                                         10)
+                                       ,(cashweaver/org-super-agenda--roam-group
+                                         "class"
+                                         10)
+                                       (:name "someday (10)"
+                                        :take (10 (:and (:tag "someday"))))
+
+                                       (:discard
+                                        (:todo t)
+                                        )))))))))
+  (cl-defun org-super-agenda--group-dispatch-take (items (n group))
+    ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
+    "Take N ITEMS that match selectors in GROUP.
+If N is positive, take the first N items, otherwise take the last N items.
+Note: the ordering of entries is not guaranteed to be preserved, so this may
+not always show the expected results."
+    (message (format "%s" group))
+    (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
+            (take-fn (if (cl-minusp n) #'-take-last #'-take))
+            (placement (if (cl-minusp n) "Last" "First"))
+            (name (format "%s %d %s" placement (abs n) name)))
+      (list name non-matching (funcall take-fn (abs n) matching))))
+  )
+
+(defun cashweaver/org-super-agenda--roam-group (tag take)
+  "Return a plist TODO."
+  `(:name ,(format "%s (%d)"
+                  tag
+                  take)
+    :take (,take
+           (:and
+            (:tag ,tag
+             :not (:tag "someday"))))))
+
 (after! org
   :config
   (setq
@@ -2391,10 +2466,6 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   "Removes all result blocks; basically an alias"
   (interactive)
   (org-babel-remove-result-one-or-many t))
-
-(after! org-super-agenda
-  (setq org-super-agenda-header-map
-        evil-org-agenda-mode-map))
 
 (after! org
   ;; Keep in alphabetical order.
