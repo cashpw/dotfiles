@@ -1552,7 +1552,7 @@ The exporting happens only when Org Capture is not in progress."
   :after org
   :config
   (setq
-   cashweaver/org-hugo-replace-front-matter-with-title t))
+   cashweaver/org-hugo-replace-front-matter-with-title nil))
 
 (after! org-roam
   (defun org-hugo-export-wim-to-md-after-save ()
