@@ -1538,12 +1538,13 @@ The exporting happens only when Org Capture is not in progress."
            cashweaver/org-roam--file-path-exceptions-to-export-after-save)))
     (save-excursion
       (let* ((org-id-extra-files
-             (org-roam-list-files))
-            (export-file-path
-             (org-hugo-export-wim-to-md)))
+              (org-roam-list-files))
+             (export-file-path
+              (org-hugo-export-wim-to-md)))
         (when cashweaver/org-hugo-replace-front-matter-with-title
           (with-current-buffer
-              (get-file-buffer export-file-path)
+              (find-file-noselect
+               export-file-path)
             (cashweaver/replace-toml-front-matter-with-md-heading)
             (save-buffer)))))))
 
