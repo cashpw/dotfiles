@@ -918,6 +918,8 @@ Based on `org-contacts-anniversaries'."
  :follow #'cashweaver/org-link--google-sheets-open
  :export #'cashweaver/org-link--google-sheets-export)
 
+(use-package! org-agenda)
+(use-package! evil-org-agenda)
 (use-package! org-super-agenda
   :demand t
   :after
@@ -2593,44 +2595,49 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
 
 (use-package! toml)
 
-(defcustom cashweaver/project-paths
+(defcustom cashweaver/project-path-fns
   '()
-  "List of paths to projects/important directories.")
+  "List of functions which return a list of project paths.")
 
 (defun cashweaver/get-proj-dir-paths (&optional projects-to-exclude proj-dir-path)
   "Return a list of absolute paths to project directories.
 
 Exclude project names listed in PROJECTS-TO-EXCLUDE."
-  (let*
-      ((projects-to-exclude (or projects-to-exclude '()))
-       (proj-dir-path (or proj-dir-path
-                          (format "%s/proj"
-                                  cashweaver/home-dir-path)))
-       (proj-names
-        (remove-if
-         (lambda (file-name)
-           (or
-            (member file-name projects-to-exclude)
-            (string= ".." file-name)
-            (string= "." file-name)
-            (not (f-dir?
-             (expand-file-name
-              file-name
-              proj-dir-path)))))
-         (directory-files
-          proj-dir-path)))
-       (absolute-proj-dir-paths
-        (mapcar
-         (lambda (proj-name)
-           (format "%s/%s"
-                   proj-dir-path
-                   proj-name))
-         proj-names)))
+  (let* ((projects-to-exclude
+          (or
+           projects-to-exclude
+           '()))
+         (proj-dir-path
+          (or
+           proj-dir-path
+           (format
+            "%s/proj"
+            cashweaver/home-dir-path)))
+         (proj-names
+          (remove-if
+           (lambda (file-name)
+             (or
+              (member file-name projects-to-exclude)
+              (string= ".." file-name)
+              (string= "." file-name)
+              (not (f-dir?
+                    (expand-file-name
+                     file-name
+                     proj-dir-path)))))
+           (directory-files
+            proj-dir-path)))
+         (absolute-proj-dir-paths
+          (mapcar
+           (lambda (proj-name)
+             (format "%s/%s"
+                     proj-dir-path
+                     proj-name))
+           proj-names)))
     absolute-proj-dir-paths))
 
 (add-to-list
- 'cashweaver/project-paths
-  (cashweaver/get-proj-dir-paths))
+ 'cashweaver/project-path-fns
+ 'cashweaver/get-proj-dir-paths)
 
 (defvar cashweaver/gdrive-mount-dir-path
   "/mnt/cashbweaver-gdrive"
@@ -2653,11 +2660,17 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (defun cashweaver/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
-  (mapcar
-   (lambda (path)
-     (cashweaver/maybe-add-trailing-forward-slash path))
-   (flatten-tree
-    cashweaver/project-paths)))
+  (let* ((nested-paths
+          (loop for fn in cashweaver/project-path-fns
+                collect (funcall fn)))
+         (paths
+          (mapcar
+           (lambda (path)
+             (cashweaver/maybe-add-trailing-forward-slash path))
+           (flatten-tree
+            nested-paths))
+          ))
+    paths))
 
 (defun cashweaver/projectile-refresh-known-paths ()
   "Refresh the paths which projectile knows about."
