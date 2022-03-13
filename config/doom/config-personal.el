@@ -74,9 +74,9 @@
  ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
-  :desc "Store email link" :n "n L" #'org-notmuch-store-link
   :desc "Langtool" :n "t L" #'langtool-check
   (:prefix ("n")
+   :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes))
   (:prefix ("p")
@@ -1524,35 +1524,38 @@ Reference: https://superuser.com/a/604264"
   '()
   "List of org-roam file paths which should NOT have references mirrored to front matter.")
 
-(defun cashweaver/org-hugo-export-wim-to-md-after-save ()
+(defun cashweaver/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
 
 The exporting happens only when Org Capture is not in progress."
-  (unless (eq real-this-command 'org-capture-finalize)
+  (interactive)
+  (when (and
+         (not
+          (eq real-this-command 'org-capture-finalize))
+         (not
+          (member
+           (buffer-file-name)
+           cashweaver/org-roam--file-path-exceptions-to-export-after-save)))
     (save-excursion
-      (let ((paths-no-export
-             cashweaver/org-roam--file-path-exceptions-to-export-after-save))
-        (unless (member
-                 (buffer-file-name)
-                 paths-no-export)
-          (let ((org-id-extra-files
-                 (org-roam-list-files))
-                (export-file-path
-                 (org-hugo-export-wim-to-md)))
-            (when cashweaver/org-hugo-replace-front-matter-with-title
-              (with-current-buffer
-                  (get-file-buffer export-file-path)
-                (cashweaver/replace-toml-front-matter-with-md-heading)
-                (save-buffer)))))))))
+      (let* ((org-id-extra-files
+             (org-roam-list-files))
+            (export-file-path
+             (org-hugo-export-wim-to-md)))
+        (when cashweaver/org-hugo-replace-front-matter-with-title
+          (with-current-buffer
+              (get-file-buffer export-file-path)
+            (cashweaver/replace-toml-front-matter-with-md-heading)
+            (save-buffer)))))))
 
 (use-package! org-roam
   :after org
   :config
   (setq
-   cashweaver/org-hugo-replace-front-matter-with-title t)
+   cashweaver/org-hugo-replace-front-matter-with-title t))
 
+(after! org-roam
   (defun org-hugo-export-wim-to-md-after-save ()
-    (cashweaver/org-hugo-export-wim-to-md-after-save)))
+    (cashweaver/org-hugo-export-wim-to-md)))
 
 (defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
@@ -1709,7 +1712,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (point-max))
       (cashweaver/org-mode-insert-options
        `(("TITLE" . ,title)
-         ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
          ("HUGO_AUTO_SET_LASTMOD" . "t")))
@@ -2473,6 +2475,9 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (map!
    :map org-mode-map
    :localleader
+   (:prefix ("@" . "Citation")
+    :n "@" #'org-cite-insert
+    :n "r" #'citar-refresh)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
    (:prefix ("c")
