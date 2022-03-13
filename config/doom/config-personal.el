@@ -853,45 +853,13 @@ Based on `org-contacts-anniversaries'."
 
 (use-package! ol-doi)
 
-;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
+(use-package! org-link-isbn)
 
-(defvar org-link-isbn-server-url
-  "https://books.google.com/books?vid=ISBN"
-  "The URL of the ISBN server.")
+(use-package! org-link-instagram)
 
-(defun org-link-isbn-open (path arg)
-  "Open a \"ISBN\" type link."
-  (browse-url
-   (url-encode-url
-    (concat
-     org-link-isbn-server-url
-     path)) arg))
+(use-package! org-link-google-doc)
 
-(defun org-link-isbn-export (path desc backend info)
-  "Export a \"ISBN\" type link."
-  (let ((uri
-         (concat org-link-isbn-server-url path)))
-    (pcase backend
-      (`md
-       (format "[%s](%s)" (or desc uri) uri))
-      (`html
-       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
-      (`latex
-       (if desc (format "\\href{%s}{%s}" uri desc)
-         (format "\\url{%s}" uri)))
-      (`ascii
-       (if (not desc) (format "<%s>" uri)
-         (concat (format "[%s]" desc)
-                 (and (not (plist-get info :ascii-links-to-notes))
-                      (format " (<%s>)" uri)))))
-      (`texinfo
-       (if (not desc) (format "@uref{%s}" uri)
-         (format "@uref{%s, %s}" uri desc)))
-      (_ uri))))
-
-(org-link-set-parameters "isbn"
-                         :follow #'org-link-isbn-open
-                         :export #'org-link-isbn-export)
+(use-package! org-link-google-sheet)
 
 (defvar cashweaver/org-link--google-sheets-base-url
   "https://docs.google.com/spreadsheets/d"

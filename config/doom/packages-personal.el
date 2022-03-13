@@ -122,6 +122,22 @@
 
 (package! org-vcard)
 
+(package! org-link-isbn
+  :recipe (:host github
+           :repo "cashweaver/org-link-isbn"))
+
+(package! org-link-instagram
+  :recipe (:host github
+           :repo "cashweaver/org-link-instagram"))
+
+(package! org-link-google-doc
+  :recipe (:host github
+           :repo "cashweaver/org-link-google-doc"))
+
+(package! org-link-google-sheet
+  :recipe (:host github
+           :repo "cashweaver/org-link-google-sheet"))
+
 (package! pdf-tools)
 
 (package! toml

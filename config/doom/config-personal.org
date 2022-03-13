@@ -1837,49 +1837,54 @@ Record the current time when marking a heading as done.
 #+end_src
 
 **** ISBN
-#+begin_src emacs-lisp :tangle config-personal.el
-;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
 
-(defvar org-link-isbn-server-url
-  "https://books.google.com/books?vid=ISBN"
-  "The URL of the ISBN server.")
-
-(defun org-link-isbn-open (path arg)
-  "Open a \"ISBN\" type link."
-  (browse-url
-   (url-encode-url
-    (concat
-     org-link-isbn-server-url
-     path)) arg))
-
-(defun org-link-isbn-export (path desc backend info)
-  "Export a \"ISBN\" type link."
-  (let ((uri
-         (concat org-link-isbn-server-url path)))
-    (pcase backend
-      (`md
-       (format "[%s](%s)" (or desc uri) uri))
-      (`html
-       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
-      (`latex
-       (if desc (format "\\href{%s}{%s}" uri desc)
-         (format "\\url{%s}" uri)))
-      (`ascii
-       (if (not desc) (format "<%s>" uri)
-         (concat (format "[%s]" desc)
-                 (and (not (plist-get info :ascii-links-to-notes))
-                      (format " (<%s>)" uri)))))
-      (`texinfo
-       (if (not desc) (format "@uref{%s}" uri)
-         (format "@uref{%s, %s}" uri desc)))
-      (_ uri))))
-
-(org-link-set-parameters "isbn"
-                         :follow #'org-link-isbn-open
-                         :export #'org-link-isbn-export)
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-link-isbn
+  :recipe (:host github
+           :repo "cashweaver/org-link-isbn"))
 #+end_src
 
-**** Google Docs
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-link-isbn)
+#+end_src
+
+**** Instagram
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-link-instagram
+  :recipe (:host github
+           :repo "cashweaver/org-link-instagram"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-link-instagram)
+#+end_src
+
+**** Google Documents
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-link-google-doc
+  :recipe (:host github
+           :repo "cashweaver/org-link-google-doc"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-link-google-doc)
+#+end_src
+
+**** Google Sheets
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-link-google-sheet
+  :recipe (:host github
+           :repo "cashweaver/org-link-google-sheet"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-link-google-sheet)
+#+end_src
+
+**** Google Documents
 
 #+begin_src emacs-lisp :tangle config-work.el
 (defvar cashweaver/org-link--google-docs-base-url
