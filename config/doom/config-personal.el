@@ -228,10 +228,10 @@
                             (:key "c"
                              :name "calendar"
                              :query "tag:calendar AND (tag:inbox OR tag:attn)")
-                            ;; Docs
+                            ;; Drive
                             (:key "d"
-                             :name "docs"
-                             :query "tag:docs AND tag:inbox")
+                             :name "drive"
+                             :query "tag:drive AND tag:inbox")
                             ;; Drafts
                             (:key "D"
                              :name "drafts"
@@ -860,63 +860,6 @@ Based on `org-contacts-anniversaries'."
 (use-package! org-link-google-doc)
 
 (use-package! org-link-google-sheet)
-
-(defvar cashweaver/org-link--google-sheets-base-url
-  "https://docs.google.com/spreadsheets/d"
-  "The base url for Google Sheets")
-(defvar cashweaver/org-link--google-sheets-type
-  "google-sheets"
-  "TODO")
-
-(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "${base-url}/${id}"
-   'aget
-   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
-     ("id" . ,sheet-id))))
-
-(defun cashweaver/org-link--google-sheets-build-org-link (sheet-id description)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "[[${type}:${id}][${description}]]"
-   'aget
-   `(("type" . ,cashweaver/org-link--google-sheets-type)
-     ("id" . ,sheet-id)
-     ("description" . ,description))))
-
-(defun cashweaver/org-link--google-sheets-open (path arg)
-  (browse-url
-   (url-encode-url
-    (cashweaver/org-link--google-sheets-build-url
-     path))
-   arg))
-
-(defun cashweaver/org-link--google-sheets-export (path desc backend info)
-  "Export a Google Sheets link."
-  (let ((uri
-         (cashweaver/org-link--google-sheets-build-url
-          path)))
-    (pcase backend
-      (`md
-       (s-format
-        "[${description}}](${uri})"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      ('html
-       (s-format
-        "<a href=\"${uri}\">${description}</a>"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      (_
-       uri))))
-
-(org-link-set-parameters
- cashweaver/org-link--google-sheets-type
- :follow #'cashweaver/org-link--google-sheets-open
- :export #'cashweaver/org-link--google-sheets-export)
 
 (use-package! org-agenda)
 (use-package! evil-org-agenda)
