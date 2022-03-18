@@ -87,7 +87,9 @@
 (map!
  ;; Keep in alphabetical order.
  :map global-map
- "M-N" #'operate-on-number-at-point)
+ "M-N" #'operate-on-number-at-point
+ (:prefix ("z")
+  :n "O" #'evil-open-fold-rec))
 
 (map!
  :map evil-visual-state-map
@@ -216,22 +218,24 @@
   (org-store-link nil)
   (org-capture nil "ef"))
 
+(defun cashweaver/notmuch--tag-search (key tag &optional query)
+  "TODO."
+  `(:key ,key
+    :name ,tag
+    :query ,(format "tag:inbox AND -tag:trash AND tag:%s%s"
+                    tag
+                    (if query
+                        (concat " AND %s"
+                                query)
+                      ""))))
+
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
-   notmuch-saved-searches '(
-                            ;; Automated (work)
-                            (:key "a"
-                             :name "attn"
-                             :query "tag:attn")
-                            ;; Calendar
-                            (:key "c"
-                             :name "calendar"
-                             :query "tag:calendar AND (tag:inbox OR tag:attn)")
-                            ;; Docs
-                            (:key "d"
-                             :name "docs"
-                             :query "tag:docs AND tag:inbox")
+   notmuch-saved-searches `(
+                            ,(cashweaver/notmuch--tag-search "a" "attn")
+                            ,(cashweaver/notmuch--tag-search "c" "calendar")
+                            ,(cashweaver/notmuch--tag-search "d" "drive")
                             ;; Drafts
                             (:key "D"
                              :name "drafts"
@@ -239,22 +243,13 @@
                             ;; Inbox
                             (:key "i"
                              :name "inbox"
-                             :query "tag:inbox")
+                             :query "tag:inbox AND -tag:trash")
                             (:key "I"
                              :name "Archive"
-                             :query "-tag:inbox")
-                            ;; To read
-                            (:key "r"
-                             :name "To read"
-                             :query "tag:to-read")
-                            ;; To me
-                            (:key "m"
-                             :name "To me"
-                             :query "tag:to-me")
-                            ;; To me
-                            (:key "M"
-                             :name "CC me"
-                             :query "tag:cc-me")
+                             :query "-tag:inbox AND -tag:trash")
+                            ,(cashweaver/notmuch--tag-search "r" "to-read")
+                            ,(cashweaver/notmuch--tag-search "m" "to-me")
+                            ,(cashweaver/notmuch--tag-search "M" "cc-me")
                             ;; Sent
                             (:key "s"
                              :name "sent"
@@ -860,63 +855,6 @@ Based on `org-contacts-anniversaries'."
 (use-package! org-link-google-doc)
 
 (use-package! org-link-google-sheet)
-
-(defvar cashweaver/org-link--google-sheets-base-url
-  "https://docs.google.com/spreadsheets/d"
-  "The base url for Google Sheets")
-(defvar cashweaver/org-link--google-sheets-type
-  "google-sheets"
-  "TODO")
-
-(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "${base-url}/${id}"
-   'aget
-   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
-     ("id" . ,sheet-id))))
-
-(defun cashweaver/org-link--google-sheets-build-org-link (sheet-id description)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "[[${type}:${id}][${description}]]"
-   'aget
-   `(("type" . ,cashweaver/org-link--google-sheets-type)
-     ("id" . ,sheet-id)
-     ("description" . ,description))))
-
-(defun cashweaver/org-link--google-sheets-open (path arg)
-  (browse-url
-   (url-encode-url
-    (cashweaver/org-link--google-sheets-build-url
-     path))
-   arg))
-
-(defun cashweaver/org-link--google-sheets-export (path desc backend info)
-  "Export a Google Sheets link."
-  (let ((uri
-         (cashweaver/org-link--google-sheets-build-url
-          path)))
-    (pcase backend
-      (`md
-       (s-format
-        "[${description}}](${uri})"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      ('html
-       (s-format
-        "<a href=\"${uri}\">${description}</a>"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      (_
-       uri))))
-
-(org-link-set-parameters
- cashweaver/org-link--google-sheets-type
- :follow #'cashweaver/org-link--google-sheets-open
- :export #'cashweaver/org-link--google-sheets-export)
 
 (use-package! org-agenda)
 (use-package! evil-org-agenda)
@@ -2446,6 +2384,7 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (map!
    :map org-mode-map
    :localleader
+   :nv "@" nil
    (:prefix ("@" . "Citation")
     :n "@" #'org-cite-insert
     :n "r" #'citar-refresh)
