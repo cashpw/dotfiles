@@ -87,7 +87,9 @@
 (map!
  ;; Keep in alphabetical order.
  :map global-map
- "M-N" #'operate-on-number-at-point)
+ "M-N" #'operate-on-number-at-point
+ (:prefix ("z")
+  :n "O" #'evil-open-fold-rec))
 
 (map!
  :map evil-visual-state-map
@@ -216,22 +218,24 @@
   (org-store-link nil)
   (org-capture nil "ef"))
 
+(defun cashweaver/notmuch--tag-search (key tag &optional query)
+  "TODO."
+  `(:key ,key
+    :name ,tag
+    :query ,(format "tag:inbox AND -tag:trash AND tag:%s%s"
+                    tag
+                    (if query
+                        (concat " AND %s"
+                                query)
+                      ""))))
+
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
-   notmuch-saved-searches '(
-                            ;; Automated (work)
-                            (:key "a"
-                             :name "attn"
-                             :query "tag:attn")
-                            ;; Calendar
-                            (:key "c"
-                             :name "calendar"
-                             :query "tag:calendar AND (tag:inbox OR tag:attn)")
-                            ;; Drive
-                            (:key "d"
-                             :name "drive"
-                             :query "tag:drive AND tag:inbox")
+   notmuch-saved-searches `(
+                            ,(cashweaver/notmuch--tag-search "a" "attn")
+                            ,(cashweaver/notmuch--tag-search "c" "calendar")
+                            ,(cashweaver/notmuch--tag-search "d" "drive")
                             ;; Drafts
                             (:key "D"
                              :name "drafts"
@@ -239,22 +243,13 @@
                             ;; Inbox
                             (:key "i"
                              :name "inbox"
-                             :query "tag:inbox")
+                             :query "tag:inbox AND -tag:trash")
                             (:key "I"
                              :name "Archive"
-                             :query "-tag:inbox")
-                            ;; To read
-                            (:key "r"
-                             :name "To read"
-                             :query "tag:to-read")
-                            ;; To me
-                            (:key "m"
-                             :name "To me"
-                             :query "tag:to-me")
-                            ;; To me
-                            (:key "M"
-                             :name "CC me"
-                             :query "tag:cc-me")
+                             :query "-tag:inbox AND -tag:trash")
+                            ,(cashweaver/notmuch--tag-search "r" "to-read")
+                            ,(cashweaver/notmuch--tag-search "m" "to-me")
+                            ,(cashweaver/notmuch--tag-search "M" "cc-me")
                             ;; Sent
                             (:key "s"
                              :name "sent"
@@ -2389,6 +2384,7 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (map!
    :map org-mode-map
    :localleader
+   :nv "@" nil
    (:prefix ("@" . "Citation")
     :n "@" #'org-cite-insert
     :n "r" #'citar-refresh)
