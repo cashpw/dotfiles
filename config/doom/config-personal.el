@@ -74,9 +74,9 @@
  ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
-  :desc "Store email link" :n "n L" #'org-notmuch-store-link
   :desc "Langtool" :n "t L" #'langtool-check
   (:prefix ("n")
+   :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes)
    (:prefix "r"
@@ -89,7 +89,9 @@
 (map!
  ;; Keep in alphabetical order.
  :map global-map
- "M-N" #'operate-on-number-at-point)
+ "M-N" #'operate-on-number-at-point
+ (:prefix ("z")
+  :n "O" #'evil-open-fold-rec))
 
 (map!
  :map evil-visual-state-map
@@ -218,22 +220,24 @@
   (org-store-link nil)
   (org-capture nil "ef"))
 
+(defun cashweaver/notmuch--tag-search (key tag &optional query)
+  "TODO."
+  `(:key ,key
+    :name ,tag
+    :query ,(format "tag:inbox AND -tag:trash AND tag:%s%s"
+                    tag
+                    (if query
+                        (concat " AND %s"
+                                query)
+                      ""))))
+
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
-   notmuch-saved-searches '(
-                            ;; Automated (work)
-                            (:key "a"
-                             :name "attn"
-                             :query "tag:attn")
-                            ;; Calendar
-                            (:key "c"
-                             :name "calendar"
-                             :query "tag:calendar AND (tag:inbox OR tag:attn)")
-                            ;; Docs
-                            (:key "d"
-                             :name "docs"
-                             :query "tag:docs AND tag:inbox")
+   notmuch-saved-searches `(
+                            ,(cashweaver/notmuch--tag-search "a" "attn")
+                            ,(cashweaver/notmuch--tag-search "c" "calendar")
+                            ,(cashweaver/notmuch--tag-search "d" "drive")
                             ;; Drafts
                             (:key "D"
                              :name "drafts"
@@ -241,22 +245,13 @@
                             ;; Inbox
                             (:key "i"
                              :name "inbox"
-                             :query "tag:inbox")
+                             :query "tag:inbox AND -tag:trash")
                             (:key "I"
                              :name "Archive"
-                             :query "-tag:inbox")
-                            ;; To read
-                            (:key "r"
-                             :name "To read"
-                             :query "tag:to-read")
-                            ;; To me
-                            (:key "m"
-                             :name "To me"
-                             :query "tag:to-me")
-                            ;; To me
-                            (:key "M"
-                             :name "CC me"
-                             :query "tag:cc-me")
+                             :query "-tag:inbox AND -tag:trash")
+                            ,(cashweaver/notmuch--tag-search "r" "to-read")
+                            ,(cashweaver/notmuch--tag-search "m" "to-me")
+                            ,(cashweaver/notmuch--tag-search "M" "cc-me")
                             ;; Sent
                             (:key "s"
                              :name "sent"
@@ -855,103 +850,16 @@ Based on `org-contacts-anniversaries'."
 
 (use-package! ol-doi)
 
-;; Reference: https://github.com/bzg/org-mode/blob/main/lisp/ol-doi.el
+(use-package! org-link-isbn)
 
-(defvar org-link-isbn-server-url
-  "https://books.google.com/books?vid=ISBN"
-  "The URL of the ISBN server.")
+(use-package! org-link-instagram)
 
-(defun org-link-isbn-open (path arg)
-  "Open a \"ISBN\" type link."
-  (browse-url
-   (url-encode-url
-    (concat
-     org-link-isbn-server-url
-     path)) arg))
+(use-package! org-link-google-doc)
 
-(defun org-link-isbn-export (path desc backend info)
-  "Export a \"ISBN\" type link."
-  (let ((uri
-         (concat org-link-isbn-server-url path)))
-    (pcase backend
-      (`md
-       (format "[%s](%s)" (or desc uri) uri))
-      (`html
-       (format "<a href=\"%s\">%s</a>" uri (or desc uri)))
-      (`latex
-       (if desc (format "\\href{%s}{%s}" uri desc)
-         (format "\\url{%s}" uri)))
-      (`ascii
-       (if (not desc) (format "<%s>" uri)
-         (concat (format "[%s]" desc)
-                 (and (not (plist-get info :ascii-links-to-notes))
-                      (format " (<%s>)" uri)))))
-      (`texinfo
-       (if (not desc) (format "@uref{%s}" uri)
-         (format "@uref{%s, %s}" uri desc)))
-      (_ uri))))
+(use-package! org-link-google-sheet)
 
-(org-link-set-parameters "isbn"
-                         :follow #'org-link-isbn-open
-                         :export #'org-link-isbn-export)
-
-(defvar cashweaver/org-link--google-sheets-base-url
-  "https://docs.google.com/spreadsheets/d"
-  "The base url for Google Sheets")
-(defvar cashweaver/org-link--google-sheets-type
-  "google-sheets"
-  "TODO")
-
-(defun cashweaver/org-link--google-sheets-build-url (sheet-id)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "${base-url}/${id}"
-   'aget
-   `(("base-url" . ,cashweaver/org-link--google-sheets-base-url)
-     ("id" . ,sheet-id))))
-
-(defun cashweaver/org-link--google-sheets-build-org-link (sheet-id description)
-  "Return a url to Google Sheets for the provided SHEET-ID."
-  (s-format
-   "[[${type}:${id}][${description}]]"
-   'aget
-   `(("type" . ,cashweaver/org-link--google-sheets-type)
-     ("id" . ,sheet-id)
-     ("description" . ,description))))
-
-(defun cashweaver/org-link--google-sheets-open (path arg)
-  (browse-url
-   (url-encode-url
-    (cashweaver/org-link--google-sheets-build-url
-     path))
-   arg))
-
-(defun cashweaver/org-link--google-sheets-export (path desc backend info)
-  "Export a Google Sheets link."
-  (let ((uri
-         (cashweaver/org-link--google-sheets-build-url
-          path)))
-    (pcase backend
-      (`md
-       (s-format
-        "[${description}}](${uri})"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      ('html
-       (s-format
-        "<a href=\"${uri}\">${description}</a>"
-        'aget
-        `(("description" . ,desc)
-          ("uri" . ,uri))))
-      (_
-       uri))))
-
-(org-link-set-parameters
- cashweaver/org-link--google-sheets-type
- :follow #'cashweaver/org-link--google-sheets-open
- :export #'cashweaver/org-link--google-sheets-export)
-
+(use-package! org-agenda)
+(use-package! evil-org-agenda)
 (use-package! org-super-agenda
   :demand t
   :after
@@ -1526,35 +1434,39 @@ Reference: https://superuser.com/a/604264"
   '()
   "List of org-roam file paths which should NOT have references mirrored to front matter.")
 
-(defun cashweaver/org-hugo-export-wim-to-md-after-save ()
+(defun cashweaver/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
 
 The exporting happens only when Org Capture is not in progress."
-  (unless (eq real-this-command 'org-capture-finalize)
+  (interactive)
+  (when (and
+         (not
+          (eq real-this-command 'org-capture-finalize))
+         (not
+          (member
+           (buffer-file-name)
+           cashweaver/org-roam--file-path-exceptions-to-export-after-save)))
     (save-excursion
-      (let ((paths-no-export
-             cashweaver/org-roam--file-path-exceptions-to-export-after-save))
-        (unless (member
-                 (buffer-file-name)
-                 paths-no-export)
-          (let ((org-id-extra-files
-                 (org-roam-list-files))
-                (export-file-path
-                 (org-hugo-export-wim-to-md)))
-            (when cashweaver/org-hugo-replace-front-matter-with-title
-              (with-current-buffer
-                  (get-file-buffer export-file-path)
-                (cashweaver/replace-toml-front-matter-with-md-heading)
-                (save-buffer)))))))))
+      (let* ((org-id-extra-files
+              (org-roam-list-files))
+             (export-file-path
+              (org-hugo-export-wim-to-md)))
+        (when cashweaver/org-hugo-replace-front-matter-with-title
+          (with-current-buffer
+              (find-file-noselect
+               export-file-path)
+            (cashweaver/replace-toml-front-matter-with-md-heading)
+            (save-buffer)))))))
 
 (use-package! org-roam
   :after org
   :config
   (setq
-   cashweaver/org-hugo-replace-front-matter-with-title t)
+   cashweaver/org-hugo-replace-front-matter-with-title nil))
 
+(after! org-roam
   (defun org-hugo-export-wim-to-md-after-save ()
-    (cashweaver/org-hugo-export-wim-to-md-after-save)))
+    (cashweaver/org-hugo-export-wim-to-md)))
 
 (defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
@@ -1711,7 +1623,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
        (point-max))
       (cashweaver/org-mode-insert-options
        `(("TITLE" . ,title)
-         ("STARTUP" . "overview")
          ("AUTHOR" . "Cash Weaver")
          ("DATE" . ,created-date)
          ("HUGO_AUTO_SET_LASTMOD" . "t")))
@@ -2475,6 +2386,10 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
   (map!
    :map org-mode-map
    :localleader
+   :nv "@" nil
+   (:prefix ("@" . "Citation")
+    :n "@" #'org-cite-insert
+    :n "r" #'citar-refresh)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
    (:prefix ("c")
@@ -2621,44 +2536,49 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
 
 (use-package! toml)
 
-(defcustom cashweaver/project-paths
+(defcustom cashweaver/project-path-fns
   '()
-  "List of paths to projects/important directories.")
+  "List of functions which return a list of project paths.")
 
 (defun cashweaver/get-proj-dir-paths (&optional projects-to-exclude proj-dir-path)
   "Return a list of absolute paths to project directories.
 
 Exclude project names listed in PROJECTS-TO-EXCLUDE."
-  (let*
-      ((projects-to-exclude (or projects-to-exclude '()))
-       (proj-dir-path (or proj-dir-path
-                          (format "%s/proj"
-                                  cashweaver/home-dir-path)))
-       (proj-names
-        (remove-if
-         (lambda (file-name)
-           (or
-            (member file-name projects-to-exclude)
-            (string= ".." file-name)
-            (string= "." file-name)
-            (not (f-dir?
-             (expand-file-name
-              file-name
-              proj-dir-path)))))
-         (directory-files
-          proj-dir-path)))
-       (absolute-proj-dir-paths
-        (mapcar
-         (lambda (proj-name)
-           (format "%s/%s"
-                   proj-dir-path
-                   proj-name))
-         proj-names)))
+  (let* ((projects-to-exclude
+          (or
+           projects-to-exclude
+           '()))
+         (proj-dir-path
+          (or
+           proj-dir-path
+           (format
+            "%s/proj"
+            cashweaver/home-dir-path)))
+         (proj-names
+          (remove-if
+           (lambda (file-name)
+             (or
+              (member file-name projects-to-exclude)
+              (string= ".." file-name)
+              (string= "." file-name)
+              (not (f-dir?
+                    (expand-file-name
+                     file-name
+                     proj-dir-path)))))
+           (directory-files
+            proj-dir-path)))
+         (absolute-proj-dir-paths
+          (mapcar
+           (lambda (proj-name)
+             (format "%s/%s"
+                     proj-dir-path
+                     proj-name))
+           proj-names)))
     absolute-proj-dir-paths))
 
 (add-to-list
- 'cashweaver/project-paths
-  (cashweaver/get-proj-dir-paths))
+ 'cashweaver/project-path-fns
+ 'cashweaver/get-proj-dir-paths)
 
 (defvar cashweaver/gdrive-mount-dir-path
   "/mnt/cashbweaver-gdrive"
@@ -2681,11 +2601,17 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (defun cashweaver/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
-  (mapcar
-   (lambda (path)
-     (cashweaver/maybe-add-trailing-forward-slash path))
-   (flatten-tree
-    cashweaver/project-paths)))
+  (let* ((nested-paths
+          (loop for fn in cashweaver/project-path-fns
+                collect (funcall fn)))
+         (paths
+          (mapcar
+           (lambda (path)
+             (cashweaver/maybe-add-trailing-forward-slash path))
+           (flatten-tree
+            nested-paths))
+          ))
+    paths))
 
 (defun cashweaver/projectile-refresh-known-paths ()
   "Refresh the paths which projectile knows about."
