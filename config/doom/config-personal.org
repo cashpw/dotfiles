@@ -3069,7 +3069,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
 ,#+author: Cash Weaver\n
 ,#+date: [%<%Y-%m-%d %a %H:%M>]\n
 ,#+filetags: :reference:\n
-,#+hugo_auto_set_lastmod: t\n
  \n
 TODO_AUTHOR, [cite:@${citekey}]\n
  \n
