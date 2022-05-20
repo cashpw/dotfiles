@@ -161,7 +161,8 @@
  ;;nix               ; I hereby declare "nix geht mehr!"
  ;;ocaml             ; an objective camel
  (org                ; organize your plain life in plain text
-  +hugo
+  ;; Use custom hugo depending on personal vs work environment
+  ;; +hugo
   +noter
   +pretty
   +roam2

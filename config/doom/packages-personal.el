@@ -65,6 +65,8 @@
 
 (package! gnus-alias)
 
+(package! org-msg)
+
 (package! aggressive-indent)
 
 (package! operate-on-number
@@ -97,6 +99,9 @@
 
 (package! ox-pandoc)
 
+(when (not (cashweaver/is-work-p))
+  (package! ox-hugo))
+
 (package! org-download)
 
 (package! orgtbl-aggregate)
@@ -121,6 +126,10 @@
            :repo "JulienMasson/org-gtasks"))
 
 (package! org-vcard)
+
+(package! org-link-base
+  :recipe (:host github
+           :repo "cashweaver/org-link-base"))
 
 (package! org-link-isbn
   :recipe (:host github

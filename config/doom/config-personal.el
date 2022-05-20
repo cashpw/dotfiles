@@ -57,11 +57,11 @@
  alert-default-style 'libnotify)
 
 ;; Too early load error
-;; (use-package! org-wild-notifier
-;;   :config
-;;   (setq
-;;    org-wild-notifier-alert-time '(10 2))
-;;   (org-wild-notifier-mode))
+(use-package! org-wild-notifier
+  :config
+  (setq
+   org-wild-notifier-alert-time '(2))
+  (org-wild-notifier-mode))
 
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun evil-lambda-key (mode keymap key def)
@@ -88,12 +88,9 @@
  ;; Keep in alphabetical order.
  :map global-map
  "M-N" #'operate-on-number-at-point
+ :v "C-r" #'cashweaver/replace-selection
  (:prefix ("z")
   :n "O" #'evil-open-fold-rec))
-
-(map!
- :map evil-visual-state-map
- :n "C-r" #'cashweaver/replace-selection)
 
 ;;; $DOOMDIR/config-personal.el -*- lexical-binding: t; -*-
 
@@ -208,11 +205,15 @@
 (defun cashweaver/notmuch-search-super-archive (&optional beg end)
   "Super archive the selected thread; based on `notmuch-search-archive-thread'."
   (interactive (notmuch-interactive-region))
-  (notmuch-search-tag cashweaver/notmuch-super-archive-tags beg end)
-  (when (eq beg end)
+  (notmuch-search-tag
+   cashweaver/notmuch-super-archive-tags
+   beg
+   end)
+  (when (eq beg
+            end)
     (notmuch-search-next-thread)))
 
-(defun cashweaver/org-notmuch-capture-follow-up-mail()
+(defun cashweaver/org-notmuch-capture-follow-up-mail ()
   "Capture mail to org mode."
   (interactive)
   (org-store-link nil)
@@ -278,9 +279,20 @@
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 
-(defun cashweaver/mail-htmlize-and-send-org-mail ()
-  "Converts an org-mode message to HTML and sends."
-  (message-mode))
+;; (use-package! org-msg
+;;   :config
+;;   (setq
+;;    org-msg-options "html-postamble:nil H:6 num:nil ^:{[ toc:nil author:nil email:nil \\n:t]}"
+;;    org-msg-startup "hidestars indent inlineimages"
+;;    org-msg-greeting-fmt "\nHi%s,\n\n"
+;;    ;; org-msg-recipient-names
+;;    org-msg-default-alternatives '((new . (text html))
+;;                                   (reply-to-html . (text html))
+;;                                   (reply-to-text . (text)))
+;;    org-msg-convert-citation t
+;;    ;; org-msg-signature is redundant -- use `gnus-alias-identity-alist'
+;;    )
+;;   (org-msg-mode))
 
 (defun cashweaver/compose-mail-org ()
   (interactive)
@@ -289,6 +301,7 @@
   (setq *compose-html-org* t)
   (org-mode))
 
+;; Deprecated in favor of org-mime `org-mime-edit-mail-in-org-mode'
 (defun cashweaver/mail-toggle-org-message-mode ()
   (interactive)
   (if (derived-mode-p 'message-mode)
@@ -301,13 +314,65 @@
       (notmuch-message-mode)
       (message "enabled notmuch-message-mode"))))
 
-(defun cashweaver/htmlize-and-send-mail-org ()
+(defun cashweaver/mail-get-short-address (address)
+  "Returns \"foo@\" for an ADDRESS of \"Foo <foo@bar.com>\"."
+  (cond
+   ((not (string-match "<" address))
+    address)
+   (t
+    (replace-regexp-in-string
+     ".*<\\(.*\\)@.*>"
+     "\\1@"
+     address))))
+
+(defun cashweaver/mail-create-follow-up-todo ()
   (interactive)
-  (when *compose-html-org*
-    (setq *compose-html-org* nil)
-    (message-mode)
-    (org-mime-htmlize)
-    (message-send-and-exit)))
+  (let* ((file
+          cashweaver/path--file--notes-todos)
+         (to-short
+          (cashweaver/mail-get-short-address
+           (message-field-value "To")))
+         (from-short
+          (cashweaver/mail-get-short-address
+           (message-field-value "From")))
+         (subject
+          (message-field-value "Subject"))
+         (message-id
+          (replace-regexp-in-string
+           "<\\(.*\\)>"
+           "\\1"
+           (message-field-value "Message-ID")))
+         (now
+          (with-temp-buffer
+            (org-mode)
+            (org-time-stamp-inactive '(16))
+            (buffer-substring-no-properties
+             (point-min)
+             (point-max)))))
+    (with-current-buffer
+        (get-file-buffer file)
+      (goto-char
+       (point-max))
+      (org-insert-heading-respect-content)
+      (org-todo "TODO")
+      (insert
+       (s-lex-format
+        "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:"
+        ))
+      (org-set-property
+       "Created"
+       now)
+      (org-schedule
+       nil))))
+
+(defun cashweaver/message-send-and-exit ()
+  (interactive)
+  (org-mime-htmlize)
+  (notmuch-mua-send)
+  (if (y-or-n-p "Create follow-up TODO?")
+      (cashweaver/mail-create-follow-up-todo))
+  (kill-buffer
+   (current-buffer)))
 
 (defun cashweaver/send-mail-function (&rest args)
   "Wrapper method for `send-mail-function' for easy overriding in work environment."
@@ -325,13 +390,15 @@
   ;; Keep in alphabetical order.
   (map!
    :map notmuch-message-mode-map
-   :localleader
+   "C-c C-c" #'cashweaver/message-send-and-exit)
 
-   "M t" #'cashweaver/mail-toggle-org-message-mode)
+  (map!
+   :map notmuch-message-mode-map
+   :localleader
+   "e" #'org-mime-edit-mail-in-org-mode)
 
   (map!
    :map notmuch-show-mode-map
-
    "M-RET" #'cashweaver/notmuch-show-open-or-close-all)
 
   ;; Reply-all should be the default.
@@ -410,8 +477,11 @@
 
 (use-package! org-ql)
 
-;; Too early load error
-;; (use-package! org-mime)
+(use-package! org-mime)
+
+(when (not (cashweaver/is-work-p))
+  (use-package! ox-hugo
+    :after ox))
 
 ;; Too early load error
 ;; (use-package! org-download)
@@ -660,6 +730,354 @@ Based on `org-contacts-anniversaries'."
 ;; (cashweaver/contacts--get-name)
 ;; (cashweaver/contacts--list-top-level-headings)
 
+(defun cashweaver/org-mode--heading-text-for-today (&optinoal time-in-heading include-all-tags)
+  "Return the heading text for today as a string."
+  (let* ((time-in-heading
+          (or time-in-heading
+              nil))
+         (include-all-tags
+          (or include-all-tags
+              nil))
+         (today-week-number
+          (cashweaver/format-time
+           "%W"))
+         (today-quarter-number
+          (cashweaver/format-time
+           "%q"))
+         (today-year
+          (cashweaver/format-time
+           "%Y"))
+         (today-month-number
+          (cashweaver/format-time
+           "%m"))
+         (today-day-number
+          (cashweaver/format-time
+           "%d"))
+         (today-weekday-abbreviated-name
+          (cashweaver/format-time
+           "%a"))
+         (tags
+          (if include-all-tags
+              (s-format
+               ":${year}:${year}week${week-number}:${year}Q${quarter-number}:"
+               'aget
+               `(("year" . ,today-year)
+                 ("week-number" . ,today-week-number)
+                 ("quarter-number" . ,today-quarter-number)))
+            "")))
+    (s-format
+     "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] ${tags}"
+     'aget
+     `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
+                                today-year
+                                today-month-number
+                                today-day-number))
+       ("short-weekday" . ,today-weekday-abbreviated-name)
+       ("year" . ,today-year)
+       ("week-number" . ,today-week-number)
+       ("quarter-number" . ,today-quarter-number)
+       ("hour-minute" . ,(if time-in-heading
+                             (format " %s"
+                                     (cashweaver/format-time "%H:%M"))
+                           ""))
+       ("tags" . ,tags)))))
+
+(defun cashweaver/org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
+  "Insert a heading for today's date, with relevant tags."
+  (interactive)
+  (let ((heading-text
+         (cashweaver/org-mode--heading-text-for-today
+          ;; top
+          nil
+          time-in-heading
+          include-all-tags))
+        (today-yyyy-mm-dd (cashweaver/format-time "%Y-%m-%d"))
+        (today-hh-mm (cashweaver/format-time "%H:%M"))
+        (today-weekday-abbreviated-name (cashweaver/format-time "%a")))
+    (if top
+        (org-insert-heading nil t t)
+      (org-insert-heading-respect-content))
+    (insert
+     heading-text)
+    (org-set-property
+     "Created"
+     (format "[%s %s %s]"
+             today-yyyy-mm-dd
+             today-weekday-abbreviated-name
+             today-hh-mm))))
+
+(defun cashweaver/org-mode-heading-marker-for-today ()
+  "Return t if a heading for today exists.
+
+Refer to `cashweaver/org-mode-insert-heading-for-today'."
+  (let ((headline-text
+         (cashweaver/org-mode--heading-text-for-today))
+        (headline-marker
+         (org-find-exact-headline-in-buffer
+          headline-text)))
+    headline-marker))
+
+(defun cashweaver/org-mode-insert-heading-for-today-log ()
+  "Insert a heading for today's date formatted for the log file."
+  (interactive)
+  (let* ((today-year
+          (cashweaver/format-time
+           "%Y"))
+         (today-month-number
+          (cashweaver/format-time
+           "%m"))
+         (today-day-number
+          (cashweaver/format-time
+           "%d"))
+         (today-YYYY-MM-DD
+          (s-lex-format
+           "${today-year}-${today-month-number}-${today-day-number}")
+          ))
+    (cashweaver/org-mode-insert-heading-for-today)
+    (org-insert-subheading
+     nil)
+    (insert
+     (s-lex-format
+      "[${today-YYYY-MM-DD} 08:00-09:00]"))
+    (cl-loop for (start . end) in '(("09:00" . "10:00")
+                                    ("10:00" . "11:00")
+                                    ("11:00" . "12:00")
+                                    ("14:00" . "15:00")
+                                    ("15:00" . "16:00")
+                                    ("16:00" . "17:00"))
+             do
+             (org-insert-heading
+              nil)
+             (insert
+              (s-lex-format
+               "[${today-YYYY-MM-DD} ${start}-${end}]")))))
+
+(setq
+ cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
+
+(defun cashweaver/org-schedule-for-block (block-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(setq
+ cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
+ cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
+ cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
+ cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
+ cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
+
+(defun cashweaver/org-schedule-for-block (block-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashweaver/org--schedule-today-at (start-time-as-string)
+  "Schedule a task today at the specified time."
+  (interactive "sWhen?: ")
+  (message start-time-as-string)
+  (string-match
+   "^\\([1-9]\\|[01][0-9]\\|2[0-3]\\):?\\([0-5][0-9]\\)?$"
+   start-time-as-string)
+  (let
+      ((hour
+        (string-to-number
+         (or
+          (match-string 1 start-time-as-string)
+          "0")))
+       (minute
+        (string-to-number
+         (or
+          (match-string 2 start-time-as-string)
+          "0"))))
+    (org-schedule nil (format "today %02d:%02d"
+                              hour
+                              minute))
+    (message (number-to-string hour))
+    ))
+
+(defun cashweaver/org--schedule-for (start-time end-time &optional date)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+    ;(org-schedule nil (format "%s %s-%s"
+                              ;date
+                              ;start-time
+                              ;end-time))))
+
+(defun cashweaver/org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
+  (let* ((start-time-in-minutes-since-midnight
+         (+ start-minute (* start-hour 60)))
+        (end-time-in-minutes-since-midnight
+         (+ start-time-in-minutes-since-midnight duration-in-minutes))
+        (end-minute (mod end-time-in-minutes-since-midnight 60))
+        (end-hour (/ end-time-in-minutes-since-midnight 60))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %02d:%02d-%02d:%02d"
+                              date
+                              start-hour
+                              start-minute
+                              end-hour
+                              end-minute))))
+
+(setq
+ cashweaver/-schedule-pomodoro-one '(:start "09:00" :end "09:50")
+ cashweaver/-schedule-pomodoro-two '(:start "10:00" :end "10:50")
+ cashweaver/-schedule-pomodoro-three '(:start "11:00" :end "11:50")
+ cashweaver/-schedule-pomodoro-four '(:start "12:00" :end "12:50")
+ cashweaver/-schedule-pomodoro-five '(:start "13:00" :end "13:50")
+ cashweaver/-schedule-pomodoro-six '(:start "14:00" :end "14:50")
+ cashweaver/-schedule-pomodoro-seven '(:start "15:00" :end "15:50")
+ cashweaver/-schedule-pomodoro-eight '(:start "16:00" :end "16:50")
+ cashweaver/-schedule-pomodoro-nine '(:start "17:00" :end "17:50")
+ cashweaver/-schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
+
+(defun cashweaver/org-schedule-at-pomodoro (pomodoro-time &optional date)
+  (interactive)
+  (let ((start-time (plist-get pomodoro-time :start)))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s"
+                              date
+                              start-time)))
+
+(defun cashweaver/org-schedule-in-n-hours (offset-hours &optional date)
+  (interactive)
+  (let* ((time-list (parse-time-string (current-time-string)))
+         (current-hour (nth 2 time-list))
+         (current-minute (nth 1 time-list))
+         (hour (mod (+ current-hour offset-hours) 24))
+         (date (or date "today")))
+    (org-schedule nil (format "%s %s:%s"
+                              date
+                              hour
+                              current-minute))))
+
+(defun cashweaver/org-schedule-in-n-workdays (num-days &optional time)
+  (interactive)
+  (let*
+      ((time (or time "09:00"))
+       (offset-days))
+    (org-schedule
+     nil
+     (format "%s %s"
+             offset-days
+             time))))
+
+(defun cashweaver/org-get-timestamps-in-time-order ()
+  "Return a list of timestamps from the current buffer in time order."
+  (cl-sort
+   (org-element-map
+       (org-element-parse-buffer)
+       'timestamp
+     (lambda (timestamp)
+       `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
+   'org-time>
+   :key 'car))
+
+(defun cashweaver/org-goto-most-recent-timestamp ()
+  "`goto-char' the most recent timestamp in the current buffer."
+  (interactive)
+  (let ((timestamps
+         (cashweaver/org-get-timestamps-in-time-order)))
+    (goto-char
+     (cdr
+      (pop timestamps)))))
+
+(defun cashweaver/org-goto-most-recent-timestamp-with-property (property)
+  "`goto-char' the most recent timestamp in the current buffer with a non-nil value for the provided property."
+  (interactive)
+  (let ((timestamps
+         (cashweaver/org-get-timestamps-in-time-order)))
+    (goto-char
+     (cdr
+      (pop timestamps)))
+    (while (and timestamps
+                (not
+                 (org-entry-get
+                  (point)
+                  property)))
+      (goto-char
+       (cdr
+        (pop timestamps))))))
+
+(defun cashweaver/org-mode-set-filetag (value)
+  "Add another option; requires at least one option to already be present."
+  (message "---")
+  (goto-char
+   (point-min))
+  (if (search-forward-regexp
+       "#\\+\\(FILETAGS\\|filetags\\): "
+       ;; bound
+       nil
+       ;; noerror
+       t)
+      (progn
+        (end-of-line)
+        (insert (format "%s:" value)))
+    (progn
+      ;; Add filetags beneath the title; assumes there is a title
+      (goto-char
+       (point-min))
+      (when (search-forward-regexp
+          "^#\\+\\(TITLE\\|title\\):")
+        (end-of-line)
+        (newline)
+        (cashweaver/org-mode-insert-option
+         "FILETAGS"
+         (format ":%s:"
+                 value))))))
+
+(defun cashweaver/org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE)."
+  (insert
+   (format
+    "#+%s: %s\n"
+    option
+    value)))
+
+(defun cashweaver/org-remove-all-results-blocks ()
+  "Removes all result blocks; basically an alias"
+  (interactive)
+  (org-babel-remove-result-one-or-many t))
+
+(defun cashweaver/org-mode--has-tag-p (tag)
+  "Return t if TAG is a member of the tags of the entry at point."
+  (member
+   tag
+   (org-get-tags)))
+
 (after! org
   (setq
    org-ellipsis " ▾"
@@ -739,56 +1157,105 @@ Based on `org-contacts-anniversaries'."
    'org-after-todo-state-change-hook
    'cashweaver/org-mode-when-inprogress))
 
-(defvar
- cashweaver/org-mode--filepaths-to-archive-when-done
- `(,(format "%s/proj/roam/unread.org"
-           cashweaver/home-dir-path))
- "TODOs in these file paths get archived when they're marked as done.")
+(after! org
+  :config
+  (setq
+   org-log-done 'time))
 
-(defvar
-  cashweaver/org-mode--filepaths-to-noop-when-done
-  '()
-  "TODOs in these file paths won't get cut when they're marked as done.")
+(defcustom cashweaver/org-mode-done-noop-hook
+  nil
+  "Functions which are non-nil when we should noop the TODO at point."
+  :type 'hook)
 
-(defun cashweaver/org-mode--should-archive-todo-when-done-p (file-path)
-  "Return non-nil if we should archive todo items in the prodived FILE-PATH."
-  (seq-contains-p
-   cashweaver/org-mode--filepaths-to-archive-when-done
-   file-path))
+(defcustom cashweaver/org-mode-done-cut-hook
+  nil
+  "Functions which are non-nil when we should cut the TODO at point."
+  :type 'hook)
 
-(defun cashweaver/org-mode--should-noop-todo-when-done-p (file-path)
-  "Return non-nil if we should do nothing to todo items in the prodived FILE-PATH."
-  (or (org-get-repeat)
-      (seq-contains-p
-       cashweaver/org-mode--filepaths-to-noop-when-done
-       file-path)))
+(defcustom cashweaver/org-mode-noop-tag
+  "noop"
+  "Tag which, when present, indicates that the TODO item should be noop.")
+
+(defun cashweaver/org-mode--has-noop-tag-p ()
+  (cashweaver/org-mode--has-tag-p
+   cashweaver/org-mode-noop-tag))
+
+(add-hook
+ 'cashweaver/org-mode-done-noop-hook
+ 'cashweaver/org-mode--has-noop-tag-p)
+
+(defcustom cashweaver/org-mode-cut-tag
+  "cut"
+  "Tag which, when present, indicates that the TODO item should be cut.")
+
+(defun cashweaver/org-mode--has-cut-tag-p ()
+  (cashweaver/org-mode--has-tag-p
+   cashweaver/org-mode-cut-tag))
+
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ 'cashweaver/org-mode--has-cut-tag-p)
+
+(defcustom cashweaver/org-mode--done-noop-file-paths
+  nil
+  "TODOs in these files will be noop by default.")
+
+(defun cashweaver/org-mode--done-in-noop-file-p ()
+  (member
+   buffer-file-name
+   cashweaver/org-mode--done-noop-file-paths))
+
+(add-hook
+ 'cashweaver/org-mode-done-noop-hook
+ 'cashweaver/org-mode--done-in-noop-file-p)
+
+(defcustom cashweaver/org-mode--done-cut-file-paths
+  nil
+  "TODOs in these files will be cut by default.")
+
+(defun cashweaver/org-mode--done-in-cut-file-p ()
+  (member
+   buffer-file-name
+   cashweaver/org-mode--done-cut-file-paths))
+
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ 'cashweaver/org-mode--done-in-cut-file-p)
+
+(add-hook
+ 'cashweaver/org-mode-done-noop-hook
+ (lambda ()
+   (org-get-repeat)))
+
+(defun cashweaver/org-mode--should-noop-todo-when-done-p ()
+  "Return non-nil if we should noop the current entry."
+  (-any
+   'funcall
+   cashweaver/org-mode-done-noop-hook))
+
+(defun cashweaver/org-mode--should-cut-todo-when-done-p ()
+  "Return non-nil if we should cut the current entry."
+  (-any
+   'funcall
+   cashweaver/org-mode-done-cut-hook))
 
 (defun cashweaver/org-mode-when-done ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (cond
-   ((org-entry-is-done-p)
+  (when (org-entry-is-done-p)
     (org-clock-out-if-current)
     (cond
-     ((cashweaver/org-mode--should-noop-todo-when-done-p
-       buffer-file-name)
-      ;; Do nothing
+     ((cashweaver/org-mode--should-noop-todo-when-done-p)
       nil)
-     ((cashweaver/org-mode--should-archive-todo-when-done-p
-       buffer-file-name)
-      (org-archive-subtree-default))
+     ((cashweaver/org-mode--should-cut-todo-when-done-p)
+      (org-cut-subtree))
      (t
-      (org-cut-subtree))))))
+      (org-archive-subtree-default)))))
 
 (after! org
   :config
   (add-hook!
    'org-after-todo-state-change-hook
    'cashweaver/org-mode-when-done))
-
-(after! org
-  :config
-  (setq
-   org-log-done 'time))
 
 (after! org
   :config
@@ -845,6 +1312,8 @@ Based on `org-contacts-anniversaries'."
                                               (insert field))
                                             (outline-up-heading 1)
                                             (evil-org-append-line 1))))))))
+
+(use-package! org-link-base)
 
 (use-package! ol-doi)
 
@@ -1207,9 +1676,7 @@ See `org-hugo-tag-processing-functions'."
                  filetag-list)))
     tag-list))
 
-(use-package! ox-hugo
-  :after ox
-  :config
+(after! ox-hugo
   (setq
    org-hugo-allow-spaces-in-tags nil)
   (add-to-list
@@ -2038,347 +2505,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 
-(defun cashweaver/org-mode--heading-text-for-today (&optinoal time-in-heading include-all-tags)
-  "Return the heading text for today as a string."
-  (let* ((time-in-heading
-          (or time-in-heading
-              nil))
-         (include-all-tags
-          (or include-all-tags
-              nil))
-         (today-week-number
-          (cashweaver/format-time
-           "%W"))
-         (today-quarter-number
-          (cashweaver/format-time
-           "%q"))
-         (today-year
-          (cashweaver/format-time
-           "%Y"))
-         (today-month-number
-          (cashweaver/format-time
-           "%m"))
-         (today-day-number
-          (cashweaver/format-time
-           "%d"))
-         (today-weekday-abbreviated-name
-          (cashweaver/format-time
-           "%a"))
-         (tags
-          (if include-all-tags
-              (s-format
-               ":${year}:${year}week${week-number}:${year}Q${quarter-number}:"
-               'aget
-               `(("year" . ,today-year)
-                 ("week-number" . ,today-week-number)
-                 ("quarter-number" . ,today-quarter-number)))
-            "")))
-    (s-format
-     "[${yyyy-mm-dd} ${short-weekday}${hour-minute}] ${tags}"
-     'aget
-     `(("yyyy-mm-dd" . ,(format "%s-%s-%s"
-                                today-year
-                                today-month-number
-                                today-day-number))
-       ("short-weekday" . ,today-weekday-abbreviated-name)
-       ("year" . ,today-year)
-       ("week-number" . ,today-week-number)
-       ("quarter-number" . ,today-quarter-number)
-       ("hour-minute" . ,(if time-in-heading
-                             (format " %s"
-                                     (cashweaver/format-time "%H:%M"))
-                           ""))
-       ("tags" . ,tags)))))
-
-(defun cashweaver/org-mode-insert-heading-for-today (&optional top time-in-heading include-all-tags)
-  "Insert a heading for today's date, with relevant tags."
-  (interactive)
-  (let ((heading-text
-         (cashweaver/org-mode--heading-text-for-today
-          ;; top
-          nil
-          time-in-heading
-          include-all-tags))
-        (today-yyyy-mm-dd (cashweaver/format-time "%Y-%m-%d"))
-        (today-hh-mm (cashweaver/format-time "%H:%M"))
-        (today-weekday-abbreviated-name (cashweaver/format-time "%a")))
-    (if top
-        (org-insert-heading nil t t)
-      (org-insert-heading-respect-content))
-    (insert
-     heading-text)
-    (org-set-property
-     "Created"
-     (format "[%s %s %s]"
-             today-yyyy-mm-dd
-             today-weekday-abbreviated-name
-             today-hh-mm))))
-
-(defun cashweaver/org-mode-heading-marker-for-today ()
-  "Return t if a heading for today exists.
-
-Refer to `cashweaver/org-mode-insert-heading-for-today'."
-  (let ((headline-text
-         (cashweaver/org-mode--heading-text-for-today))
-        (headline-marker
-         (org-find-exact-headline-in-buffer
-          headline-text)))
-    headline-marker))
-
-(defun cashweaver/org-mode-insert-heading-for-this-week (&optional include-all-tags)
-  "Insert a heading for this week, with relevant tags."
-  (interactive)
-  (let* ((include-all-tags
-          (or include-all-tags
-              nil))
-         (today-week-number
-          (cashweaver/format-time "%W"))
-         (today-quarter-number
-          (cashweaver/format-time "%q"))
-         (today-year
-          (cashweaver/format-time "%Y"))
-         (tags
-          (if include-all-tags
-              (s-format
-               ":${year}:${year}week${week-number}:${year}Q${quarter-number}:"
-               'aget
-               `(("year" . ,today-year)
-                 ("week-number" . ,today-week-number)
-                 ("quarter-number" . ,today-quarter-number)))
-            (s-format
-             ":${year}week${week-number}:"
-             'aget
-             `(("year" . ,today-year)
-               ("week-number" . ,today-week-number))))))
-    (org-insert-heading-respect-content)
-    (insert
-     (s-format
-      "${year} Week ${week-number} ${tags}"
-      'aget
-      `(("year" . ,today-year)
-        ("week-number" . ,today-week-number)
-        ("tags" . ,tags))))))
-
-(setq
- cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
- cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
- cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
- cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
- cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
-
-(defun cashweaver/org-schedule-for-block (block-time &optional date)
-  (interactive)
-  (let ((start-time (plist-get block-time :start))
-        (end-time (plist-get block-time :end))
-        (date (or date "today")))
-    (org-schedule nil (format "%s %s-%s"
-                              date
-                              start-time
-                              end-time))))
-
-(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
-  (interactive)
-  (let ((date (or date "today")))
-    (org-schedule nil (format "%s %s-%s"
-                              date
-                              start-time
-                              end-time))))
-
-(setq
- cashweaver/-schedule-block-day '(:start "07:00" :end "19:00")
- cashweaver/-schedule-block-one '(:start "07:00" :end "09:00")
- cashweaver/-schedule-block-two '(:start "09:00" :end "11:00")
- cashweaver/-schedule-block-three '(:start "14:00" :end "16:00")
- cashweaver/-schedule-block-four '(:start "16:00" :end "18:00"))
-
-(defun cashweaver/org-schedule-for-block (block-time &optional date)
-  (interactive)
-  (let ((start-time (plist-get block-time :start))
-        (end-time (plist-get block-time :end))
-        (date (or date "today")))
-    (org-schedule nil (format "%s %s-%s"
-                              date
-                              start-time
-                              end-time))))
-
-(defun cashweaver/org-schedule-today-from-to (start-time end-time &optional date)
-  (interactive)
-  (let ((date (or date "today")))
-    (org-schedule nil (format "%s %s-%s"
-                              date
-                              start-time
-                              end-time))))
-
-(defun cashweaver/org--schedule-today-at (start-time-as-string)
-  "Schedule a task today at the specified time."
-  (interactive "sWhen?: ")
-  (message start-time-as-string)
-  (string-match
-   "^\\([1-9]\\|[01][0-9]\\|2[0-3]\\):?\\([0-5][0-9]\\)?$"
-   start-time-as-string)
-  (let
-      ((hour
-        (string-to-number
-         (or
-          (match-string 1 start-time-as-string)
-          "0")))
-       (minute
-        (string-to-number
-         (or
-          (match-string 2 start-time-as-string)
-          "0"))))
-    (org-schedule nil (format "today %02d:%02d"
-                              hour
-                              minute))
-    (message (number-to-string hour))
-    ))
-
-(defun cashweaver/org--schedule-for (start-time end-time &optional date)
-  (let ((date (or date "today")))
-    (org-schedule nil (format "%s %s-%s"
-                              date
-                              start-time
-                              end-time))))
-    ;(org-schedule nil (format "%s %s-%s"
-                              ;date
-                              ;start-time
-                              ;end-time))))
-
-(defun cashweaver/org--schedule-at-for-minutes (start-minute start-hour duration-in-minutes &optional date)
-  (let* ((start-time-in-minutes-since-midnight
-         (+ start-minute (* start-hour 60)))
-        (end-time-in-minutes-since-midnight
-         (+ start-time-in-minutes-since-midnight duration-in-minutes))
-        (end-minute (mod end-time-in-minutes-since-midnight 60))
-        (end-hour (/ end-time-in-minutes-since-midnight 60))
-        (date (or date "today")))
-    (org-schedule nil (format "%s %02d:%02d-%02d:%02d"
-                              date
-                              start-hour
-                              start-minute
-                              end-hour
-                              end-minute))))
-
-(setq
- cashweaver/-schedule-pomodoro-one '(:start "09:00" :end "09:50")
- cashweaver/-schedule-pomodoro-two '(:start "10:00" :end "10:50")
- cashweaver/-schedule-pomodoro-three '(:start "11:00" :end "11:50")
- cashweaver/-schedule-pomodoro-four '(:start "12:00" :end "12:50")
- cashweaver/-schedule-pomodoro-five '(:start "13:00" :end "13:50")
- cashweaver/-schedule-pomodoro-six '(:start "14:00" :end "14:50")
- cashweaver/-schedule-pomodoro-seven '(:start "15:00" :end "15:50")
- cashweaver/-schedule-pomodoro-eight '(:start "16:00" :end "16:50")
- cashweaver/-schedule-pomodoro-nine '(:start "17:00" :end "17:50")
- cashweaver/-schedule-pomodoro-ten '(:start "18:00" :end "18:50"))
-
-(defun cashweaver/org-schedule-at-pomodoro (pomodoro-time &optional date)
-  (interactive)
-  (let ((start-time (plist-get pomodoro-time :start)))
-        (date (or date "today")))
-    (org-schedule nil (format "%s %s"
-                              date
-                              start-time)))
-
-(defun cashweaver/org-schedule-in-n-hours (offset-hours &optional date)
-  (interactive)
-  (let* ((time-list (parse-time-string (current-time-string)))
-         (current-hour (nth 2 time-list))
-         (current-minute (nth 1 time-list))
-         (hour (mod (+ current-hour offset-hours) 24))
-         (date (or date "today")))
-    (org-schedule nil (format "%s %s:%s"
-                              date
-                              hour
-                              current-minute))))
-
-(defun cashweaver/org-schedule-in-n-workdays (num-days &optional time)
-  (interactive)
-  (let*
-      ((time (or time "09:00"))
-       (offset-days))
-    (org-schedule
-     nil
-     (format "%s %s"
-             offset-days
-             time))))
-
-(defun cashweaver/org-get-timestamps-in-time-order ()
-  "Return a list of timestamps from the current buffer in time order."
-  (cl-sort
-   (org-element-map
-       (org-element-parse-buffer)
-       'timestamp
-     (lambda (timestamp)
-       `(,(org-element-property :raw-value timestamp) . ,(org-element-property :begin timestamp))))
-   'org-time>
-   :key 'car))
-
-(defun cashweaver/org-goto-most-recent-timestamp ()
-  "`goto-char' the most recent timestamp in the current buffer."
-  (interactive)
-  (let ((timestamps
-         (cashweaver/org-get-timestamps-in-time-order)))
-    (goto-char
-     (cdr
-      (pop timestamps)))))
-
-(defun cashweaver/org-goto-most-recent-timestamp-with-property (property)
-  "`goto-char' the most recent timestamp in the current buffer with a non-nil value for the provided property."
-  (interactive)
-  (let ((timestamps
-         (cashweaver/org-get-timestamps-in-time-order)))
-    (goto-char
-     (cdr
-      (pop timestamps)))
-    (while (and timestamps
-                (not
-                 (org-entry-get
-                  (point)
-                  property)))
-      (goto-char
-       (cdr
-        (pop timestamps))))))
-
-(defun cashweaver/org-mode-set-filetag (value)
-  "Add another option; requires at least one option to already be present."
-  (message "---")
-  (goto-char
-   (point-min))
-  (if (search-forward-regexp
-       "#\\+\\(FILETAGS\\|filetags\\): "
-       ;; bound
-       nil
-       ;; noerror
-       t)
-      (progn
-        (end-of-line)
-        (insert (format "%s:" value)))
-    (progn
-      ;; Add filetags beneath the title; assumes there is a title
-      (goto-char
-       (point-min))
-      (when (search-forward-regexp
-          "^#\\+\\(TITLE\\|title\\):")
-        (end-of-line)
-        (newline)
-        (cashweaver/org-mode-insert-option
-         "FILETAGS"
-         (format ":%s:"
-                 value))))))
-
-(defun cashweaver/org-mode-insert-option (option value)
-  "Insert an org-mode option (#+OPTION: VALUE)."
-  (insert
-   (format
-    "#+%s: %s\n"
-    option
-    value)))
-
-(defun cashweaver/org-remove-all-results-blocks ()
-  "Removes all result blocks; basically an alias"
-  (interactive)
-  (org-babel-remove-result-one-or-many t))
-
 (after! org
   ;; Keep in alphabetical order.
   (map!
@@ -2454,9 +2580,6 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
      :n "l" #'org-transclusion-live-sync-start
      :n "r" #'org-transclusion-remove
      :n "R" #'org-transclusion-remove-all))
-
-   (:prefix ("M" . "mail")
-    :desc "switch to message-mode" :n "t" #'cashweaver/mail-toggle-org-message-mode)
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref
