@@ -78,7 +78,9 @@
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
-    :n "d" #'anki-editor-delete-notes))
+    :n "d" #'anki-editor-delete-notes)
+   (:prefix ("r")
+    :n "C" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
    :n "u" #'cashweaver/projectile-refresh-known-paths)
   (:prefix ("t")
@@ -1357,9 +1359,11 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                      `(,cashweaver/roam-unread-file-path))
                                     (org-super-agenda-groups
                                      `(
-                                       ,(cashweaver/org-super-agenda--roam-group
-                                         "essay"
-                                         10)
+                                       (:name "essay (10)"
+                                        :take (10 (:and
+                                                   (:tag "essay"
+                                                    :not (:tag "someday"
+                                                          :tag "link_group")))))
                                        ,(cashweaver/org-super-agenda--roam-group
                                          "discussion"
                                          10)
@@ -1389,8 +1393,7 @@ not always show the expected results."
             (take-fn (if (cl-minusp n) #'-take-last #'-take))
             (placement (if (cl-minusp n) "Last" "First"))
             (name (format "%s %d %s" placement (abs n) name)))
-      (list name non-matching (funcall take-fn (abs n) matching))))
-  )
+      (list name non-matching (funcall take-fn (abs n) matching)))))
 
 (defun cashweaver/org-super-agenda--roam-group (tag take)
   "Return a plist TODO."
@@ -2445,7 +2448,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
 #+author: Cash Weaver\n
 #+date: [%<%Y-%m-%d %a %H:%M>]\n
 #+filetags: :reference:\n
-#+hugo_auto_set_lastmod: t\n
  \n
 TODO_AUTHOR, [cite:@${citekey}]\n
  \n
