@@ -78,7 +78,8 @@
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
-    :n "d" #'anki-editor-delete-notes)
+    :n "d" #'anki-editor-delete-notes
+    :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
@@ -93,6 +94,10 @@
  :v "C-r" #'cashweaver/replace-selection
  (:prefix ("z")
   :n "O" #'evil-open-fold-rec))
+
+(setq
+ ;; Avoid frequent garbage collection by setting a high threshold.
+ gc-cons-threshold (math-pow 10 8))
 
 ;;; $DOOMDIR/config-personal.el -*- lexical-binding: t; -*-
 
@@ -214,6 +219,18 @@
   (when (eq beg
             end)
     (notmuch-search-next-thread)))
+
+(defun cashweaver/notmuch-search-follow-up ()
+  "Capture the email at point in search for following up."
+  (interactive)
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef"))
 
 (defun cashweaver/org-notmuch-capture-follow-up-mail ()
   "Capture mail to org mode."
@@ -411,6 +428,7 @@
   (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
   (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
   (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
+  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashweaver/notmuch-search-follow-up)
 
   ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
   (evil-define-key 'normal notmuch-search-mode-map "t" nil)
@@ -446,6 +464,9 @@
 ;   :contents-sources
 ;   (list
 ;    (cfw:org-create-source "Green"))))
+
+(setq
+ completion-ignore-case t)
 
 (use-package! langtool
   :init
@@ -1228,6 +1249,13 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
  'cashweaver/org-mode-done-noop-hook
  (lambda ()
    (org-get-repeat)))
+
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ (lambda ()
+   (string=
+    org-state
+    "KILL")))
 
 (defun cashweaver/org-mode--should-noop-todo-when-done-p ()
   "Return non-nil if we should noop the current entry."

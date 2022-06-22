@@ -170,7 +170,8 @@ Doom Emacs provides =alert=.
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
-    :n "d" #'anki-editor-delete-notes)
+    :n "d" #'anki-editor-delete-notes
+    :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
@@ -186,6 +187,19 @@ Doom Emacs provides =alert=.
  (:prefix ("z")
   :n "O" #'evil-open-fold-rec))
 #+end_src
+
+#+RESULTS:
+
+** Emacs
+
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ ;; Avoid frequent garbage collection by setting a high threshold.
+ gc-cons-threshold (math-pow 10 8))
+#+end_src
+
+#+RESULTS:
 
 * Doom Emacs
 I use [[github:hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
@@ -557,8 +571,8 @@ emacs-lisp          ; drown in parentheses
 ;;hy                ; readability of scheme w/ speed of python
 ;;idris             ; a language you can depend on
 ;;json              ; At least it ain't XML
-java                ; the poster child for carpal tunnel syndrome
-javascript          ; all(hope(abandon(ye(who(enter(here))))))
+java                                        ; the poster child for carpal tunnel syndrome
+javascript
 ;;julia             ; a better, faster MATLAB
 ;;kotlin            ; a better, slicker Java(Script)
 ;;latex             ; writing papers in Emacs has never been so fun
@@ -581,7 +595,7 @@ markdown            ; writing docs for people to ignore
 ;;php               ; perl's insecure younger brother
 ;;plantuml          ; diagrams for confusing people more
 ;;purescript        ; javascript, but functional
-python              ; beautiful is better than ugly
+python
 ;;qt                ; the 'cutest' gui framework ever
 ;;racket            ; a DSL for DSLs
 ;;raku              ; the artist formerly known as perl6
@@ -732,6 +746,18 @@ Doom emacs provides =notmuch= through =init.el=.
             end)
     (notmuch-search-next-thread)))
 
+(defun cashweaver/notmuch-search-follow-up ()
+  "Capture the email at point in search for following up."
+  (interactive)
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef"))
+
 (defun cashweaver/org-notmuch-capture-follow-up-mail ()
   "Capture mail to org mode."
   (interactive)
@@ -798,6 +824,8 @@ Doom emacs provides =notmuch= through =init.el=.
   (add-hook! 'message-mode-hook 'turn-off-auto-fill)
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
+
+#+RESULTS:
 
 **** =org-msg=
 ***** Package
@@ -952,6 +980,7 @@ I need to use a different =send-mail-function= when sending email at work. I ove
   (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
   (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
   (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver/notmuch-search-super-archive)
+  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashweaver/notmuch-search-follow-up)
 
   ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
   (evil-define-key 'normal notmuch-search-mode-map "t" nil)
@@ -973,6 +1002,8 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 
 
 #+end_src
+
+#+RESULTS:
 
 ** Calendar
 *** Packages
@@ -1005,6 +1036,13 @@ Provided through =app/calendar= in =init.el=.
 
 * Languages
 ** General
+*** Completion
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ completion-ignore-case t)
+#+end_src
+
 *** Packages
 **** =aggressive-indent=
 ***** Package
@@ -1084,7 +1122,6 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
    +zen-mixed-pitch-modes '()
    writeroom-width 30))
 #+end_src
-
 ** Emacs Lisp (elisp)
 
 Use =aggressive-indent= when editing =elisp=.
@@ -2094,9 +2131,6 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
    (org-get-tags)))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-mode--has-tag-p
-
 *** Lint
 
 Use [[github:/amperser/proselint][Proselint]].
@@ -2247,9 +2281,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
   :type 'hook)
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-mode-done-cut-hook
-
 ******* Tag
 
 ******** =noop=
@@ -2268,9 +2299,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode--has-noop-tag-p)
 #+end_src
 
-#+RESULTS:
-| cashweaver/org-mode--done-in-noop-file-p | cashweaver/org-mode--has-noop-tag-p |
-
 ******** =cut=
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -2286,9 +2314,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode-done-cut-hook
  'cashweaver/org-mode--has-cut-tag-p)
 #+end_src
-
-#+RESULTS:
-| cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
 
 ******* File
 
@@ -2308,9 +2333,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode--done-in-noop-file-p)
 #+end_src
 
-#+RESULTS:
-| cashweaver/org-mode--done-in-noop-file-p | cashweaver/org-mode--has-noop-tag-p |
-
 ******** =cut=
 #+begin_src emacs-lisp :tangle config-personal.el
 (defcustom cashweaver/org-mode--done-cut-file-paths
@@ -2327,9 +2349,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode--done-in-cut-file-p)
 #+end_src
 
-#+RESULTS:
-| cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
-
 ******* State
 ******** Repeating
 
@@ -2339,9 +2358,19 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  (lambda ()
    (org-get-repeat)))
 #+end_src
+******** =KILL=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ (lambda ()
+   (string=
+    org-state
+    "KILL")))
+#+end_src
 
 #+RESULTS:
-| (lambda nil (org-get-repeat)) | cashweaver/org-mode--done-in-noop-file-p | cashweaver/org-mode--has-noop-tag-p |
+| (lambda nil (string= org-state KILL)) | cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
 
 ******* Install hooks
 
@@ -2376,8 +2405,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
    'org-after-todo-state-change-hook
    'cashweaver/org-mode-when-done))
 #+end_src
-
-#+RESULTS:
 
 **** Blocks
 
@@ -2442,6 +2469,9 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                             (outline-up-heading 1)
                                             (evil-org-append-line 1))))))))
 #+end_src
+
+#+RESULTS:
+| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
 
 *** Links
 **** Base
