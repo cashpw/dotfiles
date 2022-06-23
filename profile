@@ -45,6 +45,9 @@ fi
 
 if is_work_laptop; then
   /usr/bin/setxkbmap -option "ctrl:swapcaps"
+  systemctl --user start cashbweaver-gdrive.service
+  eval "$(ssh-agent -s)"
+  ssh-add ~/.ssh/cashbweaver
 fi
 
 #if is_work_desktop; then
