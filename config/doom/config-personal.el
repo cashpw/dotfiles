@@ -1056,7 +1056,7 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
         (pop timestamps))))))
 
 (defun cashweaver/org-mode-set-filetag (value)
-  "Add another option; requires at least one option to already be present."
+   "Add another option; requires at least one option to already be present."
   (message "---")
   (goto-char
    (point-min))
@@ -1664,11 +1664,23 @@ not always show the expected results."
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 
-(defun cashweaver/org-hugo--export-all-roam ()
-  "Export all roam nodes."
+(defun cashweaver/org-hugo-export-all (directory)
+  "Export all hugo files in DIRECTORY."
   (interactive)
-  ;; TODO
-  )
+  (let ((directory
+         (or directory
+             (concat "%s/proj/roam"
+                     cashweaver/home-dir-path)
+             (mapc (lambda (filepath)
+                     (run-function-in-file
+                      filepath
+                      'cashweaver/org-hugo-export-wim-to-md))
+                   (directory-files
+                    directory
+                    ;; full
+                    t
+                    ;; match
+                    ".org$")))))))
 
 (defun cashweaver/org-mode--split-tags-to-list (tags-as-string)
   "Strip the wrapping ':' from TAG; if present."
@@ -2355,6 +2367,7 @@ Work in progress"
 
 (defun cashweaver/org-roam-add-bibliography (&optional skip-if-present)
   "Add #+print_bibiliography to the current buffer."
+  (interactive)
   (when (and (org-roam-file-p)
              (not
               (member
@@ -2374,15 +2387,72 @@ Work in progress"
                bibliography-option
                ;; bound
                nil
-               ;; no-error
+               ;; noerror
                t))))
       (unless (and skip-if-present
                    bibliography-present-in-buffer)
         (save-excursion
-          (goto-char
-           (point-max))
+          (cond
+           ((search-forward
+             "* Anki :noexport:"
+             ;; bound
+             nil
+             ;; noerror
+             t)
+            (previous-line)
+            (end-of-line)
+            (newline))
+           (t
+            (goto-char
+             (point-max))))
           (insert
            bibliography-option))))))
+
+(defcustom cashweaver/org-roam--file-path-exceptions-to-add-anki
+  '()
+  "File paths which will not have a bibliography added by `cashweaver/org-roam-add-anki'.")
+
+(defun cashweaver/org-roam-add-anki (&optional skip-if-present)
+  "Add Anki heading to the current buffer."
+  (interactive)
+  (let ((skip-if-present
+         (or skip-if-present
+             t))
+        (is-valid-file
+         (and (org-roam-file-p)
+              (not
+               (member
+                (buffer-file-name)
+                cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
+    (when is-valid-file
+      (let* ((anki-present-in-buffer
+              (save-excursion
+                (goto-char
+                 (point-min))
+                (search-forward
+                 "* Anki"
+                 ;; bound
+                 nil
+                 ;; noerror
+                 t))))
+        (unless (and skip-if-present
+                     anki-present-in-buffer)
+          (save-excursion
+            (goto-char
+             (point-max))
+            (org-insert-heading
+             ;; arg
+             nil
+             ;; invisible-ok
+             t
+             ;; top
+             t
+             )
+            (insert "Anki")
+            (org-set-tags '("noexport"))
+            (org-set-property
+             "ANKI_DECK"
+             "Default")))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
