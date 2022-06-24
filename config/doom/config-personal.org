@@ -3659,47 +3659,65 @@ Work in progress"
   '()
   "File paths which will not have a bibliography added by `cashweaver/org-roam-add-anki'.")
 
+(defun cashweaver/anki-available-p ()
+  (condition-case error
+      (anki-editor-api-check)
+    ('error
+     nil))
+  t)
+
+(defun cashweaver/enable-anki-editor-mode ()
+  (if (cashweaver/anki-available-p)
+      (anki-editor-mode t)
+    (message "Skipping enable anki-editor-mode because Anki isn't available.")))
+
+(defun cashweaver/anki-editor-push-notes ()
+  (if (cashweaver/anki-available-p)
+      (anki-editor-push-notes)
+    (message "Skipping anki-editor-push-notes because Anki isn't available.")))
+
 (defun cashweaver/org-roam-add-anki (&optional skip-if-present)
   "Add Anki heading to the current buffer."
   (interactive)
-  (let ((skip-if-present
-         (or skip-if-present
-             t))
-        (is-valid-file
-         (and (org-roam-file-p)
-              (not
-               (member
-                (buffer-file-name)
-                cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
-    (when is-valid-file
-      (let* ((anki-present-in-buffer
-              (save-excursion
-                (goto-char
-                 (point-min))
-                (search-forward
-                 "* Anki"
-                 ;; bound
-                 nil
-                 ;; noerror
-                 t))))
-        (unless (and skip-if-present
-                     anki-present-in-buffer)
-          (save-excursion
-            (goto-char
-             (point-max))
-            (org-insert-heading
-             ;; arg
-             nil
-             ;; invisible-ok
-             t
-             ;; top
-             t
-             )
-            (insert "Anki")
-            (org-set-tags '("noexport"))
-            (org-set-property
-             "ANKI_DECK"
-             "Default")))))))
+  (when (cashweaver/anki-available-p)
+    (let ((skip-if-present
+           (or skip-if-present
+               t))
+          (is-valid-file
+           (and (org-roam-file-p)
+                (not
+                 (member
+                  (buffer-file-name)
+                  cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
+      (when is-valid-file
+        (let* ((anki-present-in-buffer
+                (save-excursion
+                  (goto-char
+                   (point-min))
+                  (search-forward
+                   "* Anki"
+                   ;; bound
+                   nil
+                   ;; noerror
+                   t))))
+          (unless (and skip-if-present
+                       anki-present-in-buffer)
+            (save-excursion
+              (goto-char
+               (point-max))
+              (org-insert-heading
+               ;; arg
+               nil
+               ;; invisible-ok
+               t
+               ;; top
+               t
+               )
+              (insert "Anki")
+              (org-set-tags '("noexport"))
+              (org-set-property
+               "ANKI_DECK"
+               "Default"))))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
