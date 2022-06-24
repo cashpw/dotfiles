@@ -99,7 +99,7 @@
 
 (package! ox-pandoc)
 
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (package! ox-hugo))
 
 (package! org-download)
