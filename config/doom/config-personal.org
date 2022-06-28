@@ -1294,12 +1294,12 @@ ox-hugo is an Org exporter backend that exports Org to Hugo-compatible Markdown 
 My corporate profile loads [[github:cashweaver/ox-hugo-corp][cashweaver/ox-hugo-corp]] -- a corporate-safe version of ox-hugo.
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (package! ox-hugo))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (use-package! ox-hugo
     :after ox))
 #+end_src

@@ -502,7 +502,7 @@
 
 (use-package! org-mime)
 
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (use-package! ox-hugo
     :after ox))
 
