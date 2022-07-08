@@ -8,10 +8,20 @@
   "/usr/local/google/home/cashweaver"
   "Path to home directory on my work machine(s).")
 
+(defvar
+  cashweaver/home-dir-path-work-cloudtop
+  "/usr/local/google/home/cashweaver/is-cloudtop"
+  "File that, when present, indicates the current machine is my Cloudtop instance.")
+
 (defun cashweaver/is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p
    cashweaver/home-dir-path-work))
+
+(defun cashweaver/is-work-cloudtop-p ()
+  "Return true if executed on my work machine."
+  (file-exists-p
+   cashweaver/home-dir-path-work-cloudtop))
 
 (defvar
   cashweaver/home-dir-path
