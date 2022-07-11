@@ -3015,6 +3015,8 @@ Reference: https://superuser.com/a/604264"
 *** Notes
 **** TODO Roam
 
+I use =org-roam= for [[github:cashweaver/roam][general]] and private notes. Each roam directory contains a =.dir-locals.el= file which configures things like capture templates and =before-save-hook=.
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/org-set-last-modified ()
   (interactive)
@@ -3037,13 +3039,15 @@ Reference: https://superuser.com/a/604264"
 (defvar
   cashweaver/org-roam--file-path-exceptions-to-export-after-save
   '()
-  "List of org-roam file paths which should NOT be exported after they are saved.")
+  "List of org-roam file paths which should NOT be exported after they are saved. This list is populated within the particular .dir-local.el files.")
 
 (defvar
   cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter
   '()
-  "List of org-roam file paths which should NOT have references mirrored to front matter.")
+  "List of org-roam file paths which should NOT have references mirrored to front matter. This list is populated within the particular .dir-local.el files.")
+#+end_src
 
+#+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
 
@@ -3068,15 +3072,17 @@ The exporting happens only when Org Capture is not in progress."
             (cashweaver/replace-toml-front-matter-with-md-heading)
             (save-buffer)))))))
 
+(after! org-roam
+  (defun org-hugo-export-wim-to-md-after-save ()
+    (cashweaver/org-hugo-export-wim-to-md)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-roam
   :after org
   :config
   (setq
    cashweaver/org-hugo-replace-front-matter-with-title nil))
-
-(after! org-roam
-  (defun org-hugo-export-wim-to-md-after-save ()
-    (cashweaver/org-hugo-export-wim-to-md)))
 
 (defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
