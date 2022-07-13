@@ -190,7 +190,7 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # i3lock; logout, shutdown, etc
-set $Locker i3lock --no-unlock-indicator --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
+set $Locker i3lock --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
 set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
   bindsym l exec --no-startup-id $Locker, mode "default"
