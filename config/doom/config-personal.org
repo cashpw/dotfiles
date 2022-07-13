@@ -171,6 +171,7 @@ Doom Emacs provides =alert=.
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
+    :n "c" #'anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -2566,11 +2567,30 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                      'aget
                                      `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
    org-super-agenda-header-map evil-org-agenda-mode-map
-   org-agenda-custom-commands '(("R"
-                                 "Roam Unread"
+   org-agenda-custom-commands '(("r"
+                                 "Roam"
                                  ((alltodo
                                    ""
                                    ((org-agenda-overriding-header "")
+                                    (org-agenda-files
+                                     (let ((org-roam-directory
+                                            cashweaver/roam-dir-path))
+                                       (remove
+                                        (concat
+                                         cashweaver/roam-unread-file-path
+                                         "_archive")
+                                        (remove
+                                         cashweaver/roam-unread-file-path
+                                         (org-roam-list-files)))))
+                                    (org-super-agenda-groups
+                                     `((:name "Todos"
+                                        :todo t)))))))
+                                ("R"
+                                 "Roam Unread"
+                                 ((alltodo
+                                   ""
+                                   (
+                                    (org-agenda-overriding-header "")
                                     (org-agenda-files
                                      `(,cashweaver/roam-unread-file-path))
                                     (org-super-agenda-groups
@@ -2621,6 +2641,9 @@ not always show the expected results."
             (:tag ,tag
              :not (:tag "someday"))))))
 #+end_src
+
+#+RESULTS:
+: cashweaver/org-super-agenda--roam-group
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
@@ -3771,7 +3794,9 @@ Work in progress"
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
+  (interactive (list (citar-select-ref
+                      :multiple nil
+                      :rebuild-cache t)))
   (let* ((author
           (citar--format-entry-no-widths
            (cdr keys-entries)
@@ -4322,6 +4347,63 @@ draft = true")
 ;;  'java-mode-hook
 ;;  'electric-case-java-init)
 #+end_src
+
+** roam for all
+
+#+begin_src emacs-lisp
+(defun cashweaver/current-buffer-contains-string (target)
+  (save-excursion
+    (save-match-data
+      (goto-char (point-min))
+      (search-forward target
+                      ;; bound
+                      nil
+                      ;; noerror
+                      t))))
+
+(defun cashweaver/org-roam-resolve-failures ()
+  (interactive)
+  (when (cashweaver/current-buffer-contains-string "ANKI_FAILURE_REASON: Note was not found")
+    (org-map-entries
+     (lambda ()
+       (org-delete-property
+        "ANKI_NOTE_ID"))
+     "+ANKI_FAILURE_REASON={Note was not found.*}")))
+
+
+(defun cashweaver/org-roam-push-anki-notes ()
+  (interactive)
+  (let* ((org-hugo-auto-set-lastmod nil)
+         (org-roam-directory cashweaver/roam-dir-path)
+         (org-roam-files (split-string
+                          (shell-command-to-string
+                           (s-lex-format
+                            "cd ${org-roam-directory}; grep -rl \":ANKI_DECK:\""))))
+         (progress-reporter (make-progress-reporter "Pushing anki notes"
+                                                    0
+                                                    (length org-roam-files)))
+         (i 0))
+    (mapcar
+     (lambda (file)
+       (org-roam-with-file file nil
+         (let ((inhibit-message t))
+           (anki-editor-push-notes)
+           (cashweaver/org-roam-resolve-failures)
+           (anki-editor-push-notes)
+           (save-buffer))
+         (progress-reporter-update progress-reporter
+                                   i)
+
+         (setq
+          i (+ i 1))))
+     org-roam-files)
+    (progress-reporter-done progress-reporter)))
+#+end_src
+
+#+RESULTS:
+: cashweaver/org-roam-push-anki-notes
+
+
 
 * Footnotes
 

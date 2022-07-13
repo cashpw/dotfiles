@@ -79,6 +79,7 @@
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
+    :n "c" #'anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -1378,11 +1379,30 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                      'aget
                                      `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
    org-super-agenda-header-map evil-org-agenda-mode-map
-   org-agenda-custom-commands '(("R"
-                                 "Roam Unread"
+   org-agenda-custom-commands '(("r"
+                                 "Roam"
                                  ((alltodo
                                    ""
                                    ((org-agenda-overriding-header "")
+                                    (org-agenda-files
+                                     (let ((org-roam-directory
+                                            cashweaver/roam-dir-path))
+                                       (remove
+                                        (concat
+                                         cashweaver/roam-unread-file-path
+                                         "_archive")
+                                        (remove
+                                         cashweaver/roam-unread-file-path
+                                         (org-roam-list-files)))))
+                                    (org-super-agenda-groups
+                                     `((:name "Todos"
+                                        :todo t)))))))
+                                ("R"
+                                 "Roam Unread"
+                                 ((alltodo
+                                   ""
+                                   (
+                                    (org-agenda-overriding-header "")
                                     (org-agenda-files
                                      `(,cashweaver/roam-unread-file-path))
                                     (org-super-agenda-groups
@@ -2524,7 +2544,9 @@ Work in progress"
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
+  (interactive (list (citar-select-ref
+                      :multiple nil
+                      :rebuild-cache t)))
   (let* ((author
           (citar--format-entry-no-widths
            (cdr keys-entries)
