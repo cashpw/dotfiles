@@ -496,6 +496,8 @@
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
+(use-package! anki-editor)
+
 (use-package! doct
   :commands (doct))
 
@@ -1388,15 +1390,13 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                      (let ((org-roam-directory
                                             cashweaver/roam-dir-path))
                                        (remove
-                                        (concat
-                                         cashweaver/roam-unread-file-path
-                                         "_archive")
-                                        (remove
-                                         cashweaver/roam-unread-file-path
-                                         (org-roam-list-files)))))
+                                        cashweaver/roam-unread-file-path
+                                        (org-roam-list-files))))
                                     (org-super-agenda-groups
-                                     `((:name "Todos"
-                                        :todo t)))))))
+                                     `(,(cashweaver/org-super-agenda--group-by-priority)
+                                       ;; (:name "Todos"
+                                       ;;  :todo t)
+                                       ))))))
                                 ("R"
                                  "Roam Unread"
                                  ((alltodo
@@ -1430,6 +1430,7 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                        (:discard
                                         (:todo t)
                                         )))))))))
+
   (cl-defun org-super-agenda--group-dispatch-take (items (n group))
     ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
     "Take N ITEMS that match selectors in GROUP.
@@ -1443,11 +1444,26 @@ not always show the expected results."
             (name (format "%s %d %s" placement (abs n) name)))
       (list name non-matching (funcall take-fn (abs n) matching)))))
 
+(defun cashweaver/org-super-agenda--group-by-priority ()
+  "Group by my priorities (e.g. p0 through p4)."
+  '(:auto-map
+    (lambda (item)
+      (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                               (get-text-property 0 'org-hd-marker)))
+                   (priority (org-entry-get
+                              marker
+                              "PRIORITY")))
+        (if (string= priority "")
+            "unknown"
+         (s-lex-format
+          "p${priority}")
+          )))))
+
 (defun cashweaver/org-super-agenda--roam-group (tag take)
   "Return a plist TODO."
   `(:name ,(format "%s (%d)"
-                  tag
-                  take)
+                   tag
+                   take)
     :take (,take
            (:and
             (:tag ,tag
@@ -1812,6 +1828,10 @@ Reference: https://superuser.com/a/604264"
 ;;   (add-hook!
 ;;     'before-save-hook
 ;;     (cashweaver/org-set-last-modified)))
+
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ 'org-roam-file-p)
 
 (defvar
   cashweaver/org-roam--file-path-exceptions-to-export-after-save
@@ -2273,9 +2293,11 @@ Work in progress"
       (unless (and skip-if-present
                    bibliography-present-in-buffer)
         (save-excursion
+          (goto-char
+           (point-min))
           (cond
            ((search-forward
-             "* Anki :noexport:"
+             "Anki :noexport:"
              ;; bound
              nil
              ;; noerror
@@ -2317,6 +2339,17 @@ Work in progress"
     (let ((skip-if-present
            (or skip-if-present
                t))
+          (anki-header-regexp
+           (rx
+            "*"
+            (or " TODO"
+                "")
+            (or (and " \[#"
+                     (any "0" "1" "2" "3" "4")
+                     "\]")
+                "")
+            " Anki")
+           )
           (is-valid-file
            (and (org-roam-file-p)
                 (not
@@ -2328,8 +2361,8 @@ Work in progress"
                 (save-excursion
                   (goto-char
                    (point-min))
-                  (search-forward
-                   "* Anki"
+                  (re-search-forward
+                   anki-header-regexp
                    ;; bound
                    nil
                    ;; noerror
@@ -2347,7 +2380,7 @@ Work in progress"
                ;; top
                t
                )
-              (insert "Anki")
+              (insert "TODO [#2] Anki")
               (org-set-tags '("noexport"))
               (org-set-property
                "ANKI_DECK"
@@ -2643,7 +2676,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
            "* %? [[%:link][%:description]] \nCaptured On: %U")
           ("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
           )))
+
 (use-package! org-protocol-capture-html
+  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
 (defun cashweaver/org-gtasks--get-client-secret ()
