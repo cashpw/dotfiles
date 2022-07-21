@@ -1352,6 +1352,8 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
 
 (use-package! org-link-instagram)
 
+(use-package! org-link-twitter)
+
 (use-package! org-link-google-doc)
 
 (use-package! org-link-google-sheet)
@@ -1379,7 +1381,7 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                      'aget
                                      `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
    org-super-agenda-header-map evil-org-agenda-mode-map
-   org-agenda-custom-commands '(("r"
+   org-agenda-custom-commands `(("r"
                                  "Roam"
                                  ((alltodo
                                    ""
@@ -1387,13 +1389,12 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
                                     (org-agenda-files
                                      (let ((org-roam-directory
                                             cashweaver/roam-dir-path))
-                                       (remove
-                                        (concat
-                                         cashweaver/roam-unread-file-path
-                                         "_archive")
-                                        (remove
-                                         cashweaver/roam-unread-file-path
-                                         (org-roam-list-files)))))
+                                       (seq-difference
+                                        (org-roam-list-files)
+                                        `(,(s-lex-format
+                                           "${org-roam-directory}/unread.org")
+                                          ,(s-lex-format
+                                           "${org-roam-directory}/todos.org")))))
                                     (org-super-agenda-groups
                                      `((:name "Todos"
                                         :todo t)))))))
@@ -2408,55 +2409,52 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref
                       :multiple nil
                       :rebuild-cache t)))
-  (let* ((author
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${author editor journal}"))
-         (citation-title
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${title}"))
-         (source-url
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${howpublished}"))
-         (node-title
-          (cond
-           ((and
-             (not (string-empty-p citation-title))
-             (not (string-empty-p author)))
-            (s-format
-             "${author} | ${title}"
-             'aget
-             `(("author" . ,author)
-               ("title" . ,citation-title))))
-           ((string-empty-p author)
-            citation-title)
-           ((string-empty-p citation-title)
-            "Something went wrong when extracting the title.")
-           (t
-            "Something went wrong when parsing the citation."))))
-
+  (let* ((author (citar--format-entry-no-widths
+                  (cdr keys-entries)
+                  "${author editor journal}"))
+         (citation-title (citar--format-entry-no-widths
+                          (cdr keys-entries)
+                          "${title}"))
+         (source-url (citar--format-entry-no-widths
+                      (cdr keys-entries)
+                      "${howpublished}"))
+         (node-title (cond
+                      ((and
+                        (not (string-empty-p citation-title))
+                        (not (string-empty-p author)))
+                       (s-format
+                        "${author} | ${title}"
+                        'aget
+                        `(("author" . ,author)
+                          ("title" . ,citation-title))))
+                      ((string-empty-p author)
+                       citation-title)
+                      ((string-empty-p citation-title)
+                       "Something went wrong when extracting the title.")
+                      (t
+                       "Something went wrong when parsing the citation."))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
                                      ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
-#+title: ${title}\n
-#+author: Cash Weaver\n
-#+date: [%<%Y-%m-%d %a %H:%M>]\n
-#+filetags: :reference:\n
- \n
-TODO_AUTHOR, [cite:@${citekey}]\n
- \n
-* TODO Summary\n
-* TODO Thoughts\n
-* TODO Notes\n")
+#+title: ${title}
+#+author: Cash Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :reference:
+
+TODO_AUTHOR, [cite:@${citekey}]
+
+* TODO Summary
+* TODO Thoughts
+* TODO Notes")
                           :immediate-finish t
                           :unnarrowed t))
-                       :info (list :citekey (car keys-entries))
-                       :node (org-roam-node-create :title node-title)
+                       :info (list
+                              :citekey (car keys-entries))
+                       :node (org-roam-node-create
+                              :title node-title)
                        :props '(:finalize find-file))))
 
 (defun cashweaver/org-roam-before-save ()

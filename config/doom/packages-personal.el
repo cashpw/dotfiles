@@ -139,6 +139,10 @@
   :recipe (:host github
            :repo "cashweaver/org-link-instagram"))
 
+(package! org-link-twitter
+  :recipe (:host github
+           :repo "cashweaver/org-link-twitter"))
+
 (package! org-link-google-doc
   :recipe (:host github
            :repo "cashweaver/org-link-google-doc"))

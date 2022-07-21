@@ -2516,6 +2516,18 @@ The return value of hooks determine the action we take. All =noop= hooks must re
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-link-instagram)
 #+end_src
+    
+**** Twitter
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-link-twitter
+  :recipe (:host github
+           :repo "cashweaver/org-link-twitter"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-link-twitter)
+#+end_src
 
 **** Google Documents
 
@@ -2567,7 +2579,7 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                      'aget
                                      `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
    org-super-agenda-header-map evil-org-agenda-mode-map
-   org-agenda-custom-commands '(("r"
+   org-agenda-custom-commands `(("r"
                                  "Roam"
                                  ((alltodo
                                    ""
@@ -2575,13 +2587,12 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                     (org-agenda-files
                                      (let ((org-roam-directory
                                             cashweaver/roam-dir-path))
-                                       (remove
-                                        (concat
-                                         cashweaver/roam-unread-file-path
-                                         "_archive")
-                                        (remove
-                                         cashweaver/roam-unread-file-path
-                                         (org-roam-list-files)))))
+                                       (seq-difference
+                                        (org-roam-list-files)
+                                        `(,(s-lex-format
+                                           "${org-roam-directory}/unread.org")
+                                          ,(s-lex-format
+                                           "${org-roam-directory}/todos.org")))))
                                     (org-super-agenda-groups
                                      `((:name "Todos"
                                         :todo t)))))))
@@ -3658,55 +3669,52 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref
                       :multiple nil
                       :rebuild-cache t)))
-  (let* ((author
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${author editor journal}"))
-         (citation-title
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${title}"))
-         (source-url
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${howpublished}"))
-         (node-title
-          (cond
-           ((and
-             (not (string-empty-p citation-title))
-             (not (string-empty-p author)))
-            (s-format
-             "${author} | ${title}"
-             'aget
-             `(("author" . ,author)
-               ("title" . ,citation-title))))
-           ((string-empty-p author)
-            citation-title)
-           ((string-empty-p citation-title)
-            "Something went wrong when extracting the title.")
-           (t
-            "Something went wrong when parsing the citation."))))
-
+  (let* ((author (citar--format-entry-no-widths
+                  (cdr keys-entries)
+                  "${author editor journal}"))
+         (citation-title (citar--format-entry-no-widths
+                          (cdr keys-entries)
+                          "${title}"))
+         (source-url (citar--format-entry-no-widths
+                      (cdr keys-entries)
+                      "${howpublished}"))
+         (node-title (cond
+                      ((and
+                        (not (string-empty-p citation-title))
+                        (not (string-empty-p author)))
+                       (s-format
+                        "${author} | ${title}"
+                        'aget
+                        `(("author" . ,author)
+                          ("title" . ,citation-title))))
+                      ((string-empty-p author)
+                       citation-title)
+                      ((string-empty-p citation-title)
+                       "Something went wrong when extracting the title.")
+                      (t
+                       "Something went wrong when parsing the citation."))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
                                      ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
-,#+title: ${title}\n
-,#+author: Cash Weaver\n
-,#+date: [%<%Y-%m-%d %a %H:%M>]\n
-,#+filetags: :reference:\n
- \n
-TODO_AUTHOR, [cite:@${citekey}]\n
- \n
-,* TODO Summary\n
-,* TODO Thoughts\n
-,* TODO Notes\n")
+,#+title: ${title}
+,#+author: Cash Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :reference:
+
+TODO_AUTHOR, [cite:@${citekey}]
+
+,* TODO Summary
+,* TODO Thoughts
+,* TODO Notes")
                           :immediate-finish t
                           :unnarrowed t))
-                       :info (list :citekey (car keys-entries))
-                       :node (org-roam-node-create :title node-title)
+                       :info (list
+                              :citekey (car keys-entries))
+                       :node (org-roam-node-create
+                              :title node-title)
                        :props '(:finalize find-file))))
 
 (defun cashweaver/org-roam-before-save ()
