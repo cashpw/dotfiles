@@ -189,8 +189,6 @@ Doom Emacs provides =alert=.
   :n "O" #'evil-open-fold-rec))
 #+end_src
 
-#+RESULTS:
-
 ** Emacs
 
 
@@ -199,8 +197,6 @@ Doom Emacs provides =alert=.
  ;; Avoid frequent garbage collection by setting a high threshold.
  gc-cons-threshold (math-pow 10 8))
 #+end_src
-
-#+RESULTS:
 
 * Doom Emacs
 I use [[github:hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
@@ -826,8 +822,6 @@ Doom emacs provides =notmuch= through =init.el=.
   (add-hook! 'message-mode-hook 'visual-line-mode))
 #+end_src
 
-#+RESULTS:
-
 **** =org-msg=
 ***** Package
 
@@ -1004,8 +998,6 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 
 #+end_src
 
-#+RESULTS:
-
 ** Calendar
 *** Packages
 **** =calfw=
@@ -1144,13 +1136,16 @@ anki-editor – An Emacs minor mode for making Anki cards with Org
 /[[github:louietan/anki-editor][louietan/anki-editor]]/
 #+end_quote
 
-
-Use my own fork of =louitan/anki-editor= to include pull-requests which aren't yet merged.
+Use my fork of =louitan/anki-editor= to include pull-requests which aren't yet merged.
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! anki-editor
   :recipe (:host github
            :repo "cashweaver/anki-editor"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! anki-editor)
 #+end_src
 
 **** =doct= ([[github:progfolio/doct][Declarative Org Capture Template]])
@@ -2282,6 +2277,8 @@ The return value of hooks determine the action we take. All =noop= hooks must re
   :type 'hook)
 #+end_src
 
+#+RESULTS:
+
 ******* Tag
 
 ******** =noop=
@@ -2299,6 +2296,9 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode-done-noop-hook
  'cashweaver/org-mode--has-noop-tag-p)
 #+end_src
+
+#+RESULTS:
+| cashweaver/org-mode--has-noop-tag-p |
 
 ******** =cut=
 
@@ -2369,9 +2369,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
     org-state
     "KILL")))
 #+end_src
-
-#+RESULTS:
-| (lambda nil (string= org-state KILL)) | cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
 
 ******* Install hooks
 
@@ -2470,9 +2467,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                             (outline-up-heading 1)
                                             (evil-org-append-line 1))))))))
 #+end_src
-
-#+RESULTS:
-| a | Anki | entry | (file+olp ~/proj/anki-cards/anki.org Default) | #'doct--fill-template | :doct | (:doct-name Anki :keys a :file ~/proj/anki-cards/anki.org :olp (Default) :note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type :template (* %? :PROPERTIES: :ANKI_NOTE_TYPE: %{note-type} :END:) :hook (lambda nil (let* ((note-type (org-entry-get (point) anki-editor-prop-note-type)) (fields (anki-editor-api-call-result 'modelFieldNames :modelName note-type)) (first-field (pop fields)) (second-field (pop fields))) (org-insert-subheading nil) (insert second-field) (dolist (field fields) (org-insert-heading nil) (insert field)) (outline-up-heading 1) (evil-org-append-line 1))) :doct-custom (:note-type (lambda nil (completing-read Note type:  (sort (anki-editor-note-types) #'string-lessp))) :note-type-prop anki-editor-prop-note-type)) |
 
 *** Links
 **** Base
@@ -2594,8 +2588,10 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                           ,(s-lex-format
                                            "${org-roam-directory}/todos.org")))))
                                     (org-super-agenda-groups
-                                     `((:name "Todos"
-                                        :todo t)))))))
+                                     `(,(cashweaver/org-super-agenda--group-by-priority)
+                                       ;; (:name "Todos"
+                                       ;;  :todo t)
+                                       ))))))
                                 ("R"
                                  "Roam Unread"
                                  ((alltodo
@@ -2629,6 +2625,7 @@ The return value of hooks determine the action we take. All =noop= hooks must re
                                        (:discard
                                         (:todo t)
                                         )))))))))
+
   (cl-defun org-super-agenda--group-dispatch-take (items (n group))
     ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
     "Take N ITEMS that match selectors in GROUP.
@@ -2642,11 +2639,26 @@ not always show the expected results."
             (name (format "%s %d %s" placement (abs n) name)))
       (list name non-matching (funcall take-fn (abs n) matching)))))
 
+(defun cashweaver/org-super-agenda--group-by-priority ()
+  "Group by my priorities (e.g. p0 through p4)."
+  '(:auto-map
+    (lambda (item)
+      (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                               (get-text-property 0 'org-hd-marker)))
+                   (priority (org-entry-get
+                              marker
+                              "PRIORITY")))
+        (if (string= priority "")
+            "unknown"
+         (s-lex-format
+          "p${priority}")
+          )))))
+
 (defun cashweaver/org-super-agenda--roam-group (tag take)
   "Return a plist TODO."
   `(:name ,(format "%s (%d)"
-                  tag
-                  take)
+                   tag
+                   take)
     :take (,take
            (:and
             (:tag ,tag
@@ -3068,6 +3080,15 @@ I use =org-roam= for [[github:cashweaver/roam][general]] and private notes. Each
 ;;     'before-save-hook
 ;;     (cashweaver/org-set-last-modified)))
 #+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ 'org-roam-file-p)
+#+end_src
+
+#+RESULTS:
+| org-roam-file-p | (lambda nil (string= org-state KILL)) | cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar
@@ -3534,9 +3555,11 @@ Work in progress"
       (unless (and skip-if-present
                    bibliography-present-in-buffer)
         (save-excursion
+          (goto-char
+           (point-min))
           (cond
            ((search-forward
-             "* Anki :noexport:"
+             "Anki :noexport:"
              ;; bound
              nil
              ;; noerror
@@ -3578,6 +3601,17 @@ Work in progress"
     (let ((skip-if-present
            (or skip-if-present
                t))
+          (anki-header-regexp
+           (rx
+            "*"
+            (or " TODO"
+                "")
+            (or (and " \[#"
+                     (any "0" "1" "2" "3" "4")
+                     "\]")
+                "")
+            " Anki")
+           )
           (is-valid-file
            (and (org-roam-file-p)
                 (not
@@ -3589,8 +3623,8 @@ Work in progress"
                 (save-excursion
                   (goto-char
                    (point-min))
-                  (search-forward
-                   "* Anki"
+                  (re-search-forward
+                   anki-header-regexp
                    ;; bound
                    nil
                    ;; noerror
@@ -3608,7 +3642,7 @@ Work in progress"
                ;; top
                t
                )
-              (insert "Anki")
+              (insert "TODO [#2] Anki")
               (org-set-tags '("noexport"))
               (org-set-property
                "ANKI_DECK"
@@ -3931,7 +3965,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 
 *** TODO =org-protocol=
 
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-protocol
   :config
@@ -3943,7 +3976,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
            "* %? [[%:link][%:description]] \nCaptured On: %U")
           ("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
           )))
+
 (use-package! org-protocol-capture-html
+  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 #+end_src
 
@@ -4278,12 +4313,13 @@ draft = true")
                                                     0
                                                     (length org-roam-files)))
          (i 0))
+    (org-hugo-auto-export-mode)
     (mapcar
      (lambda (file)
        (org-roam-with-file file nil
          (let ((inhibit-message t))
-           (anki-editor-push-notes)
-           (cashweaver/org-roam-resolve-failures)
+           ;; (anki-editor-push-notes)
+           ;; (cashweaver/org-roam-resolve-failures)
            (anki-editor-push-notes)
            (save-buffer))
          (progress-reporter-update progress-reporter
@@ -4293,10 +4329,55 @@ draft = true")
           i (+ i 1))))
      org-roam-files)
     (progress-reporter-done progress-reporter)))
+
 #+end_src
 
 #+RESULTS:
 : cashweaver/org-roam-push-anki-notes
+
+** Roam: export all
+
+#+begin_src emacs-lisp
+(defun cashweaver/org-roam-export-hugo ()
+  (interactive)
+  (let* ((org-hugo-auto-set-lastmod nil)
+         (org-roam-directory cashweaver/roam-dir-path)
+         (org-roam-files (org-roam-list-files))
+         (count-org-roam-files (length org-roam-files))
+         (progress-reporter (make-progress-reporter "Exporting roam notes"
+                                                    0
+                                                    (length org-roam-files)))
+         (expected-seconds-per-file 1.43
+                                    ;; Determined by timing the export of 100 files.
+                                    )
+         (expected-total-run-time (seconds-to-string (* expected-seconds-per-file
+                                                        count-org-roam-files)))
+         (prompt (s-lex-format "${count-org-roam-files} found. Export expected to take ${expected-total-run-time}. Continue? "))
+         (should-export (y-or-n-p prompt))
+         (i 0))
+    (when should-export
+      ;; Enable hugo auto-export mode
+      (org-hugo-auto-export-mode)
+      ;; Disable anki-editor-mode
+      (anki-editor-mode t)
+      (mapcar
+       (lambda (file)
+         (org-roam-with-file file nil
+           (let ((inhibit-message t))
+             (goto-char
+              (point-max))
+             (newline)
+             (save-buffer))
+           (progress-reporter-update progress-reporter
+                                     i)
+           (setq
+            i (+ i 1))))
+       org-roam-files)
+      (progress-reporter-done progress-reporter))))
+#+end_src
+
+#+RESULTS:
+: cashweaver/org-roam-export-hugo
 
 * Footnotes
 

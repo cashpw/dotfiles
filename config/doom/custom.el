@@ -8,6 +8,7 @@
  '(safe-local-variable-values
    '((eval setq-local org-roam-capture-templates
            `(("c" "concept" plain "%?" :target
+<<<<<<< HEAD
               (file+head "${slug}.org" ,(string-join
                                          '("#+title: ${title}" "#+author: Cash Weaver" "#+date: [%<%Y-%m-%d %a %H:%M>]" "#+filetags: :concept:")
                                          "
@@ -55,6 +56,8 @@
              ,(format "%sunread.org_archive" org-roam-directory)))
      (eval setq-local org-roam-capture-templates
            `(("c" "concept" plain "%?" :target
+=======
+>>>>>>> 81e6295551b7d04c38cf2e17621bb4f9456f6bd6
               (file+head "${slug}.org" ,(concat "#+title: ${title}
 " "#+author: Cash Weaver
 " "#+date: [%<%Y-%m-%d %a %H:%M>]
@@ -101,8 +104,18 @@
            cashweaver/org-roam--file-path-exceptions-to-add-bibliography
            `(,(format "%sunread.org" org-roam-directory)
              ,(format "%sunread.org_archive" org-roam-directory)))
+<<<<<<< HEAD
      (eval setq org-export-with-priority nil org-export-with-todo-keywords nil)
      (eval add-hook 'cashweaver/org-mode-done-cut-hook 'org-roam-file-p)
+=======
+     (eval add-hook 'cashweaver/org-mode-done-cut-hook 'org-roam-file-p)
+     (eval add-hook 'cashweaver/org-mode-done-noop-hook 'org-roam-file-p)
+     (eval add-hook 'org-roam-file-p 'cashweaver/org-mode--done-in-cut-file-p)
+     (eval add-hook
+           (lambda nil
+             (org-roam-file-p))
+           'cashweaver/org-mode--done-in-cut-file-p)
+>>>>>>> 81e6295551b7d04c38cf2e17621bb4f9456f6bd6
      (eval setq-local org-roam-capture-templates
            `(("c" "concept" plain "%?" :target
               (file+head "${slug}.org" ,(concat "#+title: ${title}
@@ -158,6 +171,10 @@
            cashweaver/org-roam--file-path-exceptions-to-add-bibliography
            `(,(format "%sunread.org" org-roam-directory)
              ,(format "%sunread.org_archive" org-roam-directory)))
+<<<<<<< HEAD
+=======
+     (eval setq org-export-with-priority nil org-export-with-todo-keywords nil)
+>>>>>>> 81e6295551b7d04c38cf2e17621bb4f9456f6bd6
      (eval add-hook! 'before-save-hook :local #'cashweaver/org-roam-before-save)
      (elisp-lint-indent-specs
       (describe . 1)
