@@ -9,5 +9,5 @@ outputs=(
   "Front"
 )
 for output in "${outputs[@]}"; do
-  amixer set "$output" $1
+  amixer --card=0 set "$output" $1
 done
