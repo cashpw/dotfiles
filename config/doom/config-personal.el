@@ -2637,7 +2637,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver/bibliographies)
+   citar-bibliography cashweaver/bibliographies
+   ;; citar-notes-paths `(,cashweaver/roam-dir-path)
+   )
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -2651,8 +2653,13 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
              (cl-concatenate 'string (nth 1 split-name) " " (nth 0 split-name)))))
        (split-string names " and ") ", ")))
   (setq citar-display-transform-functions
-        '((t . citar-clean-string)
-          (("author" "editor") . cashweaver/citar-full-names))))
+        '((("author" "editor") . cashweaver/citar-full-names))))
+(use-package! citar-org)
+
+;; (use-package! citar-org-roam
+;;   :after citar org-roam
+;;   :no-require
+;;   :config (citar-org-roam-mode))
 
 (use-package! oc
   :after org citar

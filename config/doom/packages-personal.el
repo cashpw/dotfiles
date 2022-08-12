@@ -108,6 +108,10 @@
 
 (package! org-transclusion)
 
+(package! citar-org-roam
+  :recipe (:host github
+           :repo "emacs-citar/citar-org-roam"))
+
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
            :branch "main"
