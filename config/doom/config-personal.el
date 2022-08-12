@@ -79,6 +79,7 @@
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
+    :n "c" #'anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -517,6 +518,8 @@ The provided search won't include any messages tagged with EXCLUDED-TAGS."
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
+(use-package! anki-editor)
+
 (use-package! doct
   :commands (doct))
 
@@ -524,7 +527,7 @@ The provided search won't include any messages tagged with EXCLUDED-TAGS."
 
 (use-package! org-mime)
 
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (use-package! ox-hugo
     :after ox))
 
@@ -1451,6 +1454,8 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (use-package! org-link-instagram)
 
+(use-package! org-link-twitter)
+
 (use-package! org-link-google-doc)
 
 (use-package! org-link-google-sheet)
@@ -1478,11 +1483,31 @@ Reference: https://emacs.stackexchange.com/a/43985"
                                      'aget
                                      `(("roam-dir-path" . ,cashweaver/roam-dir-path)))
    org-super-agenda-header-map evil-org-agenda-mode-map
-   org-agenda-custom-commands '(("R"
-                                 "Roam Unread"
+   org-agenda-custom-commands `(("r"
+                                 "Roam"
                                  ((alltodo
                                    ""
                                    ((org-agenda-overriding-header "")
+                                    (org-agenda-files
+                                     (let ((org-roam-directory
+                                            cashweaver/roam-dir-path))
+                                       (seq-difference
+                                        (org-roam-list-files)
+                                        `(,(s-lex-format
+                                           "${org-roam-directory}/unread.org")
+                                          ,(s-lex-format
+                                           "${org-roam-directory}/todos.org")))))
+                                    (org-super-agenda-groups
+                                     `(,(cashweaver/org-super-agenda--group-by-priority)
+                                       ;; (:name "Todos"
+                                       ;;  :todo t)
+                                       ))))))
+                                ("R"
+                                 "Roam Unread"
+                                 ((alltodo
+                                   ""
+                                   (
+                                    (org-agenda-overriding-header "")
                                     (org-agenda-files
                                      `(,cashweaver/roam-unread-file-path))
                                     (org-super-agenda-groups
@@ -1510,6 +1535,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
                                        (:discard
                                         (:todo t)
                                         )))))))))
+
   (cl-defun org-super-agenda--group-dispatch-take (items (n group))
     ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
     "Take N ITEMS that match selectors in GROUP.
@@ -1523,11 +1549,26 @@ not always show the expected results."
             (name (format "%s %d %s" placement (abs n) name)))
       (list name non-matching (funcall take-fn (abs n) matching)))))
 
+(defun cashweaver/org-super-agenda--group-by-priority ()
+  "Group by my priorities (e.g. p0 through p4)."
+  '(:auto-map
+    (lambda (item)
+      (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                               (get-text-property 0 'org-hd-marker)))
+                   (priority (org-entry-get
+                              marker
+                              "PRIORITY")))
+        (if (string= priority "")
+            "unknown"
+         (s-lex-format
+          "p${priority}")
+          )))))
+
 (defun cashweaver/org-super-agenda--roam-group (tag take)
   "Return a plist TODO."
   `(:name ,(format "%s (%d)"
-                  tag
-                  take)
+                   tag
+                   take)
     :take (,take
            (:and
             (:tag ,tag
@@ -1877,145 +1918,6 @@ Reference: https://superuser.com/a/604264"
 (use-package! ol-notmuch
   :after org)
 
-(use-package! websocket
-  :after org-roam)
-
-(use-package! org-roam-ui
-  :after org-roam
-  ;; normally we'd recommend hooking orui after org-roam, but since org-roam does not have
-  ;; a hookable mode anymore, you're advised to pick something yourself
-  ;; if you don't care about startup time, use
-  ;; :hook (after-init . org-roam-ui-mode)
-  :config
-  (setq org-roam-ui-sync-theme t
-        org-roam-ui-follow t
-        org-roam-ui-update-on-save t
-        org-roam-ui-open-on-start t))
-
-(defcustom cashweaver/org-roam--notes-config
-  `(:root-path ,(file-truename "~/proj/roam")
-    :capture-templates
-    (("c" "concept" plain "%?" :target
-                          (file+head
-                           "${slug}.org"
-                           ,(concat
-                            "#+title: ${title}\n"
-                            "#+author: Cash Weaver\n"
-                            "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+filetags: :concept:\n"
-                            "#+hugo_auto_set_lastmod: t\n"))
-                          :unnarrowed t)
-                         ("d" "default" plain "%?" :target
-                          (file+head
-                           "${slug}.org"
-                           ,(concat
-                            "#+title: ${title}\n"
-                            "#+author: Cash Weaver\n"
-                            "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+hugo_auto_set_lastmod: t\n"
-                            "* TODO"))
-                          :unnarrowed t)
-                         ("p" "person" plain "%?" :target
-                          (file+head
-                           "${slug}.org"
-                           ,(concat
-                            "#+title: ${title}\n"
-                            "#+author: Cash Weaver\n"
-                            "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+filetags: :person:\n"
-                            "#+hugo_auto_set_lastmod: t\n"
-                            "Among other things:\n"
-                            "* TODO"))
-                          :unnarrowed t)
-                         ("q" "quote" plain "%?" :target
-                          (file+head
-                           "${slug}.org"
-                           ,(concat
-                            "#+title: ${title}\n"
-                            "#+author: Cash Weaver\n"
-                            "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            "#+filetags: :quote:\n"
-                            "#+hugo_auto_set_lastmod: t\n"
-                            "#+begin_quote\n"
-                            "TODO_QUOTE\n"
-                            "\n"
-                            "/[[https:foo][source]]/\n"
-                            "#+end_quote\n"))
-                          :unnarrowed t))
-    :file-path-exceptions-to-export-after-save (,(s-format
-                                                  "${home-dir-path}/proj/roam/unread.org"
-                                                  'aget
-                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-work)))
-                                                ,(s-format
-                                                  "${home-dir-path}/proj/roam/unread.org"
-                                                  'aget
-                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-personal)))
-                                                ,(s-format
-                                                  "${home-dir-path}/proj/roam/unread.org_archive"
-                                                  'aget
-                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-work)))
-                                                ,(s-format
-                                                  "${home-dir-path}/proj/roam/unread.org_archive"
-                                                  'aget
-                                                  `(("home-dir-path" . ,cashweaver/home-dir-path-personal)))))
-  "Configuration for notes.")
-
-(defcustom cashweaver/org-roam--people-config
-  `(:root-path ,(file-truename "~/proj/people")
-    :capture-templates
-    (("p" "person" plain "%?" :target
-                         (file+head
-                          "${slug}.org"
-                          ,(concat
-                            "#+title: ${title}\n"
-                            "#+author: Cash Weaver\n"
-                            "#+date: [%<%Y-%m-%d %a %H:%M>]\n"
-                            ))
-                         :unnarrowed t))
-    :file-path-exceptions-to-export-after-save '())
-  "Configuration for people.")
-
-(defcustom cashweaver/org-roam--config-map
-  `(("notes" . ,cashweaver/org-roam--notes-config)
-    ("people" . ,cashweaver/org-roam--people-config))
-  "Map between roam names and their configs.")
-
-(defun cashweaver/org-roam-select-root ()
-  (interactive)
-  (let ((completion-ignore-case t)
-        (choice
-         (completing-read
-          ;; prompt
-          "Choose: "
-          cashweaver/org-roam--config-map
-          ;; predicate
-          nil
-          ;; require-match
-          t)))
-    (cashweaver/org-roam--set-root choice)))
-
-(defun cashweaver/org-roam--set-root (root)
-  (let* ((config
-          (cdr
-           (assoc root cashweaver/org-roam--config-map)))
-         (root-path
-          (plist-get config :root-path))
-         (capture-templates
-          (plist-get config :capture-templates))
-         (file-path-exceptions-to-export-after-save
-          (plist-get config :file-path-exceptions-to-export-after-save))
-         )
-    (setq
-     org-roam-directory root-path
-     org-roam-capture-templates capture-templates
-     cashweaver/org-roam-attachment-base-path (file-truename
-                                               (format
-                                                "%s/attachments"
-                                                org-roam-directory))
-     cashweaver/org-roam--file-path-exceptions-to-export-after-save file-path-exceptions-to-export-after-save
-     cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter file-path-exceptions-to-export-after-save)
-    (org-roam-db-sync)))
-
 (defun cashweaver/org-set-last-modified ()
   (interactive)
   (when (derived-mode-p 'org-mode)
@@ -2032,15 +1934,19 @@ Reference: https://superuser.com/a/604264"
 ;;     'before-save-hook
 ;;     (cashweaver/org-set-last-modified)))
 
+(add-hook
+ 'cashweaver/org-mode-done-cut-hook
+ 'org-roam-file-p)
+
 (defvar
   cashweaver/org-roam--file-path-exceptions-to-export-after-save
   '()
-  "List of org-roam file paths which should NOT be exported after they are saved.")
+  "List of org-roam file paths which should NOT be exported after they are saved. This list is populated within the particular .dir-local.el files.")
 
 (defvar
   cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter
   '()
-  "List of org-roam file paths which should NOT have references mirrored to front matter.")
+  "List of org-roam file paths which should NOT have references mirrored to front matter. This list is populated within the particular .dir-local.el files.")
 
 (defun cashweaver/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
@@ -2066,15 +1972,15 @@ The exporting happens only when Org Capture is not in progress."
             (cashweaver/replace-toml-front-matter-with-md-heading)
             (save-buffer)))))))
 
+(after! org-roam
+  (defun org-hugo-export-wim-to-md-after-save ()
+    (cashweaver/org-hugo-export-wim-to-md)))
+
 (use-package! org-roam
   :after org
   :config
   (setq
    cashweaver/org-hugo-replace-front-matter-with-title nil))
-
-(after! org-roam
-  (defun org-hugo-export-wim-to-md-after-save ()
-    (cashweaver/org-hugo-export-wim-to-md)))
 
 (defun cashweaver/org-roam-rewrite-smart-to-ascii ()
   (when (org-roam-file-p)
@@ -2492,9 +2398,11 @@ Work in progress"
       (unless (and skip-if-present
                    bibliography-present-in-buffer)
         (save-excursion
+          (goto-char
+           (point-min))
           (cond
            ((search-forward
-             "* Anki :noexport:"
+             "Anki :noexport:"
              ;; bound
              nil
              ;; noerror
@@ -2512,47 +2420,76 @@ Work in progress"
   '()
   "File paths which will not have a bibliography added by `cashweaver/org-roam-add-anki'.")
 
+(defun cashweaver/anki-available-p ()
+  (condition-case error
+      (anki-editor-api-check)
+    ('error
+     nil))
+  t)
+
+(defun cashweaver/enable-anki-editor-mode ()
+  (if (cashweaver/anki-available-p)
+      (anki-editor-mode t)
+    (message "Skipping enable anki-editor-mode because Anki isn't available.")))
+
+(defun cashweaver/anki-editor-push-notes ()
+  (if (cashweaver/anki-available-p)
+      (anki-editor-push-notes)
+    (message "Skipping anki-editor-push-notes because Anki isn't available.")))
+
 (defun cashweaver/org-roam-add-anki (&optional skip-if-present)
   "Add Anki heading to the current buffer."
   (interactive)
-  (let ((skip-if-present
-         (or skip-if-present
-             t))
-        (is-valid-file
-         (and (org-roam-file-p)
-              (not
-               (member
-                (buffer-file-name)
-                cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
-    (when is-valid-file
-      (let* ((anki-present-in-buffer
-              (save-excursion
-                (goto-char
-                 (point-min))
-                (search-forward
-                 "* Anki"
-                 ;; bound
-                 nil
-                 ;; noerror
-                 t))))
-        (unless (and skip-if-present
-                     anki-present-in-buffer)
-          (save-excursion
-            (goto-char
-             (point-max))
-            (org-insert-heading
-             ;; arg
-             nil
-             ;; invisible-ok
-             t
-             ;; top
-             t
-             )
-            (insert "Anki")
-            (org-set-tags '("noexport"))
-            (org-set-property
-             "ANKI_DECK"
-             "Default")))))))
+  (when (cashweaver/anki-available-p)
+    (let ((skip-if-present
+           (or skip-if-present
+               t))
+          (anki-header-regexp
+           (rx
+            "*"
+            (or " TODO"
+                "")
+            (or (and " \[#"
+                     (any "0" "1" "2" "3" "4")
+                     "\]")
+                "")
+            " Anki")
+           )
+          (is-valid-file
+           (and (org-roam-file-p)
+                (not
+                 (member
+                  (buffer-file-name)
+                  cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
+      (when is-valid-file
+        (let* ((anki-present-in-buffer
+                (save-excursion
+                  (goto-char
+                   (point-min))
+                  (re-search-forward
+                   anki-header-regexp
+                   ;; bound
+                   nil
+                   ;; noerror
+                   t))))
+          (unless (and skip-if-present
+                       anki-present-in-buffer)
+            (save-excursion
+              (goto-char
+               (point-max))
+              (org-insert-heading
+               ;; arg
+               nil
+               ;; invisible-ok
+               t
+               ;; top
+               t
+               )
+              (insert "TODO [#2] Anki")
+              (org-set-tags '("noexport"))
+              (org-set-property
+               "ANKI_DECK"
+               "Default"))))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -2606,57 +2543,78 @@ Work in progress"
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref :multiple nil :rebuild-cache t)))
-  (let* ((author
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${author editor journal}"))
-         (citation-title
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${title}"))
-         (source-url
-          (citar--format-entry-no-widths
-           (cdr keys-entries)
-           "${howpublished}"))
-         (node-title
-          (cond
-           ((and
-             (not (string-empty-p citation-title))
-             (not (string-empty-p author)))
-            (s-format
-             "${author} | ${title}"
-             'aget
-             `(("author" . ,author)
-               ("title" . ,citation-title))))
-           ((string-empty-p author)
-            citation-title)
-           ((string-empty-p citation-title)
-            "Something went wrong when extracting the title.")
-           (t
-            "Something went wrong when parsing the citation."))))
-
+  (interactive (list (citar-select-ref
+                      :multiple nil
+                      :rebuild-cache t)))
+  (let* ((author (citar--format-entry-no-widths
+                  (cdr keys-entries)
+                  "${author editor journal}"))
+         (citation-title (citar--format-entry-no-widths
+                          (cdr keys-entries)
+                          "${title}"))
+         (source-url (citar--format-entry-no-widths
+                      (cdr keys-entries)
+                      "${howpublished}"))
+         (node-title (cond
+                      ((and
+                        (not (string-empty-p citation-title))
+                        (not (string-empty-p author)))
+                       (s-format
+                        "${author} | ${title}"
+                        'aget
+                        `(("author" . ,author)
+                          ("title" . ,citation-title))))
+                      ((string-empty-p author)
+                       citation-title)
+                      ((string-empty-p citation-title)
+                       "Something went wrong when extracting the title.")
+                      (t
+                       "Something went wrong when parsing the citation."))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
                                      ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
-#+title: ${title}\n
-#+author: Cash Weaver\n
-#+date: [%<%Y-%m-%d %a %H:%M>]\n
-#+filetags: :reference:\n
- \n
-TODO_AUTHOR, [cite:@${citekey}]\n
- \n
-* TODO Summary\n
-* TODO Thoughts\n
-* TODO Notes\n")
+#+title: ${title}
+#+author: Cash Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :reference:
+
+TODO_AUTHOR, [cite:@${citekey}]
+
+* TODO Summary
+* TODO Thoughts
+* TODO Notes")
                           :immediate-finish t
                           :unnarrowed t))
-                       :info (list :citekey (car keys-entries))
-                       :node (org-roam-node-create :title node-title)
+                       :info (list
+                              :citekey (car keys-entries))
+                       :node (org-roam-node-create
+                              :title node-title)
                        :props '(:finalize find-file))))
+
+(defun cashweaver/org-roam-before-save ()
+  (cashweaver/org-roam-rewrite-smart-to-ascii)
+  (cashweaver/org-roam-mirror-roam-refs-to-front-matter)
+  (cashweaver/org-roam-add-bibliography)
+  (cashweaver/org-roam-add-anki)
+  (cashweaver/anki-editor-push-notes))
+
+(use-package! websocket
+  :after org-roam)
+
+(use-package! org-roam-ui
+  :after org-roam
+  ;; normally we'd recommend hooking orui after org-roam, but since org-roam does not have
+  ;; a hookable mode anymore, you're advised to pick something yourself
+  ;; if you don't care about startup time, use
+  ;; :hook (after-init . org-roam-ui-mode)
+  :config
+  (setq org-roam-ui-sync-theme t
+        org-roam-ui-follow t
+        org-roam-ui-update-on-save t
+        org-roam-ui-open-on-start t))
 
 (defun cashweaver/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -2820,7 +2778,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
            "* %? [[%:link][%:description]] \nCaptured On: %U")
           ("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
           )))
+
 (use-package! org-protocol-capture-html
+  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
 (defun cashweaver/org-gtasks--get-client-secret ()

@@ -190,7 +190,7 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # i3lock; logout, shutdown, etc
-set $Locker i3lock --no-unlock-indicator --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
+set $Locker i3lock --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
 set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
   bindsym l exec --no-startup-id $Locker, mode "default"
@@ -260,20 +260,20 @@ mode "$mode_sound" {
   bindsym Shift+s exec "playerctl --all-players shuffle Toggle"
   bindsym k exec "playerctl --all-players play-pause"
 
-  bindsym Down exec "amixer set Headphone,0 2%-; amixer set Master,0 2%-"
-  bindsym Up exec "amixer set Headphone,0 2%+; amixer set Master,0 2%+"
-  bindsym 1 exec "amixer set Headphone,0 10%; amixer set Master,0 10%"
-  bindsym 2 exec "amixer set Headphone,0 20%; amixer set Master,0 20%"
-  bindsym 3 exec "amixer set Headphone,0 30%; amixer set Master,0 30%"
-  bindsym 4 exec "amixer set Headphone,0 40%; amixer set Master,0 40%"
-  bindsym 5 exec "amixer set Headphone,0 50%; amixer set Master,0 50%"
-  bindsym 6 exec "amixer set Headphone,0 60%; amixer set Master,0 60%"
-  bindsym 7 exec "amixer set Headphone,0 70%; amixer set Master,0 70%"
-  bindsym 8 exec "amixer set Headphone,0 80%; amixer set Master,0 80%"
-  bindsym 9 exec "amixer set Headphone,0 90%; amixer set Master,0 90%"
-  bindsym 0 exec "amixer set Headphone,0 100%; amixer set Master,0 100%"
-  bindsym m exec "amixer set Headphone,0 mute; amixer set Master,0 mute"
-  bindsym Shift+m exec "amixer set Headphone,0 unmute; amixer set Master,0 unmute"
+  bindsym Down exec "bash ~/.scripts/sound/set_volume.sh 2%-"
+  bindsym Up exec "bash ~/.scripts/sound/set_volume.sh 2%+"
+  bindsym 1 exec "bash ~/.scripts/sound/set_volume.sh 10%"
+  bindsym 2 exec "bash ~/.scripts/sound/set_volume.sh 20%"
+  bindsym 3 exec "bash ~/.scripts/sound/set_volume.sh 30%"
+  bindsym 4 exec "bash ~/.scripts/sound/set_volume.sh 40%"
+  bindsym 5 exec "bash ~/.scripts/sound/set_volume.sh 50%"
+  bindsym 6 exec "bash ~/.scripts/sound/set_volume.sh 60%"
+  bindsym 7 exec "bash ~/.scripts/sound/set_volume.sh 70%"
+  bindsym 8 exec "bash ~/.scripts/sound/set_volume.sh 80%"
+  bindsym 9 exec "bash ~/.scripts/sound/set_volume.sh 90%"
+  bindsym 0 exec "bash ~/.scripts/sound/set_volume.sh 100%"
+  bindsym m exec "bash ~/.scripts/sound/set_volume.sh mute"
+  bindsym Shift+m exec "bash ~/.scripts/sound/set_volume.sh unmute"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"

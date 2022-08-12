@@ -99,7 +99,7 @@
 
 (package! ox-pandoc)
 
-(when (not (cashweaver/is-work-p))
+(when (not (cashweaver/is-work-cloudtop-p))
   (package! ox-hugo))
 
 (package! org-download)
@@ -138,6 +138,10 @@
 (package! org-link-instagram
   :recipe (:host github
            :repo "cashweaver/org-link-instagram"))
+
+(package! org-link-twitter
+  :recipe (:host github
+           :repo "cashweaver/org-link-twitter"))
 
 (package! org-link-google-doc
   :recipe (:host github
