@@ -239,22 +239,32 @@
   (org-store-link nil)
   (org-capture nil "ef"))
 
-(defun cashweaver/notmuch--tag-search (key tag &optional query)
-  "TODO."
-  `(:key ,key
-    :name ,tag
-    :query ,(format "tag:inbox AND -tag:trash AND tag:%s%s"
-                    tag
-                    (if query
-                        (concat " AND %s"
-                                query)
-                      ""))))
+(defun cashweaver/notmuch--tag-search (key tag &optional excluded-tags)
+  "Return a tag search, bound to KEY, which returns exclusively for the provided TAG.
+
+The provided search won't include any messages tagged with EXCLUDED-TAGS."
+  (let* ((name (s-lex-format
+                "${tag}-exclusive"))
+         (excluded (if excluded-tags
+                       (string-join
+                        (mapcar
+                         (lambda (excluded-tag)
+                           (s-lex-format
+                            "NOT tag:${excluded-tag}"))
+                         excluded-tags)
+                        " ")
+                     ""))
+         (query (s-lex-format
+                 "tag:inbox AND -tag:trash AND tag:${tag} ${excluded}")))
+    `(:key ,key
+      :name ,name
+      :query ,query)))
 
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
    notmuch-saved-searches `(
-                            ,(cashweaver/notmuch--tag-search "a" "attn")
+                            ,(cashweaver/notmuch--tag-search "a" "attn" '("drive" "calendar" "drafts" "waiting"))
                             ,(cashweaver/notmuch--tag-search "c" "calendar")
                             ,(cashweaver/notmuch--tag-search "d" "drive")
                             ;; Drafts
@@ -405,6 +415,18 @@
 (setq
  send-mail-function #'cashweaver/send-mail-function
  message-send-mail-function #'cashweaver/message-send-mail-function)
+
+(map!
+ :map message-mode-map
+ "C-c C-c" #'cashweaver/message-send-and-exit)
+(map!
+ :map message-mode-map
+ "C-c C-c" #'cashweaver/message-send-and-exit)
+
+(map!
+ :map message-mode-map
+ :localleader
+ "e" #'org-mime-edit-mail-in-org-mode)
 
 (after! notmuch
   ;; Keep in alphabetical order.
@@ -842,6 +864,84 @@ Refer to `cashweaver/org-mode-insert-heading-for-today'."
          (org-find-exact-headline-in-buffer
           headline-text)))
     headline-marker))
+
+(defun iso-week-to-time(year week day)
+  "Convert ISO year, week, day to elisp time value.
+
+Reference: https://emacs.stackexchange.com/a/43985"
+  (apply #'encode-time
+         (append '(0 0 0)
+                 (-select-by-indices
+                  '(1 0 2)
+                  (calendar-gregorian-from-absolute (calendar-iso-to-absolute
+                                                     (list week day year)))))))
+
+(defun iso-beginning-of-week(year week)
+  "Convert ISO year, week to elisp time for first day (Monday) of week.
+
+Reference: https://emacs.stackexchange.com/a/43985"
+  (iso-week-to-time year week 1))
+
+(defun iso-end-of-week(year week)
+  "Convert ISO year, week to elisp time for last day (Sunday) of week.
+
+Reference: https://emacs.stackexchange.com/a/43985"
+  (iso-week-to-time year week 7))
+
+(defun cashweaver/org-mode-insert-heading-with-time (heading-text start-date &optional end-date)
+  "Insert a heading for a span of time."
+  (interactive)
+  (org-insert-heading-respect-content)
+  (insert heading-text)
+  (newline)
+  (if end-date
+      (insert
+       (concat
+        (format-time-string "[%Y-%m-%d %a]--" start-date)
+        (format-time-string "[%Y-%m-%d %a]" end-date)))
+    (insert
+     (format-time-string "[%Y-%m-%d %a]" start-date))))
+
+(defun cashweaver/org-mode-insert-heading-for-this-week (&optional include-all-tags)
+  "Insert a heading for this week, with relevant tags."
+  (interactive)
+  (let* ((include-all-tags
+          (or include-all-tags
+              nil))
+         (today-week-number
+          (cashweaver/format-time "%W"))
+         (today-quarter-number
+          (cashweaver/format-time "%q"))
+         (today-year
+          (cashweaver/format-time "%Y"))
+         (beginning-of-week
+          (iso-beginning-of-week
+           (string-to-number today-year)
+           (string-to-number today-week-number)))
+         (end-of-week
+          (iso-end-of-week
+           (string-to-number today-year)
+           (string-to-number today-week-number)))
+         (tags
+          (if include-all-tags
+              (s-format
+               ":${year}week${week-number}:${year}Q${quarter-number}:"
+               'aget
+               `(("week-number" . ,today-week-number)
+                 ("quarter-number" . ,today-quarter-number)))
+            (s-format
+             ":${year}week${week-number}:"
+             'aget
+             `(("year" . ,today-year)
+               ("week-number" . ,today-week-number)))))
+         (heading-text
+          (s-lex-format
+           "${today-year} Week ${today-week-number} ${tags}")
+          ))
+    (cashweaver/org-mode-insert-heading-with-time
+     heading-text
+     beginning-of-week
+     end-of-week)))
 
 (defun cashweaver/org-mode-insert-heading-for-today-log ()
   "Insert a heading for today's date formatted for the log file."
@@ -2647,7 +2747,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
    citar-symbols `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
                    (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
                    (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
-   citar-symbol-separator "  ")
+   citar-symbol-separator "  "
+   ;; citar-notes-paths `(,cashweaver/roam-dir-path)
+   )
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -2661,8 +2763,14 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
              (cl-concatenate 'string (nth 1 split-name) " " (nth 0 split-name)))))
        (split-string names " and ") ", ")))
   (setq citar-display-transform-functions
-        '((t . citar-clean-string)
-          (("author" "editor") . cashweaver/citar-full-names))))
+        '((("author" "editor") . cashweaver/citar-full-names))))
+
+(use-package! citar-org)
+
+;; (use-package! citar-org-roam
+;;   :after citar org-roam
+;;   :no-require
+;;   :config (citar-org-roam-mode))
 
 (use-package! oc
   :after org citar
@@ -2697,7 +2805,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
                    ;; include-all-tags
                    nil))
      :n "T" (cmd! (cashweaver/org-mode-insert-heading-for-today nil t t))
-     :n "w" #'cashweaver/org-mode-insert-heading-for-this-week)
+     :n "w" (cmd! (cashweaver/org-mode-insert-heading-for-this-week nil)))
     (:prefix ("S")
      (:prefix ("." . "today")
       :desc "at" :n "a" #'cashweaver/org--schedule-today-at)
