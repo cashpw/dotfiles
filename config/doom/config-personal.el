@@ -79,7 +79,7 @@
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
-    :n "c" #'anki-editor-cloze-dwim
+    :n "c" #'cashweaver/anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -1552,6 +1552,112 @@ not always show the expected results."
     (point-min)
     (anki-editor-insert-note)))
 
+(defun cashweaver/pointer-between-chars-p (before after)
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (prev-before (save-excursion
+                        (search-backward before bol t)
+                        (point)))
+         (next-before (save-excursion
+                        (search-forward before eol t)
+                        (point)))
+         (next-after (save-excursion
+                       (search-forward after eol t)
+                       (point))))
+    (if prev-before
+        (message prev-before))
+    (and prev-before
+         next-after
+         (or (not next-before)
+             (< next-after
+                next-before)))))
+
+
+(defun cashweaver/bounds-of-chars-surrounding-point (before after)
+  (interactive)
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (end (save-excursion
+                (search-forward after eol t)
+                (point)))
+         (begin (save-excursion
+                  (search-backward before bol t)
+                  (point))))
+    `(,begin . ,end)))
+
+(defun cashweaver/pointer-in-link-p ()
+  (cashweaver/pointer-between-chars-p "[[" "]]"))
+
+(defun cashweaver/bounds-of-link-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "[[" "]]"))
+
+(defun cashweaver/pointer-in-mathjax-p ()
+  (cashweaver/pointer-between-chars-p "\\(" "\\)"))
+
+(defun cashweaver/bounds-of-mathjax-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "\\(" "\\)"))
+
+(defun cashweaver/anki-editor-cloze-dwim (&optional arg hint)
+  "Cloze current active region or a word the under the cursor"
+  (interactive "p\nsHint (optional): ")
+  (cond
+   ((region-active-p)
+    (anki-editor-cloze (region-beginning) (region-end) arg hint))
+   ((cashweaver/pointer-in-link-p)
+    (let ((bounds (cashweaver/bounds-of-link-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((cashweaver/pointer-in-mathjax-p)
+    (let ((bounds (cashweaver/bounds-of-mathjax-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((thing-at-point 'word)
+    (let ((bounds (bounds-of-thing-at-point
+                   'word)))
+      (message "word")
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   (t
+    (error "Nothing to create cloze from"))))
+
+(defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+  '("a")
+  "List of buffers with latex previews showing.")
+
+(defun cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p ()
+  (member
+   (buffer-name (current-buffer))
+   cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+
+(defun cashweaver/latex-toggle-preview--show ()
+  (interactive)
+  (pushnew (buffer-name (current-buffer))
+           cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p)
+  (org-latex-preview '(16)))
+
+(defun cashweaver/latex-toggle-preview--hide ()
+  (interactive)
+  (setq cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+        (delete (buffer-name (current-buffer))
+                cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+  (org-latex-preview '(64)))
+
+(defun cashweaver/latex-toggle-preview ()
+  (interactive)
+  (if (cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p)
+      (cashweaver/latex-toggle-preview--hide)
+    (cashweaver/latex-toggle-preview--show)))
+
 (after! org
   :config
   (setq
@@ -2385,7 +2491,7 @@ Work in progress"
                ;; top
                t
                )
-              (insert "TODO [#2] Anki")
+              (insert "Anki")
               (org-set-tags '("noexport"))
               (org-set-property
                "ANKI_DECK"
@@ -2537,7 +2643,11 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver/bibliographies)
+   citar-bibliography cashweaver/bibliographies
+   citar-symbols `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+                   (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+                   (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
+   citar-symbol-separator "  ")
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -2638,6 +2748,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
      :n "l" #'org-transclusion-live-sync-start
      :n "r" #'org-transclusion-remove
      :n "R" #'org-transclusion-remove-all))
+
+   (:prefix ("L" . "Latex")
+    :desc "toggle preview" :n "t" #'cashweaver/latex-toggle-preview)
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref

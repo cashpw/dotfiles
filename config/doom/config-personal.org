@@ -171,7 +171,7 @@ Doom Emacs provides =alert=.
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
-    :n "c" #'anki-editor-cloze-dwim
+    :n "c" #'cashweaver/anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -2277,8 +2277,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
   :type 'hook)
 #+end_src
 
-#+RESULTS:
-
 ******* Tag
 
 ******** =noop=
@@ -2296,9 +2294,6 @@ The return value of hooks determine the action we take. All =noop= hooks must re
  'cashweaver/org-mode-done-noop-hook
  'cashweaver/org-mode--has-noop-tag-p)
 #+end_src
-
-#+RESULTS:
-| cashweaver/org-mode--has-noop-tag-p |
 
 ******** =cut=
 
@@ -2510,7 +2505,7 @@ The return value of hooks determine the action we take. All =noop= hooks must re
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-link-instagram)
 #+end_src
-    
+
 **** Twitter
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -2665,9 +2660,6 @@ not always show the expected results."
              :not (:tag "someday"))))))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-super-agenda--roam-group
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
   :config
@@ -2762,9 +2754,119 @@ not always show the expected results."
        "~/proj/anki-cards/anki.org")
     (point-min)
     (anki-editor-insert-note)))
+
+(defun cashweaver/pointer-between-chars-p (before after)
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (prev-before (save-excursion
+                        (search-backward before bol t)
+                        (point)))
+         (next-before (save-excursion
+                        (search-forward before eol t)
+                        (point)))
+         (next-after (save-excursion
+                       (search-forward after eol t)
+                       (point))))
+    (if prev-before
+        (message prev-before))
+    (and prev-before
+         next-after
+         (or (not next-before)
+             (< next-after
+                next-before)))))
+
+
+(defun cashweaver/bounds-of-chars-surrounding-point (before after)
+  (interactive)
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (end (save-excursion
+                (search-forward after eol t)
+                (point)))
+         (begin (save-excursion
+                  (search-backward before bol t)
+                  (point))))
+    `(,begin . ,end)))
+
+(defun cashweaver/pointer-in-link-p ()
+  (cashweaver/pointer-between-chars-p "[[" "]]"))
+
+(defun cashweaver/bounds-of-link-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "[[" "]]"))
+
+(defun cashweaver/pointer-in-mathjax-p ()
+  (cashweaver/pointer-between-chars-p "\\(" "\\)"))
+
+(defun cashweaver/bounds-of-mathjax-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "\\(" "\\)"))
+
+(defun cashweaver/anki-editor-cloze-dwim (&optional arg hint)
+  "Cloze current active region or a word the under the cursor"
+  (interactive "p\nsHint (optional): ")
+  (cond
+   ((region-active-p)
+    (anki-editor-cloze (region-beginning) (region-end) arg hint))
+   ((cashweaver/pointer-in-link-p)
+    (let ((bounds (cashweaver/bounds-of-link-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((cashweaver/pointer-in-mathjax-p)
+    (let ((bounds (cashweaver/bounds-of-mathjax-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((thing-at-point 'word)
+    (let ((bounds (bounds-of-thing-at-point
+                   'word)))
+      (message "word")
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   (t
+    (error "Nothing to create cloze from"))))
 #+end_src
 
 **** TODO Debug "Too early load" error
+
+*** Latex
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+  '("a")
+  "List of buffers with latex previews showing.")
+
+(defun cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p ()
+  (member
+   (buffer-name (current-buffer))
+   cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+
+(defun cashweaver/latex-toggle-preview--show ()
+  (interactive)
+  (pushnew (buffer-name (current-buffer))
+           cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p)
+  (org-latex-preview '(16)))
+
+(defun cashweaver/latex-toggle-preview--hide ()
+  (interactive)
+  (setq cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+        (delete (buffer-name (current-buffer))
+                cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+  (org-latex-preview '(64)))
+
+(defun cashweaver/latex-toggle-preview ()
+  (interactive)
+  (if (cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p)
+      (cashweaver/latex-toggle-preview--hide)
+    (cashweaver/latex-toggle-preview--show)))
+#+end_src
 
 *** TODO Export and Publish
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3086,9 +3188,6 @@ I use =org-roam= for [[github:cashweaver/roam][general]] and private notes. Each
  'cashweaver/org-mode-done-cut-hook
  'org-roam-file-p)
 #+end_src
-
-#+RESULTS:
-| org-roam-file-p | (lambda nil (string= org-state KILL)) | cashweaver/org-mode--done-in-cut-file-p | cashweaver/org-mode--has-cut-tag-p |
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defvar
@@ -3642,7 +3741,7 @@ Work in progress"
                ;; top
                t
                )
-              (insert "TODO [#2] Anki")
+              (insert "Anki")
               (org-set-tags '("noexport"))
               (org-set-property
                "ANKI_DECK"
@@ -3759,9 +3858,6 @@ TODO_AUTHOR, [cite:@${citekey}]
   (cashweaver/anki-editor-push-notes))
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam-before-save
-
 #+begin_src emacs-lisp
 (cashweaver/org-hugo-export-all
  (format "%s/proj/roam"
@@ -3821,7 +3917,11 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :when (featurep! :completion vertico)
   :config
   (setq
-   citar-bibliography cashweaver/bibliographies)
+   citar-bibliography cashweaver/bibliographies
+   citar-symbols `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+                   (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+                   (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
+   citar-symbol-separator "  ")
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -3930,6 +4030,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
      :n "l" #'org-transclusion-live-sync-start
      :n "r" #'org-transclusion-remove
      :n "R" #'org-transclusion-remove-all))
+
+   (:prefix ("L" . "Latex")
+    :desc "toggle preview" :n "t" #'cashweaver/latex-toggle-preview)
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref
@@ -4332,13 +4435,50 @@ draft = true")
 
 #+end_src
 
-#+RESULTS:
-: cashweaver/org-roam-push-anki-notes
-
 ** Roam: export all
 
 #+begin_src emacs-lisp
+(defun cashweaver/org-roam-in-all-files (fn description expected-seconds-per-file)
+  "Run FN on all Roam files."
+  (interactive)
+  (let* ((org-roam-directory cashweaver/roam-dir-path)
+         (org-roam-files (org-roam-list-files))
+         (count-org-roam-files (length org-roam-files))
+         (progress-reporter (make-progress-reporter description
+                                                    0
+                                                    (length org-roam-files)))
+         (expected-total-run-time (seconds-to-string (* expected-seconds-per-file
+                                                        count-org-roam-files)))
+         (prompt (s-lex-format "${count-org-roam-files} found. Export expected to take ${expected-total-run-time}. Continue? "))
+         (should-run (y-or-n-p prompt))
+         (i 0))
+    (when should-run
+      (message (nth 0 org-roam-files))
+      (mapcar
+       (lambda (file)
+         (org-roam-with-file file nil
+           (let ((inhibit-message t))
+             (funcall fn))
+           (progress-reporter-update progress-reporter
+                                     i)
+           (setq
+            i (+ i 1))))
+       org-roam-files)
+      (progress-reporter-done progress-reporter))))
+
 (defun cashweaver/org-roam-export-hugo ()
+  (interactive)
+  (let* ((org-hugo-auto-set-lastmod nil)
+         (description "Exporting roam notes")
+         (expected-seconds-per-file 1.43
+                                    ;; Determined by timing the export of 100 files.
+                                    ))
+    (cashweaver/org-roam-in-all-files
+     'cashweaver/org-hugo-export-wim-to-md
+     description
+     expected-seconds-per-file)))
+
+(defun cashweaver/org-roam-export-hugo-bak ()
   (interactive)
   (let* ((org-hugo-auto-set-lastmod nil)
          (org-roam-directory cashweaver/roam-dir-path)
@@ -4364,10 +4504,7 @@ draft = true")
        (lambda (file)
          (org-roam-with-file file nil
            (let ((inhibit-message t))
-             (goto-char
-              (point-max))
-             (newline)
-             (save-buffer))
+             (cashweaver/org-hugo-export-wim-to-md))
            (progress-reporter-update progress-reporter
                                      i)
            (setq
@@ -4375,9 +4512,6 @@ draft = true")
        org-roam-files)
       (progress-reporter-done progress-reporter))))
 #+end_src
-
-#+RESULTS:
-: cashweaver/org-roam-export-hugo
 
 * Footnotes
 
