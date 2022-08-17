@@ -2496,6 +2496,7 @@ The return value of hooks determine the action we take. All =noop= hooks must re
      ("q" . "quote")
      ("s" . "src")
      ("se" . "src emacs-lisp")
+     ("sp" . "src python :results output")
      ("v" . "verse"))))
 #+end_src
 
@@ -4027,9 +4028,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 ;;   :config (citar-org-roam-mode))
 #+end_src
 
-#+RESULTS:
-: citar-org
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! oc
   :after org citar
@@ -4040,9 +4038,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    org-cite-follow-processor 'citar
    org-cite-activate-processor 'citar))
 #+end_src
-
-#+RESULTS:
-: t
 
 *** Keybindings
 

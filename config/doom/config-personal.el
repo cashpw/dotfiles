@@ -1404,6 +1404,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
      ("q" . "quote")
      ("s" . "src")
      ("se" . "src emacs-lisp")
+     ("sp" . "src python :results output")
      ("v" . "verse"))))
 
 (after! org
