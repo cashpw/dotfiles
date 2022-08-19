@@ -475,7 +475,9 @@ word-wrap           ; soft wrapping with language-aware indent
 #+HTMl: <details><summary>doom-emacs</summary>
 #+name: doom-emacs
 #+begin_src emacs-lisp
-dired               ; making dired pretty [functional]
+(dired
+ +dirvish)
+                                        ;        making dired pretty [functional]
 electric            ; smarter, keyword-based electric-indent
 ;;ibuffer           ; interactive buffer management
 undo                ; persistent, smarter undo for your inevitable mistakes
