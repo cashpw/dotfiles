@@ -2836,27 +2836,82 @@ not always show the expected results."
     (point-min)
     (anki-editor-insert-note)))
 
-(defun cashweaver/pointer-between-chars-p (before after)
+(defun cashweaver/pointer-between-chars-p (chars-before chars-after &optional explicit)
+  "Return t if the pointer is between the provided chars.
+
+Examples (| is the pointer):
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"c\" \"d\") -> t
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\") -> t
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\" t) -> nil
+  - \"aFc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\" t) -> t"
   (let* ((bol (save-excursion
                 (beginning-of-line)))
          (eol (save-excursion
                 (end-of-line)))
-         (prev-before (save-excursion
-                        (search-backward before bol t)
-                        (point)))
-         (next-before (save-excursion
-                        (search-forward before eol t)
-                        (point)))
-         (next-after (save-excursion
-                       (search-forward after eol t)
-                       (point))))
-    (if prev-before
-        (message prev-before))
-    (and prev-before
-         next-after
-         (or (not next-before)
-             (< next-after
-                next-before)))))
+         (pos-chars-before (save-excursion
+                             (search-backward chars-before bol t)
+                             (point)))
+         (pos-chars-after (save-excursion
+                            (search-forward chars-after eol t)
+                            (point)))
+         (char-at-point (char-after (point)))
+         (point-between-chars (and
+                               ;; pos-chars-before < (point) < chars-after-point
+                               (> (point)
+                                  pos-chars-before)
+                               (< (point)
+                                  pos-chars-after))))
+    ;; (message (buffer-substring (line-beginning-position)
+    ;;                            (line-end-position)))
+    ;; (message (concat 
+    ;;           "(point): "
+    ;;           (number-to-string (point))))
+    ;; (message (s-lex-format
+    ;;           "char-at-point: ${char-at-point}"))
+    ;; (message (s-lex-format
+    ;;           "pos-chars-before: ${pos-chars-before}"))
+    ;; (message (s-lex-format
+    ;;           "pos-chars-after: ${pos-chars-after}"))
+    (if explicit
+        (let* ((pos-prev-chars-after (save-excursion
+                                       (search-backward chars-after eol t)
+                                       (point))))
+          ;; (message (s-lex-format
+          ;;           "pos-prev-chars-after: ${pos-prev-chars-after}"))
+          ;; (message (s-lex-format
+          ;;           "point-between-chars: ${point-between-chars}"))
+          (cond
+           ((not point-between-chars)
+            nil)
+           ((= pos-prev-chars-after
+               (point))
+            t)
+           ((< pos-prev-chars-after
+               (point))
+            nil)))
+      point-between-chars)))
+
+;; test cases
+(with-temp-buffer
+  (insert "[e]")
+  (goto-char 2)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]")))
+(with-temp-buffer
+  (insert "[]e[]")
+  (goto-char 3)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]")))
+(with-temp-buffer
+  (insert "[ced[]")
+  (goto-char 3)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]" t)))
+(with-temp-buffer
+  (insert "[]ced[]")
+  (goto-char 4)
+  (assert
+   (not (cashweaver/pointer-between-chars-p "[" "]" t))))
 
 
 (defun cashweaver/bounds-of-chars-surrounding-point (before after)
@@ -3268,6 +3323,16 @@ I use =org-roam= for [[github:cashweaver/roam][general]] and private notes. Each
 (add-hook
  'cashweaver/org-mode-done-cut-hook
  'org-roam-file-p)
+#+end_src
+
+#+begin_src emacs-lisp
+(defun cashweaver/org-roam-add-citation-as-ref ()
+  "Based on `citar-org-roam-ref-add."
+  (interactive)
+  (let ((citation (with-temp-buffer
+                    (org-cite-insert nil)
+                    (buffer-string))))
+    (org-roam-ref-add citation)))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -4049,8 +4114,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :localleader
    :nv "@" nil
    (:prefix ("@" . "Citation")
-    :n "@" #'org-cite-insert
-    :n "r" #'citar-refresh)
+    :n "@" #'org-cite-insert)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
    (:prefix ("c")
@@ -4123,6 +4187,8 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref
+    (:prefix ("o")
+     :n "r" #'cashweaver/org-roam-add-citation-as-ref)
     (:prefix ("l" . "link")
      :n "q" #'cashweaver/org-roam-insert-tag-link)
     :desc "Tag" :n "q" (cmd! ()
