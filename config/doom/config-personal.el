@@ -2594,14 +2594,12 @@ TODO_AUTHOR, [cite:@${citekey}]
                        :props '(:finalize find-file))))
 
 (defun cashweaver/org-hugo-linkify-mathjax (mathjax-link-map)
-  (cl-loop for (target . url) in mathjax-link-map
+  (cl-loop for (target . replacement) in mathjax-link-map
            do (save-excursion
-                (message (buffer-name (current-buffer)))
                 (goto-char (point-min))
-                (replace-string
+                (replace-regexp
                  target
-                 (s-lex-format
-                  "\\href{${url}}{${target}}")))))
+                 replacement))))
 
 ;; (defun org-hugo--after-1-export-function (info outfile)
 ;;   "Function to be run after exporting one post.
@@ -2639,9 +2637,11 @@ TODO_AUTHOR, [cite:@${citekey}]
 (setq
  cashweaver/org-hugo--mathjax-link-map
  '(
-   ("\\tan" . "http://cashweaver.com/posts/tangent")
-   ("\\cos" . "http://cashweaver.com/posts/cosine")
-   ("\\sin" . "http://cashweaver.com/posts/sine")
+   ("\\tan" . "href{http://cashweaver.com/posts/tangent}{\\\\tan}")
+   ("\\cos" . "href{http://cashweaver.com/posts/cosine}{\\\\cos}")
+   ("\\sin" . "href{http://cashweaver.com/posts/sine}{\\\\sin}")
+   ;; work-in-progress
+   ("\\vert S \\vert" . "href{http://cashweaver.com/posts/cardinality}{\\\\vert S \\\\vert}")
    ))
 
 (defun cashweaver/org-roam-before-save ()
