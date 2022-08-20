@@ -79,7 +79,7 @@
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Anki")
     :n "d" #'anki-editor-delete-notes
-    :n "c" #'anki-editor-cloze-dwim
+    :n "c" #'cashweaver/anki-editor-cloze-dwim
     :n "i" #'anki-editor-insert-note)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -1403,6 +1403,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
      ("q" . "quote")
      ("s" . "src")
      ("se" . "src emacs-lisp")
+     ("sp" . "src python :results output")
      ("v" . "verse"))))
 
 (after! org
@@ -1650,6 +1651,167 @@ not always show the expected results."
        "~/proj/anki-cards/anki.org")
     (point-min)
     (anki-editor-insert-note)))
+
+(defun cashweaver/pointer-between-chars-p (chars-before chars-after &optional explicit)
+  "Return t if the pointer is between the provided chars.
+
+Examples (| is the pointer):
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"c\" \"d\") -> t
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\") -> t
+  - \"abc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\" t) -> nil
+  - \"aFc|dab\": (cashweaver/pointer-between-chars-p \"a\" \"b\" t) -> t"
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (pos-chars-before (save-excursion
+                             (search-backward chars-before bol t)
+                             (point)))
+         (pos-chars-after (save-excursion
+                            (search-forward chars-after eol t)
+                            (point)))
+         (char-at-point (char-after (point)))
+         (point-between-chars (and
+                               ;; pos-chars-before < (point) < chars-after-point
+                               (> (point)
+                                  pos-chars-before)
+                               (< (point)
+                                  pos-chars-after))))
+    ;; (message (buffer-substring (line-beginning-position)
+    ;;                            (line-end-position)))
+    ;; (message (concat 
+    ;;           "(point): "
+    ;;           (number-to-string (point))))
+    ;; (message (s-lex-format
+    ;;           "char-at-point: ${char-at-point}"))
+    ;; (message (s-lex-format
+    ;;           "pos-chars-before: ${pos-chars-before}"))
+    ;; (message (s-lex-format
+    ;;           "pos-chars-after: ${pos-chars-after}"))
+    (if explicit
+        (let* ((pos-prev-chars-after (save-excursion
+                                       (search-backward chars-after eol t)
+                                       (point))))
+          ;; (message (s-lex-format
+          ;;           "pos-prev-chars-after: ${pos-prev-chars-after}"))
+          ;; (message (s-lex-format
+          ;;           "point-between-chars: ${point-between-chars}"))
+          (cond
+           ((not point-between-chars)
+            nil)
+           ((= pos-prev-chars-after
+               (point))
+            t)
+           ((< pos-prev-chars-after
+               (point))
+            nil)))
+      point-between-chars)))
+
+;; test cases
+(with-temp-buffer
+  (insert "[e]")
+  (goto-char 2)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]")))
+(with-temp-buffer
+  (insert "[]e[]")
+  (goto-char 3)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]")))
+(with-temp-buffer
+  (insert "[ced[]")
+  (goto-char 3)
+  (assert
+   (cashweaver/pointer-between-chars-p "[" "]" t)))
+(with-temp-buffer
+  (insert "[]ced[]")
+  (goto-char 4)
+  (assert
+   (not (cashweaver/pointer-between-chars-p "[" "]" t))))
+
+
+(defun cashweaver/bounds-of-chars-surrounding-point (before after)
+  (interactive)
+  (let* ((bol (save-excursion
+                (beginning-of-line)))
+         (eol (save-excursion
+                (end-of-line)))
+         (end (save-excursion
+                (search-forward after eol t)
+                (point)))
+         (begin (save-excursion
+                  (search-backward before bol t)
+                  (point))))
+    `(,begin . ,end)))
+
+(defun cashweaver/pointer-in-link-p ()
+  (cashweaver/pointer-between-chars-p "[[" "]]"))
+
+(defun cashweaver/bounds-of-link-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "[[" "]]"))
+
+(defun cashweaver/pointer-in-mathjax-p ()
+  (cashweaver/pointer-between-chars-p "\\(" "\\)"))
+
+(defun cashweaver/bounds-of-mathjax-at-point ()
+  (cashweaver/bounds-of-chars-surrounding-point "\\(" "\\)"))
+
+(defun cashweaver/anki-editor-cloze-dwim (&optional arg hint)
+  "Cloze current active region or a word the under the cursor"
+  (interactive "p\nsHint (optional): ")
+  (cond
+   ((region-active-p)
+    (anki-editor-cloze (region-beginning) (region-end) arg hint))
+   ((cashweaver/pointer-in-link-p)
+    (let ((bounds (cashweaver/bounds-of-link-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((cashweaver/pointer-in-mathjax-p)
+    (let ((bounds (cashweaver/bounds-of-mathjax-at-point)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   ((thing-at-point 'word)
+    (let ((bounds (bounds-of-thing-at-point
+                   'word)))
+      (message "word")
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
+   (t
+    (error "Nothing to create cloze from"))))
+
+(defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+  '("a")
+  "List of buffers with latex previews showing.")
+
+(defun cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p ()
+  (member
+   (buffer-name (current-buffer))
+   cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+
+(defun cashweaver/latex-toggle-preview--show ()
+  (interactive)
+  (pushnew (buffer-name (current-buffer))
+           cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p)
+  (org-latex-preview '(16)))
+
+(defun cashweaver/latex-toggle-preview--hide ()
+  (interactive)
+  (setq cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
+        (delete (buffer-name (current-buffer))
+                cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p))
+  (org-latex-preview '(64)))
+
+(defun cashweaver/latex-toggle-preview ()
+  (interactive)
+  (if (cashweaver/latex-toggle-preview--current-buffer-has-preview-displayed-p)
+      (cashweaver/latex-toggle-preview--hide)
+    (cashweaver/latex-toggle-preview--show)))
 
 (after! org
   :config
@@ -2484,7 +2646,7 @@ Work in progress"
                ;; top
                t
                )
-              (insert "TODO [#2] Anki")
+              (insert "Anki")
               (org-set-tags '("noexport"))
               (org-set-property
                "ANKI_DECK"
@@ -2688,6 +2850,10 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
   :config
   (setq
    citar-bibliography cashweaver/bibliographies
+   citar-symbols `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+                   (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+                   (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
+   citar-symbol-separator "  "
    ;; citar-notes-paths `(,cashweaver/roam-dir-path)
    )
   (defun cashweaver/citar-full-names (names)
@@ -2704,6 +2870,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
        (split-string names " and ") ", ")))
   (setq citar-display-transform-functions
         '((("author" "editor") . cashweaver/citar-full-names))))
+
 (use-package! citar-org)
 
 ;; (use-package! citar-org-roam
@@ -2727,8 +2894,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :localleader
    :nv "@" nil
    (:prefix ("@" . "Citation")
-    :n "@" #'org-cite-insert
-    :n "r" #'citar-refresh)
+    :n "@" #'org-cite-insert)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
    (:prefix ("c")
@@ -2796,8 +2962,13 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
      :n "r" #'org-transclusion-remove
      :n "R" #'org-transclusion-remove-all))
 
+   (:prefix ("L" . "Latex")
+    :desc "toggle preview" :n "t" #'cashweaver/latex-toggle-preview)
+
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashweaver/org-roam-open-ref
+    (:prefix ("o")
+     :n "r" #'cashweaver/org-roam-add-citation-as-ref)
     (:prefix ("l" . "link")
      :n "q" #'cashweaver/org-roam-insert-tag-link)
     :desc "Tag" :n "q" (cmd! ()
