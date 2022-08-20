@@ -730,7 +730,6 @@ Does nothing if such a heading is absent."
       (return-from
           cashweaver/contacts--get-name
         nil))
-
     (with-current-buffer
         (get-file-buffer path)
       (pcase
@@ -2755,6 +2754,57 @@ TODO_AUTHOR, [cite:@${citekey}]
                        :node (org-roam-node-create
                               :title node-title)
                        :props '(:finalize find-file))))
+
+(defun cashweaver/org-hugo-linkify-mathjax (mathjax-link-map)
+  (cl-loop for (target . replacement) in mathjax-link-map
+           do (save-excursion
+                (goto-char (point-min))
+                (replace-regexp
+                 target
+                 replacement))))
+
+;; (defun org-hugo--after-1-export-function (info outfile)
+;;   "Function to be run after exporting one post.
+
+;; The post could be exported using the subtree-based or file-based
+;; method.
+
+;; This function is called in the end of `org-hugo-export-to-md',
+;; and `org-hugo-export-as-md'.
+
+;; INFO is a plist used as a communication channel.
+
+;; OUTFILE is the Org exported file name.
+
+;; This is an internal function."
+;;   (advice-remove 'org-cite-export-bibliography #'org-hugo--org-cite-export-bibliography)
+;;   (advice-remove 'org-info-export #'org-hugo--org-info-export)
+;;   (advice-remove 'org-babel--string-to-number #'org-hugo--org-babel--string-to-number)
+;;   (advice-remove 'org-babel-exp-code #'org-hugo--org-babel-exp-code)
+;;   (when (and outfile
+;;              (org-hugo--pandoc-citations-enabled-p info))
+;;     (require 'ox-hugo-pandoc-cite)
+;;     (plist-put info :outfile outfile)
+;;     (plist-put info :front-matter org-hugo--fm)
+;;     (org-hugo-pandoc-cite--parse-citations-maybe info))
+;;   (setq org-hugo--fm nil)
+;;   (setq org-hugo--fm-yaml nil)
+;;   (when outfile
+;;     (with-current-buffer
+;;         (find-file-noselect outfile)
+;;       (cashweaver/org-hugo-linkify-mathjax cashweaver/org-hugo--mathjax-link-map)
+;;       (save-buffer))))
+
+
+(setq
+ cashweaver/org-hugo--mathjax-link-map
+ '(
+   ("\\tan" . "href{http://cashweaver.com/posts/tangent}{\\\\tan}")
+   ("\\cos" . "href{http://cashweaver.com/posts/cosine}{\\\\cos}")
+   ("\\sin" . "href{http://cashweaver.com/posts/sine}{\\\\sin}")
+   ;; work-in-progress
+   ("\\vert S \\vert" . "href{http://cashweaver.com/posts/cardinality}{\\\\vert S \\\\vert}")
+   ))
 
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)
