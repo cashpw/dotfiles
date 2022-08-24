@@ -2708,37 +2708,23 @@ Work in progress"
              tag))))
 
 
-(defun cashweaver/org-roam-node-from-cite (keys-entries)
+(defun cashweaver/org-roam-node-from-cite (entry)
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref
-                      :multiple nil
-                      :rebuild-cache t)))
-  (let* ((author (citar--format-entry-no-widths
-                  (cdr keys-entries)
-                  "${author editor journal}"))
-         (citation-title (citar--format-entry-no-widths
-                          (cdr keys-entries)
-                          "${title}"))
-         (source-url (citar--format-entry-no-widths
-                      (cdr keys-entries)
-                      "${howpublished}"))
+  (interactive (list (citar-select-ref)))
+  (let* ((author (citar-format--entry (citar-format--parse "${author editor journal}")
+                                      entry))
+         (citation-title (citar-format--entry (citar-format--parse "${title}")
+                                              entry))
          (node-title (cond
-                      ((and
-                        (not (string-empty-p citation-title))
-                        (not (string-empty-p author)))
-                       (s-format
-                        "${author} | ${title}"
-                        'aget
-                        `(("author" . ,author)
-                          ("title" . ,citation-title))))
-                      ((string-empty-p author)
-                       citation-title)
                       ((string-empty-p citation-title)
                        "Something went wrong when extracting the title.")
+                      ((string-empty-p author)
+                       citation-title)
                       (t
-                       "Something went wrong when parsing the citation."))))
+                       (s-lex-format
+                        "${author} | ${citation-title}")))))
     (org-roam-capture- :templates
                        '(("r" "reference" plain "%?" :if-new
                           (file+head "${citekey}.org"
@@ -2758,16 +2744,72 @@ TODO_AUTHOR, [cite:@${citekey}]
                           :immediate-finish t
                           :unnarrowed t))
                        :info (list
-                              :citekey (car keys-entries))
+                              :citekey entry)
                        :node (org-roam-node-create
                               :title node-title)
-                       :props '(:finalize find-file))))
+                       :props '(:finalize find-file))
+    ))
+
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)
   (cashweaver/org-roam-mirror-roam-refs-to-front-matter)
   (cashweaver/org-roam-add-bibliography)
   (cashweaver/org-roam-add-anki)
   (cashweaver/anki-editor-push-notes))
+
+(defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
+  (cl-loop for (target . post-id) in mathjax-post-map
+           do (save-excursion
+                (goto-char (point-min))
+                (replace-regexp target
+                                (s-lex-format "\\\\href{/posts/${post-id}}{\\1}")))))
+
+(setq
+ cashweaver/org-hugo--mathjax-post-map
+ '(
+   ("\\(C\\\\_{n}\\)" . "centering_matrix")
+   ("\\(I\\\\_{n}\\)" . "identity_matrix")
+   ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
+   ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+   ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+   ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+   ("\\(\\\\cos\\)" . "cosine")
+   ("\\(\\\\sin\\)" . "sine")
+   ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+   ("\\(\\\\tan\\)" . "tangent")
+   ))
+
+(defun org-hugo--after-1-export-function (info outfile)
+  "Function to be run after exporting one post.
+
+The post could be exported using the subtree-based or file-based
+method.
+
+This function is called in the end of `org-hugo-export-to-md',
+and `org-hugo-export-as-md'.
+
+INFO is a plist used as a communication channel.
+
+OUTFILE is the Org exported file name.
+
+This is an internal function."
+  (advice-remove 'org-cite-export-bibliography #'org-hugo--org-cite-export-bibliography)
+  (advice-remove 'org-info-export #'org-hugo--org-info-export)
+  (advice-remove 'org-babel--string-to-number #'org-hugo--org-babel--string-to-number)
+  (advice-remove 'org-babel-exp-code #'org-hugo--org-babel-exp-code)
+  (when (and outfile
+             (org-hugo--pandoc-citations-enabled-p info))
+    (require 'ox-hugo-pandoc-cite)
+    (plist-put info :outfile outfile)
+    (plist-put info :front-matter org-hugo--fm)
+    (org-hugo-pandoc-cite--parse-citations-maybe info))
+  (setq org-hugo--fm nil)
+  (setq org-hugo--fm-yaml nil)
+  (when outfile
+    (with-current-buffer
+        (find-file-noselect outfile)
+      (cashweaver/org-hugo-linkify-mathjax cashweaver/org-hugo--mathjax-post-map)
+      (save-buffer))))
 
 (use-package! websocket
   :after org-roam)
