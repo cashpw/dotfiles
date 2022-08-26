@@ -4010,8 +4010,7 @@ TODO_AUTHOR, [cite:@${citekey}]
 #+RESULTS:
 : cashweaver/org-roam-before-save
 
-#+begin_src emacs-lisp
-
+#+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
   (cl-loop for (target . post-id) in mathjax-post-map
            do (save-excursion

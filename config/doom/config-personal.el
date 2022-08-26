@@ -2769,6 +2769,59 @@ TODO_AUTHOR, [cite:@${citekey}]
   (cashweaver/org-roam-add-anki)
   (cashweaver/anki-editor-push-notes))
 
+(defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
+  (cl-loop for (target . post-id) in mathjax-post-map
+           do (save-excursion
+                (goto-char (point-min))
+                (replace-regexp target
+                                (s-lex-format "\\\\href{/posts/${post-id}}{\\1}")))))
+
+(setq
+ cashweaver/org-hugo--mathjax-post-map
+ '(
+   ("\\(C\\\\_{n}\\)" . "centering_matrix")
+   ("\\(I\\\\_{n}\\)" . "identity_matrix")
+   ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+   ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+   ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+   ("\\(\\\\cos\\)" . "cosine")
+   ("\\(\\\\sin\\)" . "sine")
+   ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+   ("\\(\\\\tan\\)" . "tangent")
+   ))
+
+(defun org-hugo--after-1-export-function (info outfile)
+  "Function to be run after exporting one post.
+
+The post could be exported using the subtree-based or file-based
+method.
+
+This function is called in the end of `org-hugo-export-to-md',
+and `org-hugo-export-as-md'.
+
+INFO is a plist used as a communication channel.
+
+OUTFILE is the Org exported file name.
+
+This is an internal function."
+  (advice-remove 'org-cite-export-bibliography #'org-hugo--org-cite-export-bibliography)
+  (advice-remove 'org-info-export #'org-hugo--org-info-export)
+  (advice-remove 'org-babel--string-to-number #'org-hugo--org-babel--string-to-number)
+  (advice-remove 'org-babel-exp-code #'org-hugo--org-babel-exp-code)
+  (when (and outfile
+             (org-hugo--pandoc-citations-enabled-p info))
+    (require 'ox-hugo-pandoc-cite)
+    (plist-put info :outfile outfile)
+    (plist-put info :front-matter org-hugo--fm)
+    (org-hugo-pandoc-cite--parse-citations-maybe info))
+  (setq org-hugo--fm nil)
+  (setq org-hugo--fm-yaml nil)
+  (when outfile
+    (with-current-buffer
+        (find-file-noselect outfile)
+      (cashweaver/org-hugo-linkify-mathjax cashweaver/org-hugo--mathjax-post-map)
+      (save-buffer))))
+
 (use-package! websocket
   :after org-roam)
 
