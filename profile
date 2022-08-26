@@ -8,6 +8,10 @@
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
+# is_work_machine
+# is_work_laptop
+# is_work_desktop
+# is_work_cloudtop
 source ~/.scripts/identify_device/identify_device.sh
 
 # if running bash
@@ -36,6 +40,8 @@ if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   preferred_screenlayout_filepath=""
   if is_work_desktop; then
     preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
+  elif is
+
   fi
 
   if [[ -f "${preferred_screenlayout_filepath}" ]]; then
@@ -50,6 +56,8 @@ if is_work_laptop; then
   ssh-add ~/.ssh/cashbweaver
 fi
 
-#if is_work_desktop; then
-  #bash ~/.scripts-work/restart-audio.sh
-#fi
+if is_work_machine; then
+  source ~/.profile-work
+else
+  source ~/.profile-personal
+fi
