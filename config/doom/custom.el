@@ -6,7 +6,26 @@
  '(compilation-error-regexp-alist
    '(google3-build-log-parser-info google3-build-log-parser-warning google3-build-log-parser-error google3-build-log-parser-python-traceback bazel google-blaze-error google-blaze-warning google-log-error google-log-warning google-log-info google-log-fatal-message google-forge-python gunit-stack-trace absoft ada aix ant bash borland python-tracebacks-and-caml cmake cmake-info comma cucumber msft edg-1 edg-2 epc ftnchek gradle-kotlin iar ibm irix java jikes-file maven jikes-line clang-include clang-include gcc-include ruby-Test::Unit gmake gnu lcc makepp mips-1 mips-2 omake oracle perl php rxp sparc-pascal-file sparc-pascal-line sparc-pascal-example sun sun-ada watcom 4bsd gcov-file gcov-header gcov-nomark gcov-called-line gcov-never-called perl--Pod::Checker perl--Test perl--Test2 perl--Test::Harness weblint guile-file guile-line))
  '(safe-local-variable-values
-   '((elisp-lint-indent-specs
+   '((eval setq-local org-default-properties
+           '("ADDRESS" "BIRTHDAY" "CELL" "DATE_MET" "DISCORD" "EMAIL_HOME" "EMAIL_WORK" "EMPLOYER" "FOOD_PREFERENCE" "JOB_TITLE" "LAST_MODIFIED" "LINKEDIN" "NICKNAME" "PHONE_WORK" "TWITTER" "WEBSITE" "WORK_PHONE")
+           org-roam-capture-templates
+           `(("p" "person" plain "%?" :target
+              (file+head "${slug}.org" ,(concat "#+title: ${title}
+" "#+author: Cash Weaver
+" "#+date: [%<%Y-%m-%d %a %H:%M>]
+" "#+startup: overview
+"))
+              :unnarrowed t))
+           org-roam-directory
+           (expand-file-name
+            (locate-dominating-file default-directory ".dir-locals.el"))
+           org-attach-directory
+           (file-truename
+            (format "%s/attachments/" org-roam-directory))
+           cashweaver-org-roam-attachment-base-path
+           (file-truename
+            (format "%s/attachments" org-roam-directory)))
+     (elisp-lint-indent-specs
       (describe . 1)
       (it . 1)
       (thread-first . 0)

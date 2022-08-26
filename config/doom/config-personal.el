@@ -531,10 +531,9 @@ The provided search won't include any messages tagged with EXCLUDED-TAGS."
   (use-package! ox-hugo
     :after ox))
 
-;; Too early load error
-;; (use-package! org-download)
+(use-package! org-download)
 
-(cl-defun cashweaver/contacts--has-prop? (prop)
+(cl-defun cashweaver/contacts--has-prop-p (prop)
   "Returns nil if the contact lacks the PROP."
   (member
    prop
@@ -607,11 +606,20 @@ Does nothing if such a heading is absent."
       (return-from
           cashwever/contacts--goto-heading
         nil))
-
     (goto-char
      heading-position)))
 
-(cl-defun cashweaver/contacts-create-reminder (reminder date)
+(defun cashweaver/org-set-property--created-at (&optional time)
+  "Set the CREATED_AT property for the current heading.
+
+Time defaults to `(current-time)'."
+  (let ((created-at-time (or time
+                             (current-time))))
+    (org-set-property "CREATED_AT"
+                      (format-time-string "[%Y-%m-%d %a %H:%M:%S]"
+                                          created-at-time))))
+
+(cl-defun cashweaver/contacts-create-reminder (reminder-text time)
   "Creates a reminder."
   (interactive)
   (cashweaver/contacts--create-top-level-heading-if-absent
@@ -620,105 +628,70 @@ Does nothing if such a heading is absent."
   (cashweaver/contacts--goto-heading
    ;; TODO: Convert this to a defcustom.
    "Reminders")
-  (org-insert-subheading
-   ;; arg
-   nil)
-  (insert
-   reminder)
-  (message date)
-  (org-schedule
-   ;; arg
-   nil
-   ;; time
-   date)
-  (org-set-property
-   ;; TODO: Convert this to a defcustom.
-   "CREATED_AT"
-   (cashweaver/format-time
-    "[%Y-%m-%d %a %H:%M:%S]")))
+  (org-insert-subheading nil)
+  (insert reminder-text)
+  (org-schedule nil
+                (format-time-string "<%Y-%m-%d +1y>"
+                                    time))
+  (cashweaver/org-set-property--created-at))
 
-(cl-defun cashweaver/contacts-file? (&optional file)
+(cl-defun cashweaver/contacts-file-p ()
   "Contacts files are roam files."
   (org-roam-file-p))
 
+(defun cashweaver/contacts--get-next-birthday (birth-time)
+  (cl-destructuring-bind (seconds
+                          minutes
+                          hours
+                          days
+                          months
+                          years
+                          day-of-week
+                          daylight-savings-time-p
+                          utc-offset)
+      (decode-time birth-time)
+    (let* ((birth-date-in-past-p (time-less-p birth-time
+                                              (current-time)))
+           (years (if birth-date-in-past-p
+                      (+ years 1)
+                    years)))
+      (encode-time
+       seconds
+       minutes
+       hours
+       days
+       months
+       years
+       day-of-week
+       daylight-savings-time-p
+       utc-offset))))
+
 (cl-defun cashweaver/contacts--create-birthday-reminder ()
   "Creates an annual birthday reminder."
-  (message "foo")
-  (unless (cashweaver/contacts-file?)
-    (return-from
-        cashweaver/contacts--create-birthday-reminder
-      nil))
-
-  (unless (cashweaver/contacts--has-prop?
-           ;; TODO: Convert this to a defcustom.
-           "BIRTHDAY")
-    (message "Birthday not set. Cannot create reminder.")
-    (return-from
-        cashweaver/contacts--create-birthday-reminder
-      nil))
-
-  (let ((reminder-text
-         (s-format
-          "${name}'s Birthday"
-          'aget
-          `(("name" . ,(cashweaver/contacts--get-name))))))
-    (when (cashweaver/contacts--heading-exists?
-           reminder-text)
-      (message "Birthday reminder exists. Skipping.")
-      (return-from
-          cashweaver/contacts--create-birthday-reminder
-        nil))
-
-    (let* ((birth-date
-            (org-read-date
-             ;; with-time
-             nil
-             ;; to-time
-             t
-             ;; from-string
-             (cashweaver/contacts--get-prop
-              ;; TODO: Convert this to a defcustom.
-              "BIRTHDAY")
-             ;; prompt
-             nil))
-           (birth-month
-            (format-time-string
-             "%m"
-             birth-date))
-           (birth-day
-            (format-time-string
-             "%d"
-             birth-date))
-           (current-year
-            (format-time-string
-             "%Y"
-             (current-time)))
-           (next-year
-            (format-time-string
-             "%Y"
-             (time-add
-              (current-time)
-              (days-to-time 365))))
-           (birthday-has-passed-this-year
-            (string<
-             (format "%s%s%s" current-year birth-month birth-day)
-             (cashweaver/format-time
-              "%Y%m%d")))
-           (reminder-year
-            (if birthday-has-passed-this-year
-                next-year
-              current-year))
-           (reminder-scheduled-date
-            (s-format
-             "<${year}-${month}-${day} +1y>"
-             'aget
-             `(("year" . ,reminder-year)
-               ("month" . ,birth-month)
-               ("day" . ,birth-day)))
-            ))
-      (cashweaver/contacts-create-reminder
-       reminder-text
-       reminder-scheduled-date))))
+  (when (and (cashweaver/contacts-file-p)
+             (cashweaver/contacts--has-prop-p "BIRTHDAY"))
+    (let ((contact-name (cashweaver/contacts--get-name))
+          (heading-text (s-lex-format
+                         "${contact-name}'s Birthday")))
+      (unless (cashweaver/contacts--heading-exists?
+               heading-text)
+        (let* ((birth-time (org-time-string-to-time
+                            (org-read-date nil              ;; with-time
+                                           t                ;; to-time
+                                           (cashweaver/contacts--get-prop ;; from-string
+                                            ;; TODO: Convert this to a defcustom.
+                                            "BIRTHDAY")
+                                           nil ;; prompt
+                                           )
+                            ))
+               (reminder-time (cashweaver/contacts--get-next-birthday
+                               birth-time))
+               (reminder-scheduled-date (format-time-string
+                                         "<%Y-%m-%d +1y>"
+                                         reminder-time)))
+          (cashweaver/contacts-create-reminder
+           heading-text
+           reminder-time))))))
 
 (cl-defun cashweaver/contacts--get-name (&optional path)
   (let ((path
@@ -2755,7 +2728,8 @@ TODO_AUTHOR, [cite:@${citekey}]
   (cashweaver/org-roam-mirror-roam-refs-to-front-matter)
   (cashweaver/org-roam-add-bibliography)
   (cashweaver/org-roam-add-anki)
-  (cashweaver/anki-editor-push-notes))
+  (cashweaver/anki-editor-push-notes)
+  )
 
 (defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
   (cl-loop for (target . post-id) in mathjax-post-map
@@ -2950,6 +2924,17 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
       :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
       :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
       :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))))
+
+   (:prefix ("D")
+    :n "R" #'org-download-rename-last-file
+    :n "c" #'org-download-clipboard
+    :n "d" #'org-download-delete
+    :n "e" #'org-download-edit
+    :n "i" #'org-download-image
+    :n "r" #'org-download-rename-at-point
+    :n "s" #'org-download-screenshot
+    :n "y" #'org-download-yank
+    )
 
    (:prefix ("l")
     (:prefix ("T" . "transclusion")
