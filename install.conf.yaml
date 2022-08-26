@@ -18,7 +18,9 @@
       path: scripts/*
     ~/.Xresources:
     ~/.profile:
+    ~/.profile-personal:
     ~/.bashrc:
+    ~/.bashrc-personal:
     ~/.screenlayout:
     ~/.bash_aliases:
     ~/.chrome-remote-desktop-session:
