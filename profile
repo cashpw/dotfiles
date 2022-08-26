@@ -40,8 +40,6 @@ if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
   preferred_screenlayout_filepath=""
   if is_work_desktop; then
     preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
-  elif is
-
   fi
 
   if [[ -f "${preferred_screenlayout_filepath}" ]]; then
