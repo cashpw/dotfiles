@@ -72,4 +72,4 @@ URxvt.keysym.Control-Shift-V: perl:pasta:paste
 URxvt.clipboard.autocopy: true
 
 Xcursor.size: 16
-!!Xft.dpi: 192
+Xft.dpi: 192
