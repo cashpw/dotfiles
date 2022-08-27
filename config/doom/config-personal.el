@@ -2458,36 +2458,30 @@ Work in progress"
                    (buffer-file-name)
                    cashweaver/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter)))
     (when-let*
-        ((keyword
-          "HUGO_CUSTOM_FRONT_MATTER")
-         (raw-roam-refs
-          (org-export-get-node-property
-           :ROAM_REFS
-           (org-element-parse-buffer)))
-         (refs
-          (split-string
-           raw-roam-refs
-           " +"))
-         (valid-refs
-          (-filter
-           (lambda (ref)
-             (not (string-match-p "^\\[cite" ref)))
-           refs))
-         (roam-refs
-          (format
-           "roam_refs '(%s)"
-           (string-join
-            (mapcar
-             (lambda (ref)
-               (format "\"%s\""
-                       ref))
-             valid-refs)
-            " ")))
-         (current-roam-refs
-          (or
-           (org-roam-get-keyword
-            keyword)
-           "")))
+        ((keyword "HUGO_CUSTOM_FRONT_MATTER")
+         (raw-roam-refs (org-export-get-node-property
+                         :ROAM_REFS
+                         (org-element-parse-buffer)))
+         (refs (split-string
+                raw-roam-refs
+                " +"))
+         (valid-refs (-filter
+                      (lambda (ref)
+                        (not (string-match-p "^\\[cite" ref)))
+                      refs))
+         (roam-refs (format
+                     "roam_refs '(%s)"
+                     (string-join
+                      (mapcar
+                       (lambda (ref)
+                         (format "\"%s\""
+                                 ref))
+                       valid-refs)
+                      " ")))
+         (current-roam-refs (or
+                             (org-roam-get-keyword
+                              keyword)
+                             "")))
       (if (not (string=
                 roam-refs
                 current-roam-refs))

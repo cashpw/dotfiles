@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 
-ANKI_BACKUP_DIR_PATH="$HOME/.local/share/Anki2/User 1/backups"
+#ANKI_BACKUP_DIR_PATH="$HOME/.local/share/Anki2/User 1/backups"
+#cd "${ANKI_BACKUP_DIR_PATH}"
+ANKI_BACKUP_DIR_PATH="$HOME/Documents/anki"
 cd "${ANKI_BACKUP_DIR_PATH}"
 
 LATEST_BACKUP_NAME="$(ls | sort --reverse | head -n1)"
