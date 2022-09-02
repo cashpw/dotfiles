@@ -36,22 +36,15 @@ eval $(dircolors $HOME/.config/dircolors/dircolors-solarized/dircolors.256dark)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
-  preferred_screenlayout_filepath=""
-  if is_work_desktop; then
-    preferred_screenlayout_filepath="$HOME/.screenlayout/preferred-work.sh"
-  fi
-
-  if [[ -f "${preferred_screenlayout_filepath}" ]]; then
-    source "${preferred_screenlayout_filepath}"
-  fi
-fi
+#if [ -z "$SSH_CLIENT" ] || [ -z "$SSH_TTY" ]; then
+	#echo "foo"
+#fi
 
 if is_work_laptop; then
   /usr/bin/setxkbmap -option "ctrl:swapcaps"
   systemctl --user start cashbweaver-gdrive.service
-  eval "$(ssh-agent -s)"
-  ssh-add ~/.ssh/cashbweaver
+  #eval "$(ssh-agent -s)"
+  #ssh-add ~/.ssh/cashbweaver
 fi
 
 if is_work_machine; then
@@ -59,3 +52,4 @@ if is_work_machine; then
 else
   source ~/.profile-personal
 fi
+
