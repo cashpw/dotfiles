@@ -104,19 +104,34 @@ if ! shopt -oq posix; then
   fi
 fi
 
-
+# doomemacs
+# https://github.com/doomemacs/doomemacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export DOOMDIR="$HOME/.config/doom"
+
+# Provide vim-like keybindings on the command line
 set -o vi
+
+# General executables
 export PATH="$PATH:$HOME/bin"
 
+# Deno
+# https://deno.land/
 export DENO_INSTALL="/home/cashweaver/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-#export PATH="$PATH:/usr/local/go/bin"
+# go
+if [[ -d "/usr/local/go/bin" ]]; then
+  export PATH="$PATH:/usr/local/go/bin"
+fi
+
 if [[ -f "/usr/share/doc/fzf/examples/key-bindings.bash" ]]; then
   source /usr/share/doc/fzf/examples/key-bindings.bash
 fi
+
+# Use nvim as the default editor
+export EDITOR='nvim'
+export VISUAL='nvim'
 
 if is_work_machine; then
   source $HOME/.bashrc-work
