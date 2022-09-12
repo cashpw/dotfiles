@@ -1475,7 +1475,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (setq
    ;; TODO: Move this variable
    cashweaver/roam-dir-path (s-format
-                             "${home-dir-path}/proj/roam"
+                             "${home-dir-path}/proj/notes"
                              'aget
                              `(("home-dir-path" . ,cashweaver/home-dir-path)))
    cashweaver/roam-unread-file-path (s-format
@@ -2839,7 +2839,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
 (setq
  cashweaver/path--roam-bibliography
- (format "%s/proj/roam/bibliography.bib"
+ (format "%s/proj/notes/bibliography.bib"
          cashweaver/home-dir-path)
  cashweaver/bibliographies `(,cashweaver/path--roam-bibliography))
 
@@ -2852,7 +2852,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                    (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
                    (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
    citar-symbol-separator "  "
-   ;; citar-notes-paths `(,cashweaver/roam-dir-path)
+   citar-notes-paths `(,cashweaver/roam-dir-path)
    )
   (defun cashweaver/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
@@ -3149,3 +3149,91 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 ;; (add-hook!
 ;;  'java-mode-hook
 ;;  'electric-case-java-init)
+
+(use-package! org-fc
+  :custom
+  (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/fc")))
+  (org-fc-bury-siblings t)
+  ;; Define twice so the keys show up in the hint
+  (org-fc-review-flip-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "n") 'org-fc-review-flip)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     map))
+  (org-fc-review-rate-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "0") 'org-fc-review-rate-again)
+     (define-key map (kbd "1") 'org-fc-review-rate-hard)
+     (define-key map (kbd "2") 'org-fc-review-rate-good)
+     (define-key map (kbd "3") 'org-fc-review-rate-easy)
+     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     map))
+
+  :config
+  (require 'org-fc-hydra)
+  (require 'org-fc-keymap-hint)
+
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
+    (kbd "n") 'org-fc-review-flip
+    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "e") 'org-fc-review-edit
+    (kbd "q") 'org-fc-review-quit)
+  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-rate-mode
+    (kbd "0") 'org-fc-review-rate-again
+    (kbd "1") 'org-fc-review-rate-hard
+    (kbd "2") 'org-fc-review-rate-good
+    (kbd "3") 'org-fc-review-rate-easy
+    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "e") 'org-fc-review-edit
+    (kbd "q") 'org-fc-review-quit)
+
+
+
+
+  ;; (evil-define-key '(normal insert visual emacs) org-fc-review-flip-mode-map
+  ;;   "n" 'org-fc-review-flip
+  ;;   "s" 'org-fc-review-suspend-card
+  ;;   "q" 'org-fc-review-quit)
+  ;; (evil-define-key '(normal insert visual emacs) org-fc-review-rate-mode-map
+  ;;   "0" 'org-fc-review-rate-again
+  ;;   "1" 'org-fc-review-rate-hard
+  ;;   "2" 'org-fc-review-rate-good
+  ;;   "3" 'org-fc-review-rate-easy
+  ;;   "s" 'org-fc-review-suspend-card
+  ;;   "q" 'org-fc-review-quit)
+
+  ;; (defun org-fc-keymap-hint--get-evil-map (keymap)
+  ;;   `(keymap . ,(nthcdr 3 (cond
+  ;;                          ((evil-normal-state-p)
+  ;;                           (assq 'normal-state
+  ;;                                 (cdr keymap)))
+  ;;                          ((evil-insert-state-p)
+  ;;                           (assq 'insert-state
+  ;;                                 (cdr keymap)))
+  ;;                          ((evil-visual-state-p)
+  ;;                           (assq 'visual-state
+  ;;                                 (cdr keymap)))))))
+
+  ;; (defun org-fc-keymap-hint--inner (keymap)
+  ;;   "Generate key-binding hints string for KEYMAP."
+  ;;   (mapconcat
+  ;;    (lambda (key)
+  ;;      (if (symbolp (cdr key))
+  ;;          (format
+  ;;           "[%s] %s"
+  ;;           (edmacro-format-keys (list (car key)))
+  ;;           (if (symbolp (cdr key))
+  ;;               (org-fc-keymap-hint--symbol-name (cdr key))
+  ;;             (cdr key)))))
+  ;;    (reverse (cdr keymap))
+  ;;    " "))
+
+  ;; (defun org-fc-keymap-hint (keymap)
+  ;;   (org-fc-keymap-hint--inner
+  ;;    (org-fc-keymap-hint--get-evil-map keymap)))
+  )

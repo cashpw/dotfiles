@@ -168,3 +168,8 @@
 (package! electric-case
   :recipe (:host github
            :repo "zk-phi/electric-case"))
+
+(package! org-fc
+  :recipe (:host github
+           :repo "l3kn/org-fc"
+           :files (:defaults "awk" "demo.org")))
