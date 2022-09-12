@@ -2,6 +2,12 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
+# is_work_machine
+# is_work_laptop
+# is_work_desktop
+# is_work_cloudtop
+source ~/.scripts/identify_device/identify_device.sh
+
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
@@ -98,36 +104,37 @@ if ! shopt -oq posix; then
   fi
 fi
 
-function is_work_laptop() {
-  inxi --machine | grep -q "Type: Laptop"
-}
-function is_work_desktop() {
-  inxi --machine | grep -q "Type: Desktop"
-}
-function is_work_cloudtop() {
-  inxi --machine | grep -q "Type: Kvm"
-}
-function is_work() {
-  [[ -d "/usr/local/google/home/cashweaver" ]]
-}
-
+# doomemacs
+# https://github.com/doomemacs/doomemacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export DOOMDIR="$HOME/.config/doom"
+
+# Provide vim-like keybindings on the command line
 set -o vi
+
+# General executables
 export PATH="$PATH:$HOME/bin"
 
+# Deno
+# https://deno.land/
 export DENO_INSTALL="/home/cashweaver/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-#export PATH="$PATH:/usr/local/go/bin"
+# go
+if [[ -d "/usr/local/go/bin" ]]; then
+  export PATH="$PATH:/usr/local/go/bin"
+fi
+
 if [[ -f "/usr/share/doc/fzf/examples/key-bindings.bash" ]]; then
   source /usr/share/doc/fzf/examples/key-bindings.bash
 fi
 
-if ! is_work; then
-  PATH="$HOME/third_party/balena-cli-v12.51.1-linux-x64-standalone/balena-cli:$PATH"
-fi
+# Use nvim as the default editor
+export EDITOR='nvim'
+export VISUAL='nvim'
 
-if is_work; then
+if is_work_machine; then
   source $HOME/.bashrc-work
+else
+  source $HOME/.bashrc-personal
 fi

@@ -29,7 +29,7 @@ path=/home/cashweaver/mail
 # address to which the original email was addressed.
 #
 [user]
-primary_email=cashweaver@google.com
+primary_email=cashweaver@gmail.com
 
 # Configuration for "notmuch new"
 #
