@@ -1508,25 +1508,27 @@ Point B (the target) is an Emacs org-mode buffer where the inline link will be i
 #+end_src
 
 ***** TODO Debug "Too early load" error
-**** =org-drill=
-
+**** =org-fc=
 #+begin_quote
-This program sends HTML email using Org-mode HTML export.
+Org-fc is a spaced-repetition system for Emacs' org-mode.
 
-This approximates a WYSiWYG HTML mail editor from within Emacs, and can be useful for sending tables, fontified source code, and inline images in email.
-
-/[[github:org-mime/org-mime][org-mime/org-mime]]/
+[cite:@leonOrgFlashcards2022]
 #+end_quote
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-drill)
+(package! org-fc
+  :recipe (:host github
+           :repo "cashweaver/org-fc"
+           :files (:default "awk" "demo.org")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-drill)
+(use-package! org-fc
+  :custom
+  (org-fc-directories (s-lex-format "${cashweaver/home-dir-path}/fc"))
+  :config
+  )
 #+end_src
-
-***** TODO Debug "Too early load" error
 
 **** =org-gcal=
 #+begin_quote
