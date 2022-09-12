@@ -68,18 +68,15 @@ Additionally, variables and functions which are in a "library"/group are prefixe
 
 #+name: cashweaver/home-dir
 #+begin_src emacs-lisp
-(defvar
-  cashweaver/home-dir-path-personal
+(defvar cashweaver/home-dir-path-personal
   "/home/cashweaver"
   "Path to home directory on my personal machine.")
 
-(defvar
-  cashweaver/home-dir-path-work
+(defvar cashweaver/home-dir-path-work
   "/usr/local/google/home/cashweaver"
   "Path to home directory on my work machine(s).")
 
-(defvar
-  cashweaver/home-dir-path-work-cloudtop
+(defvar cashweaver/home-dir-path-work-cloudtop
   "/usr/local/google/home/cashweaver/is-cloudtop"
   "File that, when present, indicates the current machine is my Cloudtop instance.")
 
@@ -93,33 +90,22 @@ Additionally, variables and functions which are in a "library"/group are prefixe
   (file-exists-p
    cashweaver/home-dir-path-work-cloudtop))
 
-(defvar
-  cashweaver/home-dir-path
+(defvar cashweaver/home-dir-path
   (if (cashweaver/is-work-p)
       cashweaver/home-dir-path-work
     cashweaver/home-dir-path-personal)
   "Path to home directory.")
 
-(defvar
-  cashweaver/config-dir-path
-  (format
-   "%s/%s"
-   cashweaver/home-dir-path
-   ".config")
+(defvar cashweaver/config-dir-path
+  (s-lex-format
+   "${cashweaver/home-dir-path}/.config")
   "Full path to configuration files.")
 
-(defvar
-  cashweaver/emacs-config-dir-path
-  (format
-   "%s/%s"
-   cashweaver/config-dir-path
-   "doom")
+(defvar cashweaver/emacs-config-dir-path
+  (s-lex-format
+   "${cashweaver/config-dir-path}/doom")
   "Full path to Emacs configuration files.")
-
 #+end_src
-
-#+RESULTS: cashweaver/home-dir
-: cashweaver/emacs-config-dir-path
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashweaver/home-dir>>
@@ -132,8 +118,7 @@ Additionally, variables and functions which are in a "library"/group are prefixe
 * Path to Local Packages
 
 #+begin_src emacs-lisp :tangle packages.el
-(defvar
-  cashweaver/third-party-path
+(defvar cashweaver/third-party-path
   (if (cashweaver/is-work-p)
       "/usr/local/google/home/cashweaver/third_party"
     "/home/cashweaver/third_party")
@@ -147,25 +132,25 @@ Configuration files should follow the naming convention =(config|packages)-<type
 ** Personal
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-(load (concat cashweaver/emacs-config-dir-path "/config-personal.el"))
+(load (s-lex-format
+       "${cashweaver/emacs-config-dir-path}/config-personal.el"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-(load (concat cashweaver/emacs-config-dir-path "/packages-personal.el"))
+(load (s-lex-format
+       "${cashweaver/emacs-config-dir-path}/packages-personal.el"))
 #+end_src
 
 ** Work
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 (when (cashweaver/is-work-p)
-  (load
-   (format "%s/config-work.el"
-           cashweaver/emacs-config-dir-path)))
+  (load (s-lex-format
+         "${cashweaver/emacs-config-dir-path}/config-work.el")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
 (when (cashweaver/is-work-p)
-  (load
-   (format "%s/packages-work.el"
-           cashweaver/emacs-config-dir-path)))
+  (load (s-lex-format
+         "${cashweaver/emacs-config-dir-path}/packages-work.el")))
 #+end_src
