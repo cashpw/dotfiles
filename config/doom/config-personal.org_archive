@@ -1,0 +1,64 @@
+#    -*- mode: org -*-
+
+
+Archived entries from file /home/cashweaver/proj/dotfiles/config/doom/config-personal.org
+
+
+* Packages
+:PROPERTIES:
+:ARCHIVE_TIME: 2022-09-12 Mon 16:26
+:ARCHIVE_FILE: ~/proj/dotfiles/config/doom/config-personal.org
+:ARCHIVE_OLPATH: General
+:ARCHIVE_CATEGORY: config-personal
+:END:
+** =free-keys=
+
+Show free bindings in current buffer.
+
+*** Package
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! free-keys
+  :recipe (:host github
+           :repo "Fuco1/free-keys"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! free-keys)
+#+end_src
+
+** =command-log-mode=
+
+For showing which keys I'm pressing during screencasts, presentations, or pairing sessions.
+
+Alternatives include:
+
+- [[https://gitlab.com/screenkey/screenkey][screenkey]]: "A screencast tool to display your keys inspired by Screenflick"
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! command-log-mode)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! command-log-mode
+  :config
+  (setq
+   command-log-mode-open-log-turns-on-mode t
+   command-log-mode-window-size 80
+   command-log-mode-is-global t))
+#+end_src
+
+*** Usage
+
+#+begin_src emacs-lisp
+;; Enable the global mode
+(global-command-log-mode)
+
+;; Toggle the log buffer
+(clm/toggle-command-log-buffer)
+#+end_src

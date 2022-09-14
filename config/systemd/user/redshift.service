@@ -1,0 +1,11 @@
+[Unit]
+Description=Redshift display colour temperature adjustment
+Documentation=http://jonls.dk/redshift/
+After=graphical-session.target
+
+[Service]
+ExecStart=/home/cashweaver/redshift/root/bin/redshift
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

@@ -90,8 +90,9 @@
 
 (package! org-fc
   :recipe (:host github
-           :repo "cashweaver/org-fc"
-           :files (:default "awk" "demo.org")))
+           ;;:repo "cashweaver/org-fc"
+           :repo "l3kn/org-fc"
+           :files (:defaults "awk" "demo.org")))
 
 (package! org-gcal
   :recipe (:host github
@@ -169,8 +170,3 @@
 (package! electric-case
   :recipe (:host github
            :repo "zk-phi/electric-case"))
-
-(package! org-fc
-  :recipe (:host github
-           :repo "l3kn/org-fc"
-           :files (:defaults "awk" "demo.org")))
