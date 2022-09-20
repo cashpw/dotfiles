@@ -62,3 +62,82 @@ Alternatives include:
 ;; Toggle the log buffer
 (clm/toggle-command-log-buffer)
 #+end_src
+
+* =org-fc=
+:PROPERTIES:
+:ARCHIVE_TIME: 2022-09-15 Thu 17:17
+:ARCHIVE_FILE: ~/proj/dotfiles/config/doom/config-personal.org
+:ARCHIVE_OLPATH: Languages/Org/Packages
+:ARCHIVE_CATEGORY: config-personal
+:END:
+#+begin_quote
+Org-fc is a spaced-repetition system for Emacs' org-mode.
+
+[cite:@leonOrgFlashcards2022]
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-fc
+  :recipe (:host github
+           :repo "cashweaver/org-fc"
+           ;; :repo "l3kn/org-fc"
+           :files (:defaults "awk" "demo.org")))
+#+end_src
+
+#+RESULTS:
+| org-fc | :modules | ((:user . config-personal) (:user . modules)) | :recipe | (:host github :repo cashweaver/org-fc :files (:defaults awk demo.org)) |
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-fc
+  :custom
+  (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
+                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
+                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/personal-flashcards")))
+  (org-fc-bury-siblings t)
+  (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
+  (org-fc-daily-new-limit 2)
+
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (org-fc-review-flip-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "n") 'org-fc-review-flip)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     map))
+  (org-fc-review-rate-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "0") 'org-fc-review-rate-again)
+     (define-key map (kbd "1") 'org-fc-review-rate-hard)
+     (define-key map (kbd "2") 'org-fc-review-rate-good)
+     (define-key map (kbd "3") 'org-fc-review-rate-easy)
+     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     map))
+
+  :config
+  (require 'org-fc-hydra)
+  (require 'org-fc-keymap-hint)
+
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
+    (kbd "n") 'org-fc-review-flip
+    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "e") 'org-fc-review-edit
+    (kbd "q") 'org-fc-review-quit)
+  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-rate-mode
+    (kbd "0") 'org-fc-review-rate-again
+    (kbd "1") 'org-fc-review-rate-hard
+    (kbd "2") 'org-fc-review-rate-good
+    (kbd "3") 'org-fc-review-rate-easy
+    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "e") 'org-fc-review-edit
+    (kbd "q") 'org-fc-review-quit))
+#+end_src
+
+#+RESULTS:
+: t
+

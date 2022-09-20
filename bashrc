@@ -133,6 +133,10 @@ fi
 export EDITOR='nvim'
 export VISUAL='nvim'
 
+if is_work_laptop; then
+  /usr/bin/setxkbmap -option "ctrl:nocaps"
+fi
+
 if is_work_machine; then
   source $HOME/.bashrc-work
 else

@@ -90,8 +90,9 @@
 
 (package! org-fc
   :recipe (:host github
-           ;;:repo "cashweaver/org-fc"
-           :repo "l3kn/org-fc"
+           ;; :repo "l3kn/org-fc"
+           :repo "cashweaver/org-fc"
+           :branch "develop"
            :files (:defaults "awk" "demo.org")))
 
 (package! org-gcal

@@ -1,0 +1,15 @@
+// Git
+.git/
+.gitignore
+
+// General (from git)
+.DS_Store
+.idea
+*.log
+tmp/
+
+// Org roam
+org-roam.db
+
+// Syncthing
+.trashed-*

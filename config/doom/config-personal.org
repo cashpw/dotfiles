@@ -5,6 +5,11 @@
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming style and based heavily on the work of others[fn:1].
 
 * General
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ search-invisible t)
+#+end_src
+
 ** User Information
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -161,9 +166,11 @@ Doom Emacs provides =alert=.
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
-    :n "d" #'anki-editor-delete-notes
-    :n "c" #'cashweaver/anki-editor-cloze-dwim
-    :n "i" #'anki-editor-insert-note)
+    :n "d" #'org-fc-dashboard
+    :n "i" #'org-fc-init
+    :n "u" #'org-fc-update
+    :n "r" #'org-fc-review-all
+    :n "R" #'org-fc-review)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
@@ -179,8 +186,6 @@ Doom Emacs provides =alert=.
  (:prefix ("z")
   :n "O" #'evil-open-fold-rec))
 #+end_src
-
-#+RESULTS:
 
 * Doom Emacs
 I use [[github:hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
@@ -1247,7 +1252,7 @@ Returns nil if the heading already existed."
              (point-max))))
     (if (member heading-text
                 (cashweaver/contacts--list-top-level-headings))
-        (return-from
+        (cl-return-from
             cashweaver/contacts--create-top-level-heading-if-absent
           nil))
 
@@ -1270,7 +1275,7 @@ Does nothing if such a heading is absent."
          (org-find-exact-headline-in-buffer
           heading-text)))
     (unless heading-position
-      (return-from
+      (cl-return-from
           cashwever/contacts--goto-heading
         nil))
     (goto-char
@@ -1367,7 +1372,7 @@ Time defaults to `(current-time)'."
           (buffer-file-name
            (buffer-base-buffer)))))
     (unless path
-      (return-from
+      (cl-return-from
           cashweaver/contacts--get-name
         nil))
     (with-current-buffer
@@ -1392,7 +1397,7 @@ Based on `org-contacts-anniversaries'."
          (org-roam--list-files
           (expand-file-name
            contact-file-directory))))
-    ;; (loop for file in contact-files
+    ;; (cl-loop for file in contact-files
     ;;       for anniversary = (let ((anniversary
     ;;                                ))))
     ))
@@ -1515,8 +1520,9 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-fc
   :recipe (:host github
-           ;;:repo "cashweaver/org-fc"
-           :repo "l3kn/org-fc"
+           ;; :repo "l3kn/org-fc"
+           :repo "cashweaver/org-fc"
+           :branch "develop"
            :files (:defaults "awk" "demo.org")))
 #+end_src
 
@@ -1525,10 +1531,12 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   :custom
   (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
-                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/fc")))
+                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/personal-flashcards")))
   (org-fc-bury-siblings t)
   (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
-  (org-fc-daily-new-limit 10)
+  (org-fc-review-new-limit 20)
+  (org-fc-review-new-limit-schedule 'day)
+  (org-fc-review-hide-title-in-header-line t)
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
@@ -1554,6 +1562,8 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   (require 'org-fc-hydra)
   (require 'org-fc-keymap-hint)
 
+  ;; (org-fc-cache--enable)
+
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
   (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
@@ -1568,7 +1578,34 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (kbd "3") 'org-fc-review-rate-easy
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
-    (kbd "q") 'org-fc-review-quit))
+    (kbd "q") 'org-fc-review-quit)
+  (defun cashweaver/org-fc--before-setup ()
+    (setq
+     org-format-latex-options '(:foreground default
+                                :background default
+                                :scale 5
+                                :html-foreground "Black"
+                                :html-background "Transparent"
+                                :html-scale 1.0
+                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+    (ignore-errors
+      (doom/reset-font-size))
+    (doom/increase-font-size 2))
+  (defun cashweaver/org-fc--after-review ()
+    (setq
+     org-format-latex-options '(:foreground default
+                                :background default
+                                :scale 1.5
+                                :html-foreground "Black"
+                                :html-background "Transparent"
+                                :html-scale 1.0
+                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+    (ignore-errors
+      (doom/reset-font-size)))
+  (add-hook! 'org-fc-before-setup-hook
+             #'cashweaver/org-fc--before-setup)
+  (add-hook! 'org-fc-after-review-hook
+             #'cashweaver/org-fc--after-review))
 #+end_src
 
 #+RESULTS:
@@ -2968,22 +3005,22 @@ Examples (| is the pointer):
 (with-temp-buffer
   (insert "[e]")
   (goto-char 2)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]")))
 (with-temp-buffer
   (insert "[]e[]")
   (goto-char 3)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]")))
 (with-temp-buffer
   (insert "[ced[]")
   (goto-char 3)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]" t)))
 (with-temp-buffer
   (insert "[]ced[]")
   (goto-char 4)
-  (assert
+  (cl-assert
    (not (cashweaver/pointer-between-chars-p "[" "]" t))))
 
 
@@ -3046,7 +3083,6 @@ Examples (| is the pointer):
 **** TODO Debug "Too early load" error
 
 *** Latex
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
   '("a")
@@ -3059,7 +3095,7 @@ Examples (| is the pointer):
 
 (defun cashweaver/latex-toggle-preview--show ()
   (interactive)
-  (pushnew (buffer-name (current-buffer))
+  (cl-pushnew (buffer-name (current-buffer))
            cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p)
   (org-latex-preview '(16)))
 
@@ -3929,46 +3965,36 @@ Work in progress"
       (anki-editor-push-notes)
     (message "Skipping anki-editor-push-notes because Anki isn't available.")))
 
-(defun cashweaver/org-roam-add-anki (&optional skip-if-present)
-  "Add Anki heading to the current buffer."
+(defun cashweaver/org-roam-add-flashcards (&optional skip-if-present)
+  "Add flashcard heading to the current buffer."
   (interactive)
   (when (cashweaver/anki-available-p)
-    (let ((skip-if-present
-           (or skip-if-present
-               t))
-          (anki-header-regexp
-           (rx
-            "*"
-            (or " TODO"
-                "")
-            (or (and " \[#"
-                     (any "0" "1" "2" "3" "4")
-                     "\]")
-                "")
-            " Anki")
-           )
-          (is-valid-file
-           (and (org-roam-file-p)
-                (not
-                 (member
-                  (buffer-file-name)
-                  cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
+    (let ((skip-if-present (or skip-if-present
+                               t))
+          (flashcard-header-regexp (rx "*"
+                                       (or " TODO"
+                                           "")
+                                       (or (and " \[#"
+                                                (any "0" "1" "2" "3" "4")
+                                                "\]")
+                                           "")
+                                       " Flashcards")
+                                   )
+          (is-valid-file (and (org-roam-file-p)
+                              (not (member (buffer-file-name)
+                                           cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
       (when is-valid-file
-        (let* ((anki-present-in-buffer
-                (save-excursion
-                  (goto-char
-                   (point-min))
-                  (re-search-forward
-                   anki-header-regexp
-                   ;; bound
-                   nil
-                   ;; noerror
-                   t))))
+        (let* ((flashcard-present-in-buffer (save-excursion
+                                         (goto-char (point-min))
+                                         (re-search-forward flashcard-header-regexp
+                                                            ;; bound
+                                                            nil
+                                                            ;; noerror
+                                                            t))))
           (unless (and skip-if-present
-                       anki-present-in-buffer)
+                       flashcard-present-in-buffer)
             (save-excursion
-              (goto-char
-               (point-max))
+              (goto-char (point-max))
               (org-insert-heading
                ;; arg
                nil
@@ -3977,11 +4003,8 @@ Work in progress"
                ;; top
                t
                )
-              (insert "TODO [#2] Anki")
-              (org-set-tags '("noexport"))
-              (org-set-property
-               "ANKI_DECK"
-               "Default"))))))))
+              (insert "TODO [#2] Flashcards")
+              (org-set-tags '("noexport")))))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -4070,15 +4093,14 @@ TODO_AUTHOR, [cite:@${citekey}]
                               :citekey entry)
                        :node (org-roam-node-create
                               :title node-title)
-                       :props '(:finalize find-file))
-    ))
+                       :props '(:finalize find-file))))
 
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)
   (cashweaver/org-roam-mirror-roam-refs-to-front-matter)
   (cashweaver/org-roam-add-bibliography)
-  (cashweaver/org-roam-add-anki)
-  (cashweaver/anki-editor-push-notes)
+  (cashweaver/org-roam-add-flashcards)
+  ;; (cashweaver/anki-editor-push-notes)
   )
 #+end_src
 
@@ -4091,19 +4113,16 @@ TODO_AUTHOR, [cite:@${citekey}]
                                 (s-lex-format "\\\\href{/posts/${post-id}}{\\1}")))))
 
 (setq
- cashweaver/org-hugo--mathjax-post-map
- '(
-   ("\\(C\\\\_{n}\\)" . "centering_matrix")
-   ("\\(I\\\\_{n}\\)" . "identity_matrix")
-   ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
-   ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
-   ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
-   ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
-   ("\\(\\\\cos\\)" . "cosine")
-   ("\\(\\\\sin\\)" . "sine")
-   ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
-   ("\\(\\\\tan\\)" . "tangent")
-   ))
+ cashweaver/org-hugo--mathjax-post-map '(("\\(C\\\\_{n}\\)" . "centering_matrix")
+                                         ("\\(I\\\\_{n}\\)" . "identity_matrix")
+                                         ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
+                                         ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(\\\\cos\\)" . "cosine")
+                                         ("\\(\\\\sin\\)" . "sine")
+                                         ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+                                         ("\\(\\\\tan\\)" . "tangent")))
 
 (defun org-hugo--after-1-export-function (info outfile)
   "Function to be run after exporting one post.
@@ -4191,17 +4210,11 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
  cashweaver/bibliographies `(,cashweaver/path--roam-bibliography))
 #+end_src
 
-<<<<<<< HEAD
-#+RESULTS:
-| /usr/local/google/home/cashweaver/proj/notes/bibliography.bib |
-
-=======
->>>>>>> 5d4efbd58cbe99746db1e14a8d25aad464adc2e3
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! citar
-  :when (featurep! :completion vertico)
+  :when (modulep! :completion vertico)
   :config
   (setq
    citar-bibliography cashweaver/bibliographies
@@ -4544,7 +4557,7 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (defun cashweaver/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
   (let* ((nested-paths
-          (loop for fn in cashweaver/project-path-fns
+          (cl-loop for fn in cashweaver/project-path-fns
                 collect (funcall fn)))
          (paths
           (mapcar
@@ -5131,25 +5144,17 @@ Cards with no positions are removed from the index."
    (not (org-fc-card-suspended it))
    cards))
 
-(setq
- org-fc-max-new-positions-per-day 1
- org-fc-bury-siblings nil
- org-fc--new-positions-remaining
- one-day-in-seconds 60 * 60 * 24
- org-fc-review-interval-seconds one-day-in-seconds
- org-fc-last-review nil)
-
-(defun org-fc--get-next-review-time ()
-  )
-
 (defun org-fc--get-max-new-positions ()
   (if org-fc-max-new-positions-per-day
       (if (time-less-p org-fc-last-review))
     nil))
 
 (defun org-fc-position--is-new (position)
-  (= 0
-     (org-fc-position-interval position)))
+  (let ((card (oref position card))
+        (card-created (oref card created))
+        (position-due (oref position due))))
+  (string= card-created
+           position-due))
 
 (defun cashweaver/org-fc--maybe-limit-new-reviews (positions)
   (if org-fc-max-new-positions-per-day
@@ -5172,9 +5177,6 @@ Cards with no positions are removed from the index."
      (cashweaver/org-fc--maybe-remove-sibling-positions
       (cashweaver/org-fc--remove-future-positions
        (org-fc-cards-to-positions active-cards))))))
-
-(org-fc-index-filter-due
- (org-fc-index org-fc-context-all))
 #+end_src
 
 Pair permutations
@@ -5267,16 +5269,13 @@ Pair permutations
     positions))
 #+end_src
 
-#+RESULTS:
-: cashweaver/anki-to-fc--get-positions
-
 #+begin_src emacs-lisp
 (defun cashweaver/anki-to-fc ()
   (interactive)
   (let ((anki-card-heading-points (org-map-entries
                                    (lambda ()
                                      (point))
-                                   "+LEVEL=2-TAG=fc+ANKI_NOTE_ID={.*}")))
+                                   "+LEVEL=2-fc+ANKI_NOTE_ID={.}")))
     (dolist (pom (reverse anki-card-heading-points))
       (goto-char pom)
       (cashweaver/anki-to-fc--single))))
@@ -5290,14 +5289,16 @@ Pair permutations
          (data (cashweaver/anki-to-fc--get-data anki-note-id))
          (card-created-time (plist-get (nth 0 data) :card-created-time)))
     (if (or (string= "AKA" anki-note-type)
-              (string= "Cloze with Source" anki-note-type)
-              (string= "Definition" anki-note-type)
-              (string= "Denotes" anki-note-type))
-      (org-fc--add-tag "orgfc_migration_safetodelete")
+            (string= "Cloze with Source" anki-note-type)
+            (string= "Definition" anki-note-type)
+            (string= "Denotes" anki-note-type))
+        (org-fc--add-tag "orgfc_migration_safetodelete")
       (org-fc--add-tag "orgfc_migration_needswork"))
     (org-insert-heading)
     (org-set-tags ":fc:")
     (org-id-get-create)
+    (org-set-property "ANKI_NOTE_ID"
+                      anki-note-id)
     (org-set-property "FC_CREATED"
                       (cashweaver/anki-to-fc--time-to-fc-time card-created-time))
     (cond
@@ -5321,10 +5322,103 @@ Pair permutations
       (cashweaver/anki-to-fc--denotes heading-text
                                       data
                                       anki-note-id))
+     ;; ((string= "Equivalence" anki-note-type)
+     ;;  (cashweaver/anki-to-fc--equivalence heading-text
+     ;;                                      data
+     ;;                                      anki-note-id))
      (t
       (cashweaver/anki-to-fc--default heading-text
                                       data
-                                      anki-note-id)))))
+                                      anki-note-id
+                                      anki-note-type)))))
+
+(defun cashweaver/anki-to-fc--general (heading-text review-data fc-type)
+  (insert (s-lex-format " ${heading-text}"))
+  (org-set-property "FC_TYPE" fc-type)
+  (org-fc-review-data-set review-data))
+
+(defun cashweaver/anki-to-fc--normal (heading-text review-data front back &optional extra source)
+  (cashweaver/anki-to-fc--general heading-text
+                                  review-data
+                                  "normal")
+  (save-excursion
+    ;; Jump below the drawers
+    (org-insert-subheading nil)
+    ;; Delete the heading we just created
+    (delete-backward-char 4)
+    (insert front))
+  (save-excursion
+    ;; Jump below the drawers
+    (org-insert-subheading nil)
+    (insert "Back")
+    (newline)
+    (insert back))
+  (when extra
+    (save-excursion
+      (org-insert-subheading nil)
+      (insert "Extra")
+      (newline)
+      (insert extra)))
+  (when source
+    (save-excursion
+      (org-insert-subheading nil)
+      (insert "Source")
+      (newline)
+      (insert source))))
+
+(defun cashweaver/anki-to-fc--double (heading-text review-data front back &optional extra source)
+  (cashweaver/anki-to-fc--normal heading-text
+                                 review-data
+                                 front
+                                 back
+                                 extra
+                                 source)
+  (org-set-property "FC_TYPE" "double"))
+
+(defun cashweaver/anki-to-fc--cloze (heading-text review-data &optional body extra source)
+  (let* ((fc-cloze-max (number-to-string
+                        (length review-data)))
+         (heading-text (cashweaver/anki-to-fc--convert-text
+                        heading-text)))
+    (cashweaver/anki-to-fc--general heading-text
+                                    review-data
+                                    "cloze")
+    (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
+    (org-set-property "FC_CLOZE_TYPE" "deletion")
+    (when body
+      (save-excursion
+        ;; Jump below the drawers
+        (org-insert-subheading nil)
+        ;; Delete the heading we just created
+        (delete-backward-char 4)
+        (insert body)))
+    (when extra
+      (save-excursion
+        (org-insert-subheading nil)
+        (insert "Extra")
+        (newline)
+        (insert extra)))
+    (when source
+      (save-excursion
+        (org-insert-subheading nil)
+        (insert "Source")
+        (newline)
+        (insert source)))))
+
+(defun cashweaver/anki-to-fc--default (heading-text data anki-note-id anki-note-type)
+  (let* ((review-data (mapcar
+                       (lambda (datum)
+                         (list (plist-get datum :position)
+                               (plist-get datum :ease)
+                               (plist-get datum :box)
+                               (plist-get datum :interval)
+                               (plist-get datum :due)))
+                       data)))
+    (cashweaver/anki-to-fc--normal anki-note-type
+                                   review-data
+                                   heading-text
+                                   "TODO: Back")
+    (org-set-tags ":fc:todo:")))
 
 (defun cashweaver/anki-to-fc--cloze-with-source (heading-text data anki-note-id)
   (let* ((review-data (mapcar
@@ -5335,29 +5429,21 @@ Pair permutations
                                (plist-get datum :interval)
                                (plist-get datum :due)))
                        data))
-         (fc-cloze-max (number-to-string
-                        (length review-data)))
-         (fc-cloze (cashweaver/anki-to-fc--convert-text heading-text)))
-    (org-set-property "FC_TYPE" "cloze")
-    (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
-    (org-set-property "FC_CLOZE_TYPE" "deletion")
-    (insert (concat " " fc-cloze))
-    (org-fc-review-data-set review-data)))
-
-(defun cashweaver/anki-to-fc--default (heading-text data anki-note-id)
-  (let* ((review-data (mapcar
-                       (lambda (datum)
-                         (list (plist-get datum :position)
-                               (plist-get datum :ease)
-                               (plist-get datum :box)
-                               (plist-get datum :interval)
-                               (plist-get datum :due)))
-                       data)))
-    (org-set-property "FC_TYPE" "normal")
-    (insert (concat " " heading-text))
-    (org-set-tags ":fc:todo:")
-    (org-fc-review-data-set review-data)))
-
+         (fields (cashweaver/anki-to-fc--get-fields anki-note-id)))
+    (cl-destructuring-bind (text extra source) fields
+      (let ((extra (if (> (length extra) 0)
+                       (cashweaver/anki-to-fc--convert-text extra)
+                     nil))
+            (source (if (> (length source) 0)
+                        source
+                      ;; "TODO: Source"
+                      nil))))
+      (cashweaver/anki-to-fc--cloze heading-text
+                                    review-data
+                                    ;; body
+                                    nil
+                                    extra
+                                    source))))
 
 (defun cashweaver/anki-to-fc--compare-contrast (heading-text data anki-note-id)
   (let* ((fields (cashweaver/anki-to-fc--get-fields anki-note-id))
@@ -5378,42 +5464,21 @@ Pair permutations
                                         (cashweaver/anki-to-fc--convert-text comparison-contrasts)
                                       nil))
              (source (if (> (length source) 0)
-                         (cashweaver/anki-to-fc--convert-text source)
+                         source
+                       ;; "TODO: Source"
                        nil))
-             (heading-text (concat " "
-                                   (if context
-                                       (s-lex-format "Compare/Contrast (${context})")
-                                     "Compare/Contrast")
-                                   ))
+             (heading-text (if context
+                               (s-lex-format "Compare/Contrast (${context})")
+                             "Compare/Contrast"))
              (front-text concepts)
              (back-text comparisons-contrasts))
-        (org-set-property "FC_TYPE" "normal")
-        (org-fc-review-data-set review-data)
-        (insert heading-text)
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert front-text))
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          (insert "Back")
-          (newline)
-          (insert back-text))
-        (when extra
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Extra")
-            (newline)
-            (insert extra)))
-        (when source
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Source")
-            (newline)
-            (insert "TODO: Source")))))))
+        (cashweaver/anki-to-fc--normal heading-text
+                                       review-data
+                                       front
+                                       back
+                                       ;; extra
+                                       nil
+                                       source)))))
 
 (defun cashweaver/anki-to-fc--definition (heading-text data anki-note-id)
   (let* ((fields (cashweaver/anki-to-fc--get-fields anki-note-id))
@@ -5439,42 +5504,20 @@ Pair permutations
                         (cashweaver/anki-to-fc--convert-text extra)
                       nil))
              (source (if (> (length source) 0)
-                         (cashweaver/anki-to-fc--convert-text source)
+                         source
+                       ;; "TODO: Source"
                        nil))
-             (heading-text (concat " "
-                                   (if context
-                                       (s-lex-format "Definition (${context})")
-                                     "Definition")
-                                   ))
-             (front-text term-val)
-             (back-text definition))
-        (org-set-property "FC_TYPE" "double")
-        (org-fc-review-data-set review-data)
-        (insert heading-text)
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert front-text))
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          (insert "Back")
-          (newline)
-          (insert back-text))
-        (when extra
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Extra")
-            (newline)
-            (insert extra)))
-        (when source
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Source")
-            (newline)
-            (insert "TODO: Source")))))))
+             (heading-text (if context
+                               (s-lex-format "Definition (${context})")
+                             "Definition"))
+             (front term-val)
+             (back definition))
+        (cashweaver/anki-to-fc--double heading-text
+                                       review-data
+                                       front
+                                       back
+                                       extra
+                                       source)))))
 
 (defun cashweaver/anki-to-fc--denotes (heading-text data anki-note-id)
   (let* ((review-data (mapcar (lambda (datum)
@@ -5510,42 +5553,20 @@ Pair permutations
              (source (if (> (length source) 0)
                          (cashweaver/anki-to-fc--convert-text source)
                        nil))
-             (heading-text (concat " "
-                                   (if context
-                                       (s-lex-format "Denotes (${context})")
-                                     "Denotes")
-                                   ))
-             (body-text
+             (heading-text (if context
+                               (s-lex-format "Denotes (${context})")
+                             "Denotes"))
+             (body
               (concat (s-lex-format "- {{${symbol-1}}@0}\n")
                       (if symbol-2 (s-lex-format "- {{${symbol-2}}@1}\n") "")
                       (if symbol-3 (s-lex-format "- {{${symbol-3}}@2}\n") "")
                       (if symbol-4 (s-lex-format "- {{${symbol-4}}@3}\n") "")
-                      (s-lex-format "\n${description}"))
-              ))
-        (org-set-property "FC_TYPE" "cloze")
-        (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
-        (org-set-property "FC_CLOZE_TYPE" "deletion")
-        (org-fc-review-data-set review-data)
-        (insert heading-text)
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert body-text))
-        (when extra
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Extra")
-            (newline)
-            (insert extra)))
-        (when source
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Source")
-            (newline)
-            (insert "TODO: Source")))))))
-
+                      (s-lex-format "\n${description}"))))
+        (cashweaver/anki-to-fc--cloze heading-text
+                                      review-data
+                                      body
+                                      extra
+                                      source)))))
 
 (defun cashweaver/anki-to-fc--aka (heading-text data anki-note-id)
   (let* ((review-data (mapcar
@@ -5585,12 +5606,10 @@ Pair permutations
              (source (if (> (length source) 0)
                          (cashweaver/anki-to-fc--convert-text source)
                        nil))
-             (heading-text (concat " "
-                                   (if context
-                                       (s-lex-format "AKA (${context})")
-                                     "AKA")
-                                   ))
-             (body-text
+             (heading-text (if context
+                               (s-lex-format "AKA (${context})")
+                             "AKA"))
+             (body
               (concat (s-lex-format "- {{${term-1}}@0}\n")
                       (if term-2 (s-lex-format "- {{${term-2}}@1}\n") "")
                       (if term-3 (s-lex-format "- {{${term-3}}@2}\n") "")
@@ -5598,29 +5617,11 @@ Pair permutations
                       (if term-5 (s-lex-format "- {{${term-5}}@4}\n") "")
                       (if term-6 (s-lex-format "- {{${term-6}}@5}\n") ""))
               ))
-        (org-set-property "FC_TYPE" "cloze")
-        (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
-        (org-set-property "FC_CLOZE_TYPE" "deletion")
-        (org-fc-review-data-set review-data)
-        (insert heading-text)
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert body-text))
-        (when extra
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Extra")
-            (newline)
-            (insert extra)))
-        (when source
-          (save-excursion
-            (org-insert-subheading nil)
-            (insert "Source")
-            (newline)
-            (insert "TODO: Source")))))))
+        (cashweaver/anki-to-fc--cloze heading-text
+                                      review-data
+                                      body
+                                      extra
+                                      source)))))
 
 (defun cashweaver/anki-to-fc--convert-text (text)
   (cashweaver/anki-to-fc--convert-cloze
@@ -5630,6 +5631,14 @@ Pair permutations
   (replace-regexp-in-string "<a href=\".*?\\#ID-\\(.*?\\)\">\\(.*?\\)<\\/a>"
                             "[[\\1][\\2]]"
                             text))
+
+(defun cashweaver/anki-to-fc--convert-latex (text)
+  "LaTeX code in cloze delections can't contain a }} , to work around this limitation, insert a space between the braces.
+
+Example: \frac{1}{\sqrt{2} }
+
+See: https://www.leonrische.me/fc/card_types.html"
+  (replace-regexp-in-string "}}" "} }" text))
 
 (defun cashweaver/anki-to-fc--convert-cloze (cloze-text)
   (replace-regexp-in-string
@@ -5709,6 +5718,61 @@ Pair permutations
                        :due ,due))))
                lines)))
   positions))
+#+end_src
+
+#+begin_src emacs-lisp
+(defun cashweaver/foo ()
+  (interactive)
+  (let* ((org-roam-directory "/home/cashweaver/proj/notes")
+         (roam-files (-slice (org-roam-list-files) 315))
+         ;;(roam-files (-slice (org-roam-list-files) 0 30))
+         (progress-reporter (make-progress-reporter "anki-to-fc"
+                                                    0
+                                                    (length roam-files)))
+         (i 0))
+    (dolist (file roam-files)
+      (with-current-buffer (find-file-noselect file)
+        (message file)
+        (progress-reporter-update progress-reporter
+                                  i)
+        (goto-char (point-min))
+        (when (search-forward "Flashcards :noexport:" nil t)
+          (cashweaver/anki-to-fc)
+          ;;(save-buffer)
+          )
+        (setq i (1+ i))))
+    (progress-reporter-done progress-reporter)))
+
+(defun cashweaver/foo-too ()
+  (interactive)
+  (goto-char (point-min))
+  (search-forward "Flashcards :noexport:")
+  (cashweaver/anki-to-fc))
+
+(defun cashweaver/foo-three ()
+  (interactive)
+  (let ((anki-card-heading-points (org-map-entries
+                                   (lambda ()
+                                     (org-entry-get nil "ITEM")
+                                     ;; (point)
+                                     )
+                                   "+LEVEL=2-fc+ANKI_NOTE_ID={.}")))
+    (message (prin1-to-string anki-card-heading-points))))
+#+end_src
+
+#+begin_src emacs-lisp
+(defun org-fc-init ()
+  (interactive)
+  (let* ((card-type (completing-read
+                     "Select card type:"
+                     org-fc-init--card-types
+                     ;; predicate
+                     nil
+                     ;; require-match
+                     t))
+         (init-fn (cdr (assoc card-type
+                              cashweaver/org-fc-init--card-types))))
+    (call-interactively init-fn)))
 #+end_src
 
 * Footnotes

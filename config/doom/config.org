@@ -68,6 +68,8 @@ Additionally, variables and functions which are in a "library"/group are prefixe
 
 #+name: cashweaver/home-dir
 #+begin_src emacs-lisp
+(require 's)
+
 (defvar cashweaver/home-dir-path-personal
   "/home/cashweaver"
   "Path to home directory on my personal machine.")
@@ -144,13 +146,13 @@ Configuration files should follow the naming convention =(config|packages)-<type
 ** Work
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-(when (cashweaver/is-work-p)
+(when (cashweaver/is-work-cloudtop-p)
   (load (s-lex-format
          "${cashweaver/emacs-config-dir-path}/config-work.el")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-(when (cashweaver/is-work-p)
+(when (cashweaver/is-work-cloudtop-p)
   (load (s-lex-format
          "${cashweaver/emacs-config-dir-path}/packages-work.el")))
 #+end_src

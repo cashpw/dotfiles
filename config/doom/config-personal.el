@@ -1,4 +1,7 @@
 (setq
+ search-invisible t)
+
+(setq
  user-full-name "Cash Weaver"
  user-mail-address "cashbweaver@gmail.com")
 
@@ -70,9 +73,11 @@
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
-    :n "d" #'anki-editor-delete-notes
-    :n "c" #'cashweaver/anki-editor-cloze-dwim
-    :n "i" #'anki-editor-insert-note)
+    :n "d" #'org-fc-dashboard
+    :n "i" #'org-fc-init
+    :n "u" #'org-fc-update
+    :n "r" #'org-fc-review-all
+    :n "R" #'org-fc-review)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
@@ -596,7 +601,7 @@ Returns nil if the heading already existed."
              (point-max))))
     (if (member heading-text
                 (cashweaver/contacts--list-top-level-headings))
-        (return-from
+        (cl-return-from
             cashweaver/contacts--create-top-level-heading-if-absent
           nil))
 
@@ -619,7 +624,7 @@ Does nothing if such a heading is absent."
          (org-find-exact-headline-in-buffer
           heading-text)))
     (unless heading-position
-      (return-from
+      (cl-return-from
           cashwever/contacts--goto-heading
         nil))
     (goto-char
@@ -716,7 +721,7 @@ Time defaults to `(current-time)'."
           (buffer-file-name
            (buffer-base-buffer)))))
     (unless path
-      (return-from
+      (cl-return-from
           cashweaver/contacts--get-name
         nil))
     (with-current-buffer
@@ -741,7 +746,7 @@ Based on `org-contacts-anniversaries'."
          (org-roam--list-files
           (expand-file-name
            contact-file-directory))))
-    ;; (loop for file in contact-files
+    ;; (cl-loop for file in contact-files
     ;;       for anniversary = (let ((anniversary
     ;;                                ))))
     ))
@@ -775,10 +780,12 @@ Based on `org-contacts-anniversaries'."
   :custom
   (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
-                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/fc")))
+                        ,(s-lex-format "${cashweaver/home-dir-path}/proj/personal-flashcards")))
   (org-fc-bury-siblings t)
   (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
-  (org-fc-daily-new-limit 10)
+  (org-fc-review-new-limit 20)
+  (org-fc-review-new-limit-schedule 'day)
+  (org-fc-review-hide-title-in-header-line t)
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
@@ -804,6 +811,8 @@ Based on `org-contacts-anniversaries'."
   (require 'org-fc-hydra)
   (require 'org-fc-keymap-hint)
 
+  ;; (org-fc-cache--enable)
+
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
   (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
@@ -818,7 +827,34 @@ Based on `org-contacts-anniversaries'."
     (kbd "3") 'org-fc-review-rate-easy
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
-    (kbd "q") 'org-fc-review-quit))
+    (kbd "q") 'org-fc-review-quit)
+  (defun cashweaver/org-fc--before-setup ()
+    (setq
+     org-format-latex-options '(:foreground default
+                                :background default
+                                :scale 5
+                                :html-foreground "Black"
+                                :html-background "Transparent"
+                                :html-scale 1.0
+                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+    (ignore-errors
+      (doom/reset-font-size))
+    (doom/increase-font-size 2))
+  (defun cashweaver/org-fc--after-review ()
+    (setq
+     org-format-latex-options '(:foreground default
+                                :background default
+                                :scale 1.5
+                                :html-foreground "Black"
+                                :html-background "Transparent"
+                                :html-scale 1.0
+                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+    (ignore-errors
+      (doom/reset-font-size)))
+  (add-hook! 'org-fc-before-setup-hook
+             #'cashweaver/org-fc--before-setup)
+  (add-hook! 'org-fc-after-review-hook
+             #'cashweaver/org-fc--after-review))
 
 (use-package! org-mime)
 
@@ -1760,22 +1796,22 @@ Examples (| is the pointer):
 (with-temp-buffer
   (insert "[e]")
   (goto-char 2)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]")))
 (with-temp-buffer
   (insert "[]e[]")
   (goto-char 3)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]")))
 (with-temp-buffer
   (insert "[ced[]")
   (goto-char 3)
-  (assert
+  (cl-assert
    (cashweaver/pointer-between-chars-p "[" "]" t)))
 (with-temp-buffer
   (insert "[]ced[]")
   (goto-char 4)
-  (assert
+  (cl-assert
    (not (cashweaver/pointer-between-chars-p "[" "]" t))))
 
 
@@ -1845,7 +1881,7 @@ Examples (| is the pointer):
 
 (defun cashweaver/latex-toggle-preview--show ()
   (interactive)
-  (pushnew (buffer-name (current-buffer))
+  (cl-pushnew (buffer-name (current-buffer))
            cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p)
   (org-latex-preview '(16)))
 
@@ -2670,46 +2706,36 @@ Work in progress"
       (anki-editor-push-notes)
     (message "Skipping anki-editor-push-notes because Anki isn't available.")))
 
-(defun cashweaver/org-roam-add-anki (&optional skip-if-present)
-  "Add Anki heading to the current buffer."
+(defun cashweaver/org-roam-add-flashcards (&optional skip-if-present)
+  "Add flashcard heading to the current buffer."
   (interactive)
   (when (cashweaver/anki-available-p)
-    (let ((skip-if-present
-           (or skip-if-present
-               t))
-          (anki-header-regexp
-           (rx
-            "*"
-            (or " TODO"
-                "")
-            (or (and " \[#"
-                     (any "0" "1" "2" "3" "4")
-                     "\]")
-                "")
-            " Anki")
-           )
-          (is-valid-file
-           (and (org-roam-file-p)
-                (not
-                 (member
-                  (buffer-file-name)
-                  cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
+    (let ((skip-if-present (or skip-if-present
+                               t))
+          (flashcard-header-regexp (rx "*"
+                                       (or " TODO"
+                                           "")
+                                       (or (and " \[#"
+                                                (any "0" "1" "2" "3" "4")
+                                                "\]")
+                                           "")
+                                       " Flashcards")
+                                   )
+          (is-valid-file (and (org-roam-file-p)
+                              (not (member (buffer-file-name)
+                                           cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
       (when is-valid-file
-        (let* ((anki-present-in-buffer
-                (save-excursion
-                  (goto-char
-                   (point-min))
-                  (re-search-forward
-                   anki-header-regexp
-                   ;; bound
-                   nil
-                   ;; noerror
-                   t))))
+        (let* ((flashcard-present-in-buffer (save-excursion
+                                         (goto-char (point-min))
+                                         (re-search-forward flashcard-header-regexp
+                                                            ;; bound
+                                                            nil
+                                                            ;; noerror
+                                                            t))))
           (unless (and skip-if-present
-                       anki-present-in-buffer)
+                       flashcard-present-in-buffer)
             (save-excursion
-              (goto-char
-               (point-max))
+              (goto-char (point-max))
               (org-insert-heading
                ;; arg
                nil
@@ -2718,11 +2744,8 @@ Work in progress"
                ;; top
                t
                )
-              (insert "TODO [#2] Anki")
-              (org-set-tags '("noexport"))
-              (org-set-property
-               "ANKI_DECK"
-               "Default"))))))))
+              (insert "TODO [#2] Flashcards")
+              (org-set-tags '("noexport")))))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -2811,15 +2834,14 @@ TODO_AUTHOR, [cite:@${citekey}]
                               :citekey entry)
                        :node (org-roam-node-create
                               :title node-title)
-                       :props '(:finalize find-file))
-    ))
+                       :props '(:finalize find-file))))
 
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)
   (cashweaver/org-roam-mirror-roam-refs-to-front-matter)
   (cashweaver/org-roam-add-bibliography)
-  (cashweaver/org-roam-add-anki)
-  (cashweaver/anki-editor-push-notes)
+  (cashweaver/org-roam-add-flashcards)
+  ;; (cashweaver/anki-editor-push-notes)
   )
 
 (defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -2830,19 +2852,16 @@ TODO_AUTHOR, [cite:@${citekey}]
                                 (s-lex-format "\\\\href{/posts/${post-id}}{\\1}")))))
 
 (setq
- cashweaver/org-hugo--mathjax-post-map
- '(
-   ("\\(C\\\\_{n}\\)" . "centering_matrix")
-   ("\\(I\\\\_{n}\\)" . "identity_matrix")
-   ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
-   ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
-   ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
-   ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
-   ("\\(\\\\cos\\)" . "cosine")
-   ("\\(\\\\sin\\)" . "sine")
-   ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
-   ("\\(\\\\tan\\)" . "tangent")
-   ))
+ cashweaver/org-hugo--mathjax-post-map '(("\\(C\\\\_{n}\\)" . "centering_matrix")
+                                         ("\\(I\\\\_{n}\\)" . "identity_matrix")
+                                         ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
+                                         ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(\\\\cos\\)" . "cosine")
+                                         ("\\(\\\\sin\\)" . "sine")
+                                         ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+                                         ("\\(\\\\tan\\)" . "tangent")))
 
 (defun org-hugo--after-1-export-function (info outfile)
   "Function to be run after exporting one post.
@@ -2909,7 +2928,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
  cashweaver/bibliographies `(,cashweaver/path--roam-bibliography))
 
 (use-package! citar
-  :when (featurep! :completion vertico)
+  :when (modulep! :completion vertico)
   :config
   (setq
    citar-bibliography cashweaver/bibliographies
@@ -3185,7 +3204,7 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (defun cashweaver/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
   (let* ((nested-paths
-          (loop for fn in cashweaver/project-path-fns
+          (cl-loop for fn in cashweaver/project-path-fns
                 collect (funcall fn)))
          (paths
           (mapcar
