@@ -1,6 +1,8 @@
 (setq
  search-invisible t)
 
+(require 'ess-site)
+
 (setq
  user-full-name "Cash Weaver"
  user-mail-address "cashbweaver@gmail.com")
@@ -546,7 +548,7 @@ TAGS which start with \"-\" are excluded."
   :config
   (setq
    +zen-mixed-pitch-modes '()
-   writeroom-width 30))
+   writeroom-width 60))
 
 (use-package! aggressive-indent
   :config
@@ -774,9 +776,16 @@ Based on `org-contacts-anniversaries'."
 (use-package! doct
   :commands (doct))
 
-(use-package! org-download)
+;; (use-package! ol-doi
+;;  :after org)
+
+(use-package! org-download
+  :after org
+  :custom
+  (org-download-heading-lvl nil))
 
 (use-package! org-fc
+  :after org
   :custom
   (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
@@ -794,6 +803,7 @@ Based on `org-contacts-anniversaries'."
      (define-key map (kbd "n") 'org-fc-review-flip)
      (define-key map (kbd "q") 'org-fc-review-quit)
      (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "p") 'cashweaver/org-fc-review-pause)
      (define-key map (kbd "s") 'org-fc-review-suspend-card)
      map))
   (org-fc-review-rate-mode-map
@@ -819,6 +829,7 @@ Based on `org-contacts-anniversaries'."
     (kbd "n") 'org-fc-review-flip
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
+    (kbd "p") 'cashweaver/org-fc-review-pause
     (kbd "q") 'org-fc-review-quit)
   (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-rate-mode
     (kbd "0") 'org-fc-review-rate-again
@@ -828,6 +839,10 @@ Based on `org-contacts-anniversaries'."
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
     (kbd "q") 'org-fc-review-quit)
+  (defun cashweaver/org-fc-review-pause ()
+    (widen)
+    (ignore-errors
+      (doom/reset-font-size)))
   (defun cashweaver/org-fc--before-setup ()
     (setq
      org-format-latex-options '(:foreground default
@@ -840,7 +855,13 @@ Based on `org-contacts-anniversaries'."
     (ignore-errors
       (doom/reset-font-size))
     (doom/increase-font-size 2))
+  (defun cashweaver/org-fc--before-review ()
+    ;; (writegood-mode)
+    ;; (writeroom--enable)
+    )
   (defun cashweaver/org-fc--after-review ()
+    ;;(writegood-mode)
+    ;;(writeroom--disable)
     (setq
      org-format-latex-options '(:foreground default
                                 :background default
@@ -851,8 +872,21 @@ Based on `org-contacts-anniversaries'."
                                 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
     (ignore-errors
       (doom/reset-font-size)))
+  (defun cashweaver/org-fc--after-flip ()
+    (evil-open-fold-rec)
+    (org-map-entries
+     (lambda ()
+       (org-latex-preview 4))
+     ;; match
+     nil
+     ;; scope
+     'tree))
   (add-hook! 'org-fc-before-setup-hook
              #'cashweaver/org-fc--before-setup)
+  (add-hook! 'org-fc-after-flip-hook
+             #'cashweaver/org-fc--after-flip)
+  (add-hook! 'org-fc-before-review-hook
+             #'cashweaver/org-fc--before-review)
   (add-hook! 'org-fc-after-review-hook
              #'cashweaver/org-fc--after-review))
 
@@ -1535,8 +1569,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (use-package! org-link-base)
 
-(use-package! ol-doi)
-
 (use-package! org-link-isbn)
 
 (use-package! org-link-instagram)
@@ -1870,6 +1902,31 @@ Examples (| is the pointer):
    (t
     (error "Nothing to create cloze from"))))
 
+(setq org-format-latex-header "\\documentclass{article}
+\\usepackage[usenames]{color}
+\[DEFAULT-PACKAGES]
+\[PACKAGES]
+\\pagestyle{empty}             % do not remove
+% The settings below are copied from fullpage.sty
+\\setlength{\\textwidth}{\\paperwidth}
+\\addtolength{\\textwidth}{-3cm}
+\\setlength{\\oddsidemargin}{1.5cm}
+\\addtolength{\\oddsidemargin}{-2.54cm}
+\\setlength{\\evensidemargin}{\\oddsidemargin}
+\\setlength{\\textheight}{\\paperheight}
+\\addtolength{\\textheight}{-\\headheight}
+\\addtolength{\\textheight}{-\\headsep}
+\\addtolength{\\textheight}{-\\footskip}
+\\addtolength{\\textheight}{-3cm}
+\\setlength{\\topmargin}{1.5cm}
+\\addtolength{\\topmargin}{-2.54cm}
+\\newcommand{\\bigo}[1]{O(#1)}
+\\newcommand{\\littleo}[1]{o(#1)}
+\\newcommand{\\bigomega}[1]{\\Omega(#1)}
+\\newcommand{\\bigtheta}[1]{\\Theta(#1)}
+\\newcommand{\\determinant}[1]{\\operatorname{det}(#1)}
+")
+
 (defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
   '("a")
   "List of buffers with latex previews showing.")
@@ -2059,7 +2116,7 @@ Examples (| is the pointer):
   (interactive)
   (let ((directory
          (or directory
-             (concat "%s/proj/roam"
+             (concat "%s/proj/notes"
                      cashweaver/home-dir-path)
              (mapc (lambda (filepath)
                      (run-function-in-file
@@ -2130,7 +2187,7 @@ See `org-hugo-tag-processing-functions'."
 
 ;; Publish org-roam files without using org-publish because org-publish requires a top-level headline.
 ;; ("roam"
-;; :base-directory "~/proj/roam/"
+;; :base-directory "~/proj/notes/"
 ;; :base-extension "org"
 ;; :publishing-directory "~/proj/cashweaver.com/content/posts/"
 ;; :publishing-function org-hugo-export-to-md
@@ -2795,27 +2852,15 @@ Work in progress"
              tag))))
 
 
-(defun cashweaver/org-roam-node-from-cite (entry)
+(defun cashweaver/org-roam-node-from-cite--inner (entry title)
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref)))
-  (let* ((author (citar-format--entry (citar-format--parse "${author editor journal}")
-                                      entry))
-         (citation-title (citar-format--entry (citar-format--parse "${title}")
-                                              entry))
-         (node-title (cond
-                      ((string-empty-p citation-title)
-                       "Something went wrong when extracting the title.")
-                      ((string-empty-p author)
-                       citation-title)
-                      (t
-                       (s-lex-format
-                        "${author} | ${citation-title}")))))
-    (org-roam-capture- :templates
-                       '(("r" "reference" plain "%?" :if-new
-                          (file+head "${citekey}.org"
-                                     ":PROPERTIES:
+  (org-roam-capture- :templates
+                     '(("r" "reference" plain "%?" :if-new
+                        (file+head "${citekey}.org"
+                                   ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
 #+title: ${title}
@@ -2828,13 +2873,35 @@ TODO_AUTHOR, [cite:@${citekey}]
 * TODO Summary
 * TODO Thoughts
 * TODO Notes")
-                          :immediate-finish t
-                          :unnarrowed t))
-                       :info (list
-                              :citekey entry)
-                       :node (org-roam-node-create
-                              :title node-title)
-                       :props '(:finalize find-file))))
+                        :immediate-finish t
+                        :unnarrowed t))
+                     :info (list
+                            :citekey entry)
+                     :node (org-roam-node-create
+                            :title title)
+                     :props '(:finalize find-file)))
+
+(defun cashweaver/org-roam-node-from-cite ()
+  "Create a roam node based on bibliography citation.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive (list (citar-select-ref)))
+  (let* ((entry (citar-select-ref))
+         (author (citar-format--entry (citar-format--parse "${author editor journal}")
+                                      entry))
+         (citation-title (citar-format--entry (citar-format--parse "${title}")
+                                              entry))
+         (default-title (cond
+                         ((string-empty-p citation-title)
+                          "Something went wrong when extracting the title.")
+                         ((string-empty-p author)
+                          citation-title)
+                         (t
+                          (s-lex-format
+                           "${author} | ${citation-title}"))))
+         (title (read-string "Title:"
+                             default-title)))
+    (cashweaver/org-roam-node-from-cite--inner entry title)))
 
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)

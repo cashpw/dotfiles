@@ -10,6 +10,12 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
  search-invisible t)
 #+end_src
 
+Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(require 'ess-site)
+#+end_src
+
 ** User Information
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -563,7 +569,7 @@ rgb               ; creating color strings
 ;;elm               ; care for a cup of TEA?
 emacs-lisp          ; drown in parentheses
 ;;erlang            ; an elegant language for a more civilized age
-;;ess               ; emacs speaks statistics
+ess               ; emacs speaks statistics
 ;;faust             ; dsp, but you get to keep your soul
 ;;fsharp            ; ML stands for Microsoft's Language
 ;;fstar             ; (dependent) types and (monadic) effects and Z3
@@ -1167,8 +1173,12 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
   :config
   (setq
    +zen-mixed-pitch-modes '()
-   writeroom-width 30))
+   writeroom-width 60))
 #+end_src
+
+#+RESULTS:
+: t
+
 ** Emacs Lisp (elisp)
 
 Use =aggressive-indent= when editing =elisp=.
@@ -1182,6 +1192,7 @@ Use =aggressive-indent= when editing =elisp=.
 *** Packages
 ** Java
 ** TODO Org
+
 *** Packages
 **** =anki-editor=
 #+begin_quote
@@ -1453,19 +1464,25 @@ Doom emacs installs =citar=.
 (use-package! doct
   :commands (doct))
 #+end_src
+
 **** =ol-doi=
 
 Digital Object Identifier link support.
 
-#+begin_example
-[[doi:foo][bar]]
-#+end_example
+#+begin_quote
+This library introduces the "doi" link type in Org, and provides code for opening and exporting such links.
+#+end_quote
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
            :branch "main"
            :files ("lisp/ol-doi.el")))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+;; (use-package! ol-doi
+;;  :after org)
 #+end_src
 
 **** =orgaggregate=
@@ -1506,8 +1523,14 @@ Point B (the target) is an Emacs org-mode buffer where the inline link will be i
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-download)
+(use-package! org-download
+  :after org
+  :custom
+  (org-download-heading-lvl nil))
 #+end_src
+
+#+RESULTS:
+: org-download
 
 ***** TODO Debug "Too early load" error
 **** =org-fc=
@@ -1526,8 +1549,12 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
            :files (:defaults "awk" "demo.org")))
 #+end_src
 
+#+RESULTS:
+| org-fc | :modules | ((:user) (:user . modules)) | :recipe | (:host github :repo cashweaver/org-fc :branch develop :files (:defaults awk demo.org)) |
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-fc
+  :after org
   :custom
   (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
@@ -1545,6 +1572,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
      (define-key map (kbd "n") 'org-fc-review-flip)
      (define-key map (kbd "q") 'org-fc-review-quit)
      (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "p") 'cashweaver/org-fc-review-pause)
      (define-key map (kbd "s") 'org-fc-review-suspend-card)
      map))
   (org-fc-review-rate-mode-map
@@ -1570,6 +1598,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (kbd "n") 'org-fc-review-flip
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
+    (kbd "p") 'cashweaver/org-fc-review-pause
     (kbd "q") 'org-fc-review-quit)
   (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-rate-mode
     (kbd "0") 'org-fc-review-rate-again
@@ -1579,6 +1608,10 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
     (kbd "q") 'org-fc-review-quit)
+  (defun cashweaver/org-fc-review-pause ()
+    (widen)
+    (ignore-errors
+      (doom/reset-font-size)))
   (defun cashweaver/org-fc--before-setup ()
     (setq
      org-format-latex-options '(:foreground default
@@ -1591,7 +1624,13 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (ignore-errors
       (doom/reset-font-size))
     (doom/increase-font-size 2))
+  (defun cashweaver/org-fc--before-review ()
+    ;; (writegood-mode)
+    ;; (writeroom--enable)
+    )
   (defun cashweaver/org-fc--after-review ()
+    ;;(writegood-mode)
+    ;;(writeroom--disable)
     (setq
      org-format-latex-options '(:foreground default
                                 :background default
@@ -1602,14 +1641,24 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
                                 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
     (ignore-errors
       (doom/reset-font-size)))
+  (defun cashweaver/org-fc--after-flip ()
+    (evil-open-fold-rec)
+    (org-map-entries
+     (lambda ()
+       (org-latex-preview 4))
+     ;; match
+     nil
+     ;; scope
+     'tree))
   (add-hook! 'org-fc-before-setup-hook
              #'cashweaver/org-fc--before-setup)
+  (add-hook! 'org-fc-after-flip-hook
+             #'cashweaver/org-fc--after-flip)
+  (add-hook! 'org-fc-before-review-hook
+             #'cashweaver/org-fc--before-review)
   (add-hook! 'org-fc-after-review-hook
              #'cashweaver/org-fc--after-review))
 #+end_src
-
-#+RESULTS:
-: t
 
 **** =org-gcal=
 #+begin_quote
@@ -2664,9 +2713,7 @@ The return value of hooks determine the action we take. All =noop= hooks must re
 
 **** Digital Object Identifier (DOI)
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! ol-doi)
-#+end_src
+See [[*=ol-doi=][=ol-doi=]].
 
 **** ISBN
 
@@ -3084,6 +3131,31 @@ Examples (| is the pointer):
 
 *** Latex
 #+begin_src emacs-lisp :tangle config-personal.el
+(setq org-format-latex-header "\\documentclass{article}
+\\usepackage[usenames]{color}
+\[DEFAULT-PACKAGES]
+\[PACKAGES]
+\\pagestyle{empty}             % do not remove
+% The settings below are copied from fullpage.sty
+\\setlength{\\textwidth}{\\paperwidth}
+\\addtolength{\\textwidth}{-3cm}
+\\setlength{\\oddsidemargin}{1.5cm}
+\\addtolength{\\oddsidemargin}{-2.54cm}
+\\setlength{\\evensidemargin}{\\oddsidemargin}
+\\setlength{\\textheight}{\\paperheight}
+\\addtolength{\\textheight}{-\\headheight}
+\\addtolength{\\textheight}{-\\headsep}
+\\addtolength{\\textheight}{-\\footskip}
+\\addtolength{\\textheight}{-3cm}
+\\setlength{\\topmargin}{1.5cm}
+\\addtolength{\\topmargin}{-2.54cm}
+\\newcommand{\\bigo}[1]{O(#1)}
+\\newcommand{\\littleo}[1]{o(#1)}
+\\newcommand{\\bigomega}[1]{\\Omega(#1)}
+\\newcommand{\\bigtheta}[1]{\\Theta(#1)}
+\\newcommand{\\determinant}[1]{\\operatorname{det}(#1)}
+")
+
 (defcustom cashweaver/latex-toggle-preview--buffers-with-preview-displayed-p
   '("a")
   "List of buffers with latex previews showing.")
@@ -3112,6 +3184,9 @@ Examples (| is the pointer):
       (cashweaver/latex-toggle-preview--hide)
     (cashweaver/latex-toggle-preview--show)))
 #+end_src
+
+#+RESULTS:
+: cashweaver/latex-toggle-preview
 
 *** TODO Export and Publish
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3287,7 +3362,7 @@ Examples (| is the pointer):
   (interactive)
   (let ((directory
          (or directory
-             (concat "%s/proj/roam"
+             (concat "%s/proj/notes"
                      cashweaver/home-dir-path)
              (mapc (lambda (filepath)
                      (run-function-in-file
@@ -3362,7 +3437,7 @@ See `org-hugo-tag-processing-functions'."
 
 ;; Publish org-roam files without using org-publish because org-publish requires a top-level headline.
 ;; ("roam"
-;; :base-directory "~/proj/roam/"
+;; :base-directory "~/proj/notes/"
 ;; :base-extension "org"
 ;; :publishing-directory "~/proj/cashweaver.com/content/posts/"
 ;; :publishing-function org-hugo-export-to-md
@@ -4054,27 +4129,15 @@ Work in progress"
              tag))))
 
 
-(defun cashweaver/org-roam-node-from-cite (entry)
+(defun cashweaver/org-roam-node-from-cite--inner (entry title)
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref)))
-  (let* ((author (citar-format--entry (citar-format--parse "${author editor journal}")
-                                      entry))
-         (citation-title (citar-format--entry (citar-format--parse "${title}")
-                                              entry))
-         (node-title (cond
-                      ((string-empty-p citation-title)
-                       "Something went wrong when extracting the title.")
-                      ((string-empty-p author)
-                       citation-title)
-                      (t
-                       (s-lex-format
-                        "${author} | ${citation-title}")))))
-    (org-roam-capture- :templates
-                       '(("r" "reference" plain "%?" :if-new
-                          (file+head "${citekey}.org"
-                                     ":PROPERTIES:
+  (org-roam-capture- :templates
+                     '(("r" "reference" plain "%?" :if-new
+                        (file+head "${slug}.org"
+                                   ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
 ,#+title: ${title}
@@ -4087,13 +4150,35 @@ TODO_AUTHOR, [cite:@${citekey}]
 ,* TODO Summary
 ,* TODO Thoughts
 ,* TODO Notes")
-                          :immediate-finish t
-                          :unnarrowed t))
-                       :info (list
-                              :citekey entry)
-                       :node (org-roam-node-create
-                              :title node-title)
-                       :props '(:finalize find-file))))
+                        :immediate-finish t
+                        :unnarrowed t))
+                     :info (list
+                            :citekey entry)
+                     :node (org-roam-node-create
+                            :title title)
+                     :props '(:finalize find-file)))
+
+(defun cashweaver/org-roam-node-from-cite ()
+  "Create a roam node based on bibliography citation.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive)
+  (let* ((entry (citar-select-ref))
+         (author (citar-format--entry (citar-format--parse "${author editor journal}")
+                                      entry))
+         (citation-title (citar-format--entry (citar-format--parse "${title}")
+                                              entry))
+         (default-title (cond
+                         ((string-empty-p citation-title)
+                          "Something went wrong when extracting the title.")
+                         ((string-empty-p author)
+                          citation-title)
+                         (t
+                          (s-lex-format
+                           "${author} | ${citation-title}"))))
+         (title (read-string "Title:"
+                             default-title)))
+    (cashweaver/org-roam-node-from-cite--inner entry title)))
 
 (defun cashweaver/org-roam-before-save ()
   (cashweaver/org-roam-rewrite-smart-to-ascii)
@@ -4103,6 +4188,9 @@ TODO_AUTHOR, [cite:@${citekey}]
   ;; (cashweaver/anki-editor-push-notes)
   )
 #+end_src
+
+#+RESULTS:
+: cashweaver/org-roam-before-save
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashweaver/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -4159,7 +4247,7 @@ This is an internal function."
 
 #+begin_src emacs-lisp
 (cashweaver/org-hugo-export-all
- (format "%s/proj/roam"
+ (format "%s/proj/notes"
          cashweaver/home-dir-path))
 #+end_src
 
