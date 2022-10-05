@@ -78,7 +78,7 @@
     :n "d" #'org-fc-dashboard
     :n "i" #'org-fc-init
     :n "u" #'org-fc-update
-    :n "r" #'org-fc-review-all
+    :n "r" #'cashweaver/org-fc-review-all
     :n "R" #'org-fc-review)
    (:prefix ("r")
     :n "C" #'cashweaver/org-roam-node-from-cite))
@@ -790,6 +790,8 @@ Based on `org-contacts-anniversaries'."
   (org-fc-directories `(,(s-lex-format "${cashweaver/home-dir-path}/proj/notes")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/people")
                         ,(s-lex-format "${cashweaver/home-dir-path}/proj/personal-flashcards")))
+  (org-fc-review-history-file (s-lex-format "${cashweaver/home-dir-path}/.config/org-fc/org-fc-reviews.tsv"))
+  (org-fc-bury-siblings t)
   (org-fc-bury-siblings t)
   (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
   (org-fc-review-new-limit 20)
@@ -822,6 +824,8 @@ Based on `org-contacts-anniversaries'."
   (require 'org-fc-keymap-hint)
 
   ;; (org-fc-cache--enable)
+  (add-to-list 'org-fc-custom-contexts
+               '(reading-list . (:filter (tag "reading"))))
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
@@ -839,7 +843,7 @@ Based on `org-contacts-anniversaries'."
     (kbd "s") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
     (kbd "q") 'org-fc-review-quit)
-  (defun cashweaver/org-fc-review-pause ()
+ (defun cashweaver/org-fc-review-pause ()
     (widen)
     (ignore-errors
       (doom/reset-font-size)))
@@ -847,7 +851,7 @@ Based on `org-contacts-anniversaries'."
     (setq
      org-format-latex-options '(:foreground default
                                 :background default
-                                :scale 5
+                                :scale 3
                                 :html-foreground "Black"
                                 :html-background "Transparent"
                                 :html-scale 1.0
@@ -861,7 +865,7 @@ Based on `org-contacts-anniversaries'."
     )
   (defun cashweaver/org-fc--after-review ()
     ;;(writegood-mode)
-    ;;(writeroom--disable)
+    ;; (writeroom--disable)
     (setq
      org-format-latex-options '(:foreground default
                                 :background default
@@ -889,6 +893,12 @@ Based on `org-contacts-anniversaries'."
              #'cashweaver/org-fc--before-review)
   (add-hook! 'org-fc-after-review-hook
              #'cashweaver/org-fc--after-review))
+
+  (defun cashweaver/org-fc-review-all ()
+    "Review everything except reading flashcards."
+    (interactive)
+    (org-fc-review '(:paths all
+                     :filter (not (tag "reading")))))
 
 (use-package! org-mime)
 
@@ -2397,11 +2407,7 @@ TODO: move to org-mode section"
   "Insert an org-mode option (#+OPTION: VALUE).
 
 TODO: move to org-mode section"
-  (insert
-   (format
-    "#+%s: %s\n"
-    option
-    value)))
+  (insert (s-lex-format "#+${option}: ${value}\n")))
 
 (defun cashweaver/org-mode-insert-options (options)
   "Insert an alist of org-mode options (#+OPTION: VALUE)."
@@ -2434,65 +2440,55 @@ When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
 PROPERTIES is expected to be an alist of additional properties to include.
 
 Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
-  (let* ((id
-          (org-id-new))
-         (created-date
-          (cashweaver/format-time
-           "[%Y-%m-%d %a %H:%M]"))
-         (all-properties
-          (append
-           `(("ID" . ,id))
-           properties)))
-    (with-temp-file
-        file-path
-      (cashweaver/org-mode-insert-properties
-       all-properties)
-      (goto-char
-       (point-max))
+  (let* ((id (org-id-new))
+         (created-date (cashweaver/format-time
+                        "[%Y-%m-%d %a %H:%M]"))
+         (all-properties (append
+                          `(("ID" . ,id))
+                          properties)))
+    (with-temp-file file-path
+      (goto-char (point-min))
+      (insert (s-lex-format ":PROPERTIES:\n:ID: ${id}\n:END:\n"))
+      (if properties
+          (cashweaver/org-mode-insert-properties all-properties))
+      (goto-char (point-max))
       (cashweaver/org-mode-insert-options
-       `(("TITLE" . ,title)
-         ("AUTHOR" . "Cash Weaver")
-         ("DATE" . ,created-date)
-         ("HUGO_AUTO_SET_LASTMOD" . "t")))
-      (insert "")
-      (org-insert-heading)
-      (insert
-       "TODO Summary")
-      (org-insert-heading)
-      (insert
-       "TODO Notes")
-      (org-insert-heading)
-      (insert
-       "TODO Thoughts"))))
+       `(("title" . ,title)
+         ("author" . "Cash Weaver")
+         ("date" . ,created-date)))
+      )))
 
 (defun cashweaver/org-roam-new-node-from-link-heading-at-point (&optional mark-as-done)
   "Build a new org-roam node from the link heading at point."
   (interactive)
-  (let* ((link
-          (org-element-context))
-         (type
-          (org-element-property
-           :type
-           link))
-         (url
-          (org-element-property
-           :raw-link
-           link))
-         (description
-          (cashweaver/org-mode-get-description-from-link-at-point))
-         (org-roam-node-file-path
-          (cashweaver/org-roam-make-filepath description)))
+  (let* ((link (org-element-context))
+         (type (org-element-property
+                :type
+                link))
+         (url (org-element-property
+               :raw-link
+               link))
+         (description (cashweaver/org-mode-get-description-from-link-at-point))
+         (org-roam-node-file-path (cashweaver/org-roam-make-filepath
+                                   description)))
     ;; TODO Replace with regexp?
     (unless (or (string= type "http")
                 (string= type "https")))
-    (cashweaver/org-roam-new-node
-     org-roam-node-file-path
-     description
-     `(("ROAM_REFS" . ,url)))
+    (cashweaver/org-roam-new-node org-roam-node-file-path
+                                  description)
     (if mark-as-done
         (org-todo "DONE"))
-    (find-file
-     org-roam-node-file-path)))
+    (find-file org-roam-node-file-path)
+    (goto-char (point-max))
+    (insert "\n")
+    (insert (s-lex-format "${url}\n"))
+      (org-insert-heading)
+      (insert "TODO Summary")
+      (org-insert-heading)
+      (insert "TODO Notes")
+      (org-insert-heading)
+      (insert "TODO Thoughts")
+    ))
 
 (defun cashweaver/org-mode-get-description-from-link-at-point ()
   "Reference: https://emacs.stackexchange.com/a/38297"
@@ -2859,7 +2855,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (interactive (list (citar-select-ref)))
   (org-roam-capture- :templates
                      '(("r" "reference" plain "%?" :if-new
-                        (file+head "${citekey}.org"
+                        (file+head "${slug}.org"
                                    ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
@@ -2885,7 +2881,7 @@ TODO_AUTHOR, [cite:@${citekey}]
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref)))
+  (interactive)
   (let* ((entry (citar-select-ref))
          (author (citar-format--entry (citar-format--parse "${author editor journal}")
                                       entry))

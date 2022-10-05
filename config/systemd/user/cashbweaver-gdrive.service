@@ -11,4 +11,4 @@ Restart=always
 RestartSec=10
 
 [Install]
-WantedBy=default.targetu
+WantedBy=default.target

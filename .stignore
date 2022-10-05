@@ -1,7 +1,3 @@
-// Git
-.git/
-.gitignore
-
 // General (from git)
 .DS_Store
 .idea

@@ -4,7 +4,70 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(safe-local-variable-values
-   '((elisp-lint-indent-specs
+   '((eval setq-local org-roam-capture-templates
+      `(("d" "default" plain "%?" :target
+         (file+head "${slug}.org" ,(concat "#+title: ${title}
+" "#+author: Cash Weaver
+" "#+date: [%<%Y-%m-%d %a %H:%M>]
+" "* ${title}
+" "@@html:<!--*@@
+" "@@html:# Document freshness: For more information, see go/fresh-source.@@
+" "@@html:freshness: { owner: 'cashweaver' reviewed: '%<%Y-%m-%d>' }@@
+" "@@html:*-->@@
+" "** TODO"))
+         :unnarrowed t)
+        ("p" "person" plain "%?" :target
+         (file+head "${slug}.org" ,(concat "#+title: ${title}
+" "#+author: Cash Weaver
+" "#+date: [%<%Y-%m-%d %a %H:%M>]
+" "#+filetags: :person:
+" "* ${title}
+" "@@html:<!--*@@
+" "@@html:# Document freshness: For more information, see go/fresh-source.@@
+" "@@html:freshness: { owner: 'cashweaver' reviewed: '%<%Y-%m-%d>' }@@
+" "@@html:*-->@@
+" "[[who:%^{LDAP}][%}@]]
+" "** TODO"))
+         :unnarrowed t))
+      org-roam-directory
+      (expand-file-name
+       (locate-dominating-file default-directory ".dir-locals.el"))
+      org-attach-directory
+      (file-truename
+       (format "%s/attachments/" org-roam-directory)))
+     (eval add-hook! 'before-save-hook :local #'cashweaver/org-roam-rewrite-smart-to-ascii)
+     (eval setq-local org-hugo-base-dir cashweaver/path--directory--company-publish org-roam-capture-templates
+      `(("d" "default" plain "%?" :target
+         (file+head "${slug}.org" ,(concat "#+title: ${title}
+" "#+author: Cash Weaver
+" "#+date: [%<%Y-%m-%d %a %H:%M>]
+" "* ${title}
+" "@@html:<!--*@@
+" "@@html:# Document freshness: For more information, see go/fresh-source.@@
+" "@@html:freshness: { owner: 'cashweaver' reviewed: '%<%Y-%m-%d>' }@@
+" "@@html:*-->@@
+" "** TODO"))
+         :unnarrowed t)
+        ("p" "person" plain "%?" :target
+         (file+head "${slug}.org" ,(concat "#+title: ${title}
+" "#+author: Cash Weaver
+" "#+date: [%<%Y-%m-%d %a %H:%M>]
+" "#+filetags: :person:
+" "* ${title}
+" "@@html:<!--*@@
+" "@@html:# Document freshness: For more information, see go/fresh-source.@@
+" "@@html:freshness: { owner: 'cashweaver' reviewed: '%<%Y-%m-%d>' }@@
+" "@@html:*-->@@
+" "[[who:%^{LDAP}][%}@]]
+" "** TODO"))
+         :unnarrowed t))
+      org-roam-directory
+      (expand-file-name
+       (locate-dominating-file default-directory ".dir-locals.el"))
+      org-attach-directory
+      (file-truename
+       (format "%s/attachments/" org-roam-directory)))
+     (elisp-lint-indent-specs
       (describe . 1)
       (it . 1)
       (thread-first . 0)
