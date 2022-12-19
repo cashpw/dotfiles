@@ -5,7 +5,7 @@
   "Path to home directory on my personal machine.")
 
 (defvar cashweaver/home-dir-path-work
-  "/usr/local/google/home/cashweaver"
+  "/home/cashweaver"
   "Path to home directory on my work machine(s).")
 
 (defvar cashweaver/home-dir-path-work-cloudtop

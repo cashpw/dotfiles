@@ -292,6 +292,7 @@ for_window [class=".*"] border none
 
 assign [class="Zotero"] 6
 assign [class="google-chrome"] 0
+#assign [class="Firefox-esr"] 0
 
 ################################################################################
 #         Keybindings
@@ -307,4 +308,4 @@ bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.s
 #set $scripts_path "/home/cashweaver/.scripts"
 exec rxvt-unicode
 exec ~/third_party/Zotero_linux-x86_64/zotero
-exec google-chrome
+exec firefox-esr

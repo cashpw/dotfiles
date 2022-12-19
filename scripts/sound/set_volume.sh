@@ -10,5 +10,6 @@ outputs=(
   "Speaker"
 )
 for output in "${outputs[@]}"; do
+  amixer set "$output" "$1"
   amixer set --card=0 "$output" "$1"
 done

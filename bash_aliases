@@ -17,5 +17,3 @@ alias sba='source ~/.bash_aliases'
 alias sp='source ~/.profile'
 
 alias v='nvim'
-
-alias ankisync='bash ~/.scripts/anki/sync-to-gdrive.sh'

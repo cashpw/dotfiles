@@ -4,7 +4,7 @@
 (require 'ess-site)
 
 (setq
- user-full-name "Cash Weaver"
+ user-full-name "Cash Prokop-Weaver"
  user-mail-address "cashbweaver@gmail.com")
 
 (setq
@@ -49,6 +49,8 @@
 
 (use-package! free-keys)
 
+(use-package! titlecase)
+
 (setq
  alert-fade-time 60
  alert-default-style 'libnotify)
@@ -81,7 +83,7 @@
     :n "r" #'cashweaver/org-fc-review-all
     :n "R" #'org-fc-review)
    (:prefix ("r")
-    :n "C" #'cashweaver/org-roam-node-from-cite))
+    :n "c" #'cashweaver/org-roam-node-from-cite))
   (:prefix ("p")
    :n "u" #'cashweaver/projectile-refresh-known-paths)
   (:prefix ("t")
@@ -288,43 +290,55 @@ TAGS which start with \"-\" are excluded."
                             ,(cashweaver/notmuch--tag-search
                               "c"
                               "Calendar"
-                              '("calendar" "-trash"))
+                              '("calendar"
+                                "inbox"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "d"
                               "Drive"
-                              '("drive" "-trash"))
+                              '("drive"
+                                "inbox"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "D"
                               "Drafts"
-                              '("draft" "-trash"))
+                              '("draft"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "i"
                               "Inbox"
-                              '("inbox" "-trash"))
+                              '("inbox"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "I"
                               "Archive"
-                              '("-inbox" "-trash"))
+                              '("-inbox"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "r"
                               "To Read"
-                              '("to-read" "-trash"))
+                              '("to-read"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "m"
                               "To Me"
-                              '("to-me" "-trash"))
+                              '("to-me"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "M"
                               "CC Me"
-                              '("cc-me" "-trash"))
+                              '("cc-me"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "s"
                               "Sent"
-                              '("sent" "-trash"))
+                              '("sent"
+                                "-trash"))
                             ,(cashweaver/notmuch--tag-search
                               "w"
                               "Waiting"
-                              '("waiting" "-trash"))
+                              '("waiting"
+                                "-trash"))
                             )
    +notmuch-home-function (lambda ()
                             (notmuch-search "tag:inbox"))
@@ -548,13 +562,52 @@ TAGS which start with \"-\" are excluded."
   :config
   (setq
    +zen-mixed-pitch-modes '()
-   writeroom-width 60))
+   writeroom-width 45))
 
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
 
 (use-package! anki-editor)
+
+(defun cashweaver/contacts--get-next-annual-time (time)
+  "TODO."
+  (if (not (time-less-p time (current-time)))
+      time
+    (cl-destructuring-bind (seconds minutes hours days months years day-of-week daylight-savings-time-p utc-offset)
+        (decode-time time)
+      (let* ((current-year (nth 5 (decode-time (current-time))))
+             (next-year (1+ current-year)))
+        (encode-time seconds minutes hours days months next-year day-of-week daylight-savings-time-p utc-offset)))))
+
+
+(cl-letf (((symbol-function 'current-time) (lambda ()
+                                             (date-to-time "2022-10-05T08:00:00-0700"))))
+  (cl-assert
+   (equal
+    (cashweaver/contacts--get-next-annual-time (date-to-time "2022-10-10T08:00:00-0700"))
+    (date-to-time "2022-10-10T08:00:00-0700")))
+  (cl-assert
+   (equal
+    (cashweaver/contacts--get-next-annual-time (date-to-time "2022-10-01T08:00:00-0700"))
+    (date-to-time "2023-10-01T08:00:00-0700")))
+
+  (cl-assert
+   (equal
+    (cashweaver/contacts--get-next-annual-time (date-to-time "2000-10-10T08:00:00-0700"))
+    (date-to-time "2023-10-10T08:00:00-0700")))
+  (cl-assert
+   (equal
+    (cashweaver/contacts--get-next-annual-time (date-to-time "2000-10-01T08:00:00-0700"))
+    (date-to-time "2023-10-01T08:00:00-0700"))))
+
+(defcustom cashweaver/contacts--birthday-prop
+  "BIRTHDAY"
+  "Property name for a contact's birthday.")
+
+(defcustom cashweaver/contacts--reminders-heading
+  "Reminders"
+  "Heading text for the reminders heading.")
 
 (cl-defun cashweaver/contacts--has-prop-p (prop)
   "Returns nil if the contact lacks the PROP."
@@ -565,17 +618,17 @@ TAGS which start with \"-\" are excluded."
 (cl-defun cashweaver/contacts--get-prop (prop)
   "Returns value of PROP or nil if PROP not found."
   (org-entry-get
-   (point)
+   (point-min)
    prop))
 
 (cl-defun cashweaver/contacts--list-top-level-headings ()
   "TODO"
   (org-map-entries
    (lambda ()
-     (message (org-entry-get nil "ITEM")))
+     (org-entry-get nil "ITEM"))
    "LEVEL=1"))
 
-(cl-defun cashweaver/contacts--heading-exists? (heading-text)
+(cl-defun cashweaver/contacts--heading-exists-p (heading-text)
   "Return t if HEADING-TEXT is among top-level headings and nil otherwise."
   (and (org-find-exact-headline-in-buffer
         heading-text)
@@ -641,80 +694,89 @@ Time defaults to `(current-time)'."
     (org-set-property "CREATED_AT"
                       (format-time-string "[%Y-%m-%d %a %H:%M:%S]"
                                           created-at-time))))
-
-(cl-defun cashweaver/contacts-create-reminder (reminder-text time)
+(defun cashweaver/contacts-create-reminder (reminder-text time &optional repeater-interval)
   "Creates a reminder."
-  (interactive)
-  (cashweaver/contacts--create-top-level-heading-if-absent
-   ;; TODO: Convert this to a defcustom.
-   "Reminders")
-  (cashweaver/contacts--goto-heading
-   ;; TODO: Convert this to a defcustom.
-   "Reminders")
-  (org-insert-subheading nil)
-  (insert reminder-text)
-  (org-schedule nil
-                (format-time-string "<%Y-%m-%d +1y>"
-                                    time))
-  (cashweaver/org-set-property--created-at))
+  (let* ((time-format-string (if repeater-interval
+                                 (s-lex-format "<%F ${repeater-interval}>")
+                               (s-lex-format "<%F>")))
+         (time-string (format-time-string time-format-string
+                                          time)))
+    (cashweaver/contacts--create-top-level-heading-if-absent
+     cashweaver/contacts--reminders-heading)
+    (cashweaver/contacts--goto-heading
+     cashweaver/contacts--reminders-heading)
+    (org-insert-subheading nil)
+    (insert reminder-text)
+    (org-entry-put nil "SCHEDULED" time-string)
+    (cashweaver/org-set-property--created-at)))
 
 (cl-defun cashweaver/contacts-file-p ()
   "Contacts files are roam files."
   (org-roam-file-p))
 
-(defun cashweaver/contacts--get-next-birthday (birth-time)
-  (cl-destructuring-bind (seconds
-                          minutes
-                          hours
-                          days
-                          months
-                          years
-                          day-of-week
-                          daylight-savings-time-p
-                          utc-offset)
-      (decode-time birth-time)
-    (let* ((birth-date-in-past-p (time-less-p birth-time
-                                              (current-time)))
-           (years (if birth-date-in-past-p
-                      (+ years 1)
-                    years)))
-      (encode-time
-       seconds
-       minutes
-       hours
-       days
-       months
-       years
-       day-of-week
-       daylight-savings-time-p
-       utc-offset))))
-
 (cl-defun cashweaver/contacts--create-birthday-reminder ()
   "Creates an annual birthday reminder."
   (when (and (cashweaver/contacts-file-p)
-             (cashweaver/contacts--has-prop-p "BIRTHDAY"))
+             (cashweaver/contacts--has-prop-p cashweaver/contacts--birthday-prop))
     (let ((contact-name (cashweaver/contacts--get-name))
           (heading-text (s-lex-format
                          "${contact-name}'s Birthday")))
-      (unless (cashweaver/contacts--heading-exists?
+      (unless (cashweaver/contacts--heading-exists-p
                heading-text)
         (let* ((birth-time (org-time-string-to-time
-                            (org-read-date nil              ;; with-time
-                                           t                ;; to-time
+                            (org-read-date nil ;; with-time
+                                           t   ;; to-time
                                            (cashweaver/contacts--get-prop ;; from-string
                                             ;; TODO: Convert this to a defcustom.
-                                            "BIRTHDAY")
+                                            cashweaver/contacts--birthday-prop)
                                            nil ;; prompt
                                            )
                             ))
-               (reminder-time (cashweaver/contacts--get-next-birthday
-                               birth-time))
-               (reminder-scheduled-date (format-time-string
-                                         "<%Y-%m-%d +1y>"
-                                         reminder-time)))
+               (reminder-time (cashweaver/contacts--get-next-annual-time
+                               birth-time)))
           (cashweaver/contacts-create-reminder
            heading-text
-           reminder-time))))))
+           reminder-time
+           "+1y"))))))
+
+(defun cashweaver/contacts--get-birthday-time ()
+  "Get emacs time representation of the contact's birthday."
+  (org-time-string-to-time
+   (cashweaver/contacts--get-prop
+    cashweaver/contacts--birthday-prop)))
+
+(cl-defun cashweaver/contacts--create-birthday-reminders (&optional advance-notice-days)
+  "Create the following birthday reminders:
+
+1. Annually on the person's birthday
+2. Annually ADVANCE-NOTICE-DAYS before the person's birthday"
+  (when (and (cashweaver/contacts-file-p)
+             (cashweaver/contacts--has-prop-p cashweaver/contacts--birthday-prop))
+    (let* ((birth-time (cashweaver/contacts--get-birthday-time))
+           (contact-name (cashweaver/contacts--get-name))
+           (birthday-heading-text (s-lex-format
+                                   "${contact-name}'s birthday"))
+           (advance-notice-days (or advance-notice-days
+                                    30))
+           (upcoming-birthday-heading-text (s-lex-format
+                                            "${contact-name}'s birthday in ${advance-notice-days} days")))
+      (unless (cashweaver/contacts--heading-exists-p upcoming-birthday-heading-text)
+        (let* ((reminder-time (cashweaver/contacts--get-next-annual-time
+                               (time-subtract birth-time
+                                              (days-to-time
+                                               advance-notice-days)))))
+          (cashweaver/contacts-create-reminder
+           upcoming-birthday-heading-text
+           reminder-time
+           "++1y")))
+
+      (unless (cashweaver/contacts--heading-exists-p birthday-heading-text)
+        (let* ((reminder-time (cashweaver/contacts--get-next-annual-time
+                               birth-time)))
+          (cashweaver/contacts-create-reminder
+           birthday-heading-text
+           reminder-time
+           "++1y"))))))
 
 (cl-defun cashweaver/contacts--get-name (&optional path)
   (let ((path
@@ -732,10 +794,6 @@ Time defaults to `(current-time)'."
           (org-collect-keywords '("TITLE"))
         (`(("TITLE" . ,val))
          (car val))))))
-
-(defcustom cashweaver/contacts-field-birthday
-  "BIRTHDAY"
-  "Birthday field used in contact properties.")
 
 (defun cashweaver/contacts-aniversaries (contact-file-directory &optional field)
   "Compute FIELD anniversaries for each contact.
@@ -784,6 +842,76 @@ Based on `org-contacts-anniversaries'."
   :custom
   (org-download-heading-lvl nil))
 
+(defun cashweaver/org-fc-review-pause ()
+  (widen)
+  (global-hide-mode-line-mode -1)
+  (ignore-errors
+    (doom/reset-font-size)))
+
+(defun cashweaver/org-fc--before-setup ()
+  (setq
+   org-format-latex-options '(:foreground default
+                              :background default
+                              :scale 5.0
+                              :html-foreground "Black"
+                              :html-background "Transparent"
+                              :html-scale 1.0
+                              :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+  (ignore-errors
+    (doom/reset-font-size))
+  (global-hide-mode-line-mode)
+  (doom/increase-font-size 2))
+
+(defun cashweaver/org-fc--before-review ()
+  ;; (writegood-mode)
+  ;; (writeroom--enable)
+  )
+
+(defun cashweaver/org-fc--after-review ()
+  ;;(writegood-mode)
+  ;; (writeroom--disable)
+  (setq
+   org-format-latex-options '(:foreground default
+                              :background default
+                              :scale 1.5
+                              :html-foreground "Black"
+                              :html-background "Transparent"
+                              :html-scale 1.0
+                              :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+  (ignore-errors
+    (doom/reset-font-size)))
+
+(defun cashweaver/org-fc--after-flip ()
+  (evil-open-fold-rec)
+  (org-map-entries
+   (lambda ()
+     (org-latex-preview 4))
+   ;; match
+   nil
+   ;; scope
+   'tree))
+
+(defun cashweaver/org-fc-review-all ()
+  "Review everything except reading flashcards."
+  (interactive)
+  (org-fc-review '(:paths all
+                   :filter (not (tag "reading")))))
+
+(defun cashweaver/org-fc-review-skip-card ()
+  "Skip card and proceed to next. Based on `org-fc-review-suspend-card'."
+  (interactive)
+  ;; Remove all other positions from review session
+  (with-slots (current-item positions) org-fc-review--session
+    (let* ((card (oref current-item card))
+           (id (oref card id)))
+      (setf positions
+            (cl-remove-if
+             (lambda (pos)
+               (string= id (oref (oref pos card) id)))
+             positions))))
+  (org-fc-review-reset)
+  (org-fc-review-next-position))
+
 (use-package! org-fc
   :after org
   :custom
@@ -806,7 +934,8 @@ Based on `org-contacts-anniversaries'."
      (define-key map (kbd "q") 'org-fc-review-quit)
      (define-key map (kbd "e") 'org-fc-review-edit)
      (define-key map (kbd "p") 'cashweaver/org-fc-review-pause)
-     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     (define-key map (kbd "s") 'cashweaver/org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
      map))
   (org-fc-review-rate-mode-map
    (let ((map (make-sparse-keymap)))
@@ -814,7 +943,8 @@ Based on `org-contacts-anniversaries'."
      (define-key map (kbd "1") 'org-fc-review-rate-hard)
      (define-key map (kbd "2") 'org-fc-review-rate-good)
      (define-key map (kbd "3") 'org-fc-review-rate-easy)
-     (define-key map (kbd "s") 'org-fc-review-suspend-card)
+     (define-key map (kbd "s") 'cashweaver/org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
      (define-key map (kbd "e") 'org-fc-review-edit)
      (define-key map (kbd "q") 'org-fc-review-quit)
      map))
@@ -826,12 +956,15 @@ Based on `org-contacts-anniversaries'."
   ;; (org-fc-cache--enable)
   (add-to-list 'org-fc-custom-contexts
                '(reading-list . (:filter (tag "reading"))))
+  (add-to-list 'org-fc-custom-contexts
+               '(not-reading-list . (:filter (not (tag "reading")))))
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
   (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
     (kbd "n") 'org-fc-review-flip
-    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "s") 'cashweaver/org-fc-review-skip-card
+    (kbd "S") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
     (kbd "p") 'cashweaver/org-fc-review-pause
     (kbd "q") 'org-fc-review-quit)
@@ -840,51 +973,10 @@ Based on `org-contacts-anniversaries'."
     (kbd "1") 'org-fc-review-rate-hard
     (kbd "2") 'org-fc-review-rate-good
     (kbd "3") 'org-fc-review-rate-easy
-    (kbd "s") 'org-fc-review-suspend-card
+    (kbd "s") 'cashweaver/org-fc-review-skip-card
+    (kbd "S") 'org-fc-review-suspend-card
     (kbd "e") 'org-fc-review-edit
     (kbd "q") 'org-fc-review-quit)
- (defun cashweaver/org-fc-review-pause ()
-    (widen)
-    (ignore-errors
-      (doom/reset-font-size)))
-  (defun cashweaver/org-fc--before-setup ()
-    (setq
-     org-format-latex-options '(:foreground default
-                                :background default
-                                :scale 3
-                                :html-foreground "Black"
-                                :html-background "Transparent"
-                                :html-scale 1.0
-                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
-    (ignore-errors
-      (doom/reset-font-size))
-    (doom/increase-font-size 2))
-  (defun cashweaver/org-fc--before-review ()
-    ;; (writegood-mode)
-    ;; (writeroom--enable)
-    )
-  (defun cashweaver/org-fc--after-review ()
-    ;;(writegood-mode)
-    ;; (writeroom--disable)
-    (setq
-     org-format-latex-options '(:foreground default
-                                :background default
-                                :scale 1.5
-                                :html-foreground "Black"
-                                :html-background "Transparent"
-                                :html-scale 1.0
-                                :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
-    (ignore-errors
-      (doom/reset-font-size)))
-  (defun cashweaver/org-fc--after-flip ()
-    (evil-open-fold-rec)
-    (org-map-entries
-     (lambda ()
-       (org-latex-preview 4))
-     ;; match
-     nil
-     ;; scope
-     'tree))
   (add-hook! 'org-fc-before-setup-hook
              #'cashweaver/org-fc--before-setup)
   (add-hook! 'org-fc-after-flip-hook
@@ -894,15 +986,14 @@ Based on `org-contacts-anniversaries'."
   (add-hook! 'org-fc-after-review-hook
              #'cashweaver/org-fc--after-review))
 
-  (defun cashweaver/org-fc-review-all ()
-    "Review everything except reading flashcards."
-    (interactive)
-    (org-fc-review '(:paths all
-                     :filter (not (tag "reading")))))
-
 (use-package! org-mime)
 
 (use-package! org-ql)
+
+(use-package! vulpea)
+
+(use-package! doct-org-roam
+  :after doct)
 
 (when (not (cashweaver/is-work-cloudtop-p))
   (use-package! ox-hugo
@@ -1615,15 +1706,20 @@ Reference: https://emacs.stackexchange.com/a/43985"
                                  ((alltodo
                                    ""
                                    ((org-agenda-overriding-header "")
-                                    (org-agenda-files
-                                     (let ((org-roam-directory
-                                            cashweaver/roam-dir-path))
-                                       (seq-difference
-                                        (org-roam-list-files)
-                                        `(,(s-lex-format
-                                            "${org-roam-directory}/unread.org")
-                                          ,(s-lex-format
-                                            "${org-roam-directory}/todos.org")))))
+                                    ;; Speed up
+                                    (org-agenda-dim-blocked-tasks nil)
+                                    (org-agenda-inhibit-startup t)
+                                    (org-agenda-use-tag-inheritance nil)
+                                    (org-agenda-ignore-properties '(effort appt category stats))
+                                    (org-agenda-files (let* ((org-roam-directory "/home/cashweaver/proj/notes")
+                                                            (files-to-ignore `(,(s-lex-format "${org-roam-directory}/unread.org")
+                                                                               ,(s-lex-format "${org-roam-directory}/unread2.org")
+                                                                               ,(s-lex-format "${org-roam-directory}/unread3.org")
+                                                                               ,(s-lex-format "${org-roam-directory}/unread4.org")
+                                                                               ,(s-lex-format "${org-roam-directory}/unread5.org")
+                                                                               ,(s-lex-format "${org-roam-directory}/todos.org"))))
+                                                        (seq-difference (cashweaver/org-roam-todo-files)
+                                                                        files-to-ignore)))
                                     (org-super-agenda-groups
                                      `(,(cashweaver/org-super-agenda--group-by-priority)
                                        ;; (:name "Todos"
@@ -1637,6 +1733,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
                                     (org-agenda-overriding-header "")
                                     (org-agenda-files
                                      `(,cashweaver/roam-unread-file-path))
+                                    (org-agenda-dim-blocked-tasks nil)
                                     (org-super-agenda-groups
                                      `(
                                        (:name "essay (10)"
@@ -2121,23 +2218,82 @@ Examples (| is the pointer):
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 
-(defun cashweaver/org-hugo-export-all (directory)
+(defun cashweaver/org-hugo-export-all (&optional directory)
   "Export all hugo files in DIRECTORY."
   (interactive)
-  (let ((directory
-         (or directory
-             (concat "%s/proj/notes"
-                     cashweaver/home-dir-path)
-             (mapc (lambda (filepath)
-                     (run-function-in-file
-                      filepath
-                      'cashweaver/org-hugo-export-wim-to-md))
-                   (directory-files
-                    directory
-                    ;; full
-                    t
-                    ;; match
-                    ".org$")))))))
+  (let* ((directory (or directory
+                        (s-lex-format "${cashweaver/home-dir-path}/proj/notes")))
+         (org-roam-directory directory)
+         (files-to-ignore `(,(s-lex-format "${directory}/unread.org")
+                            ,(s-lex-format "${directory}/unread2.org")
+                            ,(s-lex-format "${directory}/unread3.org")
+                            ,(s-lex-format "${directory}/unread4.org")
+                            ,(s-lex-format "${directory}/unread5.org")
+                            ;; ,(s-lex-format "${directory}/todos.org")
+                            ))
+         (files-to-export (seq-difference
+                           (directory-files
+                            directory
+                            ;; full
+                            t
+                            ;; match
+                            ".org$")
+                           files-to-ignore))
+         ;; (files-to-export '("/usr/local/google/home/cashweaver/proj/notes/it_s_a_feature_not_a_bug.org"))
+         ;; (files-to-export (-slice files-to-export 730))
+         (count-files-to-export (length
+                                 files-to-export))
+         (seconds-per-file 4)
+         (time-estimate-minutes (/
+                                 (* seconds-per-file
+                                    count-files-to-export)
+                                 60))
+         (should-run (y-or-n-p (s-lex-format
+                                "Found ${count-files-to-export} nodes in ${directory}. Export estimate: ${time-estimate-minutes} minutes."))))
+    (when should-run
+      (let* ((progress-reporter (make-progress-reporter "Exporting roam notes"
+                                                        0
+                                                        (length files-to-export)))
+             (start-time (current-time))
+             (org-id-extra-files (org-roam-list-files))
+             (i 0))
+        ;; Speed up the export
+        (remove-hook! 'org-mode-hook #'org-fancy-priorities-mode)
+        (advice-add 'org-id-find :override 'org-roam-id-find)
+        (memoize 'citeproc-hash-itemgetter-from-any)
+        (memoize 'org-roam-node-id)
+        (memoize 'org-roam-node-file)
+
+        (save-excursion
+          (mapc
+           (lambda (filepath)
+             (let ((inner-start-time (current-time))
+                   (inhibit-message t))
+               (message "cashweaver/org-hugo-export-all (%d/%d) exporting [%s]"
+                        (1+ i)
+                        count-files-to-export
+                        filepath)
+               (with-current-buffer (find-file-noselect filepath)
+                 (org-hugo-export-to-md))
+               (message "cashweaver/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+                        (1+ i)
+                        count-files-to-export
+                        filepath
+                        (float-time (time-since inner-start-time))))
+             (progress-reporter-update progress-reporter
+                                       i)
+             (setq i (1+ i)))
+           files-to-export))
+        (progress-reporter-done progress-reporter)
+
+        ;; Remove speed-up changes
+        (add-hook! 'org-mode-hook #'org-fancy-priorities-mode)
+        (advice-remove 'org-id-find 'org-roam-id-find)
+        (memoize-restore 'citeproc-hash-itemgetter-from-any)
+        (memoize-restore 'org-roam-node-id)
+        (memoize-restore 'org-roam-node-file)
+
+        (message "cashweaver/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))
 
 (defun cashweaver/org-mode--split-tags-to-list (tags-as-string)
   "Strip the wrapping ':' from TAG; if present."
@@ -2233,6 +2389,50 @@ Reference: https://superuser.com/a/604264"
 
 (use-package! ol-notmuch
   :after org)
+
+(after! doct-org-roam
+  (setq
+   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+   ;; and specifying the tag with a variable, because this didn't produce the right output.
+   ;; I didn't have time to dive in an understand why.
+   org-roam-capture-templates (doct-org-roam `((:group "org-roam"
+                                                :type plain
+                                                :template "%?"
+                                                :file "${slug}.org"
+                                                :unnarrowed t
+                                                :children (("Concept"
+                                                            :keys "c"
+                                                            :head ("#+title: ${title}"
+                                                                   "#+author: Cash Prokop-Weaver"
+                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                   "#+filetags: :concept:"))
+                                                           ("Person"
+                                                            :keys "p"
+                                                            :head ("#+title: ${title}"
+                                                                   "#+author: Cash Prokop-Weaver"
+                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                   "#+filetags: :person:"))
+                                                           ("Verse"
+                                                            :keys "v"
+                                                            :head ("#+title: ${title}"
+                                                                   "#+author: Cash Prokop-Weaver"
+                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                   "#+filetags: :verse:"))
+                                                           ("Quote"
+                                                            :keys "u"
+                                                            :head ("#+title: ${title}"
+                                                                   "#+author: Cash Prokop-Weaver"
+                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                   "#+filetags: :quote:"))
+                                                           ("Recipe"
+                                                            :keys "r"
+                                                            :head ("#+title: ${title}"
+                                                                   "#+author: Cash Prokop-Weaver"
+                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                   "#+filetags: %{filetags}"
+                                                                   ""
+                                                                   "* TODO [#2] Ingredients"
+                                                                   "* TODO [#2] Steps"))))))))
 
 (defun cashweaver/org-set-last-modified ()
   (interactive)
@@ -2697,50 +2897,17 @@ Work in progress"
   "Add #+print_bibiliography to the current buffer."
   (interactive)
   (when (and (org-roam-file-p)
-             (not
-              (member
-               (buffer-file-name)
-               cashweaver/org-roam--file-path-exceptions-to-add-bibliography))
+             (not (member (buffer-file-name)
+                          cashweaver/org-roam--file-path-exceptions-to-add-bibliography))
              (cashweaver/citation-present-in-buffer-p))
-    (let* ((skip-if-present
-            (or skip-if-present
-                t))
-           (bibliography-option
-            "#+print_bibliography:")
-           (bibliography-present-in-buffer
-            (save-excursion
-              (goto-char
-               (point-min))
-              (search-forward
-               bibliography-option
-               ;; bound
-               nil
-               ;; noerror
-               t))))
-      (unless (and skip-if-present
-                   bibliography-present-in-buffer)
-        (save-excursion
-          (goto-char
-           (point-min))
-          (cond
-           ((search-forward
-             "Anki :noexport:"
-             ;; bound
-             nil
-             ;; noerror
-             t)
-            (previous-line)
-            (end-of-line)
-            (newline))
-           (t
-            (goto-char
-             (point-max))))
-          (insert
-           bibliography-option))))))
+    (delete-matching-lines "\s*#\\+print_bibliography:$")
+    (save-excursion
+      (goto-char (point-max))
+      (insert "#+print_bibliography:"))))
 
-(defcustom cashweaver/org-roam--file-path-exceptions-to-add-anki
+(defcustom cashweaver/org-roam--file-path-exceptions-to-add-flashcards
   '()
-  "File paths which will not have a bibliography added by `cashweaver/org-roam-add-anki'.")
+  "File paths which won't hold flashcards.")
 
 (defun cashweaver/anki-available-p ()
   (condition-case error
@@ -2762,43 +2929,39 @@ Work in progress"
 (defun cashweaver/org-roam-add-flashcards (&optional skip-if-present)
   "Add flashcard heading to the current buffer."
   (interactive)
-  (when (cashweaver/anki-available-p)
-    (let ((skip-if-present (or skip-if-present
-                               t))
-          (flashcard-header-regexp (rx "*"
-                                       (or " TODO"
-                                           "")
-                                       (or (and " \[#"
-                                                (any "0" "1" "2" "3" "4")
-                                                "\]")
-                                           "")
-                                       " Flashcards")
-                                   )
-          (is-valid-file (and (org-roam-file-p)
-                              (not (member (buffer-file-name)
-                                           cashweaver/org-roam--file-path-exceptions-to-add-anki)))))
-      (when is-valid-file
-        (let* ((flashcard-present-in-buffer (save-excursion
-                                         (goto-char (point-min))
-                                         (re-search-forward flashcard-header-regexp
-                                                            ;; bound
-                                                            nil
-                                                            ;; noerror
-                                                            t))))
-          (unless (and skip-if-present
-                       flashcard-present-in-buffer)
-            (save-excursion
-              (goto-char (point-max))
-              (org-insert-heading
-               ;; arg
-               nil
-               ;; invisible-ok
-               t
-               ;; top
-               t
-               )
-              (insert "TODO [#2] Flashcards")
-              (org-set-tags '("noexport")))))))))
+  (let ((skip-if-present (or skip-if-present
+                             t))
+        (flashcard-header-regexp (rx "*"
+                                     (or " TODO"
+                                         "")
+                                     (or (and " \[#"
+                                              (any "0" "1" "2" "3" "4")
+                                              "\]")
+                                         "")
+                                     " Flashcards"))
+        (is-valid-file (and (org-roam-file-p)
+                            (not (member (buffer-file-name)
+                                         cashweaver/org-roam--file-path-exceptions-to-add-flashcards)))))
+    (when is-valid-file
+      (let* ((flashcard-present-in-buffer (save-excursion
+                                            (goto-char (point-min))
+                                            (re-search-forward flashcard-header-regexp
+                                                               ;; bound
+                                                               nil
+                                                               ;; noerror
+                                                               t))))
+        (unless (and skip-if-present
+                     flashcard-present-in-buffer)
+          (save-excursion
+            (goto-char (point-max))
+            (org-insert-heading
+             ;; arg
+             nil
+             ;; invisible-ok
+             t
+             ;; top
+             t)
+            (insert "TODO [#2] Flashcards")))))))
 
 (defun run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
@@ -2808,18 +2971,6 @@ Work in progress"
       (apply function arguments)
       (write-file filepath)
       (kill-buffer (current-buffer)))))
-
-(defun cashweaver/org-hugo-export-all (directory)
-  (mapc (lambda (filepath)
-          (run-function-in-file
-           filepath
-           'cashweaver/org-hugo-export-wim-to-md))
-        (directory-files
-         directory
-         ;; full
-         t
-         ;; match
-         ".org$")))
 
 (defun cashweaver/org-roam-set-filetag ()
   "Set the filetag option based on org-roam tags."
@@ -2958,6 +3109,79 @@ This is an internal function."
       (cashweaver/org-hugo-linkify-mathjax cashweaver/org-hugo--mathjax-post-map)
       (save-buffer))))
 
+(defun org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
+  "Read an `org-roam-node', returning its id.
+
+All args are passed to `org-roam-node-read'."
+  (concat
+   "id:"
+   (org-roam-node-id
+    (org-roam-node-read
+     initial-input filter-fn sort-fn require-match prompt))))
+
+(org-link-set-parameters "id" :complete #'org-roam-id-complete)
+
+(defun cashweaver/buffer-has-todo-p ()
+  "Return non-nil if current buffer has any todo entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks."
+  (seq-find                                 ; (3)
+   (lambda (type)
+     (eq type 'todo))
+   (org-element-map                         ; (2)
+       (org-element-parse-buffer 'headline) ; (1)
+       'headline
+     (lambda (h)
+       (org-element-property :todo-type h)))))
+
+(defun cashweaver/org-roam-update-todo-tag ()
+    "Update HAS_TODO tag in the current buffer."
+    (when (and (not (active-minibuffer-window))
+               (vulpea-buffer-p))
+      (save-excursion
+        (goto-char (point-min))
+        (let* ((tags (vulpea-buffer-tags-get))
+               (original-tags tags))
+          (if (cashweaver/buffer-has-todo-p)
+              (setq tags (cons "has_todo" tags))
+            (setq tags (remove "has_todo" tags)))
+
+          ;; cleanup duplicates
+          (setq tags (seq-uniq tags))
+
+          ;; update tags if changed
+          (when (or (seq-difference tags original-tags)
+                    (seq-difference original-tags tags))
+            (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p
+        (expand-file-name (file-name-as-directory org-roam-directory))
+        (file-name-directory buffer-file-name))))
+
+(defun cashweaver/org-roam-todo-files ()
+    "Return a list of note files containing 'has_todo tag." ;
+    (seq-uniq
+     (seq-map
+      #'car
+      (org-roam-db-query
+       [:select [nodes:file]
+        :from tags
+        :left-join nodes
+        :on (= tags:node-id nodes:id)
+        :where (like tag (quote "%\"has_todo\"%"))]))))
+
+(defun vulpea-agenda-files-update (&rest _)
+  "Update the value of `org-agenda-files'."
+  (setq org-agenda-files (cashweaver/org-roam-todo-files)))
+
+(add-hook 'find-file-hook #'cashweaver/org-roam-update-todo-tag)
+(add-hook 'before-save-hook #'cashweaver/org-roam-update-todo-tag)
+
 (use-package! websocket
   :after org-roam)
 
@@ -2972,6 +3196,31 @@ This is an internal function."
         org-roam-ui-follow t
         org-roam-ui-update-on-save t
         org-roam-ui-open-on-start t))
+
+(defun cashpw/org-export-preprocessor (backend)
+  (let* ((current-node (org-roam-node-at-point))
+         (current-node-file (org-roam-node-file current-node))
+         (-compare-fn (lambda (a b)
+                        (equal (org-roam-node-id (org-roam-backlink-source-node a))
+                               (org-roam-node-id (org-roam-backlink-source-node b)))))
+         (backlinks (-uniq (org-roam-backlinks-get current-node)))
+         (backlinks-as-string (--reduce-from
+                               (let* ((source-node (org-roam-backlink-source-node it))
+                                      (id (org-roam-node-id source-node))
+                                      (file (org-roam-node-file source-node))
+                                      (title (org-roam-node-title source-node)))
+                                 (if (equal file current-node-file)
+                                     acc
+                                   (concat acc
+                                           (s-lex-format " - [[id:${id}][${title}]]\n"))))
+                               ""
+                               backlinks)))
+    (unless (string= backlinks-as-string "")
+      (save-excursion
+      	(goto-char (point-max))
+      	(insert (concat "\n* Backlinks\n"
+                        backlinks-as-string))))))
+(add-hook 'org-export-before-processing-hook 'cashpw/org-export-preprocessor)
 
 (defun cashweaver/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -3057,46 +3306,46 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
      :n "T" (cmd! (cashweaver/org-mode-insert-heading-for-today nil t t))
      :n "w" (cmd! (cashweaver/org-mode-insert-heading-for-this-week nil)))
     (:prefix ("S")
-     (:prefix ("." . "today")
-      :desc "at" :n "a" #'cashweaver/org--schedule-today-at)
-     (:prefix ("d" . "day")
-      :desc "Monday" :n "m" )
-     (:prefix ("h" . "hour")
-      (:prefix ("0" . "0?:??")
-       :desc "00:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "00:00" "00:45"))
-       :desc "01:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
-       :desc "02:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "02:00" "02:45"))
-       :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
-       :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
-       :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
-       :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
-       :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
-       :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
-       :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))
-      (:prefix ("1" . "1?:??")
-       :desc "01:00" :n "RET" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
-       :desc "10:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "10:00" "10:45"))
-       :desc "11:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "11:00" "11:45"))
-       :desc "12:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "12:00" "12:45"))
-       :desc "13:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "13:00" "13:45"))
-       :desc "14:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "14:00" "14:45"))
-       :desc "15:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "15:00" "15:45"))
-       :desc "16:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "16:00" "16:45"))
-       :desc "17:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "17:00" "17:45"))
-       :desc "18:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "18:00" "18:45"))
-       :desc "19:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "19:00" "19:45")))
-      (:prefix ("2" . "2?:??")
-       :desc "20:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "20:00" "20:45"))
-       :desc "21:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "21:00" "21:45"))
-       :desc "22:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "22:00" "22:45"))
-       :desc "23:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "23:00" "23:45")))
-      :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
-      :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
-      :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
-      :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
-      :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
-      :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
-      :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))))
+             (:prefix ("." . "today")
+              :desc "at" :n "a" #'cashweaver/org--schedule-today-at)
+             (:prefix ("d" . "day")
+              :desc "Monday" :n "m" )
+             (:prefix ("h" . "hour")
+                      (:prefix ("0" . "0?:??")
+                       :desc "00:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "00:00" "00:45"))
+                       :desc "01:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
+                       :desc "02:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "02:00" "02:45"))
+                       :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
+                       :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
+                       :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
+                       :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
+                       :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
+                       :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
+                       :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))
+                      (:prefix ("1" . "1?:??")
+                       :desc "01:00" :n "RET" (cmd! (cashweaver/org-schedule-today-from-to "01:00" "01:45"))
+                       :desc "10:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "10:00" "10:45"))
+                       :desc "11:00" :n "1" (cmd! (cashweaver/org-schedule-today-from-to "11:00" "11:45"))
+                       :desc "12:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "12:00" "12:45"))
+                       :desc "13:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "13:00" "13:45"))
+                       :desc "14:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "14:00" "14:45"))
+                       :desc "15:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "15:00" "15:45"))
+                       :desc "16:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "16:00" "16:45"))
+                       :desc "17:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "17:00" "17:45"))
+                       :desc "18:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "18:00" "18:45"))
+                       :desc "19:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "19:00" "19:45")))
+                      (:prefix ("2" . "2?:??")
+                       :desc "20:00" :n "0" (cmd! (cashweaver/org-schedule-today-from-to "20:00" "20:45"))
+                       :desc "21:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "21:00" "21:45"))
+                       :desc "22:00" :n "2" (cmd! (cashweaver/org-schedule-today-from-to "22:00" "22:45"))
+                       :desc "23:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "23:00" "23:45")))
+                      :desc "03:00" :n "3" (cmd! (cashweaver/org-schedule-today-from-to "03:00" "03:45"))
+                      :desc "04:00" :n "4" (cmd! (cashweaver/org-schedule-today-from-to "04:00" "04:45"))
+                      :desc "05:00" :n "5" (cmd! (cashweaver/org-schedule-today-from-to "05:00" "05:45"))
+                      :desc "06:00" :n "6" (cmd! (cashweaver/org-schedule-today-from-to "06:00" "06:45"))
+                      :desc "07:00" :n "7" (cmd! (cashweaver/org-schedule-today-from-to "07:00" "07:45"))
+                      :desc "08:00" :n "8" (cmd! (cashweaver/org-schedule-today-from-to "08:00" "08:45"))
+                      :desc "09:00" :n "9" (cmd! (cashweaver/org-schedule-today-from-to "09:00" "09:45")))))
 
    (:prefix ("D")
     :n "R" #'org-download-rename-last-file
@@ -3110,13 +3359,13 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     )
 
    (:prefix ("l")
-    (:prefix ("T" . "transclusion")
-     :n "a" #'org-transclusion-add
-     :n "A" #'org-transclusion-add-all
-     :n "i" #'org-transclusion-make-from-link
-     :n "l" #'org-transclusion-live-sync-start
-     :n "r" #'org-transclusion-remove
-     :n "R" #'org-transclusion-remove-all))
+            (:prefix ("T" . "transclusion")
+             :n "a" #'org-transclusion-add
+             :n "A" #'org-transclusion-add-all
+             :n "i" #'org-transclusion-make-from-link
+             :n "l" #'org-transclusion-live-sync-start
+             :n "r" #'org-transclusion-remove
+             :n "R" #'org-transclusion-remove-all))
 
    (:prefix ("L" . "Latex")
     :desc "toggle preview" :n "t" #'cashweaver/latex-toggle-preview)
@@ -3415,3 +3664,42 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
                     (let* ((id (org-element-property :path l))
                            (file (org-id-find-id-file id)))
                       (and file (cons id (file-relative-name file)))))))))))
+
+(use-package! org-capture-ref)
+(use-package! asoc)
+
+(let ((templates (doct '( :group "Browser link"
+                          :type entry
+                          :file "~/proj/notes/bibliography.org"
+                          :fetch-bibtex (lambda () (org-capture-ref-process-capture)) ; this must run first
+                          :bibtex (lambda () (org-capture-ref-get-bibtex-field :bibtex-string))
+                          :extra (lambda () (if (org-capture-ref-get-bibtex-field :journal)
+                                                (s-join "\n"
+                                                        '("- [ ] download and attach pdf"
+                                                          "- [ ] [[elisp:org-attach-open][read paper capturing interesting references]]"
+                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.semanticscholar.org/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check citing articles]]"
+                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.connectedpapers.com/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check related articles]]"
+                                                          "- [ ] check if bibtex entry has missing fields"))
+                                              ""))
+                          :org-entry (lambda () (org-capture-ref-get-org-entry))
+                          :template
+                          ("%{fetch-bibtex}* TODO %?%{space}%{org-entry}"
+                           "%{extra}"
+                           "#+begin_src bibtex :tangle bibliography.bib"
+                           "%{bibtex}"
+                           "#+end_src")
+                          :children (("Interactive link"
+                                      :keys "b"
+                                      :space " "
+                                      )
+                                     ("Silent link"
+                                      :keys "B"
+                                      :space ""
+                                      :immediate-finish t))))))
+  (dolist (template templates)
+    (asoc-put! org-capture-templates
+               (car template)
+               (cdr  template)
+               'replace)))
+
+(use-package! memoize)

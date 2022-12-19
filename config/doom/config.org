@@ -75,7 +75,7 @@ Additionally, variables and functions which are in a "library"/group are prefixe
   "Path to home directory on my personal machine.")
 
 (defvar cashweaver/home-dir-path-work
-  "/usr/local/google/home/cashweaver"
+  "/home/cashweaver"
   "Path to home directory on my work machine(s).")
 
 (defvar cashweaver/home-dir-path-work-cloudtop
@@ -108,6 +108,9 @@ Additionally, variables and functions which are in a "library"/group are prefixe
    "${cashweaver/config-dir-path}/doom")
   "Full path to Emacs configuration files.")
 #+end_src
+
+#+RESULTS: cashweaver/home-dir
+: cashweaver/emacs-config-dir-path
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashweaver/home-dir>>

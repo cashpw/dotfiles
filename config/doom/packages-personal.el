@@ -4,6 +4,8 @@
   :recipe (:host github
            :repo "Fuco1/free-keys"))
 
+(package! titlecase)
+
 (package! org-wild-notifier)
 
 ;; -*- no-byte-compile: t; -*-
@@ -119,7 +121,13 @@
 
 (package! org-ql)
 
+(package! vulpea)
+
 (unpin! org-roam)
+
+(package! doct-org-roam
+  :recipe (:host github
+           :repo "cashpw/doct-org-roam"))
 
 (package! org-roam-ui)
 
@@ -171,3 +179,15 @@
 (package! electric-case
   :recipe (:host github
            :repo "zk-phi/electric-case"))
+
+(package! org-capture-ref
+  :recipe (:host github
+           :repo "yantar92/org-capture-ref"))
+
+(package! asoc
+  :recipe (:host github
+           :repo "troyp/asoc.el"))
+
+(package! memoize
+  :recipe (:host github
+           :repo "skeeto/emacs-memoize"))
