@@ -1,5 +1,7 @@
 (package! command-log-mode)
 
+(package! centered-cursor-mode)
+
 (package! free-keys
   :recipe (:host github
            :repo "Fuco1/free-keys"))
@@ -59,7 +61,11 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
-(package! svg-tag-mode)
+(package! doom-modeline :pin "918730eff72e")
+
+;; (package! svg-tag-mode)
+
+(package! nerd-icons)
 
 (package! gnus-alias)
 
@@ -71,9 +77,43 @@
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
 
-(package! anki-editor
+;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
+;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
+(package! org
   :recipe (:host github
-           :repo "cashweaver/anki-editor"))
+           ;; REVIEW: I intentionally avoid git.savannah.gnu.org because of SSL
+           ;;   issues (see #5655), uptime issues, download time, and lack of
+           ;;   shallow clone support.
+           :repo "emacs-straight/org-mode"
+           :files (:defaults "etc")
+           :depth 1
+           ;; HACK: Org has a post-install step that generates org-version.el
+           ;;   and org-loaddefs.el, but Straight doesn't invoke this step, and
+           ;;   the former doesn't work if the Org repo is a shallow clone.
+           ;;   Rather than impose the network burden of a full clone (and other
+           ;;   redundant work in Org's makefile), I'd rather fake these files
+           ;;   instead. Besides, Straight already produces a org-autoloads.el,
+           ;;   so org-loaddefs.el isn't needed.
+           :build t
+           :pre-build
+           (progn
+             (with-temp-file "org-loaddefs.el")
+             (with-temp-file "org-version.el"
+               (let ((version
+                      (with-temp-buffer
+                        (insert-file-contents (doom-path "lisp/org.el") nil 0 1024)
+                        (if (re-search-forward "^;; Version: \\([^\n-]+\\)" nil t)
+                            (match-string-no-properties 1)
+                          "Unknown"))))
+                 (insert (format "(defun org-release () %S)\n" version)
+                         (format "(defun org-git-version (&rest _) \"%s-??-%s\")\n"
+                                 version (cdr (doom-call-process "git" "rev-parse" "--short" "HEAD")))
+                         "(provide 'org-version)\n")))))
+  :pin "fe92a3cedba541482d5954eacb2b13e6f57a39c4")
+(package! org-contrib
+  :recipe (:host github
+           :repo "emacsmirror/org-contrib")
+  :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
 
 (package! citar-org-roam
   :recipe (:host github
@@ -88,32 +128,32 @@
 
 (package! orgtbl-aggregate)
 
+(package! org-ai)
+
 (package! org-download)
 
 (package! org-fc
   :recipe (:host github
            ;; :repo "l3kn/org-fc"
-           :repo "cashweaver/org-fc"
-           :branch "develop"
+           :repo "cashpw/org-fc"
+           :branch "feat/classes"
            :files (:defaults "awk" "demo.org")))
 
-(package! org-gcal
-  :recipe (:host github
-           :repo "kidd/org-gcal.el"))
+;; org-tempo is provided by org-mode
 
-(package! org-gtasks
-  :recipe (:host github
-           :repo "JulienMasson/org-gtasks"))
+(unpin! org-gcal)
+
+;; (package! org-gtasks
+;;   :recipe (:host github
+;;            :repo "JulienMasson/org-gtasks"))
 
 (package! org-mime)
 
 (package! org-noter
   :recipe (:host github
-           :repo "cashweaver/org-noter"))
+           :repo "cashpw/org-noter"))
 
 (package! ol-notmuch)
-
-;;(package! org-protocol)
 
 (package! org-protocol-capture-html
   :recipe (:host github
@@ -131,40 +171,58 @@
 
 (package! org-roam-ui)
 
+(package! org-superstar
+  :disable t)
+
 (package! org-super-agenda)
 
 (package! org-transclusion)
 
 (package! org-vcard)
 
-(when (not (cashweaver/is-work-cloudtop-p))
+(when (not (cashpw/is-work-cloudtop-p))
   (package! ox-hugo))
 
 (package! ox-pandoc)
 
+(after! org
+  (setq
+   ;; Prefer IDs to filenames+headers when creating links.
+   ;; Headers can change, filenames can change, the IDs won't change
+   ;; and can move to follow the relevant content.
+   org-id-link-to-org-use-id t))
+
 (package! org-link-base
   :recipe (:host github
-           :repo "cashweaver/org-link-base"))
+           :repo "cashpw/org-link-base"))
 
 (package! org-link-isbn
   :recipe (:host github
-           :repo "cashweaver/org-link-isbn"))
+           :repo "cashpw/org-link-isbn"))
 
 (package! org-link-instagram
   :recipe (:host github
-           :repo "cashweaver/org-link-instagram"))
+           :repo "cashpw/org-link-instagram"))
 
 (package! org-link-twitter
   :recipe (:host github
-           :repo "cashweaver/org-link-twitter"))
+           :repo "cashpw/org-link-twitter"))
 
 (package! org-link-google-doc
   :recipe (:host github
-           :repo "cashweaver/org-link-google-doc"))
+           :repo "cashpw/org-link-google-doc"))
 
 (package! org-link-google-sheet
   :recipe (:host github
-           :repo "cashweaver/org-link-google-sheet"))
+           :repo "cashpw/org-link-google-sheet"))
+
+(package! org-link-amazon
+  :recipe (:host github
+           :repo "cashpw/org-link-amazon"))
+
+(package! org-link-reddit
+  :recipe (:host github
+           :repo "cashpw/org-link-reddit"))
 
 (package! pdf-tools)
 

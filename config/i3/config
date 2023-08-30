@@ -37,7 +37,7 @@ bindsym $mod+Shift+r restart
 
 # start a terminal
 bindsym $mod+Return exec rxvt-unicode
-bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "ssh cashweaver.c.googlers.com"
+bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "gmosh cashweaver.c.googlers.com"
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -152,7 +152,8 @@ workspace 0 output $monitor_a
 bar {
   font pango:Source Code Pro 8
 
-  status_command i3blocks
+  #status_command i3blocks
+  status_command SCRIPT_DIR=~/.config/i3blocks i3blocks
 }
 hide_edge_borders both
 

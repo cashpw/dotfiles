@@ -106,7 +106,7 @@ fi
 
 # doomemacs
 # https://github.com/doomemacs/doomemacs
-export PATH="$HOME/.emacs.d/bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$PATH"
 export DOOMDIR="$HOME/.config/doom"
 
 # Provide vim-like keybindings on the command line
@@ -132,6 +132,9 @@ fi
 # Use nvim as the default editor
 export EDITOR='nvim'
 export VISUAL='nvim'
+
+# Cask
+export PATH="/home/cashweaver/.cask/bin:$PATH"
 
 if is_work_laptop; then
   /usr/bin/setxkbmap -option "ctrl:nocaps"

@@ -10,3 +10,6 @@
 [submodule "scripts/local-open"]
 	path = scripts/local-open
 	url = https://github.com/cashweaver/local-open
+[submodule "config/i3blocks"]
+	path = config/i3blocks
+	url = git@github.com:cashpw/i3blocks-contrib.git
