@@ -15,8 +15,8 @@ set $mod Mod4
 # │     │  │     │ │     │
 # └─────┘  └─────┘ └─────┘
 
-set $monitor_a DP-2
-set $monitor_b TwoPortrait
+#set $monitor_a HDMI-1
+#set $monitor_b TwoPortrait
 
 ################################################################################
 #         Look and Feel
@@ -134,16 +134,16 @@ bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
 # assign workspaces to monitors 
-workspace 1 output $monitor_b
-workspace 2 output $monitor_b
-workspace 3 output $monitor_b
-workspace 4 output $monitor_b
-workspace 5 output $monitor_b
-workspace 6 output $monitor_b
-workspace 7 output $monitor_a
-workspace 8 output $monitor_a
-workspace 9 output $monitor_a
-workspace 0 output $monitor_a
+#workspace 1 output $monitor_b
+#workspace 2 output $monitor_b
+#workspace 3 output $monitor_b
+#workspace 4 output $monitor_b
+#workspace 5 output $monitor_b
+#workspace 6 output $monitor_b
+#workspace 7 output $monitor_a
+#workspace 8 output $monitor_a
+#workspace 9 output $monitor_a
+#workspace 0 output $monitor_a
 
 ################################################################################
 #         Status Bar
@@ -162,8 +162,8 @@ hide_edge_borders both
 ################################################################################
 
 # Open development configuration and browser
-#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; exec gnome-terminal; workspace 0; exec chromium-browser; exec redshift -O 3000'
-#exec --no-startup-id i3-msg 'workspace 1; exec rxvt-unicode; workspace 0; exec chromium-browser; exec redshift -O 3000'
+#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; gnome-terminal; workspace 0; exec chromium-browser; redshift -O 3000'
+exec --no-startup-id i3-msg 'workspace 1; rxvt-unicode; workspace 0; exec chromium-browser; redshift -O 3000'
 #exec --no-startup-id redshift -O 3000
 
 ################################################################################
@@ -238,11 +238,10 @@ mode "$mode_brightness" {
 bindsym $mod+b mode "$mode_brightness"
 
 # Screenshots
-set $mode_screenshot Screenshot: (s) snipit, (S) save, (c) clipboard
+set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
 mode "$mode_screenshot" {
-  bindsym s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/snipit.sh, mode "default"
-  bindsym Shift+s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/save.sh, mode "default"
-  bindsym c exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/clipboard.sh, mode "default"
+  bindsym s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select.sh, mode "default"
+  bindsym c exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"
@@ -294,14 +293,14 @@ for_window [class=".*"] border none
 
 assign [class="Zotero"] 6
 assign [class="google-chrome"] 0
-assign [class="Firefox-esr"] 9
+#assign [class="Firefox-esr"] 0
 
 ################################################################################
 #         Keybindings
 ################################################################################
 
-#bindsym $mod+Up exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/dock.sh
-#bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/undock.sh
+bindsym $mod+Up exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/dock.sh
+bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/undock.sh
 
 ################################################################################
 #         Autolaunch

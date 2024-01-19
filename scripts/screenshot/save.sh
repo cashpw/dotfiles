@@ -7,8 +7,6 @@ source "${DIR}/config.sh"
 # Ensure save directory exists
 mkdir -p $save_dir
 
-#maim -m 10 -s "${save_dir}/$(date +%Y-%m-%d-%H-%M-%S)_screenshot.png"
+maim -m 10 -s "${save_dir}/$(date +%Y-%m-%d-%H-%M-%S)_screenshot.png"
 
 notify-send -t 3000 "Screenshot saved."
-
-snipit

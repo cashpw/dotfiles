@@ -8,7 +8,11 @@
 
 (package! titlecase)
 
-(package! org-wild-notifier)
+(package! whisper
+  :recipe (:host github
+           :repo "natrys/whisper.el"))
+
+;; (package! org-wild-notifier)
 
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages.el
@@ -61,7 +65,7 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
-(package! doom-modeline :pin "918730eff72e")
+(unpin! doom-modeline)
 
 ;; (package! svg-tag-mode)
 
@@ -115,11 +119,29 @@
            :repo "emacsmirror/org-contrib")
   :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
 
+(package! org-anki
+  :recipe (:host github
+           :repo "eyeinsky/org-anki"))
+
+(package! anki-editor
+  :recipe (:host github
+           :repo "cashpw/anki-editor"))
+
 (package! citar-org-roam
   :recipe (:host github
            :repo "emacs-citar/citar-org-roam"))
 
+(package! clocktable-by-category
+  :recipe (:host github
+           :repo "cashpw/clocktable-by-category"))
+
+(package! clocktable-by-tag
+  :recipe (:host github
+           :repo "cashpw/clocktable-by-tag"))
+
 (package! doct)
+
+(package! org-special-block-extras)
 
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
@@ -128,7 +150,7 @@
 
 (package! orgtbl-aggregate)
 
-(package! org-ai)
+;; (package! org-ai)
 
 (package! org-download)
 
@@ -142,6 +164,10 @@
 ;; org-tempo is provided by org-mode
 
 (unpin! org-gcal)
+
+(package! org-multi-clock
+  :recipe (:host gitlab
+           :repo "OlMon/org-multi-clock"))
 
 ;; (package! org-gtasks
 ;;   :recipe (:host github
@@ -176,9 +202,13 @@
 
 (package! org-super-agenda)
 
-(package! org-transclusion)
+;; (package! org-transclusion)
 
 (package! org-vcard)
+
+(package! summarize-agenda-time
+  :recipe (:host github
+           :repo "cashpw/summarize-agenda-time"))
 
 (when (not (cashpw/is-work-cloudtop-p))
   (package! ox-hugo))
@@ -249,3 +279,7 @@
 (package! memoize
   :recipe (:host github
            :repo "skeeto/emacs-memoize"))
+
+(package! org-window-habit
+  :recipe (:host github
+           :repo "colonelpanic8/org-window-habit"))

@@ -16,9 +16,9 @@
     ~/.scripts/:
       glob: true
       path: scripts/*
-    ~/.xinitrc:
     ~/.Xresources:
-    ~/.Xresources-laptop:
+    ~/.Xresources.base:
+    ~/.xinitrc:
     ~/.profile:
     ~/.profile-personal:
     ~/.bashrc:

@@ -25,11 +25,13 @@
  ;;layout            ; auie,ctsrnm is the superior home row
 
  :completion
- company           ; the ultimate code completion backend
+ (company           ; the ultimate code completion backend
+  +childframe)
  ;;helm              ; the *other* search engine for love and life
  ;;ido               ; the other *other* search engine...
  ;;ivy               ; a search engine for love and life
- vertico           ; the search engine of the future
+ (vertico           ; the search engine of the future
+  +icons)
 
  :ui
  ;;deft              ; notational velocity for Emacs
@@ -46,6 +48,9 @@
  ;;ligatures         ; ligatures and symbols to make your code pretty again
  ;;minimap           ; show a map of the code on the side
  modeline            ; snazzy, Atom-inspired modeline, plus API
+ ;; (modeline           ; snazzy, Atom-inspired modeline, plus API
+ ;;  ;; Regular modeline is slow
+ ;;  +light)
  ;;nav-flash         ; blink cursor line after big motions
  ;;neotree           ; a project drawer, like NERDTree for vim
  ophints             ; highlight the region an operation acts on
@@ -169,10 +174,11 @@
   ;; Use custom hugo depending on personal vs work environment
   ;; +hugo
   +noter
-  +pretty
+  ;; +pretty
   +roam2
   +pandoc
-  +pomodoro)
+  ;; +pomodoro
+  )
  ;;php               ; perl's insecure younger brother
  ;;plantuml          ; diagrams for confusing people more
  ;;purescript        ; javascript, but functional

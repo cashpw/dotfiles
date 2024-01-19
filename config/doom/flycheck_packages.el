@@ -10,11 +10,6 @@
   "/usr/local/google/home/cashweaver/is-cloudtop"
   "File that, when present, indicates the current machine is my Cloudtop instance.")
 
-(defun cashpw/is-personal-p ()
-  "Return true if executed on my work machine."
-  (file-directory-p
-   cashpw/path--personal-home-dir))
-
 (defun cashpw/is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p
@@ -27,20 +22,22 @@
 
 (defcustom cashpw/path--home-dir
   (cond
-   ((cashpw/is-personal-p)
-    cashpw/path--personal-home-dir)
    ((cashpw/is-work-p)
     cashpw/path--work-home-dir)
    (t
     cashpw/path--personal-home-dir))
   "Path to home directory.")
 
+(use-package! s)
+(require 's)
 (defcustom cashpw/path--config-dir
-  (format "%s/.config" cashpw/path--home-dir)
+  (s-lex-format
+   "${cashpw/path--home-dir}/.config")
   "Full path to configuration files.")
 
 (defcustom cashpw/path--emacs-config-dir
-  (format "%s/doom" cashpw/path--config-dir)
+  (s-lex-format
+   "${cashpw/path--config-dir}/doom")
   "Full path to Emacs configuration files.")
 
 (defvar cashpw/path--third-party-dir
@@ -49,6 +46,9 @@
     "/home/cashweaver/third_party")
   "Path to third-party files.")
 
-(load (format "%s/packages-personal.el" cashpw/path--emacs-config-dir))
+(load (s-lex-format
+       "${cashpw/path--emacs-config-dir}/packages-personal.el"))
+
 (when (cashpw/is-work-cloudtop-p)
-  (load (format "%s/packages-work.el" cashpw/path--emacs-config-dir)))
+  (load (s-lex-format
+         "${cashpw/path--emacs-config-dir}/packages-work.el")))

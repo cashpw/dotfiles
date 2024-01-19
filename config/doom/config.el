@@ -1,46 +1,48 @@
-(require 's)
-
-(defvar cashpw/home-dir-path-personal
+(defvar cashpw/path--personal-home-dir
   "/home/cashweaver"
   "Path to home directory on my personal machine.")
 
-(defvar cashpw/home-dir-path-work
+(defvar cashpw/path--work-home-dir
   "/usr/local/google/home/cashweaver"
   "Path to home directory on my work machine(s).")
 
-(defvar cashpw/home-dir-path-work-cloudtop
+(defvar cashpw/path--work-cloudtop-id-file
   "/usr/local/google/home/cashweaver/is-cloudtop"
   "File that, when present, indicates the current machine is my Cloudtop instance.")
+
+(defun cashpw/is-personal-p ()
+  "Return true if executed on my work machine."
+  (file-directory-p
+   cashpw/path--personal-home-dir))
 
 (defun cashpw/is-work-p ()
   "Return true if executed on my work machine."
   (file-directory-p
-   cashpw/home-dir-path-work))
+   cashpw/path--work-home-dir))
 
 (defun cashpw/is-work-cloudtop-p ()
   "Return true if executed on my work machine."
   (file-exists-p
-   cashpw/home-dir-path-work-cloudtop))
+   cashpw/path--work-cloudtop-id-file))
 
-(defvar cashpw/home-dir-path
-  (if (cashpw/is-work-cloudtop-p)
-      cashpw/home-dir-path-work
-    cashpw/home-dir-path-personal)
+(defcustom cashpw/path--home-dir
+  (cond
+   ((cashpw/is-personal-p)
+    cashpw/path--personal-home-dir)
+   ((cashpw/is-work-p)
+    cashpw/path--work-home-dir)
+   (t
+    cashpw/path--personal-home-dir))
   "Path to home directory.")
 
-(defvar cashpw/config-dir-path
-  (s-lex-format
-   "${cashpw/home-dir-path}/.config")
+(defcustom cashpw/path--config-dir
+  (format "%s/.config" cashpw/path--home-dir)
   "Full path to configuration files.")
 
-(defvar cashpw/emacs-config-dir-path
-  (s-lex-format
-   "${cashpw/config-dir-path}/doom")
+(defcustom cashpw/path--emacs-config-dir
+  (format "%s/doom" cashpw/path--config-dir)
   "Full path to Emacs configuration files.")
 
-(load (s-lex-format
-       "${cashpw/emacs-config-dir-path}/config-personal.el"))
-
+(load (format "%s/config-personal.el" cashpw/path--emacs-config-dir))
 (when (cashpw/is-work-cloudtop-p)
-  (load (s-lex-format
-         "${cashpw/emacs-config-dir-path}/config-work.el")))
+  (load (format "%s/config-work.el" cashpw/path--emacs-config-dir)))
