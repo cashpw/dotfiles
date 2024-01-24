@@ -2639,6 +2639,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
                               :html-scale 1.0
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
+  (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
 
@@ -2758,6 +2759,9 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 (use-package! org-fc-type-vocab
   :after org-fc)
 #+end_src
+
+#+RESULTS:
+: org-fc-type-vocab
 
 ***** Filters
 
@@ -4872,16 +4876,24 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                    (org-agenda-use-tag-inheritance t)
                                    (org-use-property-inheritance t)
                                    (org-agenda-span 1)
+                                   (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
                                    (org-super-agenda-groups
                                     '((:discard
                                        (:scheduled future
                                         :deadline future))
                                       (:name "Schedule"
                                        :time-grid t
-                                       :order 0)
+                                       :order 0
+                                       :transformer (replace-regexp-in-string "TODO " ""
+                                                                              (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
                                       (:name "In Progress"
                                        :todo "INPROGRESS")
-                                      (:auto-map cashpw/org-super-agenda--get-priority)
+                                      (:auto-map cashpw/org-super-agenda--get-priority
+                                       :transformer (plist-put it :items (-map
+                                                                          (lambda (line)
+                                                                            (replace-regexp-in-string "TODO " ""
+                                                                                                      (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
+                                                                          (plist-get it :items))))
                                       ;; (:name "Scheduled/Due Today"
                                       ;;  :scheduled today
                                       ;;  :deadline today)
@@ -4890,6 +4902,9 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                        (:anything))))))))
 
 #+end_src
+
+#+RESULTS:
+| agenda |   | ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks t) (org-agenda-use-tag-inheritance t) (org-use-property-inheritance t) (org-agenda-span 1) (org-agenda-scheduled-leaders '( Sched.%2dx: )) (org-super-agenda-groups '((:discard (:scheduled future :deadline future)) (:name Schedule :time-grid t :order 0 :transformer (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   it))) (:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority :transformer (plist-put it :items (-map (lambda (line) (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   line))) (plist-get it :items)))) (:discard (:anything))))) |
 
 ***** Week
 
@@ -5343,11 +5358,31 @@ items if they have an hour specification like [h]h:mm."
                                        (:discard
                                         (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
                                          :todo "PROJ"))
-                                       (:discard)
                                        (:name "Without priority"
                                         :priority>= "0")))))))
 
 #+end_src
+
+***** No priority
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ cashpw/org-agenda-view--not-scheduled `((alltodo
+                                          ""
+                                          ((org-agenda-overriding-header "")
+                                           (org-super-agenda-groups
+                                            '((;; Automatically named "Log"
+                                               :log t)
+                                              (:discard
+                                               (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                                :todo "PROJ"))
+                                              (:discard
+                                               (:scheduled t))
+                                              (:auto-category t)))))))
+
+#+end_src
+
+#+RESULTS:
+| alltodo |   | ((org-agenda-overriding-header ) (org-super-agenda-groups '((:log t) (:discard (:todo PROJ)) (:discard (:scheduled t)) (:auto-category t)))) |
 
 ***** Overdue
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -5421,10 +5456,17 @@ items if they have an hour specification like [h]h:mm."
 | agenda |   | ((org-agenda-overriding-header ) (org-super-agenda-groups '((:discard (:scheduled future :deadline future :scheduled today :deadline today)) (:auto-map (lambda (item) (-when-let* ((marker (or (get-text-property 0 'org-marker item) (get-text-property 0 'org-hd-marker))) (default-priority ?) (priority (or (cashpw/org--get-priority marker) default-priority))) (cond ((cashpw/org--scheduled-to-repeat-daily-p marker) Repeats daily) ((cashpw/org--scheduled-to-repeat-weekly-p marker) Repeats weekly) ((cashpw/org--scheduled-to-repeat-p marker) Repeats) (t z-Other))))) (:discard (:todo t))))) |
 
 ***** Set views
+:PROPERTIES:
+:ID:       bac4dcc9-2271-40e6-bc93-0e3448b5f1ca
+:END:
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
- org-agenda-custom-commands `(("p" . "Plan")
+ org-agenda-custom-commands `(("d" "Today" ,cashpw/org-agenda-view--today)
+
+                              ("o" "Overdue" ,cashpw/org-agenda-view--overdue)
+
+                              ("p" . "Plan")
                               ("pw" "Week" ,cashpw/org-agenda-view--plan--week)
 
                               ("r" . "Review")
@@ -5436,18 +5478,19 @@ items if they have an hour specification like [h]h:mm."
                               ("Rr" "Roam" ,cashpw/org-agenda-view--roam--roam)
                               ("Ru" "Unread" ,cashpw/org-agenda-view--roam--unread)
 
-                              ("d" "Today" ,cashpw/org-agenda-view--today)
-                              ("e" "Without effort" ,cashpw/org-agenda-view--no-effort)
-                              ("o" "Overdue tasks" ,cashpw/org-agenda-view--overdue)
-                              ;; ("p" "Without priority" ,cashpw/org-agenda-view--no-priority)
+                              ("-" . "Without")
+                              ("-e" "Without effort" ,cashpw/org-agenda-view--no-effort)
+                              ("-p" "Priority" ,cashpw/org-agenda-view--no-priority)
+                              ("-s" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)
+
                               ("w" "Week" ,cashpw/org-agenda-view--week)))
 #+end_src
 
 #+RESULTS:
-: ((p . Plan) (pw Week ((agenda  ((org-habit-show-habits-only-for-today nil) (org-agenda-overriding-header ) (org-agenda-span 'week) (org-agenda-show-all-dates t) (org-agenda-prefix-format '((agenda .  %i %-20(cashpw/org-agenda-category)%-12t%-5e))) (org-super-agenda-groups '((:name Schedule :time-grid t :order 0) (:auto-map cashpw/org-super-agenda--get-priority))))) (alltodo  ((org-agenda-overriding-header
-:
-:
-: TODOs) (org-super-agenda-groups '((:discard (:todo PROJ :scheduled t :deadline t)) (:auto-map cashpw/org-super-agenda--get-priority))))))) (r . Review) (rc Clock check ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-show-log 'clockcheck) (org-agenda-start-with-log-mode 'clockcheck) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:name Clockcheck :log t) (:discard (:todo t)))))))) (rl Logged ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-show-log t) (org-agenda-start-with-log-mode '(state closed clock)) (org-agenda-hide-tags-regexp (concat org-agenda-hide-tags-regexp \|ARCHIVE)) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:name Logged :log t) (:discard (:todo t)))))))) (rr Clock report ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-clockreport-mode t) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:discard (:todo t)))))))) (R . Roam) (Rr Roam ((alltodo  ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks nil) (org-agenda-inhibit-startup t) (org-agenda-use-tag-inheritance nil) (org-agenda-ignore-properties '(effort appt category stats)) (org-agenda-files (append (cashpw/org-agenda-files--notes) (cashpw/org-agenda-files--notes-private))) (org-super-agenda-groups `((:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority))))))) (Ru Unread ((alltodo  ((org-agenda-overriding-header ) (org-agenda-files (s-lex-format ${cashpw/path--notes-dir}/unread.org)) (org-agenda-dim-blocked-tasks nil) (org-super-agenda-groups `(,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 essay) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 discussion) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 book) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 link_group) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 class) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 someday) (:discard (:todo t)))))))) (d Today ((agenda  ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks t) (org-agenda-use-tag-inheritance t) (org-use-property-inheritance t) (org-agenda-span 1) (org-super-agenda-groups '((:discard (:scheduled future :deadline future)) (:name Schedule :time-grid t :order 0) (:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority) (:discard (:anything)))))))) (e Without effort ((alltodo  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:log t) (:discard (:todo PROJ)) (:name Without effort :effort< 0:01))))))) (o Overdue tasks ((agenda  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:discard (:scheduled future :deadline future :scheduled today :deadline today)) (:auto-map (lambda (item) (-when-let* ((marker (or (get-text-property 0 'org-marker item) (get-text-property 0 'org-hd-marker))) (default-priority ?) (priority (or (cashpw/org--get-priority marker) default-priority))) (cond ((cashpw/org--scheduled-to-repeat-daily-p marker) Repeats daily) ((cashpw/org--scheduled-to-repeat-weekly-p marker) Repeats weekly) ((cashpw/org--scheduled-to-repeat-p marker) Repeats) (t z-Other))))) (:discard (:todo t)))))))) (w Week ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 7) (org-super-agenda-groups '((:name  :and (:not (:tag repeating))) (:discard (:todo t)))))))))
+: ((d Today ((agenda  ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks t) (org-agenda-use-tag-inheritance t) (org-use-property-inheritance t) (org-agenda-span 1) (org-agenda-scheduled-leaders '( Sched.%2dx: )) (org-super-agenda-groups '((:discard (:scheduled future :deadline future)) (:name Schedule :time-grid t :order 0 :transformer (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   it))) (:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority :transformer (plist-put it :items (-map (lambda (line) (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   line))) (plist-get it :items)))) (:discard (:anything)))))))) (o Overdue ((agenda  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:discard (:scheduled future :deadline future :scheduled today :deadline today)) (:auto-map (lambda (item) (-when-let* ((marker (or (get-text-property 0 'org-marker item) (get-text-property 0 'org-hd-marker))) (default-priority ?) (priority (or (cashpw/org--get-priority marker) default-priority))) (cond ((cashpw/org--scheduled-to-repeat-daily-p marker) Repeats daily) ((cashpw/org--scheduled-to-repeat-weekly-p marker) Repeats weekly) ((cashpw/org--scheduled-to-repeat-p marker) Repeats) (t z-Other))))) (:discard (:todo t)))))))) (p . Plan) (pw Week ((agenda  ((org-habit-show-habits-only-for-today nil) (org-agenda-overriding-header ) (org-agenda-span 'week) (org-agenda-show-all-dates t) (org-agenda-prefix-format '((agenda .  %i %-20(cashpw/org-agenda-category)%-12t%-5e))) (org-super-agenda-groups '((:name Schedule :time-grid t :order 0) (:auto-map cashpw/org-super-agenda--get-priority))))) (alltodo  ((org-agenda-overriding-header 
+: 
+: 
+: TODOs) (org-super-agenda-groups '((:discard (:todo PROJ :scheduled t :deadline t)) (:auto-map cashpw/org-super-agenda--get-priority))))))) (r . Review) (rc Clock check ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-show-log 'clockcheck) (org-agenda-start-with-log-mode 'clockcheck) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:name Clockcheck :log t) (:discard (:todo t)))))))) (rl Logged ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-show-log t) (org-agenda-start-with-log-mode '(state closed clock)) (org-agenda-hide-tags-regexp (concat org-agenda-hide-tags-regexp \|ARCHIVE)) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:name Logged :log t) (:discard (:todo t)))))))) (rr Clock report ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 'day) (org-agenda-files (cashpw/org-agenda-view--review--files-fn)) (org-agenda-clockreport-mode t) (org-clocktable-defaults '(:fileskip0 t)) (org-super-agenda-groups '((:discard (:todo t)))))))) (R . Roam) (Rr Roam ((alltodo  ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks nil) (org-agenda-inhibit-startup t) (org-agenda-use-tag-inheritance nil) (org-agenda-ignore-properties '(effort appt category stats)) (org-agenda-files (append (cashpw/org-agenda-files--notes) (cashpw/org-agenda-files--notes-private))) (org-super-agenda-groups `((:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority))))))) (Ru Unread ((alltodo  ((org-agenda-overriding-header ) (org-agenda-files (s-lex-format ${cashpw/path--notes-dir}/unread.org)) (org-agenda-dim-blocked-tasks nil) (org-super-agenda-groups `(,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 essay) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 discussion) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 book) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 link_group) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 class) ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10 someday) (:discard (:todo t)))))))) (- . Without) (-e Without effort ((alltodo  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:log t) (:discard (:todo PROJ)) (:name Without effort :effort< 0:01))))))) (-p Priority ((alltodo  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:log t) (:discard (:todo PROJ)) (:name Without priority :priority>= 0))))))) (-s Not scheduled ((alltodo  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:log t) (:discard (:todo PROJ)) (:discard (:scheduled t)) (:auto-category t))))))) (w Week ((agenda  ((org-agenda-overriding-header ) (org-agenda-span 7) (org-super-agenda-groups '((:name  :and (:not (:tag repeating))) (:discard (:todo t)))))))))
 
 *** =org-clock=
 
@@ -7412,7 +7455,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     :n "e" #'org-set-effort
     :n "p" #'omc-make-new-parallel-clock
     :n "s" #'omc-set-active-clock
-    (:prefix ("R")
+    (:prefix ("R" . "Report")
      :n "c" #'clocktable-by-category-report
      :n "C" #'org-clock-report
      :n "t" #'clocktable-by-tag-report))

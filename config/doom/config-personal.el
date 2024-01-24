@@ -1616,6 +1616,7 @@ Based on `org-contacts-anniversaries'."
                               :html-scale 1.0
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
+  (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
 
@@ -3291,16 +3292,24 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                    (org-agenda-use-tag-inheritance t)
                                    (org-use-property-inheritance t)
                                    (org-agenda-span 1)
+                                   (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
                                    (org-super-agenda-groups
                                     '((:discard
                                        (:scheduled future
                                         :deadline future))
                                       (:name "Schedule"
                                        :time-grid t
-                                       :order 0)
+                                       :order 0
+                                       :transformer (replace-regexp-in-string "TODO " ""
+                                                                              (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
                                       (:name "In Progress"
                                        :todo "INPROGRESS")
-                                      (:auto-map cashpw/org-super-agenda--get-priority)
+                                      (:auto-map cashpw/org-super-agenda--get-priority
+                                       :transformer (plist-put it :items (-map
+                                                                          (lambda (line)
+                                                                            (replace-regexp-in-string "TODO " ""
+                                                                                                      (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
+                                                                          (plist-get it :items))))
                                       ;; (:name "Scheduled/Due Today"
                                       ;;  :scheduled today
                                       ;;  :deadline today)
@@ -3705,9 +3714,22 @@ items if they have an hour specification like [h]h:mm."
                                        (:discard
                                         (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
                                          :todo "PROJ"))
-                                       (:discard)
                                        (:name "Without priority"
                                         :priority>= "0")))))))
+
+(setq
+ cashpw/org-agenda-view--not-scheduled `((alltodo
+                                          ""
+                                          ((org-agenda-overriding-header "")
+                                           (org-super-agenda-groups
+                                            '((;; Automatically named "Log"
+                                               :log t)
+                                              (:discard
+                                               (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                                :todo "PROJ"))
+                                              (:discard
+                                               (:scheduled t))
+                                              (:auto-category t)))))))
 
 (defun cashpw/org--scheduled-to-repeat-daily-p (pom)
   "Return non-nil if the headline at POM repeats daily."
@@ -3774,7 +3796,11 @@ items if they have an hour specification like [h]h:mm."
                                          (:todo t))))))))
 
 (setq
- org-agenda-custom-commands `(("p" . "Plan")
+ org-agenda-custom-commands `(("d" "Today" ,cashpw/org-agenda-view--today)
+
+                              ("o" "Overdue" ,cashpw/org-agenda-view--overdue)
+
+                              ("p" . "Plan")
                               ("pw" "Week" ,cashpw/org-agenda-view--plan--week)
 
                               ("r" . "Review")
@@ -3786,10 +3812,11 @@ items if they have an hour specification like [h]h:mm."
                               ("Rr" "Roam" ,cashpw/org-agenda-view--roam--roam)
                               ("Ru" "Unread" ,cashpw/org-agenda-view--roam--unread)
 
-                              ("d" "Today" ,cashpw/org-agenda-view--today)
-                              ("e" "Without effort" ,cashpw/org-agenda-view--no-effort)
-                              ("o" "Overdue tasks" ,cashpw/org-agenda-view--overdue)
-                              ;; ("p" "Without priority" ,cashpw/org-agenda-view--no-priority)
+                              ("-" . "Without")
+                              ("-e" "Without effort" ,cashpw/org-agenda-view--no-effort)
+                              ("-p" "Priority" ,cashpw/org-agenda-view--no-priority)
+                              ("-s" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)
+
                               ("w" "Week" ,cashpw/org-agenda-view--week)))
 
 (defun cashpw/org-clock--agenda-with-archives ()
@@ -5345,10 +5372,34 @@ See `org-hugo-tag-processing-functions'."
 
 (after! ox-hugo
   (setq
+   org-hugo-citations-plist '(:bibliography-section-heading "")
    org-hugo-allow-spaces-in-tags nil)
   (add-to-list
    'org-hugo-tag-processing-functions
    'cashpw/org-hugo--tag-processing-fn-roam-tags)
+
+  ;; Override to allow for empty `bibliography-section-heading'.
+  (defun org-hugo--org-cite-export-bibliography (orig-fun &rest args)
+    "Insert a heading before the exported bibliography.
+
+ORIG-FUN is the original function `org-cite-export-bibliography'
+that this function is designed to advice using `:around'.  ARGS
+are the arguments of the ORIG-FUN."
+    (let ((bib (apply orig-fun args)))
+      (when (org-string-nw-p bib)
+        ;; Auto-inject Bibliography heading.
+        (let ((info (nth 2 args)) ;(org-cite-export-bibliography KEYWORD _ INFO)
+              (bib-heading (org-string-nw-p (plist-get org-hugo-citations-plist :bibliography-section-heading))))
+          (if bib-heading
+              (let* ((bib-heading (org-blackfriday--translate nil info bib-heading))
+                     (loffset (string-to-number
+                               (or (org-entry-get nil "EXPORT_HUGO_LEVEL_OFFSET" :inherit)
+                                   (plist-get info :hugo-level-offset))))
+                     (level-mark (make-string (+ loffset 1) ?#)))
+                (format "%s %s\n\n%s" level-mark bib-heading bib))
+            (format "%s" bib))))))
+
+
   ;; Speed up exporting files
   ;; (advice-add 'org-id-find :override 'org-roam-id-find)
   ;; (memoize 'org-roam-node-id)
@@ -5475,7 +5526,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     :n "e" #'org-set-effort
     :n "p" #'omc-make-new-parallel-clock
     :n "s" #'omc-set-active-clock
-    (:prefix ("R")
+    (:prefix ("R" . "Report")
      :n "c" #'clocktable-by-category-report
      :n "C" #'org-clock-report
      :n "t" #'clocktable-by-tag-report))

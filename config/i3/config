@@ -158,15 +158,6 @@ bar {
 hide_edge_borders both
 
 ################################################################################
-#         Startup
-################################################################################
-
-# Open development configuration and browser
-#exec --no-startup-id i3-msg 'workspace 1; exec echo "/home/$(id -un)" > "${XDG_RUNTIME_DIR}/.cwd"; exec gnome-terminal; workspace 0; exec chromium-browser; exec redshift -O 3000'
-#exec --no-startup-id i3-msg 'workspace 1; exec rxvt-unicode; workspace 0; exec chromium-browser; exec redshift -O 3000'
-#exec --no-startup-id redshift -O 3000
-
-################################################################################
 #         Modes
 ################################################################################
 
@@ -311,3 +302,5 @@ assign [class="Firefox-esr"] 9
 exec rxvt-unicode
 exec ~/third_party/Zotero_linux-x86_64/zotero
 exec firefox-esr
+exec --no-startup-id redshift -O 3000
+
