@@ -44,7 +44,7 @@
   +unicode)
  hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
  ;;hydra
- ;;indent-guides     ; highlighted indent columns
+ indent-guides     ; highlighted indent columns
  ;;ligatures         ; ligatures and symbols to make your code pretty again
  ;;minimap           ; show a map of the code on the side
  modeline            ; snazzy, Atom-inspired modeline, plus API
@@ -71,7 +71,8 @@
   +everywhere)  ; come to the dark side, we have cookies
  file-templates      ; auto-snippets for empty files
  fold                ; (nigh) universal code folding
- ;;(format +onsave)  ; automated prettiness
+ (format
+  +onsave)  ; automated prettiness
  ;;god               ; run Emacs commands without modifier keys
  lispy             ; vim for lisp, for people who don't like vim
  ;;multiple-cursors  ; editing in many places at once
@@ -126,7 +127,7 @@
  ;;taskrunner        ; taskrunner for all your projects
  ;;terraform         ; infrastructure as code
  ;;tmux              ; an API for interacting with tmux
- ;;tree-sitter       ; syntax and parsing, sitting in a tree...
+ tree-sitter       ; syntax and parsing, sitting in a tree...
  ;;upload            ; map local to remote projects via ssh/ftp
 
  :os
@@ -142,7 +143,9 @@
  ;;crystal           ; ruby at the speed of c
  ;;csharp            ; unity, .NET, and mono shenanigans
  ;;data              ; config/data formats
- ;;(dart +flutter)   ; paint ui and not much else
+ ;; (dart
+ ;;  +flutter
+ ;;  +lsp)     ; paint ui and not much else
  ;;elixir            ; erlang done right
  ;;elm               ; care for a cup of TEA?
  emacs-lisp          ; drown in parentheses
@@ -158,7 +161,9 @@
  ;;idris             ; a language you can depend on
  ;;json              ; At least it ain't XML
  java                                        ; the poster child for carpal tunnel syndrome
- javascript
+ (javascript
+  +lsp
+  +tree-sitter)
  ;;julia             ; a better, faster MATLAB
  ;;kotlin            ; a better, slicker Java(Script)
  ;;latex             ; writing papers in Emacs has never been so fun

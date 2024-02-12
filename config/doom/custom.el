@@ -305,13 +305,7 @@
        `(,org-capture-template--org-fc-cloze ,org-capture-template--org-fc-double ,org-capture-template--org-fc-normal))
       org-roam-capture-templates
       `(("p" "person" plain "%?" :target
-         (file+head "${slug}.org" ,(concat "#+title: ${title}
-" "#+author: Cash Weaver
-" "#+date: [%<%Y-%m-%d %a %H:%M>]
-" "* About
-" "* Photo
-" "* Relationships
-"))
+         (file+head "${slug}.org" ,(concat "#+title: ${title}\12" "#+author: Cash Weaver\12" "#+date: [%<%Y-%m-%d %a %H:%M>]\12" "* About\12" "* Photo\12" "* Relationships\12"))
          :unnarrowed t))
       org-roam-directory
       (expand-file-name

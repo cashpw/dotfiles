@@ -5,12 +5,15 @@
   "Group for my customizations and configurations.")
 
 (use-package! s
-  :ensure t)
+  ;; :ensure t
+  )
 (use-package! dash
-  :ensure t)
+  ;; :ensure t
+  )
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 (use-package! ess-site
-  :ensure t)
+  ;; :ensure t
+  )
 
 (setq
  user-full-name "Cash Prokop-Weaver"
@@ -61,7 +64,7 @@
 
 (defun cashpw/is-weekday (time)
   "Return non-nil if TIME is a weekday."
-  (< (cashpw/day-of-we timeek)
+  (< (cashpw/day-of-week time)
      6))
 
 (defun cashpw/is-weekend (time)
@@ -100,45 +103,6 @@
 
 ;; (setq
  ;; browse-url-firefox-program "firefox-esr")
-
-(use-package! command-log-mode
-  :config
-  (setq
-   command-log-mode-open-log-turns-on-mode t
-   command-log-mode-window-size 80
-   command-log-mode-is-global t))
-
-(use-package! centered-cursor-mode)
-
-(after! evil
-  ;; Speed up org-mode table editing
-  ;; https://github.com/emacs-evil/evil/issues/1623#issuecomment-1414406022
-  (advice-remove 'set-window-buffer #'ad-Advice-set-window-buffer))
-
-(use-package! free-keys)
-
-(use-package! titlecase)
-
-(use-package! whisper
-  :config
-  (setq whisper-install-directory "~/.config/emacs/.local/cache/"
-        ;; whisper-model "large-v3"
-        whisper-model "base"
-        whisper-language "en"
-        whisper-translate nil
-        whisper--ffmpeg-input-device "hw:0"))
-
-(setq
- alert-fade-time 60
- alert-default-style 'libnotify)
-
-;; Too early load error
-;; (use-package! org-wild-notifier
-  ;; :after org
-  ;; :config
-  ;; (setq
-   ;; org-wild-notifier-alert-time '(2))
-  ;; (org-wild-notifier-mode))
 
 (defun cashpw/delete-lines-below (line-number)
   "Delete all lines beneath LINE-NUMBER."
@@ -243,6 +207,91 @@
                  "\\.org$")))
     (directory-files dir-path t match)))
 
+(use-package! command-log-mode
+  :config
+  (setq
+   command-log-mode-open-log-turns-on-mode t
+   command-log-mode-window-size 80
+   command-log-mode-is-global t))
+
+(use-package! centered-cursor-mode)
+
+(after! evil
+  ;; Speed up org-mode table editing
+  ;; https://github.com/emacs-evil/evil/issues/1623#issuecomment-1414406022
+  (advice-remove 'set-window-buffer #'ad-Advice-set-window-buffer))
+
+(use-package! free-keys)
+
+(use-package! titlecase)
+
+;; (use-package! llm)
+;;   :config
+;;   )
+
+(use-package! gptel
+  :config
+  (setq
+   gptel-default-mode 'org-mode
+   gptel-directives '((react-redux-mui . "The current system is a workout routine builder tool. The tech stack is Typescript, React, Redux, and Mui. All code should be written in the tech stack mentioned above. ")))
+  (setq-default
+   gptel-model "gemini-pro"
+   gptel-backend (gptel-make-gemini "Gemini"
+                   :key (cashpw/get-secret "personal-gemini")
+                   :models '("gemini-pro"
+                             "gemini-ultra")
+                   :stream t))
+  ;; (setq-default
+  ;;  gptel-model "codellama:7b-instruct-q6_K"
+  ;;  gptel-backend (gptel-make-ollama "Ollama"
+  ;;                  :host "localhost:11434"
+  ;;                  :stream t
+  ;;                  :models '("codellama:7b-instruct-q6_K")))
+  )
+
+(after! (:and gptel whisper)
+  (setq
+   cashpw/gptel-after-whisper nil)
+
+  (defun cashpw/whisper-run-and-cue-gptel ()
+    (interactive)
+    (setq
+     cashpw/gptel-after-whisper t)
+    (whisper-run))
+
+  (defun cashpw/maybe-gptel-after-whisper ()
+    (when cashpw/gptel-after-whisper
+      (gptel-send)
+      (setq
+       cashpw/gptel-after-whisper nil)))
+
+  (add-hook 'whisper-post-insert-hook
+            #'cashpw/maybe-gptel-after-whisper))
+
+(use-package! whisper
+  :config
+  (setq whisper-install-directory "~/.config/emacs/.local/cache/"
+        ;; whisper-model "large-v3"
+        ;; whisper-model "medium"
+        ;; whisper-model "small"
+        whisper-model "base"
+        whisper-language "en"
+        whisper-translate nil
+        whisper--ffmpeg-input-device "hw:0"
+        whisper-return-cursor-to-start nil))
+
+(setq
+ alert-fade-time 60
+ alert-default-style 'libnotify)
+
+;; Too early load error
+;; (use-package! org-wild-notifier
+  ;; :after org
+  ;; :config
+  ;; (setq
+   ;; org-wild-notifier-alert-time '(2))
+  ;; (org-wild-notifier-mode))
+
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
@@ -255,8 +304,27 @@
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
   :desc "Langtool" :n "t L" #'langtool-check
+  :desc "LLM" :n "l" #'gptel-send
   :n "r" #'whisper-run
-  :n "A" #'org-agenda
+  :n "R" #'cashpw/whisper-run-and-cue-gptel
+  (:prefix ("A" . "Agenda")
+   :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
+   :desc "Tomorrow" :n "t" (cmd! (org-agenda nil ".tomorrow"))
+   :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
+   (:prefix ("N" . "Roam")
+    :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
+    :desc "Unread" :n "u" (cmd! (org-agenda nil ".roam-unread")))
+   (:prefix ("R" . "Review")
+    :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
+    :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
+    :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
+   (:prefix ("-" . "Without")
+    :desc "Effort" :n "e" (cmd! (org-agenda nil ".without-effort"))
+    :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
+    :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
+   (:prefix ("P" . "Plan")
+    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week"))))
   (:prefix ("o")
            (:prefix ("n")
             :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-personal-dir}/commonplace.org")))
@@ -291,6 +359,24 @@
 (setq
  auto-save-visited-interval 60)
 (auto-save-visited-mode)
+
+(setq
+ cashpw/indent-level 2)
+
+(setq-default
+ standard-indent cashpw/indent-level
+ tab-width cashpw/indent-level
+ c-basic-offset cashpw/indent-level
+ css-indent-offset cashpw/indent-level
+ js-indent-level cashpw/indent-level
+ typescript-indent-level cashpw/indent-level
+ js-jsx-indent-level cashpw/indent-level)
+
+
+(add-hook 'json-mode-hook (lambda ()
+                             (setq
+                              tab-width cashpw/indent-level
+                              js-indent-level cashpw/indent-level)))
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
@@ -379,6 +465,29 @@
 ;;    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 
 (use-package! nerd-icons)
+
+(use-package! w3m)
+
+(setq
+ calendar-latitude 37.2
+ calendar-longitude -121.8
+ calendar-location-name "San Jose, CA")
+
+
+
+(setq
+ ediff-split-window-function #'split-window-horizontally)
+
+(use-package! ox-gfm)
+(after! emacs-everywhere
+  (setq
+   emacs-everywhere-pandoc-args "-f markdown-auto_identifiers -f markdown-smart -f markdown+pipe_tables")
+  (add-to-list 'emacs-everywhere-markdown-windows "Buganizer")
+  (add-to-list 'emacs-everywhere-markdown-windows "Critique")
+  (map!
+   :map emacs-everywhere-mode-map
+   ;; https://github.com/tecosaur/emacs-everywhere/issues/75
+   "C-c C-c" #'emacs-everywhere--finish-or-ctrl-c-ctrl-c))
 
 (use-package! gnus-alias
   :config
@@ -712,26 +821,42 @@ TAGS which start with \"-\" are excluded."
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "waiting"))))
 
-
-
-(setq
- ediff-split-window-function #'split-window-horizontally)
-
 (defgroup cashpw/source-control nil
   "Source control."
   :group 'cashpw)
 
-(defcustom cashpw/source-control--commit-categories '(("Fix" . (:emoji "🐛"))
-                                                      ("Add" . (:emoji "✨"))
-                                                      ("Feature" . (:emoji "✨"))
-                                                      ("Document" . (:emoji "📝"))
-                                                      ("Refactor" . (:emoji "♻"))
-                                                      ("Rollout" . (:emoji "🚀"))
-                                                      ("Launch" . (:emoji "🚀"))
-                                                      ("Deploy" . (:emoji "🚀"))
-                                                      ("Delete" . (:emoji "🔥"))
-                                                      ("Remove" . (:emoji "🔥"))
-                                                      ("Test" . (:emoji "✅")))
+(defcustom cashpw/source-control--commit-categories '(("Fix" . (:emoji "🐛"
+                                                                :gitmoji ":bug:"))
+                                                      ("UI" . (:emoji "💄"
+                                                               :gitmoji ":lipstick:"))
+                                                      ("UX" . (:emoji "💄"
+                                                               :gitmoji ":lipstick:"))
+                                                      ("Add" . (:emoji "✨"
+                                                                :gitmoji ":sparkles:"))
+                                                      ("Feature" . (:emoji "✨"
+                                                                    :gitmoji ":sparkles:"))
+                                                      ("Document" . (:emoji "📝"
+                                                                     :gitmoji ":memo:"))
+                                                      ("Typo" . (:emoji "✏️"
+                                                                 :gitmoji ":pencil2:"))
+                                                      ("Refactor" . (:emoji "♻"
+                                                                     :gitmoji ":recycle:"))
+                                                      ("Rollout" . (:emoji "🚀"
+                                                                    :gitmoji ":rocket:"))
+                                                      ("Launch" . (:emoji "🚀"
+                                                                   :gitmoji ":rocket:"))
+                                                      ("Version" . (:emoji "🔖"
+                                                                    :gitmoji ":bookmark:"))
+                                                      ("Release" . (:emoji "🔖"
+                                                                    :gitmoji ":bookmark:"))
+                                                      ("Deploy" . (:emoji "🚀"
+                                                                   :gitmoji ":rocket:"))
+                                                      ("Delete" . (:emoji "🔥"
+                                                                   :gitmoji ":fire:"))
+                                                      ("Remove" . (:emoji "🔥"
+                                                                   :gitmoji ":fire:"))
+                                                      ("Test" . (:emoji "✅"
+                                                                 :gitmoji ":white_check_mark:")))
   "Alist of commit categories and extras."
   :group 'cashpw/source-control
   :type 'string)
@@ -746,6 +871,30 @@ TAGS which start with \"-\" are excluded."
                                    t)))
     (assoc category
            cashpw/source-control--commit-categories)))
+
+(defun cashpw/source-control--commit--section (title content)
+  "Return formatted section for a commit message."
+  (s-lex-format "## ${title}
+
+${content}"))
+
+(defun cashpw/source-control--commit--build-message ()
+  "Return commit message template."
+  (let* ((category (cashpw/source-control--read-commit-category))
+         (emoji (plist-get (cdr category) :gitmoji))
+         ;; (what-section (cashpw/source-control--commit--section "What does this change?"
+         ;;                                                       "1. TODO"))
+         ;; (why-section (cashpw/source-control--commit--section "Why make these changes?"
+         ;;                                                      "TODO"))
+         )
+    (s-lex-format "${emoji}: ")))
+
+(defun cashpw/source-control--commit--insert-message ()
+  "Insert my commit message template."
+  (insert (cashpw/source-control--commit--build-message)))
+
+(add-hook! 'git-commit-setup-hook
+           'cashpw/source-control--commit--insert-message)
 
 (setq
  company-idle-delay 1
@@ -824,6 +973,11 @@ TAGS which start with \"-\" are excluded."
   (setq
    +zen-mixed-pitch-modes '()
    writeroom-width 45))
+
+(setq
+ flutter-sdk-path "/home/cashweaver/snap/flutter/common/flutter"
+ lsp-dart-flutter-sdk flutter-sdk-path
+ lsp-dart-sdk-dir (s-lex-format "${flutter-sdk-path}/bin/cache/dart-sdk"))
 
 (use-package! aggressive-indent
   :config
@@ -1737,7 +1891,7 @@ Based on `org-contacts-anniversaries'."
   :after org-fc)
 
 (defcustom cashpw/org-fc--one-per-file-exceptions
-  '("Italian")
+  '()
   "List of filetitles to exclude from the one-position-per-file filter.")
 
 (cl-defmethod cashpw/org-fc--filter-one-per-file ((positions list))
@@ -2296,7 +2450,10 @@ Reference: `org-gcal--update-entry'."
   :after org)
 
 (use-package! summarize-agenda-time
-  :after org)
+  :after org
+  :config
+  (setq
+   summarize-agenda-time--max-duration-minutes (* 60 6)))
 
 (when (not (cashpw/is-work-cloudtop-p))
   (use-package! ox-hugo
@@ -2713,9 +2870,11 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (insert (s-lex-format
            ":${property}: ${value}\n")))
 
-(defun cashpw/org-get-property (property)
-  "Return value of PROPERTY at point, else nil."
-  (org-entry-properties (point) property))
+(defun cashpw/org-get-property (pom property)
+  "Return value of PROPERTY at POM, else nil."
+  (let ((property-list (org-entry-properties pom property)))
+    (if property-list
+        (cdr (car property-list)))))
 
 (defun cashpw/org-mode-get-description-from-link-at-point ()
   "Reference: https://emacs.stackexchange.com/a/38297"
@@ -2835,9 +2994,11 @@ Reference: https://emacs.stackexchange.com/a/43985"
   :config
   (setq
    cashpw/org-mode-on-inprogress--clock-in-paths (append
-                                                  `(,(s-lex-format "${cashpw/path--notes-personal-dir}/journal-2024.org")
-                                                    ,(s-lex-format "${cashpw/path--notes-personal-dir}/retrospective-2024.org")
-                                                    ,(s-lex-format "${cashpw/path--notes-personal-dir}/todos.org"))
+                                                  ;; `(,(s-lex-format "${cashpw/path--notes-personal-dir}/journal-2024.org")
+                                                  ;;   ,(s-lex-format "${cashpw/path--notes-personal-dir}/retrospective-2024.org")
+                                                  ;;   ,(s-lex-format "${cashpw/path--notes-personal-dir}/todos.org"))
+                                                  (f-glob "*.org"
+                                                          cashpw/path--notes-personal-dir)
                                                   (f-glob "*.org"
                                                           cashpw/path--people-dir)))
   (add-hook! 'org-after-todo-state-change-hook
@@ -2866,6 +3027,66 @@ Reference: https://emacs.stackexchange.com/a/43985"
   "List of functions which return non-nil to indicate we should delete the current heading."
   :group 'cashpw/org-mode-on-done
   :type 'hook)
+
+(defcustom cashpw/org-mode-weekday-repeat--property "CASHPW_REPEAT_WEEKDAYS"
+  "Property name to indicate how to handle DONE event repeated weekly.
+
+Value is a list of space separated numbers indicating weekdays (Monday is 1, ..., Sunday is 7)."
+  :group 'cashpw/org-mode-weekday-repeat
+  :type 'string)
+
+(cl-defun cashpw/org-mode-weekday-repeat--p (pom)
+  "Return non-nil if the heading at POM is configured to repeat on weekdays."
+  (let ((valid-repeaters '("++1d"
+                           ".+1d")))
+    (and (-contains-p valid-repeaters (org-get-repeat))
+         (cashpw/org-get-property pom
+                                  cashpw/org-mode-weekday-repeat--property))))
+
+(cl-defun cashpw/org-mode-weekday-repeat--weekdays (pom)
+  "Return list of weekdays for entry at POM."
+  (let* ((all-weekdays "1 2 3 4 5 6 7")
+         (repeat-weekdays (split-string (or (cashpw/org-get-property pom
+                                                                     cashpw/org-mode-weekday-repeat--property)
+                                            all-weekdays))))
+    (mapcar #'string-to-number
+            repeat-weekdays)))
+
+(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (pom)
+  "Return the next time to schedule the heading at POM."
+  (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
+         (scheduled-time (org-get-scheduled-time pom))
+         ;; The scheduled time may be in the past!
+         (days-between-scheduled-and-today (- (time-to-days (current-time))
+                                              (time-to-days scheduled-time)))
+         (next-scheduled-time (if (> days-between-scheduled-and-today 0)
+                                  (time-add scheduled-time days-between-scheduled-and-today)
+                                scheduled-time))
+         (scheduled-in-future (< days-between-scheduled-and-today 0)))
+    (unless scheduled-in-future
+      ;; Iterate forward until we find a valid day
+      (while (not (-contains-p weekdays
+                               (cashpw/day-of-week next-scheduled-time)))
+        (setq next-scheduled-time (time-add next-scheduled-time
+                                            (days-to-time 1)))))
+    next-scheduled-time))
+
+(cl-defun cashpw/org-mode-weekday-repeat--maybe-reschedule (pom)
+  "Reschedule heading at POM to the next appropriate weekday."
+  (when (cashpw/org-mode-weekday-repeat--p pom)
+    (let* (
+           (next-scheduled-time
+            ;; Schedule to the day before the next schedule time because
+            ;; it'll get moved forward one day past when we schedule it
+            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time pom)
+                           (days-to-time 1)))
+           (hh-mm (format-time-string "%H:%M" next-scheduled-time))
+           (format-string
+            (if (string= hh-mm "00:00")
+                "%F"
+              "%F %H:%M")))
+      (org-schedule nil (format-time-string format-string
+                                            next-scheduled-time)))))
 
 (defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
   "Property name to indicate how to handle DONE event."
@@ -2974,11 +3195,13 @@ Reference: https://emacs.stackexchange.com/a/43985"
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
+    (when (org-get-repeat)
+      (cashpw/org-mode-weekday-repeat--maybe-reschedule (point)))
     (cond
      ((cashpw/org-mode-on-done--is-noop)
       (progn
         ;; (unless (org-get-repeat)
-          ;; (org-schedule '(4)))
+        ;; (org-schedule '(4)))
         (org-todo "TODO")))
      ((cashpw/org-mode-on-done--is-keep)
       nil)
@@ -3003,7 +3226,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
      ("E" . "export")
      ("Eh" . "export html")
      ("El" . "export latex")
-     ("i" . "ingredients")
+     ;; ("i" . "ingredients")
      ("q" . "quote")
      ("s" . "src")
      ("sd" . "src dot :file TODO.png :cmdline -Kdot -Tpng")
@@ -3294,9 +3517,7 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                    (org-agenda-span 1)
                                    (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
                                    (org-super-agenda-groups
-                                    '((:discard
-                                       (:scheduled future
-                                        :deadline future))
+                                    '(
                                       (:name "Schedule"
                                        :time-grid t
                                        :order 0
@@ -3316,6 +3537,38 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                       (;; Toss all other todos
                                        :discard
                                        (:anything))))))))
+
+(setq
+ cashpw/org-agenda-view--tomorrow `((agenda
+                                     ""
+                                     ((org-agenda-overriding-header "")
+                                      (org-agenda-dim-blocked-tasks t)
+                                      (org-agenda-use-tag-inheritance t)
+                                      (org-use-property-inheritance t)
+                                      (org-agenda-span 1)
+                                      (org-agenda-start-day "+1d")
+                                      (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
+                                      (org-super-agenda-groups
+                                       '(
+                                         (:name "Schedule"
+                                          :time-grid t
+                                          :order 0
+                                          :transformer (replace-regexp-in-string "TODO " ""
+                                                                                 (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+                                         (:name "In Progress"
+                                          :todo "INPROGRESS")
+                                         (:auto-map cashpw/org-super-agenda--get-priority
+                                          :transformer (plist-put it :items (-map
+                                                                             (lambda (line)
+                                                                               (replace-regexp-in-string "TODO " ""
+                                                                                                         (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
+                                                                             (plist-get it :items))))
+                                         ;; (:name "Scheduled/Due Today"
+                                         ;;  :scheduled today
+                                         ;;  :deadline today)
+                                         (;; Toss all other todos
+                                          :discard
+                                          (:anything))))))))
 
 (setq
  cashpw/org-agenda-view--week `((agenda
@@ -3796,28 +4049,19 @@ items if they have an hour specification like [h]h:mm."
                                          (:todo t))))))))
 
 (setq
- org-agenda-custom-commands `(("d" "Today" ,cashpw/org-agenda-view--today)
-
-                              ("o" "Overdue" ,cashpw/org-agenda-view--overdue)
-
-                              ("p" . "Plan")
-                              ("pw" "Week" ,cashpw/org-agenda-view--plan--week)
-
-                              ("r" . "Review")
-                              ("rc" "Clock check" ,cashpw/org-agenda-view--review--clockcheck)
-                              ("rl" "Logged" ,cashpw/org-agenda-view--review--logged)
-                              ("rr" "Clock report" ,cashpw/org-agenda-view--review--clockreport)
-
-                              ("R" . "Roam")
-                              ("Rr" "Roam" ,cashpw/org-agenda-view--roam--roam)
-                              ("Ru" "Unread" ,cashpw/org-agenda-view--roam--unread)
-
-                              ("-" . "Without")
-                              ("-e" "Without effort" ,cashpw/org-agenda-view--no-effort)
-                              ("-p" "Priority" ,cashpw/org-agenda-view--no-priority)
-                              ("-s" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)
-
-                              ("w" "Week" ,cashpw/org-agenda-view--week)))
+ org-agenda-custom-commands `((".overdue" "Overdue" ,cashpw/org-agenda-view--overdue)
+                              (".plan-week" "Week" ,cashpw/org-agenda-view--plan--week)
+                              (".review-clockcheck" "Clock check" ,cashpw/org-agenda-view--review--clockcheck)
+                              (".review-clockreport" "Clock report" ,cashpw/org-agenda-view--review--clockreport)
+                              (".review-logged" "Logged" ,cashpw/org-agenda-view--review--logged)
+                              (".roam-roam" "Roam" ,cashpw/org-agenda-view--roam--roam)
+                              (".roam-unread" "Unread" ,cashpw/org-agenda-view--roam--unread)
+                              (".today" "Today" ,cashpw/org-agenda-view--today)
+                              (".tomorrow" "Tomorrow" ,cashpw/org-agenda-view--tomorrow)
+                              (".week" "Week" ,cashpw/org-agenda-view--week)
+                              (".without-effort" "Without effort" ,cashpw/org-agenda-view--no-effort)
+                              (".without-priority" "Priority" ,cashpw/org-agenda-view--no-priority)
+                              (".without-scheduled" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)))
 
 (defun cashpw/org-clock--agenda-with-archives ()
   "Return list of agenda files to use with clocktable."
@@ -5455,23 +5699,20 @@ Reference: https://superuser.com/a/604264"
    (point-max)))
 
 (setq
- cashpw/path--roam-bibliography
- (format "%s/proj/notes/bibliography.bib"
-         cashpw/path--home-dir)
+ cashpw/path--roam-bibliography (format "%s/proj/notes/bibliography.bib"
+                                        cashpw/path--home-dir)
  cashpw/bibliographies `(,cashpw/path--roam-bibliography))
 
 (use-package! citar
-  :after all-the-icons
   :when (modulep! :completion vertico)
   :config
   (setq
    citar-bibliography cashpw/bibliographies
-   citar-symbols `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
-                   (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
-                   (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
+   citar-symbols `((file ,(nerd-icons-faicon "nf-fa-file_o" :face 'nerd-icons-green :v-adjust -0.1) . " ")
+                   (note ,(nerd-icons-faicon "nf-fa-sticky_note_o" :face 'nerd-icons-blue :v-adjust -0.3) . " ")
+                   (link ,(nerd-icons-octicon "nf-oct-link" :face 'nerd-icons-orange :v-adjust 0.01) . " "))
    citar-symbol-separator "  "
-   citar-notes-paths `(,cashpw/path--notes-dir)
-   )
+   citar-notes-paths `(,cashpw/path--notes-dir))
   (defun cashpw/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
