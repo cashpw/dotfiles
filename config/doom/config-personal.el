@@ -71,6 +71,14 @@
   "Return non-nil if TIME is a weekend."
   (not (cashpw/is-weekday time)))
 
+(defun advice-remove-all (sym)
+  "Remove all advices from symbol SYM.
+
+Reference: https://emacs.stackexchange.com/a/24658/37010"
+  (interactive "aFunction symbol: ")
+  (advice-mapc (lambda (advice _props) (advice-remove sym advice))
+               sym))
+
 (defcustom cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
   "Projects directory."
@@ -206,6 +214,11 @@
                    "\\.org\\(_archive\\)?$"
                  "\\.org$")))
     (directory-files dir-path t match)))
+
+;; (use-package! auth-source-xoauth2
+;;   :config
+;;   ;; (auth-source-xoauth2-enable)
+;;   )
 
 (use-package! command-log-mode
   :config
@@ -499,7 +512,7 @@
    gnus-alias-identity-alist '(("cashbweaver@gmail"
                                 ;; Refers to
                                 nil
-                                "Cash Weaver <cashbweaver@gmail.com>"
+                                "Cash Prokop-Weaver <cashbweaver@gmail.com>"
                                 ;; Organization
                                 nil
                                 ;; Extra headers
@@ -583,8 +596,7 @@ TAGS which start with \"-\" are excluded."
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
-   notmuch-saved-searches `(
-                            ,(cashpw/notmuch--tag-search "a"
+   notmuch-saved-searches `(,(cashpw/notmuch--tag-search "a"
                                                          "Attention"
                                                          '("attn"
                                                            "-drive"
@@ -691,6 +703,18 @@ TAGS which start with \"-\" are excluded."
 ;;    )
 ;;   (org-msg-mode))
 
+(use-package! smtpmail
+  :config
+  (setq
+   smtpmail-smtp-server "smtp.gmail.com"
+   smtpmail-smtp-service 587
+   smtpmail-smtp-user "cashbweaver@gmail.com"))
+
+(after! (:and smtpmail
+              auth-source-xoauth2)
+  ;; (add-to-list 'smtpmail-auth-supported 'xoauth2)
+  )
+
 (defun cashpw/compose-mail-org ()
   (interactive)
   (compose-mail)
@@ -754,13 +778,21 @@ TAGS which start with \"-\" are excluded."
   (kill-buffer
    (current-buffer)))
 
+(setq
+
+
+
+ )
+
 (defun cashpw/send-mail-function (&rest args)
   "Wrapper method for `send-mail-function' for easy overriding in work environment."
-  (apply #'sendmail-query-once args))
+  ;;(apply #'sendmail-query-once args)
+  (apply #'smtpmail-send-it args))
 
 (defun cashpw/message-send-mail-function (&rest args)
   "Wrapper method for `message-send-mail-function' for easy overriding in work environment."
-  (apply #'message--default-send-mail-function args))
+  ;; (apply #'message--default-send-mail-function args)
+  (apply #'smtpmail-send-it args))
 
 (setq
  send-mail-function #'cashpw/send-mail-function
@@ -3052,33 +3084,36 @@ Value is a list of space separated numbers indicating weekdays (Monday is 1, ...
     (mapcar #'string-to-number
             repeat-weekdays)))
 
-(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (pom)
-  "Return the next time to schedule the heading at POM."
-  (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
-         (scheduled-time (org-get-scheduled-time pom))
-         ;; The scheduled time may be in the past!
+(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (current-scheduled-time weekdays)
+  "Return the next valid, by WEEKDAYS, time after CURRENT-SCHEDULED-TIME.
+
+WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
+  (let* (;; The scheduled time may be in the past!
          (days-between-scheduled-and-today (- (time-to-days (current-time))
-                                              (time-to-days scheduled-time)))
+                                              (time-to-days current-scheduled-time)))
+         (scheduled-in-future (< days-between-scheduled-and-today 0))
          (next-scheduled-time (if (> days-between-scheduled-and-today 0)
-                                  (time-add scheduled-time days-between-scheduled-and-today)
-                                scheduled-time))
-         (scheduled-in-future (< days-between-scheduled-and-today 0)))
-    (unless scheduled-in-future
-      ;; Iterate forward until we find a valid day
-      (while (not (-contains-p weekdays
-                               (cashpw/day-of-week next-scheduled-time)))
-        (setq next-scheduled-time (time-add next-scheduled-time
-                                            (days-to-time 1)))))
+                                  (time-add current-scheduled-time (days-to-time days-between-scheduled-and-today))
+                                current-scheduled-time))
+         (add-one-day (lambda ()
+                        (setq next-scheduled-time (time-add (days-to-time 1)
+                                                            next-scheduled-time)))))
+    (funcall add-one-day)
+    (while (not (-contains-p weekdays
+                             (cashpw/day-of-week next-scheduled-time)))
+      (funcall add-one-day))
     next-scheduled-time))
 
 (cl-defun cashpw/org-mode-weekday-repeat--maybe-reschedule (pom)
   "Reschedule heading at POM to the next appropriate weekday."
   (when (cashpw/org-mode-weekday-repeat--p pom)
-    (let* (
+    (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
+           (scheduled-time (org-get-scheduled-time pom))
            (next-scheduled-time
             ;; Schedule to the day before the next schedule time because
             ;; it'll get moved forward one day past when we schedule it
-            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time pom)
+            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time scheduled-time
+                                                                                weekdays)
                            (days-to-time 1)))
            (hh-mm (format-time-string "%H:%M" next-scheduled-time))
            (format-string
@@ -3087,6 +3122,91 @@ Value is a list of space separated numbers indicating weekdays (Monday is 1, ...
               "%F %H:%M")))
       (org-schedule nil (format-time-string format-string
                                             next-scheduled-time)))))
+
+(setq current-time-override-time (current-time))
+(defun current-time-override ()
+  current-time-override-time)
+(advice-add 'current-time :override 'current-time-override)
+
+;; Event is scheduled for today
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 2)))
+            (format-time-string "%FT%T%z" tuesday))
+   t))
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 3)))
+            (format-time-string "%FT%T%z" wednesday))
+   t))
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1)))
+            (format-time-string "%FT%T%z" next-monday))
+   t))
+(let* ((friday (date-to-time "2000-01-07T08:00:00-0700"))
+       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
+       (current-time-override-time friday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time friday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" next-monday))
+   t))
+
+
+;; Event is scheduled in the future
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time tuesday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" wednesday))
+   t
+   "Should schedule for next valid future day when scheduled in future."))
+
+;; Event is scheduled in the future
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (friday (date-to-time "2000-01-07T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time wednesday
+                                                                                     '(1 5)))
+            (format-time-string "%FT%T%z" friday))
+   t
+   "Should schedule for next valid future day when scheduled in future."))
+
+;; Event is scheduled in the past
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time tuesday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" wednesday))
+   t
+   "Should schedule for next valid future day when scheduled in past."))
+
+(advice-remove 'current-time 'current-time-override)
 
 (defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
   "Property name to indicate how to handle DONE event."

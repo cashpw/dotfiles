@@ -1,3 +1,5 @@
+;; (package! auth-source-xoauth2)
+
 (package! command-log-mode)
 
 (package! centered-cursor-mode)
@@ -82,6 +84,8 @@
 (package! gnus-alias)
 
 (package! org-msg)
+
+(package! smtpmail)
 
 (package! aggressive-indent)
 
