@@ -143,7 +143,6 @@ fi
 # Snap
 export PATH="/snap/bin:$PATH"
 
-
 if is_work_machine; then
   source $HOME/.bashrc-work
 else
@@ -153,3 +152,6 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Vale
+PATH="$HOME/third_party/vale:$PATH"

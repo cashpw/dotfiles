@@ -137,7 +137,16 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   "Personal people org-roam notes directory."
   :group 'cashpw
   :type 'string)
+
+(defcustom cashpw/path--notes-todos-file
+  (s-lex-format "${cashpw/path--notes-dir}/todos.org")
+  "Personal TODOs file."
+  :group 'cashpw
+  :type 'string)
 #+end_src
+
+#+RESULTS:
+: cashpw/path--notes-todos-file
 
 ** Browser
 
@@ -554,17 +563,19 @@ Doom Emacs provides =alert=.
   :desc "at point" :n "h h" #'helpful-at-point
   :desc "Langtool" :n "t L" #'langtool-check
   :desc "LLM" :n "l" #'gptel-send
+  :desc "LLM+Whisper" :n "L" (cmd! (gptel)
+                                   (whisper-run))
   :n "r" #'whisper-run
   :n "R" #'cashpw/whisper-run-and-cue-gptel
-  (:prefix ("A" . "Agenda")
+  (:prefix ("d" . "agenDa")
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Tomorrow" :n "t" (cmd! (org-agenda nil ".tomorrow"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
-   (:prefix ("N" . "Roam")
+   (:prefix ("n" . "Roam")
     :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
-    :desc "Unread" :n "u" (cmd! (org-agenda nil ".roam-unread")))
-   (:prefix ("R" . "Review")
+    :desc "Reading List" :n "r" (cmd! (org-agenda nil ".roam-readinglist")))
+   (:prefix ("r" . "Review")
     :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
     :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
     :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
@@ -572,7 +583,7 @@ Doom Emacs provides =alert=.
     :desc "Effort" :n "e" (cmd! (org-agenda nil ".without-effort"))
     :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
-   (:prefix ("P" . "Plan")
+   (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week"))))
   (:prefix ("o")
            (:prefix ("n")
@@ -954,13 +965,14 @@ vterm               ; the best terminal emulation in Emacs
 #+begin_src emacs-lisp
 :checkers
 ;; tasing you for every semicolon you forget
-syntax
+(syntax
+ +flymake)
 ;; tasing you for misspelling mispelling
 (spell
  +flyspell
  +everywhere)
 ;; tasing grammar mistake every you make
-grammar
+;; grammar
 #+end_src
 #+HTMl: </details>
 
@@ -1516,7 +1528,7 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-create-follow-up-todo ()
   (interactive)
-  (let* ((file cashpw/path--file--notes-todos)
+  (let* ((file cashpw/path--notes-todos-file)
          (to-short (cashpw/mail-get-short-address
                     (message-field-value "To")))
          (from-short (cashpw/mail-get-short-address
@@ -1546,6 +1558,9 @@ TAGS which start with \"-\" are excluded."
   (kill-buffer
    (current-buffer)))
 #+end_src
+
+#+RESULTS:
+: cashpw/message-send-and-exit
 
 *** Sending email
 **** SMTP / Gmail
@@ -1791,39 +1806,6 @@ Fix a bug in which =orderless= doesn't work because =completino--capf-wrapper= s
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! aggressive-indent)
-#+end_src
-
-**** =langtool=
-
-See https://languagetool.org/
-
-Install =LanguageTool=:
-
-1. Download the [[https://languagetool.org/download/LanguageTool-stable.zip][latest stable build]].
-2. Store it somewhere on your system.
-3. Configure (see below).
-
-***** Package
-
-Doom emacs provides =langtool= through =init.el=.
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! langtool
-  :init
-  (setq
-   langtool-language-tool-server-jar
-   "~/third_party/LanguageTool-5.5/languagetool-server.jar"
-   ;;langtool-language-tool-jar
-   ;;"~/third_party/LanguageTool-5.5/languagetool-commandline.jar"
-   )
-  :config
-  (setq
-   langtool-default-language
-   "en-US"
-   langtool-mother-tongue
-   "en"))
 #+end_src
 
 **** =operate-on-number=
@@ -2412,6 +2394,9 @@ See: https://www.leonrische.me/fc/card_types.html"
       positions)))
 
 #+end_src
+
+#+RESULTS:
+: anki-editor
 
 **** =cashpw/contacts=
 ***** TODO Move this to separate package file.
@@ -3976,6 +3961,26 @@ ox-pandoc is an exporter for Org mode which converts Org-mode files to a wide va
 #+end_src
 
 *** Helper Methods
+**** Get all tags in file
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/org-mode-get-all-tags-in-file ()
+  "Returns a list of all unique tags used in the current org-mode file."
+  (let ((all-tags '()))
+    (org-map-entries (lambda ()
+                       (when-let ((tags (org-make-tag-string (org-get-tags (point) t))))
+                         (setq
+                          all-tags (append all-tags
+                                           (split-string tags
+                                                         ":")))))
+                     nil
+                     'file)
+    (delete-dups (-remove #'string-empty-p
+                          all-tags))))
+#+end_src
+
+#+RESULTS:
+: cashpw/org-mode-get-all-tags-in-file
 
 **** Set created
 
@@ -4486,13 +4491,19 @@ Reference: https://emacs.stackexchange.com/a/43985"
 #+end_src
 
 *** Lint
+**** =flycheck-vale=
 
-Use [[github:/amperser/proselint][Proselint]].
+Doom Emacs installs flycheck.
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! flycheck-vale)
+#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-;; (after! flycheck
-;;   :config
-;;   (flycheck-reset-enabled-checker 'proselint))
+(use-package! flycheck-vale
+  :config
+  (add-hook 'find-file-hook
+            'flymake-vale-maybe-load))
 #+end_src
 
 *** Appearance
@@ -4826,18 +4837,6 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 #+RESULTS:
 
-******* TODO By property
-SCHEDULED: <2024-02-14 Wed ++1d>
-:PROPERTIES:
-:LAST_REPEAT: [2024-02-12 Mon 13:40]
-:Effort:   1m
-:CATEGORY: Plan/Review
-:CASHPW_REPEAT_WEEKDAYS: 1 3 5
-:END:
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2024-02-12 Mon 13:40]
-:END:
-
 ******* By property
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -5042,7 +5041,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
   (let* ((org-roam-directory cashpw/path--notes-dir)
          (org-roam-db-location (expand-file-name "org-roam.db"
                                                  org-roam-directory))
-         (files-to-ignore `(,(s-lex-format "${org-roam-directory}/unread.org")
+         (files-to-ignore `(,(s-lex-format "${org-roam-directory}/reading_list.org")
                             ,(s-lex-format "${org-roam-directory}/todos.org"))))
     (seq-difference (cashpw/org-roam-todo-files)
                     files-to-ignore)))
@@ -5131,10 +5130,13 @@ not always show the expected results."
 
 Intended for use with `org-super-agenda-groups'."
   `(:name ,(s-lex-format "${tag} (${n})")
-    :take (,take
-           (:and
-            (:tag ,tag)))))
+    :transformer (replace-regexp-in-string "TODO " ""
+                                           (replace-regexp-in-string "\\[#[0-9]\\] " "" it))
+    :take (,n (:tag ,tag))))
 #+end_src
+
+#+RESULTS:
+: cashpw/org-super-agenda--get-first-n-from-roam-tag
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
@@ -5316,7 +5318,9 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                    (org-agenda-span 1)
                                    (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
                                    (org-super-agenda-groups
-                                    '(
+                                    '((:discard
+                                       (:scheduled future
+                                        :deadline future))
                                       (:name "Schedule"
                                        :time-grid t
                                        :order 0
@@ -5330,16 +5334,16 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                                                                             (replace-regexp-in-string "TODO " ""
                                                                                                       (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
                                                                           (plist-get it :items))))
-                                      ;; (:name "Scheduled/Due Today"
-                                      ;;  :scheduled today
-                                      ;;  :deadline today)
                                       (;; Toss all other todos
                                        :discard
                                        (:anything))))))))
 
 #+end_src
 
-***** Today
+#+RESULTS:
+| agenda |   | ((org-agenda-overriding-header ) (org-agenda-dim-blocked-tasks t) (org-agenda-use-tag-inheritance t) (org-use-property-inheritance t) (org-agenda-span 1) (org-agenda-scheduled-leaders '( Sched.%2dx: )) (org-super-agenda-groups '((:discard (:scheduled future :deadline future)) (:name Schedule :time-grid t :order 0 :transformer (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   it))) (:name In Progress :todo INPROGRESS) (:auto-map cashpw/org-super-agenda--get-priority :transformer (plist-put it :items (-map (lambda (line) (replace-regexp-in-string TODO   (replace-regexp-in-string \[#[0-9]\]   line))) (plist-get it :items)))) (:discard (:anything))))) |
+
+***** Tomorrow
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
@@ -5771,33 +5775,22 @@ items if they have an hour specification like [h]h:mm."
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
- cashpw/org-agenda-view--roam--unread `((alltodo
-                                         ""
-                                         ((org-agenda-overriding-header "")
-                                          (org-agenda-files (s-lex-format "${cashpw/path--notes-dir}/unread.org"))
-                                          (org-agenda-dim-blocked-tasks nil)
-                                          (org-super-agenda-groups
-                                           `(
-                                             ;; (:name "essay (10)"
-                                             ;;  :take (10 (:and
-                                             ;;             (:tag "essay"
-                                             ;;              :not (:tag "someday"
-                                             ;;                    :tag "link_group")))))
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "essay")
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "discussion")
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "book")
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "link_group")
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "class")
-                                             ,(cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                  "someday")
-                                             (:discard
-                                              (:todo t))))))))
+ cashpw/readinglist-file-path (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
+ cashpw/org-agenda-view--roam--readinglist `((alltodo
+                                              ""
+                                              ((org-agenda-overriding-header "")
+                                               (org-agenda-prefix-format '((todo . " %i ")))
+                                               (org-agenda-files `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")))
+                                               (org-agenda-dim-blocked-tasks nil)
+                                               (org-super-agenda-groups (--map
+                                                                         (cashpw/org-super-agenda--get-first-n-from-roam-tag 10
+                                                                                                                             it)
+                                                                         (with-current-buffer (find-file-noselect cashpw/readinglist-file-path)
+                                                                           (cashpw/org-mode-get-all-tags-in-file))))))))
 #+end_src
+
+#+RESULTS:
+| alltodo |   | ((org-agenda-overriding-header ) (org-agenda-prefix-format '((todo .  %i ))) (org-agenda-files `(,(s-lex-format ${cashpw/path--notes-dir}/reading_list.org))) (org-agenda-dim-blocked-tasks nil) (org-super-agenda-groups (--map (cashpw/org-super-agenda--get-first-n-from-roam-tag 10 it) (with-current-buffer (find-file-noselect cashpw/readinglist-file-path) (cashpw/org-mode-get-all-tags-in-file))))) |
 
 ***** No effort
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -5852,6 +5845,7 @@ items if they have an hour specification like [h]h:mm."
 #+end_src
 
 ***** Overdue
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/org--scheduled-to-repeat-daily-p (pom)
   "Return non-nil if the headline at POM repeats daily."
@@ -5877,13 +5871,45 @@ items if they have an hour specification like [h]h:mm."
     (or (s-contains-p "++" scheduled-string)
         (s-contains-p ".+" scheduled-string))))
 
-(defun cashpw/foo ()
+
+(defun cashpw/org-scheduled-in-past-p (&optional point-or-marker)
+  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the past."
+  (let ((point-or-marker (or point-or-marker
+                             (point))))
+    (time-less-p (org-get-scheduled-time point-or-marker)
+                 (current-time))))
+
+(defun cashpw/org-scheduled-in-future-p (&optional point-or-marker)
+  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the future."
+  (let ((point-or-marker (or point-or-marker
+                             (point))))
+    (time-less-p (current-time)
+                 (org-get-scheduled-time point-or-marker))))
+
+(defun cashpw/org-reschedule-overdue-todo (&optional point-or-marker)
+  "Reschedule a todo (at point, or POINT-OR-MARKER) to its next valid repetition date."
   (interactive)
-  (message "%s" (org-entry-properties (point)
-                                      "SCHEDULED")))
+  (save-excursion
+    (let ((point-or-marker (or point-or-marker
+                               (point)))
+          (org-log-done nil))
+      (goto-char point-or-marker)
+      (when (org-get-repeat)
+        (while (cashpw/org-scheduled-in-past-p point-or-marker)
+          (org-todo 'done))))))
+
+(defun cashpw/org-reschedule-overdue-todo-agenda ()
+  "Invoke `cashpw/org-reschedule-overdue-todo' for an agenda view.
+
+Based on `org-agenda-date-later'."
+  (let* ((marker (or (org-get-at-bol 'org-marker)
+                     (org-agenda-error)))
+         (buffer (marker-buffer marker)))
+    (with-current-buffer buffer
+      (cashpw/org-reschedule-overdue-todo marker))))
 
 (setq
- org-agenda-bulk-custom-functions `((?L (lambda () (call-interactively 'org-agenda-date-later))))
+ org-agenda-bulk-custom-functions `((?L cashpw/org-reschedule-overdue-todo-agenda))
  cashpw/org-agenda-view--overdue `((agenda
                                     ""
                                     ((org-agenda-overriding-header "")
@@ -5919,6 +5945,9 @@ items if they have an hour specification like [h]h:mm."
 
 #+end_src
 
+#+RESULTS:
+| agenda |   | ((org-agenda-overriding-header ) (org-super-agenda-groups '((:discard (:scheduled future :deadline future :scheduled today :deadline today)) (:auto-map (lambda (item) (-when-let* ((marker (or (get-text-property 0 'org-marker item) (get-text-property 0 'org-hd-marker))) (default-priority ?) (priority (or (cashpw/org--get-priority marker) default-priority))) (cond ((cashpw/org--scheduled-to-repeat-daily-p marker) Repeats daily) ((cashpw/org--scheduled-to-repeat-weekly-p marker) Repeats weekly) ((cashpw/org--scheduled-to-repeat-p marker) Repeats) (t z-Other))))) (:discard (:todo t))))) |
+
 ***** Set views
 :PROPERTIES:
 :ID:       bac4dcc9-2271-40e6-bc93-0e3448b5f1ca
@@ -5932,7 +5961,7 @@ items if they have an hour specification like [h]h:mm."
                               (".review-clockreport" "Clock report" ,cashpw/org-agenda-view--review--clockreport)
                               (".review-logged" "Logged" ,cashpw/org-agenda-view--review--logged)
                               (".roam-roam" "Roam" ,cashpw/org-agenda-view--roam--roam)
-                              (".roam-unread" "Unread" ,cashpw/org-agenda-view--roam--unread)
+                              (".roam-readinglist" "Reading list" ,cashpw/org-agenda-view--roam--readinglist)
                               (".today" "Today" ,cashpw/org-agenda-view--today)
                               (".tomorrow" "Tomorrow" ,cashpw/org-agenda-view--tomorrow)
                               (".week" "Week" ,cashpw/org-agenda-view--week)
@@ -5942,8 +5971,24 @@ items if they have an hour specification like [h]h:mm."
 #+end_src
 
 #+RESULTS:
-| .overdue   | Overdue | ((agenda  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:name Overdue: Work (repeating) :and (:scheduled past :tag habit :file-path .google.src.cloud) :and (:scheduled past :tag repeating :file-path .google.src.cloud) :and (:deadline past :tag habit :file-path .google.src.cloud) :and (:deadline past :tag repeating :file-path .google.src.cloud)) (:name Overdue: Work :and (:scheduled past :file-path .google.src.cloud) :and (:deadline past :file-path .google.src.cloud)) (:name Overdue: Personal :and (:scheduled past) :and (:deadline past)) (:discard (:todo t))))))) |
-| .plan-week | Week    | ((agenda  ((org-agenda-overriding-header ) (org-agenda-prefix-format '((agenda .  %i %-20(cashpw/org-agenda-category)%-12t%-5e))) (org-agenda-span 'week) (org-agenda-files (append (cashpw/org-agenda-files--notes-work))) (org-agenda-show-all-dates t) (org-super-agenda-groups `((:discard) (:name Schedule :time-grid t :order 0) (:name Calendar :category Calendar: Work) (:auto-map cashpw/org-super-agenda--cover-bug) (:name Scheduled/Deadline :scheduled t :deadline t) (:discard (:todo t)))))) (alltodo  ((org-agenda-overriding-header |
+| .overdue   | Overdue | ((agenda  ((org-agenda-overriding-header ) (org-super-agenda-groups '((:discard (:scheduled future :deadline future :scheduled today :deadline today)) (:auto-map (lambda (item) (-when-let* ((marker (or (get-text-property 0 'org-marker item) (get-text-property 0 'org-hd-marker))) (default-priority ?) (priority (or (cashpw/org--get-priority marker) default-priority))) (cond ((cashpw/org--scheduled-to-repeat-daily-p marker) Repeats daily) ((cashpw/org--scheduled-to-repeat-weekly-p marker) Repeats weekly) ((cashpw/org--scheduled-to-repeat-p marker) Repeats) (t z-Other))))) (:discard (:todo t))))))) |
+| .plan-week | Week    | ((agenda  ((org-habit-show-habits-only-for-today nil) (org-agenda-overriding-header ) (org-agenda-span 'week) (org-agenda-show-all-dates t) (org-agenda-prefix-format '((agenda .  %i %-20(cashpw/org-agenda-category)%-12t%-5e))) (org-super-agenda-groups '((:name Schedule :time-grid t :order 0) (:auto-map cashpw/org-super-agenda--get-priority))))) (alltodo  ((org-agenda-overriding-header |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7179,6 +7224,26 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                                                (goto-char (point-min))
                                                                (org-fc-type-vocab-init)))
 
+ cashpw/org-capture-templates--todo--email `("Email"
+                                             :keys "e"
+                                             :file cashpw/path--notes-todos-file
+                                             :children (("Email"
+                                                         :keys "e"
+                                                         :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
+                                                         :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
+                                                         :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
+                                                                    ":PROPERTIES:"
+                                                                    ":Created: %U"
+                                                                    ":END:"))
+                                                        ("Follow up"
+                                                         :keys "f"
+                                                         :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
+                                                         :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
+                                                         :template ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
+                                                                    ":PROPERTIES:"
+                                                                    ":Created: %U"
+                                                                    ":END:"))))
+
  ;; General
  cashpw/org-capture-templates--todo--todo `("Todo"
                                             :keys "t"
@@ -7195,7 +7260,8 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                   :children (("Todo"
                                               :keys "t"
                                               :children (,cashpw/org-roam--capture-template--todo
-                                                         ,cashpw/org-capture-templates--todo--todo))))
+                                                         ,cashpw/org-capture-templates--todo--todo
+                                                         ,cashpw/org-capture-templates--todo--email))))
                                  (:group "Flashcards"
                                   :children (("Flashcards"
                                               :keys "f"
@@ -7205,6 +7271,11 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                                          ,cashpw/org-fc--capture-template--vocab
                                                          ,cashpw/org-fc--capture-template--text-input))))))))
 #+end_src
+
+#+RESULTS:
+| w | Website | entry | (file ) | * %a :website: |
+
+
 
 
 *** Links
@@ -8040,6 +8111,30 @@ DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
   :config
   (pdf-tools-install))
 #+end_src
+
+** Protobuf
+
+*** Packages
+**** =protobuf-mode=
+
+#+begin_quote
+This package adds =XOAuth2= authentication capabilities to =auth-source=.
+
+/[[github:ccrusius/auth-source-xoauth2][ccrusius/auth-source-xoauth2]]/
+#+end_quote
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! protobuf-mode)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! protobuf-mode)
+#+end_src
+
 
 ** TOML
 

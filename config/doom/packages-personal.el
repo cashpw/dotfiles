@@ -227,6 +227,8 @@
 
 (package! ox-pandoc)
 
+(package! flycheck-vale)
+
 (after! org
   (setq
    ;; Prefer IDs to filenames+headers when creating links.
@@ -267,6 +269,8 @@
            :repo "cashpw/org-link-reddit"))
 
 (package! pdf-tools)
+
+(package! protobuf-mode)
 
 (package! toml
   :recipe (:host github
