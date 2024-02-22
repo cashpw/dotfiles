@@ -561,7 +561,7 @@ Doom Emacs provides =alert=.
  ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
-  :desc "Langtool" :n "t L" #'langtool-check
+  ;; :desc "Langtool" :n "t L" #'langtool-check
   :desc "LLM" :n "l" #'gptel-send
   :desc "LLM+Whisper" :n "L" (cmd! (gptel)
                                    (whisper-run))

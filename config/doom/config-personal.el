@@ -322,7 +322,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  ;; Keep in alphabetical order.
  (:leader
   :desc "at point" :n "h h" #'helpful-at-point
-  :desc "Langtool" :n "t L" #'langtool-check
+  ;; :desc "Langtool" :n "t L" #'langtool-check
   :desc "LLM" :n "l" #'gptel-send
   :desc "LLM+Whisper" :n "L" (cmd! (gptel)
                                    (whisper-run))
@@ -990,21 +990,6 @@ ${content}"))
              "Completion function %S uses a deprecated calling convention" fun)
             (push fun completion--capf-misbehave-funs))))
         (if res (cons fun res)))))
-
-(use-package! langtool
-  :init
-  (setq
-   langtool-language-tool-server-jar
-   "~/third_party/LanguageTool-5.5/languagetool-server.jar"
-   ;;langtool-language-tool-jar
-   ;;"~/third_party/LanguageTool-5.5/languagetool-commandline.jar"
-   )
-  :config
-  (setq
-   langtool-default-language
-   "en-US"
-   langtool-mother-tongue
-   "en"))
 
 (use-package! operate-on-number)
 
