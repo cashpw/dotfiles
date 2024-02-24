@@ -45,7 +45,9 @@
  hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
  ;;hydra
  indent-guides     ; highlighted indent columns
- ;;ligatures         ; ligatures and symbols to make your code pretty again
+ (ligatures         ; ligatures and symbols to make your code pretty again
+  +fira
+  +extra)
  ;;minimap           ; show a map of the code on the side
  modeline            ; snazzy, Atom-inspired modeline, plus API
  ;; (modeline           ; snazzy, Atom-inspired modeline, plus API
@@ -118,7 +120,10 @@
  (eval +overlay)     ; run code, run (also, repls)
  ;;gist              ; interacting with github gists
  lookup              ; navigate your code and its documentation
- ;;lsp               ; M-x vscode
+ (lsp               ; M-x vscode
+  +eglot ;; Coordinate with corp LSP which uses Eglot
+  ;; +peek
+  )
  magit             ; a git porcelain for Emacs
  ;;make              ; run make tasks from Emacs
  ;;pass              ; password manager for nerds
@@ -137,7 +142,9 @@
 
  :lang
  ;;agda              ; types of types of types of types...
- cc                ; C/C++/Obj-C madness
+ (cc                ; C/C++/Obj-C madness
+  +lsp
+  +tree-sitter)
  ;;clojure           ; java with a lisp
  ;;common-lisp       ; if you've seen one lisp, you've seen them all
  ;;coq               ; proofs-as-programs
@@ -161,7 +168,9 @@
  ;;hy                ; readability of scheme w/ speed of python
  ;;idris             ; a language you can depend on
  ;;json              ; At least it ain't XML
- java                                        ; the poster child for carpal tunnel syndrome
+ (java                                        ; the poster child for carpal tunnel syndrome
+  +lsp
+  +tree-sitter)
  (javascript
   +lsp
   +tree-sitter)
@@ -172,7 +181,8 @@
  ;;factor
  ;;ledger            ; an accounting system in Emacs
  ;;lua               ; one-based indices? one-based indices
- markdown            ; writing docs for people to ignore
+ (markdown            ; writing docs for people to ignore
+  +grip)
  ;;nim               ; python + lisp at the speed of c
  ;;nix               ; I hereby declare "nix geht mehr!"
  ;;ocaml             ; an objective camel
@@ -180,15 +190,15 @@
   ;; Use custom hugo depending on personal vs work environment
   ;; +hugo
   +noter
-  ;; +pretty
+  ;; +pretty ;; disabled because it was slow
   +roam2
-  +pandoc
-  ;; +pomodoro
-  )
+  +pandoc)
  ;;php               ; perl's insecure younger brother
  ;;plantuml          ; diagrams for confusing people more
  ;;purescript        ; javascript, but functional
- python
+ (python
+  +lsp
+  +tree-sitter)
  ;;qt                ; the 'cutest' gui framework ever
  ;;racket            ; a DSL for DSLs
  ;;raku              ; the artist formerly known as perl6
@@ -198,13 +208,19 @@
  ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
  ;;scala             ; java, but good
  ;;scheme            ; a fully conniving family of lisps
- sh                  ; she sells {ba,z,fi}sh shells on the C xor
+ (sh                  ; she sells {ba,z,fi}sh shells on the C xor
+  +lsp
+  +tree-sitter)
  ;;sml
  ;;solidity          ; do you need a blockchain? No.
  ;;swift             ; who asked for emoji variables?
  ;;terra             ; Earth and Moon in alignment for performance.
- ;;web               ; the tubes
- yaml                ; JSON, but readable
+ (web               ; the tubes
+  +lsp
+  +tree-sitter)
+ (yaml                ; JSON, but readable
+  +lsp
+  +tree-sitter)
 
  :email
  ;;(mu4e +gmail)

@@ -285,7 +285,7 @@ for_window [class=".*"] border none
 
 assign [class="Zotero"] 6
 assign [class="google-chrome"] 0
-assign [class="Firefox-esr"] 9
+assign [class="firefox-esr"] 9
 
 ################################################################################
 #         Keybindings

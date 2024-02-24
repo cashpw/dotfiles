@@ -91,9 +91,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :group 'cashpw
   :type 'string)
 
-(defcustom cashpw/path--notes-private-dir
-  (s-lex-format "${cashpw/path--proj-dir}/notes-private")
+(defcustom cashpw/path--notes-corp-dir
+  (s-lex-format "${cashpw/path--proj-dir}/notes-corp")
   "Personal private org-roam notes directory."
+  :group 'cashpw
+  :type 'string)
+
+(defcustom cashpw/path--notes-journal-dir
+  (s-lex-format "${cashpw/path--proj-dir}/notes-journal")
+  "Personal journal."
   :group 'cashpw
   :type 'string)
 
@@ -476,16 +482,25 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
 
-(setq
- doom-theme 'doom-tomorrow-night
- show-trailing-whitespace t)
-
 ;; (use-package! svg-tag-mode
 ;;   :config
 ;;   (setq
 ;;    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 
 (use-package! nerd-icons)
+
+(setq
+ show-trailing-whitespace t)
+
+(setq
+ doom-theme 'doom-tomorrow-night)
+
+(setq
+ doom-font (font-spec :family "Fira Code"
+                      :size 16
+                      :weight 'semi-light)
+ doom-variable-pitch-font (font-spec :family "Fira Sans"
+                                     :size 16))
 
 (use-package! w3m)
 
@@ -999,6 +1014,23 @@ ${content}"))
    +zen-mixed-pitch-modes '()
    writeroom-width 45))
 
+(use-package! flycheck-vale
+  :config
+  (flycheck-vale-setup))
+
+;; (set-eglot-client! 'org-mode "efm-langserver")
+;; (after! eglot
+;;   (add-to-list 'eglot-server-programs
+;;                '(org-mode . ("efm-langserver")
+;;                  text-mode . ("efm-langserver")
+;;                  gfm-mode . ("efm-langserver")
+;;                  markdown-mode . ("efm-langserver"))))
+
+;; Doom Emacs provides flycheck
+(after! flycheck
+  (add-hook 'after-init-hook
+            #'global-flycheck-mode))
+
 (setq
  flutter-sdk-path "/home/cashweaver/snap/flutter/common/flutter"
  lsp-dart-flutter-sdk flutter-sdk-path
@@ -1007,461 +1039,6 @@ ${content}"))
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
-
-(use-package! org-anki
-  :after org)
-
-(use-package! anki-editor
-  :after org
-  :custom
-  (defun cashpw/anki-to-fc ()
-    (interactive)
-    (let ((anki-card-heading-points (org-map-entries
-                                     (lambda ()
-                                       (point))
-                                     "+LEVEL=2-fc+ANKI_NOTE_ID={.}")))
-      (dolist (pom (reverse anki-card-heading-points))
-        (goto-char pom)
-        (cashpw/anki-to-fc--single))))
-
-  (defun cashpw/anki-to-fc--single (&optional pom)
-    (interactive)
-    (let* ((pom (or pom (point)))
-           (heading-text (org-entry-get pom "ITEM"))
-           (anki-note-type (org-entry-get pom "ANKI_NOTE_TYPE"))
-           (anki-note-id (org-entry-get pom "ANKI_NOTE_ID"))
-           (data (cashpw/anki-to-fc--get-data anki-note-id))
-           (card-created-time (plist-get (nth 0 data) :card-created-time)))
-      (if (or (string= "AKA" anki-note-type)
-              (string= "Cloze with Source" anki-note-type)
-              (string= "Definition" anki-note-type)
-              (string= "Denotes" anki-note-type))
-          (org-fc--add-tag "orgfc_migration_safetodelete")
-        (org-fc--add-tag "orgfc_migration_needswork"))
-      (org-insert-heading)
-      (org-set-tags ":fc:")
-      (org-id-get-create)
-      (org-set-property "ANKI_NOTE_ID"
-                        anki-note-id)
-      (org-set-property "FC_CREATED"
-                        (cashpw/anki-to-fc--time-to-fc-time card-created-time))
-      (cond
-       ((string= "AKA" anki-note-type)
-        (cashpw/anki-to-fc--aka heading-text
-                                data
-                                anki-note-id))
-       ((string= "Cloze with Source" anki-note-type)
-        (cashpw/anki-to-fc--cloze-with-source heading-text
-                                              data
-                                              anki-note-id))
-       ;; ((string= "Compare/Contrast" anki-note-type)
-       ;;  (cashpw/anki-to-fc--compare-contrast heading-text
-       ;;                                     data
-       ;;                                     anki-note-id))
-       ((string= "Definition" anki-note-type)
-        (cashpw/anki-to-fc--definition heading-text
-                                       data
-                                       anki-note-id))
-       ((string= "Denotes" anki-note-type)
-        (cashpw/anki-to-fc--denotes heading-text
-                                    data
-                                    anki-note-id))
-       ;; ((string= "Equivalence" anki-note-type)
-       ;;  (cashpw/anki-to-fc--equivalence heading-text
-       ;;                                      data
-       ;;                                      anki-note-id))
-       (t
-        (cashpw/anki-to-fc--default heading-text
-                                    data
-                                    anki-note-id
-                                    anki-note-type)))))
-
-  (defun cashpw/anki-to-fc--general (heading-text review-data fc-type)
-    (insert (s-lex-format " ${heading-text}"))
-    (org-set-property "FC_TYPE" fc-type)
-    (org-fc-review-data-set review-data))
-
-  (defun cashpw/anki-to-fc--normal (heading-text review-data front back &optional extra source)
-    (cashpw/anki-to-fc--general heading-text
-                                review-data
-                                "normal")
-    (save-excursion
-      ;; Jump below the drawers
-      (org-insert-subheading nil)
-      ;; Delete the heading we just created
-      (delete-backward-char 4)
-      (insert front))
-    (save-excursion
-      ;; Jump below the drawers
-      (org-insert-subheading nil)
-      (insert "Back")
-      (newline)
-      (insert back))
-    (when extra
-      (save-excursion
-        (org-insert-subheading nil)
-        (insert "Extra")
-        (newline)
-        (insert extra)))
-    (when source
-      (save-excursion
-        (org-insert-subheading nil)
-        (insert "Source")
-        (newline)
-        (insert source))))
-
-  (defun cashpw/anki-to-fc--double (heading-text review-data front back &optional extra source)
-    (cashpw/anki-to-fc--normal heading-text
-                               review-data
-                               front
-                               back
-                               extra
-                               source)
-    (org-set-property "FC_TYPE" "double"))
-
-  (defun cashpw/anki-to-fc--cloze (heading-text review-data &optional body extra source)
-    (let* ((fc-cloze-max (number-to-string
-                          (length review-data)))
-           (heading-text (cashpw/anki-to-fc--convert-text
-                          heading-text)))
-      (cashpw/anki-to-fc--general heading-text
-                                  review-data
-                                  "cloze")
-      (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
-      (org-set-property "FC_CLOZE_TYPE" "deletion")
-      (when body
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert body)))
-      (when extra
-        (save-excursion
-          (org-insert-subheading nil)
-          (insert "Extra")
-          (newline)
-          (insert extra)))
-      (when source
-        (save-excursion
-          (org-insert-subheading nil)
-          (insert "Source")
-          (newline)
-          (insert source)))))
-
-  (defun cashpw/anki-to-fc--default (heading-text data anki-note-id anki-note-type)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cashpw/anki-to-fc--normal anki-note-type
-                                 review-data
-                                 heading-text
-                                 "TODO: Back")
-      (org-set-tags ":fc:todo:")))
-
-  (defun cashpw/anki-to-fc--cloze-with-source (heading-text data anki-note-id)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (text extra source) fields
-        (let ((extra (if (> (length extra) 0)
-                         (cashpw/anki-to-fc--convert-text extra)
-                       nil))
-              (source (if (> (length source) 0)
-                          source
-                        ;; "TODO: Source"
-                        nil))))
-        (cashpw/anki-to-fc--cloze heading-text
-                                  review-data
-                                  ;; body
-                                  nil
-                                  extra
-                                  source))))
-
-  (defun cashpw/anki-to-fc--compare-contrast (heading-text data anki-note-id)
-    (let* ((fields (cashpw/anki-to-fc--get-fields anki-note-id))
-           (review-data (mapcar
-                         (lambda (datum)
-                           (list "front"
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cl-destructuring-bind (concepts context comparisons-contrasts source) fields
-        (let* ((concepts (cashpw/anki-to-fc--convert-text concepts))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (comparisons-contrasts (if (> (length comparison-contrasts) 0)
-                                          (cashpw/anki-to-fc--convert-text comparison-contrasts)
-                                        nil))
-               (source (if (> (length source) 0)
-                           source
-                         ;; "TODO: Source"
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Compare/Contrast (${context})")
-                               "Compare/Contrast"))
-               (front-text concepts)
-               (back-text comparisons-contrasts))
-          (cashpw/anki-to-fc--normal heading-text
-                                     review-data
-                                     front
-                                     back
-                                     ;; extra
-                                     nil
-                                     source)))))
-
-  (defun cashpw/anki-to-fc--definition (heading-text data anki-note-id)
-    (let* ((fields (cashpw/anki-to-fc--get-fields anki-note-id))
-           (review-data (mapcar
-                         (lambda (datum)
-                           (list (if (= 0 (plist-get datum :position))
-                                     "back"
-                                   "front")
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cl-destructuring-bind (term-val context definition extra source) fields
-        (let* ((term-val (cashpw/anki-to-fc--convert-text term-val))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (definition (if (> (length definition) 0)
-                               (cashpw/anki-to-fc--convert-text definition)
-                             nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           source
-                         ;; "TODO: Source"
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Definition (${context})")
-                               "Definition"))
-               (front term-val)
-               (back definition))
-          (cashpw/anki-to-fc--double heading-text
-                                     review-data
-                                     front
-                                     back
-                                     extra
-                                     source)))))
-
-  (defun cashpw/anki-to-fc--denotes (heading-text data anki-note-id)
-    (let* ((review-data (mapcar (lambda (datum)
-                                  (list (plist-get datum :position)
-                                        (plist-get datum :ease)
-                                        (plist-get datum :box)
-                                        (plist-get datum :interval)
-                                        (plist-get datum :due)))
-                                data))
-           (fc-cloze-max (number-to-string
-                          (length review-data)))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (symbol-1 symbol-2 symbol-3 symbol-4 context description extra source) fields
-        (let* ((symbol-1 (cashpw/anki-to-fc--convert-text symbol-1))
-               (symbol-2 (if (> (length symbol-2) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-2)
-                           nil))
-               (symbol-3 (if (> (length symbol-3) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-3)
-                           nil))
-               (symbol-4 (if (> (length symbol-4) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-4)
-                           nil))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (description (if (> (length description) 0)
-                                (cashpw/anki-to-fc--convert-text description)
-                              nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           (cashpw/anki-to-fc--convert-text source)
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Denotes (${context})")
-                               "Denotes"))
-               (body
-                (concat (s-lex-format "- {{${symbol-1}}@0}\n")
-                        (if symbol-2 (s-lex-format "- {{${symbol-2}}@1}\n") "")
-                        (if symbol-3 (s-lex-format "- {{${symbol-3}}@2}\n") "")
-                        (if symbol-4 (s-lex-format "- {{${symbol-4}}@3}\n") "")
-                        (s-lex-format "\n${description}"))))
-          (cashpw/anki-to-fc--cloze heading-text
-                                    review-data
-                                    body
-                                    extra
-                                    source)))))
-
-  (defun cashpw/anki-to-fc--aka (heading-text data anki-note-id)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data))
-           (fc-cloze-max (number-to-string
-                          (length review-data)))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (term-1 term-2 term-3 term-4 term-5 term-6 context extra source) fields
-        (let* ((term-1 (cashpw/anki-to-fc--convert-text term-1))
-               (term-2 (if (> (length term-2) 0)
-                           (cashpw/anki-to-fc--convert-text term-2)
-                         nil))
-               (term-3 (if (> (length term-3) 0)
-                           (cashpw/anki-to-fc--convert-text term-3)
-                         nil))
-               (term-4 (if (> (length term-4) 0)
-                           (cashpw/anki-to-fc--convert-text term-4)
-                         nil))
-               (term-5 (if (> (length term-5) 0)
-                           (cashpw/anki-to-fc--convert-text term-5)
-                         nil))
-               (term-6 (if (> (length term-6) 0)
-                           (cashpw/anki-to-fc--convert-text term-6)
-                         nil))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           (cashpw/anki-to-fc--convert-text source)
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "AKA (${context})")
-                               "AKA"))
-               (body
-                (concat (s-lex-format "- {{${term-1}}@0}\n")
-                        (if term-2 (s-lex-format "- {{${term-2}}@1}\n") "")
-                        (if term-3 (s-lex-format "- {{${term-3}}@2}\n") "")
-                        (if term-4 (s-lex-format "- {{${term-4}}@3}\n") "")
-                        (if term-5 (s-lex-format "- {{${term-5}}@4}\n") "")
-                        (if term-6 (s-lex-format "- {{${term-6}}@5}\n") ""))
-                ))
-          (cashpw/anki-to-fc--cloze heading-text
-                                    review-data
-                                    body
-                                    extra
-                                    source)))))
-
-  (defun cashpw/anki-to-fc--convert-text (text)
-    (cashpw/anki-to-fc--convert-cloze
-     (cashpw/anki-to-fc--convert-roam-link text)))
-
-  (defun cashpw/anki-to-fc--convert-roam-link (text)
-    (replace-regexp-in-string "<a href=\".*?\\#ID-\\(.*?\\)\">\\(.*?\\)<\\/a>"
-                              "[[\\1][\\2]]"
-                              text))
-
-  (defun cashpw/anki-to-fc--convert-latex (text)
-    "LaTeX code in cloze delections can't contain a }} , to work around this limitation, insert a space between the braces.
-
-Example: \frac{1}{\sqrt{2} }
-
-See: https://www.leonrische.me/fc/card_types.html"
-    (replace-regexp-in-string "}}" "} }" text))
-
-  (defun cashpw/anki-to-fc--convert-cloze (cloze-text)
-    (replace-regexp-in-string
-     "}@\\([0-9]+\\)"
-     (lambda (match)
-       (cl-destructuring-bind (prefix cloze-id) (s-split "@" match)
-         (concat prefix
-                 "@"
-                 (number-to-string
-                  (1- (string-to-number
-                       cloze-id))))))
-     (replace-regexp-in-string
-      "{{\\(.*?\\)::\\(.*?\\)}@" "{{\\1}{\\2}@"
-      (replace-regexp-in-string
-       "{{c\\([0-9]+\\)::\\(.*?\\)}}"
-       "{{\\2}@\\1}"
-       cloze-text))))
-
-  (defun cashpw/anki-to-fc--time-to-fc-time (time)
-    (format-time-string "%FT%TZ" time "UTC0"))
-
-  (defun cashpw/anki-to-fc--get-fields (anki-note-id)
-    (let* ((anki-field-separator "")
-           (db "/home/cashpw/collection.anki2")
-           (query (s-lex-format "select flds from notes where id=${anki-note-id}"))
-           (command (s-lex-format "sqlite3 ${db} \"${query}\""))
-           (fields (shell-command-to-string command)))
-      (s-split anki-field-separator fields)))
-
-  (defun cashpw/anki-to-fc--query-db (query)
-    (let* ((db "/home/cashpw/collection.anki2")
-           (command (s-lex-format "sqlite3 ${db} \"${query}\""))
-           (results (shell-command-to-string command))
-           (lines (s-split "\n"
-                           results
-                           'omit-nulls)))
-      lines))
-
-  (defun cashpw/anki-to-fc--get-data (note-id)
-    "Get due,ivl information from the anki card at point."
-    (let* ((anki-collection-creation-time
-            ;; https://github.com/ankidroid/Anki-Android/wiki/Database-Structure#collection
-            (seconds-to-time 1553518800))
-           (query
-            ;; https://github.com/ankidroid/Anki-Android/wiki/Database-Structure
-            (s-lex-format "select due,ivl,factor,reps,lapses,ord,cards.id from notes inner join cards on notes.id = cards .nid where notes.id = ${note-id};"))
-           (lines (cashpw/anki-to-fc--query-db query))
-           ;; (anki-field-separator "")
-           (initial-ease 2.5)
-           (positions (mapcar
-                       (lambda (line)
-                         (cl-destructuring-bind (due interval factor reps lapses ordinal card-id) (s-split "|" line)
-                           (let* ((due (cashpw/anki-to-fc--time-to-fc-time
-                                        (time-add anki-collection-creation-time
-                                                  (days-to-time (string-to-number due)))))
-                                  (reps (string-to-number reps))
-                                  (lapses (string-to-number lapses))
-                                  (interval (string-to-number interval))
-                                  (last-sm2-interval 6.0)
-                                  (last-sm2-interval-index 3)
-                                  (box (if (> interval last-sm2-interval)
-                                           (max (- reps lapses)
-                                                (1+ last-sm2-interval-index))
-                                         (- reps lapses)))
-                                  (factor (string-to-number factor))
-                                  (ease (if (= factor 0)
-                                            initial-ease
-                                          (/ factor 1000.0)))
-                                  (pos (string-to-number ordinal))
-                                  (card-created-time (seconds-to-time (/ (string-to-number card-id)
-                                                                         1000))))
-                             `(:card-created-time ,card-created-time
-                               :position ,pos
-                               :ease ,ease
-                               :box ,box
-                               :interval ,interval
-                               :due ,due))))
-                       lines)))
-      positions)))
 
 (defgroup cashpw/contacts nil
   "Group for contacts."
@@ -1695,24 +1272,8 @@ Based on `org-contacts-anniversaries'."
 (use-package! doct
   :commands (doct))
 
-(use-package! org-special-block-extras
-  :after org
-  :hook (org-mode . org-special-block-extras-mode)
-  :custom
-  (o-docs-libraries
-   '("~/org-special-block-extras/documentation.org")
-   "The places where I keep my ‘#+documentation’")
-  (org-defblock hugogallery
-                (editor "Editor HugoGallery") ()
-                "Docstring"
-                (if (not (equal backend 'hugo))
-                    contents
-                  (format "{{< gallery >}}%s{{< /gallery >}}"
-                          (replace-regexp-in-string ":class:class"
-                                                    ":class"
-                                                    (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
-                                                                              "\\1:class hugo-gallery-image "
-                                                                              contents))))))
+(use-package! doct-org-roam
+  :after doct)
 
 ;; (use-package! ol-doi
 ;;  :after org)
@@ -1736,10 +1297,6 @@ Based on `org-contacts-anniversaries'."
   :after org
   :custom
   (org-download-heading-lvl nil))
-
-(after! org-habit
-  (setq
-    org-habit-show-done-always-green t))
 
 ;; (remove-hook! 'org-mode-hook #'org-fancy-priorities-mode)
 
@@ -2129,8 +1686,6 @@ Only parent headings of the current heading remain visible."
     (org-show-set-visibility org-fc-narrow-visibility)
     (if (member "noheading" tags) (org-fc-hide-heading))))
 
-(use-package! org-tempo)
-
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
                                 :dateTime))
@@ -2457,32 +2012,16 @@ Reference: `org-gcal--update-entry'."
   (add-hook 'org-gcal-after-update-entry-functions
             #'cashpw/org-gcal--maybe-create-todo-extract-reminder))
 
-(use-package! org-multi-clock)
+(after! org-habit
+  (setq
+    org-habit-show-done-always-green t))
 
 (use-package! org-mime)
 
+(use-package! org-multi-clock)
+
 (use-package! ol-notmuch
   :after org)
-
-(use-package! org-ql)
-
-(use-package! vulpea)
-
-(use-package! doct-org-roam
-  :after doct)
-
-(use-package! org-roam
-  :after org)
-
-(use-package! summarize-agenda-time
-  :after org
-  :config
-  (setq
-   summarize-agenda-time--max-duration-minutes (* 60 6)))
-
-(when (not (cashpw/is-work-cloudtop-p))
-  (use-package! ox-hugo
-    :after ox))
 
 (use-package! org-protocol
   :config
@@ -2503,7 +2042,48 @@ Reference: `org-gcal--update-entry'."
   ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
+(use-package! org-ql)
+
+(use-package! org-recipes
+  :after org)
+
+(use-package! org-roam
+  :after org)
+
+(use-package! org-special-block-extras
+  :after org
+  :hook (org-mode . org-special-block-extras-mode)
+  :custom
+  (o-docs-libraries
+   '("~/org-special-block-extras/documentation.org")
+   "The places where I keep my ‘#+documentation’")
+  (org-defblock hugogallery
+                (editor "Editor HugoGallery") ()
+                "Docstring"
+                (if (not (equal backend 'hugo))
+                    contents
+                  (format "{{< gallery >}}%s{{< /gallery >}}"
+                          (replace-regexp-in-string ":class:class"
+                                                    ":class"
+                                                    (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
+                                                                              "\\1:class hugo-gallery-image "
+                                                                              contents))))))
+
+(use-package! org-tempo)
+
 (use-package! org-vcard)
+
+(when (not (cashpw/is-work-cloudtop-p))
+  (use-package! ox-hugo
+    :after ox))
+
+(use-package! summarize-agenda-time
+  :after org
+  :config
+  (setq
+   summarize-agenda-time--max-duration-minutes (* 60 6)))
+
+(use-package! vulpea)
 
 (defun cashpw/org-mode-get-all-tags-in-file ()
   "Returns a list of all unique tags used in the current org-mode file."
@@ -2939,11 +2519,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
    (string= "3" priority)
    (string= "4" priority)))
 
-(use-package! flycheck-vale
-  :config
-  (add-hook 'find-file-hook
-            'flymake-vale-maybe-load))
-
 (after! org
   (setq
    org-ellipsis " ▾"
@@ -2967,46 +2542,46 @@ Reference: https://emacs.stackexchange.com/a/43985"
 (after! org
   :config
   (setq
-   org-todo-keywords
-   '((sequence
-      ;; A task that needs doing & is ready to do
-      "TODO(t)"
-      ;; A task that is in progress
-      "INPROGRESS(i)"
-      ;; Something external is holding up this task
-      "BLOCKED(b)"
-      ;; This task is paused/on hold because of me
-      "HOLD(h)"
-      ;; A project, which usually contains other tasks
-      "PROJ(p)"
-      "|"
-      ;; Task successfully completed
-      "DONE(d)"
-      ;; Calendar event is declined
-      "DECLINED(`)"
-      ;; Calendar event is cancelled
-      "CANCELLED(~)"
-      ;; Task was moved
-      "MOVE(m)"
-      ;; Task was cancelled, aborted or is no longer applicable
-      "KILL(k)")
-     (sequence
-      ;; A task that needs doing
-      "[ ](T)"
-      ;; Task is in progress
-      "[-](S)"
-      ;; Task is being held up or paused
-      "[?](W)"
-      "|"
-      ;; Task was completed
-      "[X](D)"))
-   org-todo-keyword-faces
-   '(("[-]"  . +org-todo-active)
-     ("INPROGRESS" . +org-todo-active)
-     ("[?]"  . +org-todo-onhold)
-     ("BLOCKED" . +org-todo-onhold)
-     ("HOLD" . +org-todo-onhold)
-     ("PROJ" . +org-todo-project))))
+   org-todo-keywords '((sequence
+                        ;; A task that needs doing & is ready to do
+                        "TODO(t)"
+                        ;; A task that is in progress
+                        "INPROGRESS(i)"
+                        ;; Something external is holding up this task
+                        "BLOCKED(b)"
+                        ;; This task is paused/on hold because of me
+                        "HOLD(h)"
+                        ;; A project, which usually contains other tasks
+                        "PROJ(p)"
+                        "|"
+                        ;; Task successfully completed
+                        "DONE(d)"
+                        ;; Calendar event is declined
+                        "DECLINED(`)"
+                        ;; Calendar event is cancelled
+                        "CANCELLED(~)"
+                        ;; Task was moved
+                        "MOVE(m)"
+                        ;; Task was moved
+                        "RESCHEDULE(_)"
+                        ;; Task was cancelled, aborted or is no longer applicable
+                        "KILL(k)")
+                       (sequence
+                        ;; A task that needs doing
+                        "[ ](T)"
+                        ;; Task is in progress
+                        "[-](S)"
+                        ;; Task is being held up or paused
+                        "[?](W)"
+                        "|"
+                        ;; Task was completed
+                        "[X](D)"))
+   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
+                            ("INPROGRESS" . +org-todo-active)
+                            ("[?]"  . +org-todo-onhold)
+                            ("BLOCKED" . +org-todo-onhold)
+                            ("HOLD" . +org-todo-onhold)
+                            ("PROJ" . +org-todo-project))))
 
 ;; (after! org
 ;;   (add-hook!
@@ -3544,7 +3119,7 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                 ((equal context 'notes-personal)
                  cashpw/path--notes-personal-dir)
                 ((equal context 'notes-private)
-                 cashpw/path--notes-private-dir)
+                 cashpw/path--notes-corp-dir)
                 ((equal context 'people)
                  cashpw/path--people-dir)
                 (t
@@ -4146,7 +3721,7 @@ items if they have an hour specification like [h]h:mm."
       (goto-char point-or-marker)
       (when (org-get-repeat)
         (while (cashpw/org-scheduled-in-past-p point-or-marker)
-          (org-todo 'done))))))
+          (org-todo "RESCHEDULE"))))))
 
 (defun cashpw/org-reschedule-overdue-todo-agenda ()
   "Invoke `cashpw/org-reschedule-overdue-todo' for an agenda view.
@@ -4378,6 +3953,41 @@ When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
                     (buffer-string))))
     (org-roam-ref-add citation)))
 
+(defun cashpw/org-hugo--remove-empty-bibliography-from-export (export-file-path)
+  "Delete bibliography in EXPORT-FILE-PATH if there are no citations.
+
+The relevant markdown looks like either:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+  <div class=\"csl-entry\">...</div>
+</div>
+
+or:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+</div>"
+  
+  (with-current-buffer (find-file-noselect export-file-path)
+    (when (save-excursion
+            (goto-char (point-min))
+            (search-forward "csl-entry" nil t))
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "## Bibliography" nil t)
+        ;; # Bibliography
+        (delete-line)
+        ;; 
+        (delete-line)
+        ;; <style>...
+        (delete-line)
+        ;; </div>
+        (delete-line)
+        (save-buffer)))))
+
 (defun cashpw/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
 
@@ -4390,12 +4000,13 @@ The exporting happens only when Org Capture is not in progress."
     (save-excursion
       (let* ((org-id-extra-files (org-roam-list-files))
              (export-file-path (org-hugo-export-wim-to-md)))
-        (when cashpw/org-hugo-replace-front-matter-with-title
-          (with-current-buffer
-              (find-file-noselect
-               export-file-path)
-            (cashpw/replace-toml-front-matter-with-md-heading)
-            (save-buffer)))))))
+        (cashpw/org-hugo--remove-empty-bibliography-from-export export-file-path)
+        ;; (when cashpw/org-hugo-replace-front-matter-with-title
+        ;;   (with-current-buffer (find-file-noselect
+        ;;                         export-file-path)
+        ;;     (cashpw/replace-toml-front-matter-with-md-heading)
+        ;;     (save-buffer)))
+        ))))
 
 (defun cashpw/org-roam-new-node (file-path title &optional properties)
   "Build a new org-roam node in a temp file.
@@ -4530,24 +4141,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message "Not an http(s) ref (%s)"
                roam-refs))))
 
-;; This bit is no longer necessary as I've discovered .dir-locals.el.
-;; Setting `org-attach-directory' in .dir-locals.el has the desired
-;; effect of this function.
-;;
-;; (defun cashpw/org-roam-insert-attachment-path ()
-;;   (let ((dir
-;;          (format
-;;           "%s/%s"
-;;           cashpw/org-roam-attachment-base-path
-;;           (org-id-get))))
-;;     (save-excursion
-;;       (org-set-property
-;;        "DIR"
-;;        dir))))
-;; (after! org-roam
-;;   (remove-hook! 'org-roam-capture-new-node-hook
-;;               'cashpw/org-roam-insert-attachment-path))
-
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
   (when (org-roam-file-p)
@@ -4592,8 +4185,6 @@ Work in progress"
       roam-aliases
       )))
 
-;; (cashpw/org-roam--mirror-roam-aliases-to-hugo-aliases)
-
 (defun cashpw/org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
   (interactive)
@@ -4606,29 +4197,6 @@ Work in progress"
            :ROAM_ALIASES
            (org-element-parse-buffer))))
       (message raw-roam-aliases))))
-
-(defun cashpw/org-roam--process-ref-before-adding-to-front-matter (ref)
-  (cond
-   ((string-match-p "^\\[cite" ref)
-    nil
-    ;; (let ((citation
-    ;;        (save-excursion
-    ;;          (beginning-of-buffer)
-    ;;          (search-forward ref)
-    ;;          (org-element-citation-parser))))
-    ;;   (org-cite-export-citation
-    ;;    citation
-    ;;    nil
-    ;;    '(:cite-export nil)
-    ;;    ))
-    )
-   (t
-    ref)))
-
-(defun cashpw/org-hugo--set-custom-front-matter (text)
-  (org-roam-set-keyword
-   (downcase "HUGO_CUSTOM_FRONT_MATTER")
-   text))
 
 (defun cashpw/org-hugo--build-custom-front-matter-from-properties (properties)
   (string-join
@@ -4717,23 +4285,6 @@ Work in progress"
 (defcustom cashpw/org-roam--file-path-exceptions-to-add-flashcards
   '()
   "File paths which won't hold flashcards.")
-
-(defun cashpw/anki-available-p ()
-  (condition-case error
-      (anki-editor-api-check)
-    ('error
-     nil))
-  t)
-
-(defun cashpw/enable-anki-editor-mode ()
-  (if (cashpw/anki-available-p)
-      (anki-editor-mode t)
-    (message "Skipping enable anki-editor-mode because Anki isn't available.")))
-
-(defun cashpw/anki-editor-push-notes ()
-  (if (cashpw/anki-available-p)
-      (anki-editor-push-notes)
-    (message "Skipping anki-editor-push-notes because Anki isn't available.")))
 
 (defun cashpw/org-roam-add-flashcards (&optional skip-if-present)
   "Add flashcard heading to the current buffer."
@@ -4857,7 +4408,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (cashpw/org-roam-add-bibliography)
   (cashpw/org-roam-add-flashcards)
   ;; (cashpw/org-hugo-export-wim-to-md)
-  ;; (cashpw/anki-editor-push-notes)
   )
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -4911,37 +4461,26 @@ This is an internal function."
       (cashpw/org-hugo-linkify-mathjax cashpw/org-hugo--mathjax-post-map)
       (save-buffer))))
 
-(defun org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
-  "Read an `org-roam-node', returning its id.
-
-All args are passed to `org-roam-node-read'."
-  (concat
-   "id:"
-   (org-roam-node-id
-    (org-roam-node-read
-     initial-input filter-fn sort-fn require-match prompt))))
-
-(org-link-set-parameters "id" :complete #'org-roam-id-complete)
-
 (after! org-roam
   (defun org-hugo-export-wim-to-md-after-save ()
     (cashpw/org-hugo-export-wim-to-md))
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
 
-(defun cashpw/buffer-has-todo-p ()
+(defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
 
 TODO entries marked as done are ignored, meaning the this
 function returns nil if current buffer contains only completed
 tasks."
-  (seq-find (lambda (type)
-              (eq type 'todo))
-            (org-element-map
-                (org-element-parse-buffer 'headline)
-                'headline
-              (lambda (h)
-                (org-element-property :todo-type h)))))
+  (when (string-equal mode-name "Org")
+    (seq-find (lambda (type)
+                (eq type 'todo))
+              (org-element-map
+                  (org-element-parse-buffer 'headline)
+                  'headline
+                (lambda (h)
+                  (org-element-property :todo-type h))))))
 
 (defun cashpw/org-roam-update-hastodo-tag ()
   "Update HASTODO tag in the current buffer."
@@ -4952,7 +4491,7 @@ tasks."
       (goto-char (point-min))
       (let* ((tags (vulpea-buffer-tags-get))
              (original-tags tags))
-        (if (cashpw/buffer-has-todo-p)
+        (if (cashpw/org-mode--buffer-has-todo-p)
             (setq tags (cons "hastodo" tags))
           (setq tags (remove "hastodo" tags)))
 
@@ -5109,129 +4648,18 @@ ${file}
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-gallery)
 
-(defgroup org-roam-recipe
-  nil
-  "Options related to recipes in org-mode."
-  :tag "Recipes in org-roam.")
-
-(defcustom org-roam-recipe--property-prefix
-  "recipe"
-  "Prefix for all org-mode headline properties used by org-roam-recipe.")
-
-(defun org-roam-recipe--prop-prep-minutes ()
-  "Org-mode property for preparation minutes."
-  (concat org-roam-recipe--property-prefix "_prep_minutes"))
-
-(defun org-roam-recipe--prop-cook-minutes ()
-  "Org-mode property for cooking minutes."
-  (concat org-roam-recipe--property-prefix "_cook_minutes"))
-
-(defun org-roam-recipe--prop-servings ()
-  "Org-mode property for servings."
-  (concat org-roam-recipe--property-prefix "_servings"))
-
-(defun org-roam-recipe--prop-yield ()
-  "Org-mode property for yield."
-  (concat org-roam-recipe--property-prefix "_yield"))
-
-(defun org-roam-recipe--prop-stars ()
-  "Org-mode property for stars (rating)."
-  (concat org-roam-recipe--property-prefix "_stars"))
-
-(defcustom org-roam-recipe--properties
-  `(,(org-roam-recipe--prop-prep-minutes)
-    ,(org-roam-recipe--prop-cook-minutes)
-    ,(org-roam-recipe--prop-servings)
-    ,(org-roam-recipe--prop-yield)
-    ,(org-roam-recipe--prop-stars))
-  "Org-mode properties used by org-roam-recipe."
-  :type '(repeat string)
-  :group 'org-roam-recipe)
-
-(defun org-roam-recipe--get-prop (property pom &optional default)
-  "Return value for PROPERTY at POM or (optional) DEFAULT if value is nil."
-  (message "org-roam-recipe--get-prop pos: %s" pom)
-  (let ((property-value (org-entry-get pom property)))
-    (if default
-        (or property-value
-            default)
-      property-value)))
-
-(defun org-roam-recipe--format-duration (minutes)
-  "Return formatted time string of duration MINUTES."
-  (org-duration-from-minutes minutes))
-
-(defun org-roam-recipe--get-minutes (property &optional pos)
-  "Return prep time in minutes at POS."
-  (let* ((pos (or pos
-                  (point-min)))
-         (minutes (string-to-number
-                   (org-roam-recipe--get-prop property
-                                              pos
-                                              "0"))))
-    minutes))
-
-(defun org-roam-recipe-get-prep-minutes (&optional pos)
-  "Return prep time in minutes at POS."
-  (org-roam-recipe--get-minutes (org-roam-recipe--prop-prep-minutes)))
-
-(defun org-roam-recipe-get-cook-minutes (&optional pos)
-  "Return cook time in minutes at POS."
-  (org-roam-recipe--get-minutes (org-roam-recipe--prop-cook-minutes)))
-
-(defun org-roam-recipe--get-int-property (property &optional pos)
-  "Return the integer value of PROPERTY (at POS) or nil if it's not set."
-  (let* ((pos (or pos
-                  (point-min)))
-         (value (org-roam-recipe--get-prop property
-                                           pos)))
-    (message "%s" pos)
-    (message "%s" value)
-    (if value
-        (string-to-number value)
-      nil)))
-
-(defun org-roam-recipe-get-servings (&optional pos)
-  "Return servings at POS (e.g. \"8\")."
-  (org-roam-recipe--get-int-property (org-roam-recipe--prop-servings)
-                                     pos))
-
-(defun org-roam-recipe-get-stars (&optional pos)
-  "Return stars at POS (e.g. \"4\")."
-  (org-roam-recipe--get-int-property (org-roam-recipe--prop-stars)
-                                     pos))
-
-(defun org-roam-recipe-get-yield (&optional pos)
-  "Return yield at POS (e.g. \"7 liters\")."
-  (let ((pos (or pos
-                 (point-min))))
-    (org-roam-recipe--get-prop (org-roam-recipe--prop-yield)
-                               pos)))
-
-(defun org-roam-recipe-get-prep-duration ()
-  "Return formatted preparation duration."
-  (let ((prep-minutes (org-roam-recipe-get-prep-minutes)))
-    (if (= 0 prep-minutes)
-        nil
-      (org-roam-recipe--format-duration prep-minutes))))
-
-(defun org-roam-recipe-get-cook-duration ()
-  "Return formatted cooking duration."
-  (let ((cook-minutes (org-roam-recipe-get-cook-minutes)))
-    (if (= 0 cook-minutes)
-        nil
-      (org-roam-recipe--format-duration cook-minutes))))
-
-(defun org-roam-recipe-get-total-duration ()
-  "Return formatted total duration."
-  (let* ((cook-minutes (org-roam-recipe-get-cook-minutes))
-         (prep-minutes (org-roam-recipe-get-prep-minutes))
-         (total-minutes (-sum
-                         (-non-nil `(,cook-minutes
-                                     ,prep-minutes)))))
-    (if (= 0 total-minutes)
-        nil
-      (org-roam-recipe--format-duration total-minutes))))
+(setq
+ org-roam-dailies-directory cashpw/path--notes-journal-dir
+ org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
+                                                      :type plain
+                                                      :template "%?"
+                                                      :file "%<%Y-%m-%d>.org"
+                                                      :unnarrowed t
+                                                      :children (("Default"
+                                                                  :keys "d"
+                                                                  :head ("#+title: %<%Y-%m-%d>"
+                                                                         "#+author: Cash Prokop-Weaver"
+                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]")))))))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -5402,6 +4830,19 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
 (use-package! org-link-reddit
   )
+
+(defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
+  "Read an `org-roam-node', returning its id.
+
+All args are passed to `org-roam-node-read'."
+  (concat
+   "id:"
+   (org-roam-node-id
+    (org-roam-node-read
+     initial-input filter-fn sort-fn require-match prompt))))
+
+(org-link-set-parameters "id"
+                         :complete #'cashpw/org-roam-id-complete)
 
 ;; (use-package! org-transclusion
 ;;   :after org
@@ -6161,69 +5602,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 ;;  'java-mode-hook
 ;;  'electric-case-java-init)
 
-(defun cashpw/org-roam-push-anki ()
-  (interactive)
-  (measure-time
-   (let* ((org-hugo-auto-set-lastmod nil)
-          (description "Pushing anki cards")
-          (expected-seconds-per-file 3.0
-                                     ;; Determined by timing the export of 100 files.
-                                     ))
-
-     (let ((export-file-name "/tmp/anki.org")
-           (export-buffer-name "*Org ORG Export*")
-           (anki-heading-regexp "\\* \\(TODO \\)?\\(\\[#2\\] \\)?Anki"))
-       ;; Clear /tmp/anki.org
-       (with-current-buffer (find-file-noselect
-                             export-file-name)
-         (erase-buffer)
-         (goto-char (point-min))
-         (insert "#+PROPERTY: ANKI_DECK Default\n\n")
-         (save-buffer))
-
-       ;; Export all anki cards to /tmp/anki.org
-       (cashpw/org-roam-in-all-files
-        (lambda ()
-          (let ((before-save-hook '())
-                (org-export-with-title nil)
-                (org-export-with-date nil)
-                (org-export-with-author nil)
-                (org-export-with-creator nil)
-                (org-export-with-properties t)
-                (org-global-properties '(("ANKI_DECK" . "DEFAULT")))
-                (anki-heading-regexp "\\* \\(TODO \\)?\\(\\[#2\\] \\)?Anki"))
-            (org-mode)
-            (when (buffer-contains-regexp anki-heading-regexp)
-              (goto-char (point-min))
-              (search-forward-regexp anki-heading-regexp)
-              (org-org-export-as-org
-               ;; async
-               nil
-               ;; subtreep
-               t)
-              (set-buffer-modified-p nil)
-              (with-current-buffer (find-file-noselect
-                                    export-file-name)
-                (goto-char (point-max))
-                (insert
-                 (with-current-buffer export-buffer-name
-                   (goto-char (point-min))
-                   ;; Remove "# Created YYYY-MM-DD ..."
-                   (kill-whole-line)
-                   (set-buffer-modified-p nil)
-                   (buffer-substring-no-properties (point-min)
-                                                   (point-max))))
-                (save-buffer))
-              )))
-        description
-        expected-seconds-per-file)
-
-       ;; Push cards
-       (with-current-buffer (find-file-noselect
-                             export-file-name)
-         (anki-editor-push-notes))
-       ))))
-
 ;; Reference: https://notes.alexkehayias.com/exporting-org-mode-documents-with-many-org-id-links-is-slow/
 (after! ox
   ;; Org export is very slow when processing org-id links. Override it
@@ -6307,147 +5685,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
                'replace)))
 
 (use-package! memoize)
-
-(defun cashpw/anki-editor-insert-note ()
-  (interactive)
-  (with-current-buffer
-      (find-file-noselect
-       "~/proj/anki-cards/anki.org")
-    (point-min)
-    (anki-editor-insert-note)))
-
-(defun cashpw/pointer-between-chars-p (chars-before chars-after &optional explicit)
-  "Return t if the pointer is between the provided chars.
-
-Examples (| is the pointer):
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"c\" \"d\") -> t
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\") -> t
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\" t) -> nil
-  - \"aFc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\" t) -> t"
-  (let* ((bol (save-excursion
-                (beginning-of-line)))
-         (eol (save-excursion
-                (end-of-line)))
-         (pos-chars-before (save-excursion
-                             (search-backward chars-before bol t)
-                             (point)))
-         (pos-chars-after (save-excursion
-                            (search-forward chars-after eol t)
-                            (point)))
-         (char-at-point (char-after (point)))
-         (point-between-chars (and
-                               ;; pos-chars-before < (point) < chars-after-point
-                               (> (point)
-                                  pos-chars-before)
-                               (< (point)
-                                  pos-chars-after))))
-    ;; (message (buffer-substring (line-beginning-position)
-    ;;                            (line-end-position)))
-    ;; (message (concat
-    ;;           "(point): "
-    ;;           (number-to-string (point))))
-    ;; (message (s-lex-format
-    ;;           "char-at-point: ${char-at-point}"))
-    ;; (message (s-lex-format
-    ;;           "pos-chars-before: ${pos-chars-before}"))
-    ;; (message (s-lex-format
-    ;;           "pos-chars-after: ${pos-chars-after}"))
-    (if explicit
-        (let* ((pos-prev-chars-after (save-excursion
-                                       (search-backward chars-after eol t)
-                                       (point))))
-          ;; (message (s-lex-format
-          ;;           "pos-prev-chars-after: ${pos-prev-chars-after}"))
-          ;; (message (s-lex-format
-          ;;           "point-between-chars: ${point-between-chars}"))
-          (cond
-           ((not point-between-chars)
-            nil)
-           ((= pos-prev-chars-after
-               (point))
-            t)
-           ((< pos-prev-chars-after
-               (point))
-            nil)))
-      point-between-chars)))
-
-;; test cases
-(with-temp-buffer
-  (insert "[e]")
-  (goto-char 2)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]")))
-(with-temp-buffer
-  (insert "[]e[]")
-  (goto-char 3)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]")))
-(with-temp-buffer
-  (insert "[ced[]")
-  (goto-char 3)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]" t)))
-(with-temp-buffer
-  (insert "[]ced[]")
-  (goto-char 4)
-  (cl-assert
-   (not (cashpw/pointer-between-chars-p "[" "]" t))))
-
-
-(defun cashpw/bounds-of-chars-surrounding-point (before after)
-  (interactive)
-  (let* ((bol (save-excursion
-                (beginning-of-line)))
-         (eol (save-excursion
-                (end-of-line)))
-         (end (save-excursion
-                (search-forward after eol t)
-                (point)))
-         (begin (save-excursion
-                  (search-backward before bol t)
-                  (point))))
-    `(,begin . ,end)))
-
-(defun cashpw/pointer-in-link-p ()
-  (cashpw/pointer-between-chars-p "[[" "]]"))
-
-(defun cashpw/bounds-of-link-at-point ()
-  (cashpw/bounds-of-chars-surrounding-point "[[" "]]"))
-
-(defun cashpw/pointer-in-mathjax-p ()
-  (cashpw/pointer-between-chars-p "\\(" "\\)"))
-
-(defun cashpw/bounds-of-mathjax-at-point ()
-  (cashpw/bounds-of-chars-surrounding-point "\\(" "\\)"))
-
-(defun cashpw/anki-editor-cloze-dwim (&optional arg hint)
-  "Cloze current active region or a word the under the cursor"
-  (interactive "p\nsHint (optional): ")
-  (cond
-   ((region-active-p)
-    (anki-editor-cloze (region-beginning) (region-end) arg hint))
-   ((cashpw/pointer-in-link-p)
-    (let ((bounds (cashpw/bounds-of-link-at-point)))
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   ((cashpw/pointer-in-mathjax-p)
-    (let ((bounds (cashpw/bounds-of-mathjax-at-point)))
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   ((thing-at-point 'word)
-    (let ((bounds (bounds-of-thing-at-point
-                   'word)))
-      (message "word")
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   (t
-    (error "Nothing to create cloze from"))))
 
 ;; Reference: https://github.com/politza/pdf-tools/issues/651
 

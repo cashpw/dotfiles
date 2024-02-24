@@ -71,7 +71,7 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
-(unpin! doom-modeline)
+;; (unpin! doom-modeline)
 
 ;; (package! svg-tag-mode)
 
@@ -92,6 +92,8 @@
 (package! operate-on-number
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
+
+(package! flycheck-vale)
 
 ;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
 ;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
@@ -131,14 +133,6 @@
            :repo "emacsmirror/org-contrib")
   :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
 
-(package! org-anki
-  :recipe (:host github
-           :repo "eyeinsky/org-anki"))
-
-(package! anki-editor
-  :recipe (:host github
-           :repo "cashpw/anki-editor"))
-
 (package! citar-org-roam
   :recipe (:host github
            :repo "emacs-citar/citar-org-roam"))
@@ -153,7 +147,9 @@
 
 (package! doct)
 
-(package! org-special-block-extras)
+(package! doct-org-roam
+  :recipe (:host github
+           :repo "cashpw/doct-org-roam"))
 
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
@@ -173,19 +169,17 @@
            :branch "feat/classes"
            :files (:defaults "awk" "demo.org")))
 
-;; org-tempo is provided by org-mode
-
 (unpin! org-gcal)
-
-(package! org-multi-clock
-  :recipe (:host gitlab
-           :repo "OlMon/org-multi-clock"))
 
 ;; (package! org-gtasks
 ;;   :recipe (:host github
 ;;            :repo "JulienMasson/org-gtasks"))
 
 (package! org-mime)
+
+(package! org-multi-clock
+  :recipe (:host gitlab
+           :repo "OlMon/org-multi-clock"))
 
 (package! org-noter
   :recipe (:host github
@@ -199,35 +193,37 @@
 
 (package! org-ql)
 
-(package! vulpea)
+(package! org-recipes
+  :recipe (:host github
+           :repo "cashpw/org-recipes"))
 
 (unpin! org-roam)
 
-(package! doct-org-roam
-  :recipe (:host github
-           :repo "cashpw/doct-org-roam"))
-
 (package! org-roam-ui)
+
+(package! org-special-block-extras)
+
+(package! org-super-agenda)
 
 (package! org-superstar
   :disable t)
 
-(package! org-super-agenda)
+;; org-tempo is provided by org-mode
 
 ;; (package! org-transclusion)
 
 (package! org-vcard)
-
-(package! summarize-agenda-time
-  :recipe (:host github
-           :repo "cashpw/summarize-agenda-time"))
 
 (when (not (cashpw/is-work-cloudtop-p))
   (package! ox-hugo))
 
 (package! ox-pandoc)
 
-(package! flycheck-vale)
+(package! summarize-agenda-time
+  :recipe (:host github
+           :repo "cashpw/summarize-agenda-time"))
+
+(package! vulpea)
 
 (after! org
   (setq

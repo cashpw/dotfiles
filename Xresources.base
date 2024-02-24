@@ -43,10 +43,10 @@
 !URxvt.boldFont: xft:Iosevka Term SS09:style=Bold:size=14
 !URxvt.italicFont: xft:Iosevka Term SS09:style=Italic:size=14
 !URxvt.boldItalicfont: xft:Iosevka Term SS09:style=Bold Italic:size=14
-URxvt*font: xft:Iosevka Term SS09:style=Regular:size=11
-URxvt.boldFont: xft:Iosevka Term SS09:style=Bold:size=11
-URxvt.italicFont: xft:Iosevka Term SS09:style=Italic:size=11
-URxvt.boldItalicfont: xft:Iosevka Term SS09:style=Bold Italic:size=11
+URxvt.font: xft:Fira Code:style=Regular:size=11
+URxvt.boldFont: xft:Fira Code:style=Bold:size=11
+URxvt.italicFont: xft:Fira Code:style=Italic:size=11
+URxvt.boldItalicfont: xft:Fira Code:style=Bold Italic:size=11
 URxvt.letterSpace: 0
 URxvt.lineSpace: 0
 URxvt.geometry: 92x24

@@ -120,9 +120,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :group 'cashpw
   :type 'string)
 
-(defcustom cashpw/path--notes-private-dir
-  (s-lex-format "${cashpw/path--proj-dir}/notes-private")
+(defcustom cashpw/path--notes-corp-dir
+  (s-lex-format "${cashpw/path--proj-dir}/notes-corp")
   "Personal private org-roam notes directory."
+  :group 'cashpw
+  :type 'string)
+
+(defcustom cashpw/path--notes-journal-dir
+  (s-lex-format "${cashpw/path--proj-dir}/notes-journal")
+  "Personal journal."
   :group 'cashpw
   :type 'string)
 
@@ -892,7 +898,9 @@ doom-quit           ; DOOM quit-message prompts when you quit Emacs
 hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
 ;;hydra
 indent-guides     ; highlighted indent columns
-;;ligatures         ; ligatures and symbols to make your code pretty again
+(ligatures         ; ligatures and symbols to make your code pretty again
+ +fira
+ +extra)
 ;;minimap           ; show a map of the code on the side
 modeline            ; snazzy, Atom-inspired modeline, plus API
 ;; (modeline           ; snazzy, Atom-inspired modeline, plus API
@@ -990,7 +998,10 @@ biblio            ; Writes a PhD for you (citation needed)
 (eval +overlay)     ; run code, run (also, repls)
 ;;gist              ; interacting with github gists
 lookup              ; navigate your code and its documentation
-;;lsp               ; M-x vscode
+(lsp               ; M-x vscode
+ +eglot ;; Coordinate with corp LSP which uses Eglot
+ ;; +peek
+ )
 magit             ; a git porcelain for Emacs
 ;;make              ; run make tasks from Emacs
 ;;pass              ; password manager for nerds
@@ -1019,7 +1030,9 @@ tree-sitter       ; syntax and parsing, sitting in a tree...
 #+begin_src emacs-lisp
 :lang
 ;;agda              ; types of types of types of types...
-cc                ; C/C++/Obj-C madness
+(cc                ; C/C++/Obj-C madness
+ +lsp
+ +tree-sitter)
 ;;clojure           ; java with a lisp
 ;;common-lisp       ; if you've seen one lisp, you've seen them all
 ;;coq               ; proofs-as-programs
@@ -1043,7 +1056,9 @@ ess               ; emacs speaks statistics
 ;;hy                ; readability of scheme w/ speed of python
 ;;idris             ; a language you can depend on
 ;;json              ; At least it ain't XML
-java                                        ; the poster child for carpal tunnel syndrome
+(java                                        ; the poster child for carpal tunnel syndrome
+ +lsp
+ +tree-sitter)
 (javascript
  +lsp
  +tree-sitter)
@@ -1054,7 +1069,8 @@ java                                        ; the poster child for carpal tunnel
 ;;factor
 ;;ledger            ; an accounting system in Emacs
 ;;lua               ; one-based indices? one-based indices
-markdown            ; writing docs for people to ignore
+(markdown            ; writing docs for people to ignore
+ +grip)
 ;;nim               ; python + lisp at the speed of c
 ;;nix               ; I hereby declare "nix geht mehr!"
 ;;ocaml             ; an objective camel
@@ -1062,15 +1078,15 @@ markdown            ; writing docs for people to ignore
  ;; Use custom hugo depending on personal vs work environment
  ;; +hugo
  +noter
- ;; +pretty
+ ;; +pretty ;; disabled because it was slow
  +roam2
- +pandoc
- ;; +pomodoro
- )
+ +pandoc)
 ;;php               ; perl's insecure younger brother
 ;;plantuml          ; diagrams for confusing people more
 ;;purescript        ; javascript, but functional
-python
+(python
+ +lsp
+ +tree-sitter)
 ;;qt                ; the 'cutest' gui framework ever
 ;;racket            ; a DSL for DSLs
 ;;raku              ; the artist formerly known as perl6
@@ -1080,13 +1096,19 @@ python
 ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
 ;;scala             ; java, but good
 ;;scheme            ; a fully conniving family of lisps
-sh                  ; she sells {ba,z,fi}sh shells on the C xor
+(sh                  ; she sells {ba,z,fi}sh shells on the C xor
+ +lsp
+ +tree-sitter)
 ;;sml
 ;;solidity          ; do you need a blockchain? No.
 ;;swift             ; who asked for emoji variables?
 ;;terra             ; Earth and Moon in alignment for performance.
-;;web               ; the tubes
-yaml                ; JSON, but readable
+(web               ; the tubes
+ +lsp
+ +tree-sitter)
+(yaml                ; JSON, but readable
+ +lsp
+ +tree-sitter)
 #+end_src
 #+HTMl: </details>
 
@@ -1127,26 +1149,22 @@ everywhere
 Unpin to speed things up and fix broken icons; see [[github:doomemacs/doomemacs/issues/7368][doomemacs#7368]].
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(unpin! doom-modeline)
+;; (unpin! doom-modeline)
 #+end_src
 
 * Appearance
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(setq
- doom-theme 'doom-tomorrow-night
- show-trailing-whitespace t)
-#+end_src
+** Packages
 
-** =svg-tag-mode=
+*** =svg-tag-mode=
 
-*** Package
+**** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; (package! svg-tag-mode)
 #+end_src
 
-*** Config
+**** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
 ;; (use-package! svg-tag-mode
@@ -1155,17 +1173,61 @@ Unpin to speed things up and fix broken icons; see [[github:doomemacs/doomemacs/
 ;;    svg-tag-tags '(("\\(:[A-Z]+:\\)" . ((lambda (tag) (svg-tag-make tag :beg 1 :end -1)))))))
 #+end_src
 
-** =nerd-icons=
-*** Package
+*** =nerd-icons=
+**** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! nerd-icons)
 #+end_src
 
-*** Config
+**** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! nerd-icons)
+#+end_src
+
+** General / Misc
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ show-trailing-whitespace t)
+#+end_src
+
+** Theme
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ doom-theme 'doom-tomorrow-night)
+#+end_src
+
+** Font
+
+#+begin_quote
+Doom exposes five (optional) variables for controlling fonts in Doom:
+
+- `doom-font' -- the primary font to use
+- `doom-variable-pitch-font' -- a non-monospace font (where applicable)
+- `doom-big-font' -- used for `doom-big-font-mode'; use this for presentations or streaming.
+- `doom-unicode-font' -- for unicode glyphs
+- `doom-serif-font' -- for the `fixed-pitch-serif' face
+
+See 'C-h v doom-font' for documentation and more examples of what they accept. For example:
+
+#+begin_src emacs-lisp
+(setq doom-font (font-spec :family "Fira Code" :size 12 :weight 'semi-light)
+      doom-variable-pitch-font (font-spec :family "Fira Sans" :size 13))
+#+end_src
+
+If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to refresh your font settings. If Emacs still can't find your font, it likely wasn't installed correctly. Font issues are rarely Doom issues!
+#+end_quote
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(setq
+ doom-font (font-spec :family "Fira Code"
+                      :size 16
+                      :weight 'semi-light)
+ doom-variable-pitch-font (font-spec :family "Fira Sans"
+                                     :size 16))
 #+end_src
 
 * Applications
@@ -1847,6 +1909,50 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
    writeroom-width 45))
 #+end_src
 
+*** Language server
+
+*** Syntax
+**** Packages
+
+***** =flycheck-vale=
+
+May remove in future in favor of a [[https://notes.alexkehayias.com/using-vale-with-emacs-for-prose-linting/][language-server + eglot solution]].
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! flycheck-vale)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! flycheck-vale
+  :config
+  (flycheck-vale-setup))
+#+end_src
+
+***** Vale via langserver
+
+#+begin_src emacs-lisp :tangle config-personal.el
+;; (set-eglot-client! 'org-mode "efm-langserver")
+;; (after! eglot
+;;   (add-to-list 'eglot-server-programs
+;;                '(org-mode . ("efm-langserver")
+;;                  text-mode . ("efm-langserver")
+;;                  gfm-mode . ("efm-langserver")
+;;                  markdown-mode . ("efm-langserver"))))
+#+end_src
+
+#+RESULTS:
+
+*** Flycheck
+
+Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61f5c810782cda3b48a/modules/checkers/syntax/packages.el#L5][provides flycheck]].
+
+#+begin_src emacs-lisp :tangle config-personal.el
+;; Doom Emacs provides flycheck
+(after! flycheck
+  (add-hook 'after-init-hook
+            #'global-flycheck-mode))
+#+end_src
+
 ** Dart
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -1912,491 +2018,6 @@ Use =aggressive-indent= when editing =elisp=.
 #+end_src
 
 *** Packages
-
-**** =org-anki=
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-anki
-  :recipe (:host github
-           :repo "eyeinsky/org-anki"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-anki
-  :after org)
-#+end_src
-
-**** =anki-editor=
-
-#+begin_quote
-anki-editor – An Emacs minor mode for making Anki cards with Org
-
-/[[github:cashpw/anki-editor][cashpw/anki-editor]]/
-#+end_quote
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! anki-editor
-  :recipe (:host github
-           :repo "cashpw/anki-editor"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! anki-editor
-  :after org
-  :custom
-  (defun cashpw/anki-to-fc ()
-    (interactive)
-    (let ((anki-card-heading-points (org-map-entries
-                                     (lambda ()
-                                       (point))
-                                     "+LEVEL=2-fc+ANKI_NOTE_ID={.}")))
-      (dolist (pom (reverse anki-card-heading-points))
-        (goto-char pom)
-        (cashpw/anki-to-fc--single))))
-
-  (defun cashpw/anki-to-fc--single (&optional pom)
-    (interactive)
-    (let* ((pom (or pom (point)))
-           (heading-text (org-entry-get pom "ITEM"))
-           (anki-note-type (org-entry-get pom "ANKI_NOTE_TYPE"))
-           (anki-note-id (org-entry-get pom "ANKI_NOTE_ID"))
-           (data (cashpw/anki-to-fc--get-data anki-note-id))
-           (card-created-time (plist-get (nth 0 data) :card-created-time)))
-      (if (or (string= "AKA" anki-note-type)
-              (string= "Cloze with Source" anki-note-type)
-              (string= "Definition" anki-note-type)
-              (string= "Denotes" anki-note-type))
-          (org-fc--add-tag "orgfc_migration_safetodelete")
-        (org-fc--add-tag "orgfc_migration_needswork"))
-      (org-insert-heading)
-      (org-set-tags ":fc:")
-      (org-id-get-create)
-      (org-set-property "ANKI_NOTE_ID"
-                        anki-note-id)
-      (org-set-property "FC_CREATED"
-                        (cashpw/anki-to-fc--time-to-fc-time card-created-time))
-      (cond
-       ((string= "AKA" anki-note-type)
-        (cashpw/anki-to-fc--aka heading-text
-                                data
-                                anki-note-id))
-       ((string= "Cloze with Source" anki-note-type)
-        (cashpw/anki-to-fc--cloze-with-source heading-text
-                                              data
-                                              anki-note-id))
-       ;; ((string= "Compare/Contrast" anki-note-type)
-       ;;  (cashpw/anki-to-fc--compare-contrast heading-text
-       ;;                                     data
-       ;;                                     anki-note-id))
-       ((string= "Definition" anki-note-type)
-        (cashpw/anki-to-fc--definition heading-text
-                                       data
-                                       anki-note-id))
-       ((string= "Denotes" anki-note-type)
-        (cashpw/anki-to-fc--denotes heading-text
-                                    data
-                                    anki-note-id))
-       ;; ((string= "Equivalence" anki-note-type)
-       ;;  (cashpw/anki-to-fc--equivalence heading-text
-       ;;                                      data
-       ;;                                      anki-note-id))
-       (t
-        (cashpw/anki-to-fc--default heading-text
-                                    data
-                                    anki-note-id
-                                    anki-note-type)))))
-
-  (defun cashpw/anki-to-fc--general (heading-text review-data fc-type)
-    (insert (s-lex-format " ${heading-text}"))
-    (org-set-property "FC_TYPE" fc-type)
-    (org-fc-review-data-set review-data))
-
-  (defun cashpw/anki-to-fc--normal (heading-text review-data front back &optional extra source)
-    (cashpw/anki-to-fc--general heading-text
-                                review-data
-                                "normal")
-    (save-excursion
-      ;; Jump below the drawers
-      (org-insert-subheading nil)
-      ;; Delete the heading we just created
-      (delete-backward-char 4)
-      (insert front))
-    (save-excursion
-      ;; Jump below the drawers
-      (org-insert-subheading nil)
-      (insert "Back")
-      (newline)
-      (insert back))
-    (when extra
-      (save-excursion
-        (org-insert-subheading nil)
-        (insert "Extra")
-        (newline)
-        (insert extra)))
-    (when source
-      (save-excursion
-        (org-insert-subheading nil)
-        (insert "Source")
-        (newline)
-        (insert source))))
-
-  (defun cashpw/anki-to-fc--double (heading-text review-data front back &optional extra source)
-    (cashpw/anki-to-fc--normal heading-text
-                               review-data
-                               front
-                               back
-                               extra
-                               source)
-    (org-set-property "FC_TYPE" "double"))
-
-  (defun cashpw/anki-to-fc--cloze (heading-text review-data &optional body extra source)
-    (let* ((fc-cloze-max (number-to-string
-                          (length review-data)))
-           (heading-text (cashpw/anki-to-fc--convert-text
-                          heading-text)))
-      (cashpw/anki-to-fc--general heading-text
-                                  review-data
-                                  "cloze")
-      (org-set-property "FC_CLOZE_MAX" fc-cloze-max)
-      (org-set-property "FC_CLOZE_TYPE" "deletion")
-      (when body
-        (save-excursion
-          ;; Jump below the drawers
-          (org-insert-subheading nil)
-          ;; Delete the heading we just created
-          (delete-backward-char 4)
-          (insert body)))
-      (when extra
-        (save-excursion
-          (org-insert-subheading nil)
-          (insert "Extra")
-          (newline)
-          (insert extra)))
-      (when source
-        (save-excursion
-          (org-insert-subheading nil)
-          (insert "Source")
-          (newline)
-          (insert source)))))
-
-  (defun cashpw/anki-to-fc--default (heading-text data anki-note-id anki-note-type)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cashpw/anki-to-fc--normal anki-note-type
-                                 review-data
-                                 heading-text
-                                 "TODO: Back")
-      (org-set-tags ":fc:todo:")))
-
-  (defun cashpw/anki-to-fc--cloze-with-source (heading-text data anki-note-id)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (text extra source) fields
-        (let ((extra (if (> (length extra) 0)
-                         (cashpw/anki-to-fc--convert-text extra)
-                       nil))
-              (source (if (> (length source) 0)
-                          source
-                        ;; "TODO: Source"
-                        nil))))
-        (cashpw/anki-to-fc--cloze heading-text
-                                  review-data
-                                  ;; body
-                                  nil
-                                  extra
-                                  source))))
-
-  (defun cashpw/anki-to-fc--compare-contrast (heading-text data anki-note-id)
-    (let* ((fields (cashpw/anki-to-fc--get-fields anki-note-id))
-           (review-data (mapcar
-                         (lambda (datum)
-                           (list "front"
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cl-destructuring-bind (concepts context comparisons-contrasts source) fields
-        (let* ((concepts (cashpw/anki-to-fc--convert-text concepts))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (comparisons-contrasts (if (> (length comparison-contrasts) 0)
-                                          (cashpw/anki-to-fc--convert-text comparison-contrasts)
-                                        nil))
-               (source (if (> (length source) 0)
-                           source
-                         ;; "TODO: Source"
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Compare/Contrast (${context})")
-                               "Compare/Contrast"))
-               (front-text concepts)
-               (back-text comparisons-contrasts))
-          (cashpw/anki-to-fc--normal heading-text
-                                     review-data
-                                     front
-                                     back
-                                     ;; extra
-                                     nil
-                                     source)))))
-
-  (defun cashpw/anki-to-fc--definition (heading-text data anki-note-id)
-    (let* ((fields (cashpw/anki-to-fc--get-fields anki-note-id))
-           (review-data (mapcar
-                         (lambda (datum)
-                           (list (if (= 0 (plist-get datum :position))
-                                     "back"
-                                   "front")
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data)))
-      (cl-destructuring-bind (term-val context definition extra source) fields
-        (let* ((term-val (cashpw/anki-to-fc--convert-text term-val))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (definition (if (> (length definition) 0)
-                               (cashpw/anki-to-fc--convert-text definition)
-                             nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           source
-                         ;; "TODO: Source"
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Definition (${context})")
-                               "Definition"))
-               (front term-val)
-               (back definition))
-          (cashpw/anki-to-fc--double heading-text
-                                     review-data
-                                     front
-                                     back
-                                     extra
-                                     source)))))
-
-  (defun cashpw/anki-to-fc--denotes (heading-text data anki-note-id)
-    (let* ((review-data (mapcar (lambda (datum)
-                                  (list (plist-get datum :position)
-                                        (plist-get datum :ease)
-                                        (plist-get datum :box)
-                                        (plist-get datum :interval)
-                                        (plist-get datum :due)))
-                                data))
-           (fc-cloze-max (number-to-string
-                          (length review-data)))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (symbol-1 symbol-2 symbol-3 symbol-4 context description extra source) fields
-        (let* ((symbol-1 (cashpw/anki-to-fc--convert-text symbol-1))
-               (symbol-2 (if (> (length symbol-2) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-2)
-                           nil))
-               (symbol-3 (if (> (length symbol-3) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-3)
-                           nil))
-               (symbol-4 (if (> (length symbol-4) 0)
-                             (cashpw/anki-to-fc--convert-text symbol-4)
-                           nil))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (description (if (> (length description) 0)
-                                (cashpw/anki-to-fc--convert-text description)
-                              nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           (cashpw/anki-to-fc--convert-text source)
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "Denotes (${context})")
-                               "Denotes"))
-               (body
-                (concat (s-lex-format "- {{${symbol-1}}@0}\n")
-                        (if symbol-2 (s-lex-format "- {{${symbol-2}}@1}\n") "")
-                        (if symbol-3 (s-lex-format "- {{${symbol-3}}@2}\n") "")
-                        (if symbol-4 (s-lex-format "- {{${symbol-4}}@3}\n") "")
-                        (s-lex-format "\n${description}"))))
-          (cashpw/anki-to-fc--cloze heading-text
-                                    review-data
-                                    body
-                                    extra
-                                    source)))))
-
-  (defun cashpw/anki-to-fc--aka (heading-text data anki-note-id)
-    (let* ((review-data (mapcar
-                         (lambda (datum)
-                           (list (plist-get datum :position)
-                                 (plist-get datum :ease)
-                                 (plist-get datum :box)
-                                 (plist-get datum :interval)
-                                 (plist-get datum :due)))
-                         data))
-           (fc-cloze-max (number-to-string
-                          (length review-data)))
-           (fields (cashpw/anki-to-fc--get-fields anki-note-id)))
-      (cl-destructuring-bind (term-1 term-2 term-3 term-4 term-5 term-6 context extra source) fields
-        (let* ((term-1 (cashpw/anki-to-fc--convert-text term-1))
-               (term-2 (if (> (length term-2) 0)
-                           (cashpw/anki-to-fc--convert-text term-2)
-                         nil))
-               (term-3 (if (> (length term-3) 0)
-                           (cashpw/anki-to-fc--convert-text term-3)
-                         nil))
-               (term-4 (if (> (length term-4) 0)
-                           (cashpw/anki-to-fc--convert-text term-4)
-                         nil))
-               (term-5 (if (> (length term-5) 0)
-                           (cashpw/anki-to-fc--convert-text term-5)
-                         nil))
-               (term-6 (if (> (length term-6) 0)
-                           (cashpw/anki-to-fc--convert-text term-6)
-                         nil))
-               (context (if (> (length context) 0)
-                            (cashpw/anki-to-fc--convert-text context)
-                          nil))
-               (extra (if (> (length extra) 0)
-                          (cashpw/anki-to-fc--convert-text extra)
-                        nil))
-               (source (if (> (length source) 0)
-                           (cashpw/anki-to-fc--convert-text source)
-                         nil))
-               (heading-text (if context
-                                 (s-lex-format "AKA (${context})")
-                               "AKA"))
-               (body
-                (concat (s-lex-format "- {{${term-1}}@0}\n")
-                        (if term-2 (s-lex-format "- {{${term-2}}@1}\n") "")
-                        (if term-3 (s-lex-format "- {{${term-3}}@2}\n") "")
-                        (if term-4 (s-lex-format "- {{${term-4}}@3}\n") "")
-                        (if term-5 (s-lex-format "- {{${term-5}}@4}\n") "")
-                        (if term-6 (s-lex-format "- {{${term-6}}@5}\n") ""))
-                ))
-          (cashpw/anki-to-fc--cloze heading-text
-                                    review-data
-                                    body
-                                    extra
-                                    source)))))
-
-  (defun cashpw/anki-to-fc--convert-text (text)
-    (cashpw/anki-to-fc--convert-cloze
-     (cashpw/anki-to-fc--convert-roam-link text)))
-
-  (defun cashpw/anki-to-fc--convert-roam-link (text)
-    (replace-regexp-in-string "<a href=\".*?\\#ID-\\(.*?\\)\">\\(.*?\\)<\\/a>"
-                              "[[\\1][\\2]]"
-                              text))
-
-  (defun cashpw/anki-to-fc--convert-latex (text)
-    "LaTeX code in cloze delections can't contain a }} , to work around this limitation, insert a space between the braces.
-
-Example: \frac{1}{\sqrt{2} }
-
-See: https://www.leonrische.me/fc/card_types.html"
-    (replace-regexp-in-string "}}" "} }" text))
-
-  (defun cashpw/anki-to-fc--convert-cloze (cloze-text)
-    (replace-regexp-in-string
-     "}@\\([0-9]+\\)"
-     (lambda (match)
-       (cl-destructuring-bind (prefix cloze-id) (s-split "@" match)
-         (concat prefix
-                 "@"
-                 (number-to-string
-                  (1- (string-to-number
-                       cloze-id))))))
-     (replace-regexp-in-string
-      "{{\\(.*?\\)::\\(.*?\\)}@" "{{\\1}{\\2}@"
-      (replace-regexp-in-string
-       "{{c\\([0-9]+\\)::\\(.*?\\)}}"
-       "{{\\2}@\\1}"
-       cloze-text))))
-
-  (defun cashpw/anki-to-fc--time-to-fc-time (time)
-    (format-time-string "%FT%TZ" time "UTC0"))
-
-  (defun cashpw/anki-to-fc--get-fields (anki-note-id)
-    (let* ((anki-field-separator "")
-           (db "/home/cashpw/collection.anki2")
-           (query (s-lex-format "select flds from notes where id=${anki-note-id}"))
-           (command (s-lex-format "sqlite3 ${db} \"${query}\""))
-           (fields (shell-command-to-string command)))
-      (s-split anki-field-separator fields)))
-
-  (defun cashpw/anki-to-fc--query-db (query)
-    (let* ((db "/home/cashpw/collection.anki2")
-           (command (s-lex-format "sqlite3 ${db} \"${query}\""))
-           (results (shell-command-to-string command))
-           (lines (s-split "\n"
-                           results
-                           'omit-nulls)))
-      lines))
-
-  (defun cashpw/anki-to-fc--get-data (note-id)
-    "Get due,ivl information from the anki card at point."
-    (let* ((anki-collection-creation-time
-            ;; https://github.com/ankidroid/Anki-Android/wiki/Database-Structure#collection
-            (seconds-to-time 1553518800))
-           (query
-            ;; https://github.com/ankidroid/Anki-Android/wiki/Database-Structure
-            (s-lex-format "select due,ivl,factor,reps,lapses,ord,cards.id from notes inner join cards on notes.id = cards .nid where notes.id = ${note-id};"))
-           (lines (cashpw/anki-to-fc--query-db query))
-           ;; (anki-field-separator "")
-           (initial-ease 2.5)
-           (positions (mapcar
-                       (lambda (line)
-                         (cl-destructuring-bind (due interval factor reps lapses ordinal card-id) (s-split "|" line)
-                           (let* ((due (cashpw/anki-to-fc--time-to-fc-time
-                                        (time-add anki-collection-creation-time
-                                                  (days-to-time (string-to-number due)))))
-                                  (reps (string-to-number reps))
-                                  (lapses (string-to-number lapses))
-                                  (interval (string-to-number interval))
-                                  (last-sm2-interval 6.0)
-                                  (last-sm2-interval-index 3)
-                                  (box (if (> interval last-sm2-interval)
-                                           (max (- reps lapses)
-                                                (1+ last-sm2-interval-index))
-                                         (- reps lapses)))
-                                  (factor (string-to-number factor))
-                                  (ease (if (= factor 0)
-                                            initial-ease
-                                          (/ factor 1000.0)))
-                                  (pos (string-to-number ordinal))
-                                  (card-created-time (seconds-to-time (/ (string-to-number card-id)
-                                                                         1000))))
-                             `(:card-created-time ,card-created-time
-                               :position ,pos
-                               :ease ,ease
-                               :box ,box
-                               :interval ,interval
-                               :due ,due))))
-                       lines)))
-      positions)))
-
-#+end_src
-
-#+RESULTS:
-: anki-editor
 
 **** =cashpw/contacts=
 ***** TODO Move this to separate package file.
@@ -2691,38 +2312,21 @@ Group clocktable entries by their first tag.
   :commands (doct))
 #+end_src
 
-**** =org-special-block-extras=
-
-#+begin_quote
-A unified interface for Emacs' Org-mode block & link types
-
-[cite:@al-hassyUnifiedInterfaceEmacsOrgmodeBlockLinkTypes2023]
-#+end_quote
+**** =doct-org-roam=
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-special-block-extras)
+(package! doct-org-roam
+  :recipe (:host github
+           :repo "cashpw/doct-org-roam"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-special-block-extras
-  :after org
-  :hook (org-mode . org-special-block-extras-mode)
-  :custom
-  (o-docs-libraries
-   '("~/org-special-block-extras/documentation.org")
-   "The places where I keep my ‘#+documentation’")
-  (org-defblock hugogallery
-                (editor "Editor HugoGallery") ()
-                "Docstring"
-                (if (not (equal backend 'hugo))
-                    contents
-                  (format "{{< gallery >}}%s{{< /gallery >}}"
-                          (replace-regexp-in-string ":class:class"
-                                                    ":class"
-                                                    (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
-                                                                              "\\1:class hugo-gallery-image "
-                                                                              contents))))))
+(use-package! doct-org-roam
+  :after doct)
 #+end_src
+**** =oc= (Org Citations)
+
+Emacs provides =oc= .
 
 **** =ol-doi=
 
@@ -2759,10 +2363,6 @@ Aggregating a table is creating a new table by computing sums, averages, and so 
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! orgtbl-aggregate)
 #+end_src
-
-**** =oc= (Org Citations)
-
-Emacs provides =oc= .
 
 **** =org-ai=
 
@@ -2825,14 +2425,6 @@ Point B (the target) is an Emacs org-mode buffer where the inline link will be i
 #+end_src
 
 ***** TODO Debug "Too early load" error
-
-**** =org-habit=
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(after! org-habit
-  (setq
-    org-habit-show-done-always-green t))
-#+end_src
 
 **** =org-fancy-priorities=
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -3280,17 +2872,6 @@ Only parent headings of the current heading remain visible."
 
 #+end_src
 
-**** =org-tempo=
-Provide support for multi-character =org-mode= structure template shortcuts (e.g. =<sp= for python code; see [[id:ce915eb8-d352-4aa2-9dca-5ada71fd18e1][Blocks]])
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-;; org-tempo is provided by org-mode
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-tempo)
-#+end_src
-
 **** =org-gcal=
 
 #+begin_quote
@@ -3645,26 +3226,6 @@ Reference: `org-gcal--update-entry'."
             #'cashpw/org-gcal--maybe-create-todo-extract-reminder))
 #+end_src
 
-**** =org-multi-clock=
-
-#+begin_quote
-org-multi-clock is a small package that extends the functionality of org-mode clocking system.
-
-It does not change the default behavior, it adds two functions to have multiple org-clocks in parallel.
-
-https://gitlab.com/OlMon/org-multi-clock
-#+end_quote
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-multi-clock
-  :recipe (:host gitlab
-           :repo "OlMon/org-multi-clock"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-multi-clock)
-#+end_src
-
 **** =org-gtasks= :disabled:
 
 #+begin_quote
@@ -3677,6 +3238,14 @@ https://github.com/JulienMasson/org-gtasks
 ;; (package! org-gtasks
 ;;   :recipe (:host github
 ;;            :repo "JulienMasson/org-gtasks"))
+#+end_src
+
+**** =org-habit=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(after! org-habit
+  (setq
+    org-habit-show-done-always-green t))
 #+end_src
 
 **** =org-mime=
@@ -3698,6 +3267,26 @@ This approximates a WYSiWYG HTML mail editor from within Emacs, and can be usefu
 #+end_src
 
 ***** TODO Debug "Too early load" error
+
+**** =org-multi-clock=
+
+#+begin_quote
+org-multi-clock is a small package that extends the functionality of org-mode clocking system.
+
+It does not change the default behavior, it adds two functions to have multiple org-clocks in parallel.
+
+https://gitlab.com/OlMon/org-multi-clock
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-multi-clock
+  :recipe (:host gitlab
+           :repo "OlMon/org-multi-clock"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-multi-clock)
+#+end_src
 
 **** =org-noter=
 #+begin_quote
@@ -3740,6 +3329,29 @@ https://orgmode.org/worg/org-contrib/org-protocol.html
 
 Doom provides =org-protocol=
 
+**** =org-protocol=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-protocol
+  :config
+  (setq
+   org-protocol-default-template-key "p"
+   ;; cashpw/org-protocol--capture-template--protocol '("p" "Protocol" entry (file+headline "/tmp/notes.org" "Inbox")
+   ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
+   ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
+   ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
+   cashpw/org-protocol--capture-template--web-site '("Website"
+                                                     :keys "w"
+                                                     :file ""
+                                                     :template "* %a :website:\n\n%U %?\n\n%:initial")
+   ;; '("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
+   ))
+
+(use-package! org-protocol-capture-html
+  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
+  :after org-protocol)
+#+end_src
+
 **** =org-protocol-capture-html=
 
 #+begin_quote
@@ -3769,19 +3381,17 @@ This package provides a query language for Org files. It offers two syntax style
 (use-package! org-ql)
 #+end_src
 
-**** =vulpea=
-#+begin_quote
-A collection of functions for note taking based on =org= and =org-roam=. This repository primary goal is to be a tested library for other applications and utilities around note taking.
-
-[cite:@VulpeaVulpeabuffer6a735c34f1f64e1f70da77989e9ce8da7864e5ffD12frostedVulpea]
-#+end_quote
+**** =org-recipes=
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! vulpea)
+(package! org-recipes
+  :recipe (:host github
+           :repo "cashpw/org-recipes"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! vulpea)
+(use-package! org-recipes
+  :after org)
 #+end_src
 
 **** =org-roam=
@@ -3799,18 +3409,8 @@ Doom Emacs provides =org-roam=.
 (unpin! org-roam)
 #+end_src
 
-**** =doct-org-roam=
+Configuration is done at [[id:3d0e8be1-6d0f-4f4b-9025-f1ca312192bc][Roam]].
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! doct-org-roam
-  :recipe (:host github
-           :repo "cashpw/doct-org-roam"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! doct-org-roam
-  :after doct)
-#+end_src
 **** =org-roam-ui=
 
 #+begin_quote
@@ -3828,15 +3428,37 @@ https://github.com/org-roam/org-roam-ui
   :after org)
 #+end_src
 
-**** =org-superstar=
+**** =org-special-block-extras=
 
 #+begin_quote
-TODO
+A unified interface for Emacs' Org-mode block & link types
+
+[cite:@al-hassyUnifiedInterfaceEmacsOrgmodeBlockLinkTypes2023]
 #+end_quote
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-superstar
-  :disable t)
+(package! org-special-block-extras)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-special-block-extras
+  :after org
+  :hook (org-mode . org-special-block-extras-mode)
+  :custom
+  (o-docs-libraries
+   '("~/org-special-block-extras/documentation.org")
+   "The places where I keep my ‘#+documentation’")
+  (org-defblock hugogallery
+                (editor "Editor HugoGallery") ()
+                "Docstring"
+                (if (not (equal backend 'hugo))
+                    contents
+                  (format "{{< gallery >}}%s{{< /gallery >}}"
+                          (replace-regexp-in-string ":class:class"
+                                                    ":class"
+                                                    (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
+                                                                              "\\1:class hugo-gallery-image "
+                                                                              contents))))))
 #+end_src
 
 **** =org-super-agenda=
@@ -3850,6 +3472,28 @@ This package lets you "supercharge" your Org daily/weekly agenda. The idea is to
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-super-agenda)
 #+end_src
+**** =org-superstar=
+
+#+begin_quote
+TODO
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-superstar
+  :disable t)
+#+end_src
+
+**** =org-tempo=
+Provide support for multi-character =org-mode= structure template shortcuts (e.g. =<sp= for python code; see [[id:ce915eb8-d352-4aa2-9dca-5ada71fd18e1][Blocks]])
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; org-tempo is provided by org-mode
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! org-tempo)
+#+end_src
+
 **** =org-transclusion=
 #+begin_quote
 Org-transclusion lets you insert a copy of text content via a file link or ID link within an Org file. It lets you have the same content present in different buffers at the same time without copy-and-pasting it. Edit the source of the content, and you can refresh the transcluded copies to the up-to-date state. Org-transclusion keeps your files clear of the transcluded copies, leaving only the links to the original content.
@@ -3874,30 +3518,11 @@ https://github.com/flexibeast/org-vcard#table-of-contents
 (package! org-vcard)
 #+end_src
 
-**** =summarize-agenda-time=
-
-#+begin_quote
-Group clocktable entries by their first tag.
-
-/[[github:cashpw/summarize-agenda-time][cashpw/summarize-agenda-time]]/
-#+end_quote
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! summarize-agenda-time
-  :recipe (:host github
-           :repo "cashpw/summarize-agenda-time"))
-#+end_src
+**** =org-vcard=
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! summarize-agenda-time
-  :after org
-  :config
-  (setq
-   summarize-agenda-time--max-duration-minutes (* 60 6)))
+(use-package! org-vcard)
 #+end_src
-
-#+RESULTS:
-: t
 
 **** =ox-hugo=
 #+begin_quote
@@ -3931,33 +3556,44 @@ ox-pandoc is an exporter for Org mode which converts Org-mode files to a wide va
 (package! ox-pandoc)
 #+end_src
 
-**** =org-protocol=
+**** =summarize-agenda-time=
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-protocol
-  :config
-  (setq
-   org-protocol-default-template-key "p"
-   ;; cashpw/org-protocol--capture-template--protocol '("p" "Protocol" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
-   ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
-   cashpw/org-protocol--capture-template--web-site '("Website"
-                                                     :keys "w"
-                                                     :file ""
-                                                     :template "* %a :website:\n\n%U %?\n\n%:initial")
-   ;; '("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
-   ))
+#+begin_quote
+Group clocktable entries by their first tag.
 
-(use-package! org-protocol-capture-html
-  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
-  :after org-protocol)
+/[[github:cashpw/summarize-agenda-time][cashpw/summarize-agenda-time]]/
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! summarize-agenda-time
+  :recipe (:host github
+           :repo "cashpw/summarize-agenda-time"))
 #+end_src
 
-**** =org-vcard=
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! summarize-agenda-time
+  :after org
+  :config
+  (setq
+   summarize-agenda-time--max-duration-minutes (* 60 6)))
+#+end_src
+
+#+RESULTS:
+: t
+
+**** =vulpea=
+#+begin_quote
+A collection of functions for note taking based on =org= and =org-roam=. This repository primary goal is to be a tested library for other applications and utilities around note taking.
+
+[cite:@VulpeaVulpeabuffer6a735c34f1f64e1f70da77989e9ce8da7864e5ffD12frostedVulpea]
+#+end_quote
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! vulpea)
+#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-vcard)
+(use-package! vulpea)
 #+end_src
 
 *** Helper Methods
@@ -4490,22 +4126,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
    (string= "4" priority)))
 #+end_src
 
-*** Lint
-**** =flycheck-vale=
-
-Doom Emacs installs flycheck.
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! flycheck-vale)
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! flycheck-vale
-  :config
-  (add-hook 'find-file-hook
-            'flymake-vale-maybe-load))
-#+end_src
-
 *** Appearance
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org
@@ -4547,47 +4167,50 @@ I use a numeric scale for priorities rather than the default =A= through =C=.
 (after! org
   :config
   (setq
-   org-todo-keywords
-   '((sequence
-      ;; A task that needs doing & is ready to do
-      "TODO(t)"
-      ;; A task that is in progress
-      "INPROGRESS(i)"
-      ;; Something external is holding up this task
-      "BLOCKED(b)"
-      ;; This task is paused/on hold because of me
-      "HOLD(h)"
-      ;; A project, which usually contains other tasks
-      "PROJ(p)"
-      "|"
-      ;; Task successfully completed
-      "DONE(d)"
-      ;; Calendar event is declined
-      "DECLINED(`)"
-      ;; Calendar event is cancelled
-      "CANCELLED(~)"
-      ;; Task was moved
-      "MOVE(m)"
-      ;; Task was cancelled, aborted or is no longer applicable
-      "KILL(k)")
-     (sequence
-      ;; A task that needs doing
-      "[ ](T)"
-      ;; Task is in progress
-      "[-](S)"
-      ;; Task is being held up or paused
-      "[?](W)"
-      "|"
-      ;; Task was completed
-      "[X](D)"))
-   org-todo-keyword-faces
-   '(("[-]"  . +org-todo-active)
-     ("INPROGRESS" . +org-todo-active)
-     ("[?]"  . +org-todo-onhold)
-     ("BLOCKED" . +org-todo-onhold)
-     ("HOLD" . +org-todo-onhold)
-     ("PROJ" . +org-todo-project))))
+   org-todo-keywords '((sequence
+                        ;; A task that needs doing & is ready to do
+                        "TODO(t)"
+                        ;; A task that is in progress
+                        "INPROGRESS(i)"
+                        ;; Something external is holding up this task
+                        "BLOCKED(b)"
+                        ;; This task is paused/on hold because of me
+                        "HOLD(h)"
+                        ;; A project, which usually contains other tasks
+                        "PROJ(p)"
+                        "|"
+                        ;; Task successfully completed
+                        "DONE(d)"
+                        ;; Calendar event is declined
+                        "DECLINED(`)"
+                        ;; Calendar event is cancelled
+                        "CANCELLED(~)"
+                        ;; Task was moved
+                        "MOVE(m)"
+                        ;; Task was moved
+                        "RESCHEDULE(_)"
+                        ;; Task was cancelled, aborted or is no longer applicable
+                        "KILL(k)")
+                       (sequence
+                        ;; A task that needs doing
+                        "[ ](T)"
+                        ;; Task is in progress
+                        "[-](S)"
+                        ;; Task is being held up or paused
+                        "[?](W)"
+                        "|"
+                        ;; Task was completed
+                        "[X](D)"))
+   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
+                            ("INPROGRESS" . +org-todo-active)
+                            ("[?]"  . +org-todo-onhold)
+                            ("BLOCKED" . +org-todo-onhold)
+                            ("HOLD" . +org-todo-onhold)
+                            ("PROJ" . +org-todo-project))))
 #+end_src
+
+#+RESULTS:
+: (([-] . +org-todo-active) (INPROGRESS . +org-todo-active) ([?] . +org-todo-onhold) (BLOCKED . +org-todo-onhold) (HOLD . +org-todo-onhold) (PROJ . +org-todo-project))
 
 ***** When marking a heading as ...
 
@@ -5208,7 +4831,7 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
                 ((equal context 'notes-personal)
                  cashpw/path--notes-personal-dir)
                 ((equal context 'notes-private)
-                 cashpw/path--notes-private-dir)
+                 cashpw/path--notes-corp-dir)
                 ((equal context 'people)
                  cashpw/path--people-dir)
                 (t
@@ -5896,7 +5519,7 @@ items if they have an hour specification like [h]h:mm."
       (goto-char point-or-marker)
       (when (org-get-repeat)
         (while (cashpw/org-scheduled-in-past-p point-or-marker)
-          (org-todo 'done))))))
+          (org-todo "RESCHEDULE"))))))
 
 (defun cashpw/org-reschedule-overdue-todo-agenda ()
   "Invoke `cashpw/org-reschedule-overdue-todo' for an agenda view.
@@ -6102,7 +5725,19 @@ Based on `org-agenda-date-later'."
 
 *** Notes
 **** Roam
-I use =org-roam= for [[github:cashpw/roam][general]] and private notes. Each roam directory contains a =.dir-locals.el= file which configures things like capture templates and =before-save-hook=.
+:PROPERTIES:
+:ID:       3d0e8be1-6d0f-4f4b-9025-f1ca312192bc
+:END:
+
+I use =org-roam= for general and private notes. Each roam directory contains a =.dir-locals.el= file which configures things like capture templates and =before-save-hook=.
+
+| Directory             | Visibility | Source control | Description                                                 |
+|-----------------------+------------+----------------+-------------------------------------------------------------|
+| =notes=               | Public     | [[github:cashpw/notes][GitHub]]         | Roam notes; published at [[http://notes.cashpw.com][notes.cashpw.com]]                   |
+| =notes-personal=      | Private    | TODO           | Personal TODOs; a catch-all                                 |
+| =notes-corp=          | Private    | Corporate      | Roam notes about corporate concepts                         |
+| =notes-journal=       | Private    | TODO           | Journal powered by =org-roam-dailies=                       |
+
 ***** Helper functions
 ****** Tags
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -6210,6 +5845,41 @@ When WRAP is non-nil: Wrap the properties with :PROPERTIES:/:END:."
 
 ****** Export
 #+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/org-hugo--remove-empty-bibliography-from-export (export-file-path)
+  "Delete bibliography in EXPORT-FILE-PATH if there are no citations.
+
+The relevant markdown looks like either:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+  <div class=\"csl-entry\">...</div>
+</div>
+
+or:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+</div>"
+  
+  (with-current-buffer (find-file-noselect export-file-path)
+    (when (save-excursion
+            (goto-char (point-min))
+            (search-forward "csl-entry" nil t))
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "## Bibliography" nil t)
+        ;; # Bibliography
+        (delete-line)
+        ;; 
+        (delete-line)
+        ;; <style>...
+        (delete-line)
+        ;; </div>
+        (delete-line)
+        (save-buffer)))))
+
 (defun cashpw/org-hugo-export-wim-to-md ()
   "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
 
@@ -6222,13 +5892,17 @@ The exporting happens only when Org Capture is not in progress."
     (save-excursion
       (let* ((org-id-extra-files (org-roam-list-files))
              (export-file-path (org-hugo-export-wim-to-md)))
-        (when cashpw/org-hugo-replace-front-matter-with-title
-          (with-current-buffer
-              (find-file-noselect
-               export-file-path)
-            (cashpw/replace-toml-front-matter-with-md-heading)
-            (save-buffer)))))))
+        (cashpw/org-hugo--remove-empty-bibliography-from-export export-file-path)
+        ;; (when cashpw/org-hugo-replace-front-matter-with-title
+        ;;   (with-current-buffer (find-file-noselect
+        ;;                         export-file-path)
+        ;;     (cashpw/replace-toml-front-matter-with-md-heading)
+        ;;     (save-buffer)))
+        ))))
 #+end_src
+
+#+RESULTS:
+: cashpw/org-hugo-export-wim-to-md
 
 ****** New nodes
 
@@ -6290,11 +5964,9 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
     ))
 #+end_src
 
-
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el
-
 (after! doct-org-roam
   (setq
    ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
@@ -6372,24 +6044,6 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (message "Not an http(s) ref (%s)"
                roam-refs))))
 
-;; This bit is no longer necessary as I've discovered .dir-locals.el.
-;; Setting `org-attach-directory' in .dir-locals.el has the desired
-;; effect of this function.
-;;
-;; (defun cashpw/org-roam-insert-attachment-path ()
-;;   (let ((dir
-;;          (format
-;;           "%s/%s"
-;;           cashpw/org-roam-attachment-base-path
-;;           (org-id-get))))
-;;     (save-excursion
-;;       (org-set-property
-;;        "DIR"
-;;        dir))))
-;; (after! org-roam
-;;   (remove-hook! 'org-roam-capture-new-node-hook
-;;               'cashpw/org-roam-insert-attachment-path))
-
 (defun cashewaver-org-roam--append-to-custom-front-matter (key value)
   "Append the provided KEY and VALUE to hugo_custom_front_matter."
   (when (org-roam-file-p)
@@ -6434,8 +6088,6 @@ Work in progress"
       roam-aliases
       )))
 
-;; (cashpw/org-roam--mirror-roam-aliases-to-hugo-aliases)
-
 (defun cashpw/org-roam--mirror-roam-aliases-to-hugo-aliases ()
   "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
   (interactive)
@@ -6448,29 +6100,6 @@ Work in progress"
            :ROAM_ALIASES
            (org-element-parse-buffer))))
       (message raw-roam-aliases))))
-
-(defun cashpw/org-roam--process-ref-before-adding-to-front-matter (ref)
-  (cond
-   ((string-match-p "^\\[cite" ref)
-    nil
-    ;; (let ((citation
-    ;;        (save-excursion
-    ;;          (beginning-of-buffer)
-    ;;          (search-forward ref)
-    ;;          (org-element-citation-parser))))
-    ;;   (org-cite-export-citation
-    ;;    citation
-    ;;    nil
-    ;;    '(:cite-export nil)
-    ;;    ))
-    )
-   (t
-    ref)))
-
-(defun cashpw/org-hugo--set-custom-front-matter (text)
-  (org-roam-set-keyword
-   (downcase "HUGO_CUSTOM_FRONT_MATTER")
-   text))
 
 (defun cashpw/org-hugo--build-custom-front-matter-from-properties (properties)
   (string-join
@@ -6559,23 +6188,6 @@ Work in progress"
 (defcustom cashpw/org-roam--file-path-exceptions-to-add-flashcards
   '()
   "File paths which won't hold flashcards.")
-
-(defun cashpw/anki-available-p ()
-  (condition-case error
-      (anki-editor-api-check)
-    ('error
-     nil))
-  t)
-
-(defun cashpw/enable-anki-editor-mode ()
-  (if (cashpw/anki-available-p)
-      (anki-editor-mode t)
-    (message "Skipping enable anki-editor-mode because Anki isn't available.")))
-
-(defun cashpw/anki-editor-push-notes ()
-  (if (cashpw/anki-available-p)
-      (anki-editor-push-notes)
-    (message "Skipping anki-editor-push-notes because Anki isn't available.")))
 
 (defun cashpw/org-roam-add-flashcards (&optional skip-if-present)
   "Add flashcard heading to the current buffer."
@@ -6699,11 +6311,8 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (cashpw/org-roam-add-bibliography)
   (cashpw/org-roam-add-flashcards)
   ;; (cashpw/org-hugo-export-wim-to-md)
-  ;; (cashpw/anki-editor-push-notes)
   )
-#+end_src
 
-#+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
   (cl-loop for (target . post-id) in mathjax-post-map
            do (save-excursion
@@ -6756,26 +6365,7 @@ This is an internal function."
       (save-buffer))))
 #+end_src
 
-#+begin_src emacs-lisp
-(cashpw/org-hugo-export-all
- (format "%s/proj/notes"
-         cashpw/path--home-dir))
-#+end_src
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
-  "Read an `org-roam-node', returning its id.
-
-All args are passed to `org-roam-node-read'."
-  (concat
-   "id:"
-   (org-roam-node-id
-    (org-roam-node-read
-     initial-input filter-fn sort-fn require-match prompt))))
-
-(org-link-set-parameters "id" :complete #'org-roam-id-complete)
-
-#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org-roam
@@ -6787,19 +6377,20 @@ All args are passed to `org-roam-node-read'."
 
 ***** Agenda view
 #+begin_src emacs-lisp :tangle config-personal.el
-(defun cashpw/buffer-has-todo-p ()
+(defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
 
 TODO entries marked as done are ignored, meaning the this
 function returns nil if current buffer contains only completed
 tasks."
-  (seq-find (lambda (type)
-              (eq type 'todo))
-            (org-element-map
-                (org-element-parse-buffer 'headline)
-                'headline
-              (lambda (h)
-                (org-element-property :todo-type h)))))
+  (when (string-equal mode-name "Org")
+    (seq-find (lambda (type)
+                (eq type 'todo))
+              (org-element-map
+                  (org-element-parse-buffer 'headline)
+                  'headline
+                (lambda (h)
+                  (org-element-property :todo-type h))))))
 
 (defun cashpw/org-roam-update-hastodo-tag ()
   "Update HASTODO tag in the current buffer."
@@ -6810,7 +6401,7 @@ tasks."
       (goto-char (point-min))
       (let* ((tags (vulpea-buffer-tags-get))
              (original-tags tags))
-        (if (cashpw/buffer-has-todo-p)
+        (if (cashpw/org-mode--buffer-has-todo-p)
             (setq tags (cons "hastodo" tags))
           (setq tags (remove "hastodo" tags)))
 
@@ -6847,6 +6438,8 @@ tasks."
 (add-hook! 'before-save-hook
            'cashpw/org-roam-update-hastodo-tag)
 #+end_src
+
+#+RESULTS:
 
 ***** Roam UI
 
@@ -6980,134 +6573,26 @@ ${file}
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-gallery)
 #+end_src
-***** Recipes
+
+***** Journal / Dailies
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(defgroup org-roam-recipe
-  nil
-  "Options related to recipes in org-mode."
-  :tag "Recipes in org-roam.")
-
-(defcustom org-roam-recipe--property-prefix
-  "recipe"
-  "Prefix for all org-mode headline properties used by org-roam-recipe.")
-
-(defun org-roam-recipe--prop-prep-minutes ()
-  "Org-mode property for preparation minutes."
-  (concat org-roam-recipe--property-prefix "_prep_minutes"))
-
-(defun org-roam-recipe--prop-cook-minutes ()
-  "Org-mode property for cooking minutes."
-  (concat org-roam-recipe--property-prefix "_cook_minutes"))
-
-(defun org-roam-recipe--prop-servings ()
-  "Org-mode property for servings."
-  (concat org-roam-recipe--property-prefix "_servings"))
-
-(defun org-roam-recipe--prop-yield ()
-  "Org-mode property for yield."
-  (concat org-roam-recipe--property-prefix "_yield"))
-
-(defun org-roam-recipe--prop-stars ()
-  "Org-mode property for stars (rating)."
-  (concat org-roam-recipe--property-prefix "_stars"))
-
-(defcustom org-roam-recipe--properties
-  `(,(org-roam-recipe--prop-prep-minutes)
-    ,(org-roam-recipe--prop-cook-minutes)
-    ,(org-roam-recipe--prop-servings)
-    ,(org-roam-recipe--prop-yield)
-    ,(org-roam-recipe--prop-stars))
-  "Org-mode properties used by org-roam-recipe."
-  :type '(repeat string)
-  :group 'org-roam-recipe)
-
-(defun org-roam-recipe--get-prop (property pom &optional default)
-  "Return value for PROPERTY at POM or (optional) DEFAULT if value is nil."
-  (message "org-roam-recipe--get-prop pos: %s" pom)
-  (let ((property-value (org-entry-get pom property)))
-    (if default
-        (or property-value
-            default)
-      property-value)))
-
-(defun org-roam-recipe--format-duration (minutes)
-  "Return formatted time string of duration MINUTES."
-  (org-duration-from-minutes minutes))
-
-(defun org-roam-recipe--get-minutes (property &optional pos)
-  "Return prep time in minutes at POS."
-  (let* ((pos (or pos
-                  (point-min)))
-         (minutes (string-to-number
-                   (org-roam-recipe--get-prop property
-                                              pos
-                                              "0"))))
-    minutes))
-
-(defun org-roam-recipe-get-prep-minutes (&optional pos)
-  "Return prep time in minutes at POS."
-  (org-roam-recipe--get-minutes (org-roam-recipe--prop-prep-minutes)))
-
-(defun org-roam-recipe-get-cook-minutes (&optional pos)
-  "Return cook time in minutes at POS."
-  (org-roam-recipe--get-minutes (org-roam-recipe--prop-cook-minutes)))
-
-(defun org-roam-recipe--get-int-property (property &optional pos)
-  "Return the integer value of PROPERTY (at POS) or nil if it's not set."
-  (let* ((pos (or pos
-                  (point-min)))
-         (value (org-roam-recipe--get-prop property
-                                           pos)))
-    (message "%s" pos)
-    (message "%s" value)
-    (if value
-        (string-to-number value)
-      nil)))
-
-(defun org-roam-recipe-get-servings (&optional pos)
-  "Return servings at POS (e.g. \"8\")."
-  (org-roam-recipe--get-int-property (org-roam-recipe--prop-servings)
-                                     pos))
-
-(defun org-roam-recipe-get-stars (&optional pos)
-  "Return stars at POS (e.g. \"4\")."
-  (org-roam-recipe--get-int-property (org-roam-recipe--prop-stars)
-                                     pos))
-
-(defun org-roam-recipe-get-yield (&optional pos)
-  "Return yield at POS (e.g. \"7 liters\")."
-  (let ((pos (or pos
-                 (point-min))))
-    (org-roam-recipe--get-prop (org-roam-recipe--prop-yield)
-                               pos)))
-
-(defun org-roam-recipe-get-prep-duration ()
-  "Return formatted preparation duration."
-  (let ((prep-minutes (org-roam-recipe-get-prep-minutes)))
-    (if (= 0 prep-minutes)
-        nil
-      (org-roam-recipe--format-duration prep-minutes))))
-
-(defun org-roam-recipe-get-cook-duration ()
-  "Return formatted cooking duration."
-  (let ((cook-minutes (org-roam-recipe-get-cook-minutes)))
-    (if (= 0 cook-minutes)
-        nil
-      (org-roam-recipe--format-duration cook-minutes))))
-
-(defun org-roam-recipe-get-total-duration ()
-  "Return formatted total duration."
-  (let* ((cook-minutes (org-roam-recipe-get-cook-minutes))
-         (prep-minutes (org-roam-recipe-get-prep-minutes))
-         (total-minutes (-sum
-                         (-non-nil `(,cook-minutes
-                                     ,prep-minutes)))))
-    (if (= 0 total-minutes)
-        nil
-      (org-roam-recipe--format-duration total-minutes))))
-
+(setq
+ org-roam-dailies-directory cashpw/path--notes-journal-dir
+ org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
+                                                      :type plain
+                                                      :template "%?"
+                                                      :file "%<%Y-%m-%d>.org"
+                                                      :unnarrowed t
+                                                      :children (("Default"
+                                                                  :keys "d"
+                                                                  :head ("#+title: %<%Y-%m-%d>"
+                                                                         "#+author: Cash Prokop-Weaver"
+                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]")))))))
 #+end_src
+
+#+RESULTS:
+| d | Default | plain | %? | :target | (file+head %<%Y-%m-%d>.org #+title: %<%Y-%m-%d> |
 
 **** Annotate PDFs
 
@@ -7388,6 +6873,26 @@ See [[*=ol-doi=][=ol-doi=]].
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! org-link-reddit
   )
+#+end_src
+
+**** ID
+
+Auto-complete =id:= with known =org-roam= IDs.
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
+  "Read an `org-roam-node', returning its id.
+
+All args are passed to `org-roam-node-read'."
+  (concat
+   "id:"
+   (org-roam-node-id
+    (org-roam-node-read
+     initial-input filter-fn sort-fn require-match prompt))))
+
+(org-link-set-parameters "id"
+                         :complete #'cashpw/org-roam-id-complete)
+
 #+end_src
 
 *** Transclusion
@@ -8135,7 +7640,6 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 (use-package! protobuf-mode)
 #+end_src
 
-
 ** TOML
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -8375,60 +7879,6 @@ draft = true")
 ;;  'electric-case-java-init)
 #+end_src
 
-** roam for all
-
-#+begin_src emacs-lisp
-(defun cashpw/current-buffer-contains-string (target)
-  (save-excursion
-    (save-match-data
-      (goto-char (point-min))
-      (search-forward target
-                      ;; bound
-                      nil
-                      ;; noerror
-                      t))))
-
-(defun cashpw/org-roam-resolve-failures ()
-  (interactive)
-  (when (cashpw/current-buffer-contains-string "ANKI_FAILURE_REASON: Note was not found")
-    (org-map-entries
-     (lambda ()
-       (org-delete-property
-        "ANKI_NOTE_ID"))
-     "+ANKI_FAILURE_REASON={Note was not found.*}")))
-
-
-(defun cashpw/org-roam-push-anki-notes ()
-  (interactive)
-  (let* ((org-hugo-auto-set-lastmod nil)
-         (org-roam-directory cashpw/path--notes-dir)
-         (org-roam-files (split-string
-                          (shell-command-to-string
-                           (s-lex-format
-                            "cd ${org-roam-directory}; grep -rl \":ANKI_DECK:\""))))
-         (progress-reporter (make-progress-reporter "Pushing anki notes"
-                                                    0
-                                                    (length org-roam-files)))
-         (i 0))
-    (org-hugo-auto-export-mode)
-    (mapcar
-     (lambda (file)
-       (org-roam-with-file file nil
-         (let ((inhibit-message t))
-           ;; (anki-editor-push-notes)
-           ;; (cashpw/org-roam-resolve-failures)
-           (anki-editor-push-notes)
-           (save-buffer))
-         (progress-reporter-update progress-reporter
-                                   i)
-
-         (setq
-          i (+ i 1))))
-     org-roam-files)
-    (progress-reporter-done progress-reporter)))
-
-#+end_src
-
 ** Roam: export all
 
 #+begin_src emacs-lisp
@@ -8540,8 +7990,6 @@ Reference:https://stackoverflow.com/q/23622296"
     (when should-export
       ;; Enable hugo auto-export mode
       (org-hugo-auto-export-mode)
-      ;; Disable anki-editor-mode
-      (anki-editor-mode t)
       (mapcar
        (lambda (file)
          (org-roam-with-file file nil
@@ -8553,87 +8001,6 @@ Reference:https://stackoverflow.com/q/23622296"
             i (+ i 1))))
        org-roam-files)
       (progress-reporter-done progress-reporter))))
-#+end_src
-
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun cashpw/org-roam-push-anki ()
-  (interactive)
-  (measure-time
-   (let* ((org-hugo-auto-set-lastmod nil)
-          (description "Pushing anki cards")
-          (expected-seconds-per-file 3.0
-                                     ;; Determined by timing the export of 100 files.
-                                     ))
-
-     (let ((export-file-name "/tmp/anki.org")
-           (export-buffer-name "*Org ORG Export*")
-           (anki-heading-regexp "\\* \\(TODO \\)?\\(\\[#2\\] \\)?Anki"))
-       ;; Clear /tmp/anki.org
-       (with-current-buffer (find-file-noselect
-                             export-file-name)
-         (erase-buffer)
-         (goto-char (point-min))
-         (insert "#+PROPERTY: ANKI_DECK Default\n\n")
-         (save-buffer))
-
-       ;; Export all anki cards to /tmp/anki.org
-       (cashpw/org-roam-in-all-files
-        (lambda ()
-          (let ((before-save-hook '())
-                (org-export-with-title nil)
-                (org-export-with-date nil)
-                (org-export-with-author nil)
-                (org-export-with-creator nil)
-                (org-export-with-properties t)
-                (org-global-properties '(("ANKI_DECK" . "DEFAULT")))
-                (anki-heading-regexp "\\* \\(TODO \\)?\\(\\[#2\\] \\)?Anki"))
-            (org-mode)
-            (when (buffer-contains-regexp anki-heading-regexp)
-              (goto-char (point-min))
-              (search-forward-regexp anki-heading-regexp)
-              (org-org-export-as-org
-               ;; async
-               nil
-               ;; subtreep
-               t)
-              (set-buffer-modified-p nil)
-              (with-current-buffer (find-file-noselect
-                                    export-file-name)
-                (goto-char (point-max))
-                (insert
-                 (with-current-buffer export-buffer-name
-                   (goto-char (point-min))
-                   ;; Remove "# Created YYYY-MM-DD ..."
-                   (kill-whole-line)
-                   (set-buffer-modified-p nil)
-                   (buffer-substring-no-properties (point-min)
-                                                   (point-max))))
-                (save-buffer))
-              )))
-        description
-        expected-seconds-per-file)
-
-       ;; Push cards
-       (with-current-buffer (find-file-noselect
-                             export-file-name)
-         (anki-editor-push-notes))
-       ))))
-
-#+end_src
-
-#+begin_src emacs-lisp
-(defun cashpw/foo ()
-  (interactive)
-  (shell-command "cd ~/proj/notes; echo \"\" > all-anki.org")
-  (shell-command "for f in *.org; do [[ \"$f\" != \"todos.org\" ]] && [[ \"$f\" != \"unread.org\" ]] && cat $f | sed -E '0,/^\\* (TODO )?(\\[#2\\] )?Anki/d' | sed '0,/:END:/d' >> all-anki.org; done")
-  (let ((org-global-properties '(("ANKI_DECK" . "DEFAULT"))))
-    (with-current-buffer (find-file-noselect
-                          "~/proj/notes/all-anki.org")
-      (anki-editor-push-notes))
-    ))
-
-;; (cashpw/foo)
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -8749,155 +8116,6 @@ https://github.com/JulienMasson/org-gtasks
 #+begin_src emacs-lisp :tangle config-personal.el
 (use-package! memoize)
 #+end_src
-
-** Old Anki helpers
-
-I now use =org-fc= in place of Anki. The helpers may be of some use
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun cashpw/anki-editor-insert-note ()
-  (interactive)
-  (with-current-buffer
-      (find-file-noselect
-       "~/proj/anki-cards/anki.org")
-    (point-min)
-    (anki-editor-insert-note)))
-
-(defun cashpw/pointer-between-chars-p (chars-before chars-after &optional explicit)
-  "Return t if the pointer is between the provided chars.
-
-Examples (| is the pointer):
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"c\" \"d\") -> t
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\") -> t
-  - \"abc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\" t) -> nil
-  - \"aFc|dab\": (cashpw/pointer-between-chars-p \"a\" \"b\" t) -> t"
-  (let* ((bol (save-excursion
-                (beginning-of-line)))
-         (eol (save-excursion
-                (end-of-line)))
-         (pos-chars-before (save-excursion
-                             (search-backward chars-before bol t)
-                             (point)))
-         (pos-chars-after (save-excursion
-                            (search-forward chars-after eol t)
-                            (point)))
-         (char-at-point (char-after (point)))
-         (point-between-chars (and
-                               ;; pos-chars-before < (point) < chars-after-point
-                               (> (point)
-                                  pos-chars-before)
-                               (< (point)
-                                  pos-chars-after))))
-    ;; (message (buffer-substring (line-beginning-position)
-    ;;                            (line-end-position)))
-    ;; (message (concat
-    ;;           "(point): "
-    ;;           (number-to-string (point))))
-    ;; (message (s-lex-format
-    ;;           "char-at-point: ${char-at-point}"))
-    ;; (message (s-lex-format
-    ;;           "pos-chars-before: ${pos-chars-before}"))
-    ;; (message (s-lex-format
-    ;;           "pos-chars-after: ${pos-chars-after}"))
-    (if explicit
-        (let* ((pos-prev-chars-after (save-excursion
-                                       (search-backward chars-after eol t)
-                                       (point))))
-          ;; (message (s-lex-format
-          ;;           "pos-prev-chars-after: ${pos-prev-chars-after}"))
-          ;; (message (s-lex-format
-          ;;           "point-between-chars: ${point-between-chars}"))
-          (cond
-           ((not point-between-chars)
-            nil)
-           ((= pos-prev-chars-after
-               (point))
-            t)
-           ((< pos-prev-chars-after
-               (point))
-            nil)))
-      point-between-chars)))
-
-;; test cases
-(with-temp-buffer
-  (insert "[e]")
-  (goto-char 2)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]")))
-(with-temp-buffer
-  (insert "[]e[]")
-  (goto-char 3)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]")))
-(with-temp-buffer
-  (insert "[ced[]")
-  (goto-char 3)
-  (cl-assert
-   (cashpw/pointer-between-chars-p "[" "]" t)))
-(with-temp-buffer
-  (insert "[]ced[]")
-  (goto-char 4)
-  (cl-assert
-   (not (cashpw/pointer-between-chars-p "[" "]" t))))
-
-
-(defun cashpw/bounds-of-chars-surrounding-point (before after)
-  (interactive)
-  (let* ((bol (save-excursion
-                (beginning-of-line)))
-         (eol (save-excursion
-                (end-of-line)))
-         (end (save-excursion
-                (search-forward after eol t)
-                (point)))
-         (begin (save-excursion
-                  (search-backward before bol t)
-                  (point))))
-    `(,begin . ,end)))
-
-(defun cashpw/pointer-in-link-p ()
-  (cashpw/pointer-between-chars-p "[[" "]]"))
-
-(defun cashpw/bounds-of-link-at-point ()
-  (cashpw/bounds-of-chars-surrounding-point "[[" "]]"))
-
-(defun cashpw/pointer-in-mathjax-p ()
-  (cashpw/pointer-between-chars-p "\\(" "\\)"))
-
-(defun cashpw/bounds-of-mathjax-at-point ()
-  (cashpw/bounds-of-chars-surrounding-point "\\(" "\\)"))
-
-(defun cashpw/anki-editor-cloze-dwim (&optional arg hint)
-  "Cloze current active region or a word the under the cursor"
-  (interactive "p\nsHint (optional): ")
-  (cond
-   ((region-active-p)
-    (anki-editor-cloze (region-beginning) (region-end) arg hint))
-   ((cashpw/pointer-in-link-p)
-    (let ((bounds (cashpw/bounds-of-link-at-point)))
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   ((cashpw/pointer-in-mathjax-p)
-    (let ((bounds (cashpw/bounds-of-mathjax-at-point)))
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   ((thing-at-point 'word)
-    (let ((bounds (bounds-of-thing-at-point
-                   'word)))
-      (message "word")
-      (anki-editor-cloze (car bounds)
-                         (cdr bounds)
-                         arg
-                         hint)))
-   (t
-    (error "Nothing to create cloze from"))))
-#+end_src
-
-*** TODO Debug "Too early load" error
 
 ** =org-fc=
 #+begin_src emacs-lisp

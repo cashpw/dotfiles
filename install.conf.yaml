@@ -30,8 +30,8 @@
 - shell:
   - [git submodule update --init --recursive, Installing submodules.]
   -
-    command: bash fonts/download_and_install_fonts.sh
-    description: Downloading and installing fonts.
+    command: bash fonts/download_and_install_firacode.sh
+    description: Downloading and installing fonts: Fira Code.
     stdout: true
   -
     command: bash check_programs.sh

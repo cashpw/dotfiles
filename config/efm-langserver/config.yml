@@ -1,0 +1,22 @@
+version: 2
+root-markers:
+  - .git/
+  - OWNERS
+log-file: /tmp/efm.log
+log-level: 1
+tools:
+  vale: &vale-lint
+    prefix: vale
+    lint-command: 'vale --output line ${INPUT}'
+    lint-stdin: false
+    lint-ignore-exit-code: true
+    lint-formats:
+      - '%f:%l:%c:%m'
+
+languages:
+  text:
+    - <<: *vale-lint
+  markdown:
+    - <<: *vale-lint
+  org:
+    - <<: *vale-lint
