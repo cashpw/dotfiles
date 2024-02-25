@@ -156,13 +156,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 ** Browser
 
-#+begin_src emacs-lisp :tangle config-personal.el
-;; (setq
- ;; browse-url-firefox-program "firefox-esr")
-#+end_src
-
 ** Helper functions
 
+*** =cashpw/delete-lines-below=
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/delete-lines-below (line-number)
   "Delete all lines beneath LINE-NUMBER."
@@ -171,8 +167,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (goto-char (point-min))
     (forward-line (1- line-number))
     (delete-region (point) (point-max))))
+#+end_src
 
-(defun cashpw/org-set-property-on-all-top-level-headings (property value)
+*** =cashpw/org-mode--set-property-on-all-top-level-headings=
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/org-mode--set-property-on-all-top-level-headings (property value)
   "Reference: Chat GPT"
   (interactive "sEnter property name: \nsEnter property value: ")
   (org-map-entries
@@ -182,9 +182,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    nil 'file))
 #+end_src
 
-*** =run-function-in-file=
+*** =cashpw/run-function-in-file=
+
 #+begin_src emacs-lisp :tangle config-personal.el
-(defun run-function-in-file (filepath function &optional arguments)
+(defun cashpw/run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
     (save-excursion
@@ -194,7 +195,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       (kill-buffer (current-buffer)))))
 #+end_src
 
-*** Open file
+*** =cashpw/open-file=
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/open-file (file-path)
   "Open file at FILE-PATH in another window."
@@ -207,9 +209,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 *** Secrets
 
 #+begin_src emacs-lisp :tangle config-personal.el
-(defcustom cashpw/secrets-dir-path
-  (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
-  "Path to directory containing secret files.")
+(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
+  "Path to directory containing secret files."
+  :group 'cashpw
+  :type 'string)
 
 (defun cashpw/get-secret (name)
   "Get content of NAME secret file."
@@ -283,6 +286,34 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                    "\\.org\\(_archive\\)?$"
                  "\\.org$")))
     (directory-files dir-path t match)))
+#+end_src
+
+*** Replace selected text in buffer
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/replace-selection ()
+  (interactive)
+  (let* ((register ?\")
+         (to-replace (replace-regexp-in-string
+                      "/"
+                      "\\\\/"
+                      (progn
+                        (evil-yank (mark)
+                                   (point)
+                                   nil
+                                   register)
+                        (evil-get-register register)))))
+    (evil-ex (s-lex-format  "%s/${to-replace}/"))))
+#+end_src
+
+*** Reload dir-local variables
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(defun cashpw/reload-dir-locals-for-current-buffer ()
+  "Reload dir locals for the current buffer"
+  (interactive)
+  (let ((enable-local-variables :all))
+    (hack-dir-local-variables-non-file-buffer)))
 #+end_src
 
 ** Packages
@@ -515,6 +546,18 @@ How long does each model take to transcribe "I'm saying this at <HH:MM> and <SS>
 #+RESULTS:
 : t
 
+*** =memoize=
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! memoize
+  :recipe (:host github
+           :repo "skeeto/emacs-memoize"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el
+(use-package! memoize)
+#+end_src
+
 ** Notifications
 *** =alert=
 **** Package
@@ -626,9 +669,11 @@ Doom Emacs provides =alert=.
 #+RESULTS:
 
 ** Auto-save
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (setq
  auto-save-visited-interval 60)
+
 (auto-save-visited-mode)
 #+end_src
 
@@ -647,12 +692,41 @@ Doom Emacs provides =alert=.
  typescript-indent-level cashpw/indent-level
  js-jsx-indent-level cashpw/indent-level)
 
-
-(add-hook 'json-mode-hook (lambda ()
+(defun cashpw/json-mode--set-indent ()
+  "Set indent size in `json-mode'."
                              (setq
                               tab-width cashpw/indent-level
-                              js-indent-level cashpw/indent-level)))
+                              js-indent-level cashpw/indent-level)
+  )
+
+(add-hook! 'json-mode-hook
+          #'cashpw/json-mode--set-indent)
 #+end_src
+
+** Garbage collection
+
+https://akrl.sdf.org/#orgc15a10d
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(defmacro k-time (&rest body)
+  "Measure and return the time it takes evaluating BODY."
+  `(let ((time (current-time)))
+     ,@body
+     (float-time (time-since time))))
+
+;; Set garbage collection threshold to 1GB.
+(setq gc-cons-threshold #x40000000)
+
+;; When idle for 15sec run the GC no matter what.
+(defvar k-gc-timer
+  (run-with-idle-timer 15 t
+                       (lambda ()
+                         (message "Garbage Collector has run for %.06fsec"
+                                  (k-time (garbage-collect))))))
+#+end_src
+
+#+RESULTS:
+: k-gc-timer
 
 * Doom Emacs
 I use [[github:hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
@@ -1225,9 +1299,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 (setq
  doom-font (font-spec :family "Fira Code"
                       :size 16
-                      :weight 'semi-light)
- doom-variable-pitch-font (font-spec :family "Fira Sans"
-                                     :size 16))
+                      :weight 'semi-light))
 #+end_src
 
 * Applications
@@ -1949,9 +2021,14 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 #+begin_src emacs-lisp :tangle config-personal.el
 ;; Doom Emacs provides flycheck
 (after! flycheck
+  (setq
+   flycheck-idle-change-delay 3)
   (add-hook 'after-init-hook
             #'global-flycheck-mode))
 #+end_src
+
+#+RESULTS:
+| doom-init-fonts-h | doom-init-theme-h | global-flycheck-mode | org-persist-load-all | x-wm-set-size-hint | doom-init-local-var-hooks-h | doom--reset-inhibited-vars-h | tramp-register-archive-autoload-file-name-handler | magit-maybe-define-global-key-bindings | table--make-cell-map |
 
 ** Dart
 
@@ -5056,15 +5133,6 @@ Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-
 
 
 ***** Review
-#+begin_src emacs-lisp
-(let ((org-super-agenda-groups
-       '((:order-multi (1 (:name "Done today"
-                                 :and (:regexp "State \"DONE\""
-                                               :log t))
-                          (:name "Clocked today"
-                                 :log t))))))
-  (org-agenda-list))
-#+end_src
 
 ****** Logged
 
@@ -6577,6 +6645,7 @@ ${file}
 ***** Journal / Dailies
 
 #+begin_src emacs-lisp :tangle config-personal.el
+(after! doct-org-roam
 (setq
  org-roam-dailies-directory cashpw/path--notes-journal-dir
  org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
@@ -6588,7 +6657,7 @@ ${file}
                                                                   :keys "d"
                                                                   :head ("#+title: %<%Y-%m-%d>"
                                                                          "#+author: Cash Prokop-Weaver"
-                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]")))))))
+                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]"))))))))
 #+end_src
 
 #+RESULTS:
@@ -7141,9 +7210,6 @@ All args are passed to `org-roam-node-read'."
 
 ***** Config
 
-#+begin_src emacs-lisp
-#+end_src
-
 #+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/kill-all-markdown-buffers ()
   "Kill all other org-roam buffers except current."
@@ -7180,7 +7246,7 @@ All args are passed to `org-roam-node-read'."
                                            ".org$")
                                           files-to-ignore))
          ;; For debugging
-         ;; (files-to-export (-slice files-to-export 1015))
+         (files-to-export (-slice files-to-export (+ 365 122 159 472 53 322)))
          (count-files-to-export (length
                                  files-to-export))
          ;; Last updated: 2023-12-05
@@ -7204,11 +7270,14 @@ All args are passed to `org-roam-node-read'."
                                                         (length files-to-export)))
              (start-time (current-time))
              (org-id-extra-files (org-roam-list-files))
+             (prev-global-flycheck-mode global-flycheck-mode)
              (i 0))
         ;; Speed up the export
-        ;; (advice-add 'org-id-find :override 'org-roam-id-find)
-        ;; (memoize 'org-roam-node-id)
-        ;; (memoize 'org-roam-node-file)
+        (memoize 'citeproc-hash-itemgetter-from-any)
+        (advice-add 'org-id-find :override 'org-roam-id-find)
+        (memoize 'org-roam-node-id)
+        (memoize 'org-roam-node-file)
+        (global-flycheck-mode -1)
         (save-excursion
           (mapc
            (lambda (filepath)
@@ -7253,9 +7322,14 @@ All args are passed to `org-roam-node-read'."
            files-to-export))
         (progress-reporter-done progress-reporter)
         ;; Remove speed-up changes
-        ;; (advice-remove 'org-id-find 'org-roam-id-find)
-        ;; (memoize-restore 'org-roam-node-id)
-        ;; (memoize-restore 'org-roam-node-file)
+
+        (advice-remove 'org-id-find 'org-roam-id-find)
+        (memoize-restore 'org-roam-node-id)
+        (memoize-restore 'org-roam-node-file)
+        (memoize-restore 'citeproc-hash-itemgetter-from-any)
+        (when prev-global-flycheck-mode
+        (global-flycheck-mode )
+          )
 
         (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))
 
@@ -7332,6 +7406,9 @@ are the arguments of the ORIG-FUN."
   )
 
 #+end_src
+
+#+RESULTS:
+: org-hugo--org-cite-export-bibliography
 
 **** Publish
 
@@ -7577,6 +7654,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 #+end_src
 
 **** =org-noter=
+
 #+begin_src emacs-lisp :tangle config-personal.el
 (after! org-noter
   (map!
@@ -7752,23 +7830,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 #+end_src
 
 * Key bindings
-* Wishlist
-** TODO [#4] Create roam node from link at point
-:PROPERTIES:
-:Effort:   2h
-:END:
-Create a new roam node using the link at point. Pull the title used at the URL under the link; let the user override if they want to. Include the link in the node's refs.
-
-** TODO [#2] See if I can extract anything else from =config-work.org=
-** TODO [#4] =s/cashpw//cashweaver\//= for my methods
-:PROPERTIES:
-:Effort:   1h
-:END:
-** TODO [#2] Write about my use of =org-roam=, =hugo=, etc
-:PROPERTIES:
-:Effort:   4h
-:END:
-
 * Bucket
 
 Bits that I haven't yet filed into a larger heading
@@ -7811,34 +7872,6 @@ Bits that I haven't yet filed into a larger heading
 (cashpw/rewrite-links)
 #+end_src
 
-** Replace selected text in buffer
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun cashpw/replace-selection ()
-  (interactive)
-  (let* ((register ?\")
-         (to-replace (replace-regexp-in-string
-                      "/"
-                      "\\\\/"
-                      (progn
-                        (evil-yank (mark)
-                                   (point)
-                                   nil
-                                   register)
-                        (evil-get-register register)))))
-    (evil-ex (s-lex-format  "%s/${to-replace}/"))))
-#+end_src
-
-** Reload dir-local variables
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(defun cashpw/reload-dir-locals-for-current-buffer ()
-  "Reload dir locals for the current buffer"
-  (interactive)
-  (let ((enable-local-variables :all))
-    (hack-dir-local-variables-non-file-buffer)))
-#+end_src
-
 ** TOML
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -7851,18 +7884,8 @@ Bits that I haven't yet filed into a larger heading
 (use-package! toml)
 #+end_src
 
-#+begin_src emacs-lisp
-;; (yaml-parse-string "
-;; title = \"this is the title\"
-;; draft = false")
-(toml:read-from-string "
-title = \"this is the title\"
-author = [\"cashweaver\"]
-date = 2022-02-10T09:33:00-08:00
-draft = true")
-#+end_src
-
 ** =electric-case=
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! electric-case
   :recipe (:host github
@@ -8050,95 +8073,6 @@ Reference:https://stackoverflow.com/q/23622296"
                       (and file (cons id (file-relative-name file)))))))))))
 #+end_src
 
-** =org-capture-ref=
-#+begin_quote
-This package is inspired by org-ref, extending org-ref's idea to auto-retrieve BiBTeX from scientific paper links. Instead of limiting BiBTeX generation to research purposes (scientific articles and books), this package auto-generates BiBTeX for any possible web link (Youtube videos, blog posts, reddit threads, etc).
-
-https://github.com/JulienMasson/org-gtasks
-#+end_quote
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-capture-ref
-  :recipe (:host github
-           :repo "yantar92/org-capture-ref"))
-
-(package! asoc
-  :recipe (:host github
-           :repo "troyp/asoc.el"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-capture-ref)
-(use-package! asoc)
-
-(let ((templates (doct '( :group "Browser link"
-                          :type entry
-                          :file "~/proj/notes/bibliography.org"
-                          :fetch-bibtex (lambda () (org-capture-ref-process-capture)) ; this must run first
-                          :bibtex (lambda () (org-capture-ref-get-bibtex-field :bibtex-string))
-                          :extra (lambda () (if (org-capture-ref-get-bibtex-field :journal)
-                                                (s-join "\n"
-                                                        '("- [ ] download and attach pdf"
-                                                          "- [ ] [[elisp:org-attach-open][read paper capturing interesting references]]"
-                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.semanticscholar.org/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check citing articles]]"
-                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.connectedpapers.com/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check related articles]]"
-                                                          "- [ ] check if bibtex entry has missing fields"))
-                                              ""))
-                          :org-entry (lambda () (org-capture-ref-get-org-entry))
-                          :template
-                          ("%{fetch-bibtex}* TODO %?%{space}%{org-entry}"
-                           "%{extra}"
-                           "#+begin_src bibtex :tangle bibliography.bib"
-                           "%{bibtex}"
-                           "#+end_src")
-                          :children (("Interactive link"
-                                      :keys "b"
-                                      :space " "
-                                      )
-                                     ("Silent link"
-                                      :keys "B"
-                                      :space ""
-                                      :immediate-finish t))))))
-  (dolist (template templates)
-    (asoc-put! org-capture-templates
-               (car template)
-               (cdr  template)
-               'replace)))
-#+end_src
-** =memoize=
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! memoize
-  :recipe (:host github
-           :repo "skeeto/emacs-memoize"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! memoize)
-#+end_src
-
-** =org-fc=
-#+begin_src emacs-lisp
-;; One position per file
-(positions (let ((-compare-fn (lambda (position-a position-b)
-                                (string-equal (oref (oref position-a card) filetitle)
-                                              (oref (oref position-b card) filetitle)))))
-             (-uniq positions)))
-;; One implement position
-(positions (let ((implement-included nil))
-             (--filter
-              (let ((tags (oref (oref it card) tags)))
-                (if (not (member "implement" tags))
-                    t
-                  (if implement-included
-                      nil
-                    (progn
-                      (setq implement-included t)
-                      t))))
-              positions)))
-
-#+end_src
-
 ** =pdf-view-mode=
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -8204,72 +8138,12 @@ https://github.com/JulienMasson/org-gtasks
  "M-j" #'pdf-view-scroll-up-or-next-column)
 #+end_src
 
-** foo
-
-
-#+begin_src emacs-lisp
-      (length (org-roam-db-query
-       [:select [nodes:file]
-        :from tags
-        :left-join nodes
-        :on (= tags:node-id nodes:id)
-        :where (like tag (quote "%\"hastodo\"%"))
-        ]))
-
-#+end_src
-
-#+begin_src emacs-lisp
-(length (seq-uniq (org-roam-db-query [:select [nodes:file]
-                                      :from tags
-                                      :left-join nodes
-                                      :on (= tags:node-id nodes:id)
-                                      :where (like tag "hastodo")])))
-
-       (length (org-roam-db-query [:select *
-                                      :from nodes
-                                      :left-join tags
-                                      :on (= tags:node-id nodes:id)
-                                      :where (= nodes:file "/home/cashweaver/proj/notes/y_combinator.org")
-                                      ;; :where (like tag "hastodo")
-                                      ]))
-#+end_src
-
-#+begin_src emacs-lisp
-(length (org-roam-db-query [:select * :from nodes]))
-#+end_src
-
-#+begin_src emacs-lisp
-(let ((roam-filepaths (org-roam-db-query [:select *
-                                          :from nodes])))
-  (dolist (filepath roam-filepaths)
-    (with-current-buffer (find-file-noselect filepath)
-      ())))
-#+end_src
-
-#+begin_src emacs-lisp
-(defun cashpw/bar ()
-  (interactive)
-  (org-roam-with-file "/home/cashweaver/proj/notes/variance.org" nil
-    (message (concat
-              (prin1-to-string (point))
-              " --- "
-              (prin1-to-string (vulpea-buffer-prop-get "filetags"))
-              " --- "
-              (prin1-to-string (vulpea-buffer-tags-get))
-              " --- "
-              (prin1-to-string (org-get-tags))
-              " --- "
-              (prin1-to-string (buffer-string))
-              ))))
-(cashpw/bar)
-#+end_src
-
 ** =org-window-habit=
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-window-habit
-  :recipe (:host github
-           :repo "colonelpanic8/org-window-habit"))
+;; (package! org-window-habit
+;;   :recipe (:host github
+;;            :repo "colonelpanic8/org-window-habit"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el
@@ -8278,30 +8152,22 @@ https://github.com/JulienMasson/org-gtasks
   ;; (org-window-habit-mode +1))
 #+end_src
 
-** Garbage collection
+* Wishlist
+** TODO [#4] Create roam node from link at point
+:PROPERTIES:
+:Effort:   2h
+:END:
+Create a new roam node using the link at point. Pull the title used at the URL under the link; let the user override if they want to. Include the link in the node's refs.
 
-https://akrl.sdf.org/#orgc15a10d
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defmacro k-time (&rest body)
-  "Measure and return the time it takes evaluating BODY."
-  `(let ((time (current-time)))
-     ,@body
-     (float-time (time-since time))))
-
-;; Set garbage collection threshold to 1GB.
-(setq gc-cons-threshold #x40000000)
-
-;; When idle for 15sec run the GC no matter what.
-(defvar k-gc-timer
-  (run-with-idle-timer 15 t
-                       (lambda ()
-                         (message "Garbage Collector has run for %.06fsec"
-                                  (k-time (garbage-collect))))))
-#+end_src
-
-#+RESULTS:
-: k-gc-timer
+** TODO [#2] See if I can extract anything else from =config-work.org=
+** TODO [#4] =s/cashpw//cashweaver\//= for my methods
+:PROPERTIES:
+:Effort:   1h
+:END:
+** TODO [#2] Write about my use of =org-roam=, =hugo=, etc
+:PROPERTIES:
+:Effort:   4h
+:END:
 
 * Footnotes
 

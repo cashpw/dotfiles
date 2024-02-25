@@ -121,9 +121,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :group 'cashpw
   :type 'string)
 
-;; (setq
- ;; browse-url-firefox-program "firefox-esr")
-
 (defun cashpw/delete-lines-below (line-number)
   "Delete all lines beneath LINE-NUMBER."
   (interactive "nLine number: ")
@@ -132,7 +129,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (forward-line (1- line-number))
     (delete-region (point) (point-max))))
 
-(defun cashpw/org-set-property-on-all-top-level-headings (property value)
+(defun cashpw/org-mode--set-property-on-all-top-level-headings (property value)
   "Reference: Chat GPT"
   (interactive "sEnter property name: \nsEnter property value: ")
   (org-map-entries
@@ -141,7 +138,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
        (org-entry-put (point) property value)))
    nil 'file))
 
-(defun run-function-in-file (filepath function &optional arguments)
+(defun cashpw/run-function-in-file (filepath function &optional arguments)
   (let ((args (or arguments
                   nil)))
     (save-excursion
@@ -157,9 +154,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
 
-(defcustom cashpw/secrets-dir-path
-  (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
-  "Path to directory containing secret files.")
+(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
+  "Path to directory containing secret files."
+  :group 'cashpw
+  :type 'string)
 
 (defun cashpw/get-secret (name)
   "Get content of NAME secret file."
@@ -226,6 +224,26 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                    "\\.org\\(_archive\\)?$"
                  "\\.org$")))
     (directory-files dir-path t match)))
+
+(defun cashpw/replace-selection ()
+  (interactive)
+  (let* ((register ?\")
+         (to-replace (replace-regexp-in-string
+                      "/"
+                      "\\\\/"
+                      (progn
+                        (evil-yank (mark)
+                                   (point)
+                                   nil
+                                   register)
+                        (evil-get-register register)))))
+    (evil-ex (s-lex-format  "%s/${to-replace}/"))))
+
+(defun cashpw/reload-dir-locals-for-current-buffer ()
+  "Reload dir locals for the current buffer"
+  (interactive)
+  (let ((enable-local-variables :all))
+    (hack-dir-local-variables-non-file-buffer)))
 
 ;; (use-package! auth-source-xoauth2
 ;;   :config
@@ -304,6 +322,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
         whisper-translate nil
         whisper--ffmpeg-input-device "hw:0"
         whisper-return-cursor-to-start nil))
+
+(use-package! memoize)
 
 (setq
  alert-fade-time 60
@@ -385,6 +405,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (setq
  auto-save-visited-interval 60)
+
 (auto-save-visited-mode)
 
 (setq
@@ -399,11 +420,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  typescript-indent-level cashpw/indent-level
  js-jsx-indent-level cashpw/indent-level)
 
-
-(add-hook 'json-mode-hook (lambda ()
+(defun cashpw/json-mode--set-indent ()
+  "Set indent size in `json-mode'."
                              (setq
                               tab-width cashpw/indent-level
-                              js-indent-level cashpw/indent-level)))
+                              js-indent-level cashpw/indent-level)
+  )
+
+(add-hook! 'json-mode-hook
+          #'cashpw/json-mode--set-indent)
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
@@ -498,9 +523,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (setq
  doom-font (font-spec :family "Fira Code"
                       :size 16
-                      :weight 'semi-light)
- doom-variable-pitch-font (font-spec :family "Fira Sans"
-                                     :size 16))
+                      :weight 'semi-light))
 
 (use-package! w3m)
 
@@ -1028,6 +1051,8 @@ ${content}"))
 
 ;; Doom Emacs provides flycheck
 (after! flycheck
+  (setq
+   flycheck-idle-change-delay 3)
   (add-hook 'after-init-hook
             #'global-flycheck-mode))
 
@@ -4648,6 +4673,7 @@ ${file}
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-gallery)
 
+(after! doct-org-roam
 (setq
  org-roam-dailies-directory cashpw/path--notes-journal-dir
  org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
@@ -4659,7 +4685,7 @@ ${file}
                                                                   :keys "d"
                                                                   :head ("#+title: %<%Y-%m-%d>"
                                                                          "#+author: Cash Prokop-Weaver"
-                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]")))))))
+                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]"))))))))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -5106,7 +5132,7 @@ All args are passed to `org-roam-node-read'."
                                            ".org$")
                                           files-to-ignore))
          ;; For debugging
-         ;; (files-to-export (-slice files-to-export 1015))
+         (files-to-export (-slice files-to-export (+ 365 122 159 472 53 322)))
          (count-files-to-export (length
                                  files-to-export))
          ;; Last updated: 2023-12-05
@@ -5130,11 +5156,14 @@ All args are passed to `org-roam-node-read'."
                                                         (length files-to-export)))
              (start-time (current-time))
              (org-id-extra-files (org-roam-list-files))
+             (prev-global-flycheck-mode global-flycheck-mode)
              (i 0))
         ;; Speed up the export
-        ;; (advice-add 'org-id-find :override 'org-roam-id-find)
-        ;; (memoize 'org-roam-node-id)
-        ;; (memoize 'org-roam-node-file)
+        (memoize 'citeproc-hash-itemgetter-from-any)
+        (advice-add 'org-id-find :override 'org-roam-id-find)
+        (memoize 'org-roam-node-id)
+        (memoize 'org-roam-node-file)
+        (global-flycheck-mode -1)
         (save-excursion
           (mapc
            (lambda (filepath)
@@ -5179,9 +5208,14 @@ All args are passed to `org-roam-node-read'."
            files-to-export))
         (progress-reporter-done progress-reporter)
         ;; Remove speed-up changes
-        ;; (advice-remove 'org-id-find 'org-roam-id-find)
-        ;; (memoize-restore 'org-roam-node-id)
-        ;; (memoize-restore 'org-roam-node-file)
+
+        (advice-remove 'org-id-find 'org-roam-id-find)
+        (memoize-restore 'org-roam-node-id)
+        (memoize-restore 'org-roam-node-file)
+        (memoize-restore 'citeproc-hash-itemgetter-from-any)
+        (when prev-global-flycheck-mode
+        (global-flycheck-mode )
+          )
 
         (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))
 
@@ -5574,26 +5608,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (after! projectile
   (cashpw/projectile-refresh-known-paths))
 
-(defun cashpw/replace-selection ()
-  (interactive)
-  (let* ((register ?\")
-         (to-replace (replace-regexp-in-string
-                      "/"
-                      "\\\\/"
-                      (progn
-                        (evil-yank (mark)
-                                   (point)
-                                   nil
-                                   register)
-                        (evil-get-register register)))))
-    (evil-ex (s-lex-format  "%s/${to-replace}/"))))
-
-(defun cashpw/reload-dir-locals-for-current-buffer ()
-  "Reload dir locals for the current buffer"
-  (interactive)
-  (let ((enable-local-variables :all))
-    (hack-dir-local-variables-non-file-buffer)))
-
 (use-package! toml)
 
 (use-package! electric-case)
@@ -5646,45 +5660,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
                     (let* ((id (org-element-property :path l))
                            (file (org-id-find-id-file id)))
                       (and file (cons id (file-relative-name file)))))))))))
-
-(use-package! org-capture-ref)
-(use-package! asoc)
-
-(let ((templates (doct '( :group "Browser link"
-                          :type entry
-                          :file "~/proj/notes/bibliography.org"
-                          :fetch-bibtex (lambda () (org-capture-ref-process-capture)) ; this must run first
-                          :bibtex (lambda () (org-capture-ref-get-bibtex-field :bibtex-string))
-                          :extra (lambda () (if (org-capture-ref-get-bibtex-field :journal)
-                                                (s-join "\n"
-                                                        '("- [ ] download and attach pdf"
-                                                          "- [ ] [[elisp:org-attach-open][read paper capturing interesting references]]"
-                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.semanticscholar.org/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check citing articles]]"
-                                                          "- [ ] [[elisp:(browse-url (url-encode-url (format \"https://www.connectedpapers.com/search?q=%s\" (org-entry-get nil \"TITLE\"))))][check related articles]]"
-                                                          "- [ ] check if bibtex entry has missing fields"))
-                                              ""))
-                          :org-entry (lambda () (org-capture-ref-get-org-entry))
-                          :template
-                          ("%{fetch-bibtex}* TODO %?%{space}%{org-entry}"
-                           "%{extra}"
-                           "#+begin_src bibtex :tangle bibliography.bib"
-                           "%{bibtex}"
-                           "#+end_src")
-                          :children (("Interactive link"
-                                      :keys "b"
-                                      :space " "
-                                      )
-                                     ("Silent link"
-                                      :keys "B"
-                                      :space ""
-                                      :immediate-finish t))))))
-  (dolist (template templates)
-    (asoc-put! org-capture-templates
-               (car template)
-               (cdr  template)
-               'replace)))
-
-(use-package! memoize)
 
 ;; Reference: https://github.com/politza/pdf-tools/issues/651
 

@@ -18,7 +18,27 @@
   :recipe (:host github
            :repo "natrys/whisper.el"))
 
+(package! memoize
+  :recipe (:host github
+           :repo "skeeto/emacs-memoize"))
+
 ;; (package! org-wild-notifier)
+
+(defmacro k-time (&rest body)
+  "Measure and return the time it takes evaluating BODY."
+  `(let ((time (current-time)))
+     ,@body
+     (float-time (time-since time))))
+
+;; Set garbage collection threshold to 1GB.
+(setq gc-cons-threshold #x40000000)
+
+;; When idle for 15sec run the GC no matter what.
+(defvar k-gc-timer
+  (run-with-idle-timer 15 t
+                       (lambda ()
+                         (message "Garbage Collector has run for %.06fsec"
+                                  (k-time (garbage-collect))))))
 
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages.el
@@ -280,34 +300,6 @@
   :recipe (:host github
            :repo "zk-phi/electric-case"))
 
-(package! org-capture-ref
-  :recipe (:host github
-           :repo "yantar92/org-capture-ref"))
-
-(package! asoc
-  :recipe (:host github
-           :repo "troyp/asoc.el"))
-
-(package! memoize
-  :recipe (:host github
-           :repo "skeeto/emacs-memoize"))
-
-(package! org-window-habit
-  :recipe (:host github
-           :repo "colonelpanic8/org-window-habit"))
-
-(defmacro k-time (&rest body)
-  "Measure and return the time it takes evaluating BODY."
-  `(let ((time (current-time)))
-     ,@body
-     (float-time (time-since time))))
-
-;; Set garbage collection threshold to 1GB.
-(setq gc-cons-threshold #x40000000)
-
-;; When idle for 15sec run the GC no matter what.
-(defvar k-gc-timer
-  (run-with-idle-timer 15 t
-                       (lambda ()
-                         (message "Garbage Collector has run for %.06fsec"
-                                  (k-time (garbage-collect))))))
+;; (package! org-window-habit
+;;   :recipe (:host github
+;;            :repo "colonelpanic8/org-window-habit"))
