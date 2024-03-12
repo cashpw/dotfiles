@@ -91,32 +91,14 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :group 'cashpw
   :type 'string)
 
-(defcustom cashpw/path--notes-corp-dir
-  (s-lex-format "${cashpw/path--proj-dir}/notes-corp")
-  "Personal private org-roam notes directory."
-  :group 'cashpw
-  :type 'string)
-
-(defcustom cashpw/path--notes-journal-dir
-  (s-lex-format "${cashpw/path--proj-dir}/notes-journal")
-  "Personal journal."
-  :group 'cashpw
-  :type 'string)
-
-(defcustom cashpw/path--notes-personal-dir
-  (s-lex-format "${cashpw/path--proj-dir}/notes-personal")
+(defcustom cashpw/path--personal-dir
+  (s-lex-format "${cashpw/path--proj-dir}/personal")
   "Personal notes directory."
   :group 'cashpw
   :type 'string)
 
-(defcustom cashpw/path--people-dir
-  (s-lex-format "${cashpw/path--proj-dir}/people")
-  "Personal people org-roam notes directory."
-  :group 'cashpw
-  :type 'string)
-
-(defcustom cashpw/path--notes-todos-file
-  (s-lex-format "${cashpw/path--notes-dir}/todos.org")
+(defcustom cashpw/path--personal-todos
+  (s-lex-format "${cashpw/path--personal-dir}/todos.org")
   "Personal TODOs file."
   :group 'cashpw
   :type 'string)
@@ -223,7 +205,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (let ((match (if include-archive
                    "\\.org\\(_archive\\)?$"
                  "\\.org$")))
-    (directory-files dir-path t match)))
+    (directory-files dir-path
+                     t
+                     match)))
 
 (defun cashpw/replace-selection ()
   (interactive)
@@ -244,6 +228,35 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (interactive)
   (let ((enable-local-variables :all))
     (hack-dir-local-variables-non-file-buffer)))
+
+(defun cashpw/org-get-filetags (element)
+  "Return list of filetags in ELEMENT.
+
+Reference: https://emacs.stackexchange.com/a/75954/37010"
+  (let ((type (org-element-type element))
+        (key (org-element-property :key element))
+        (value (org-element-property :value element)))
+    (if (and (eq type 'keyword)
+             (equal key "FILETAGS"))
+        (string-split value ":" t))))
+
+(defun cashpw/org-get-filetags-in-buffer (buffer-or-name)
+  "Return list of filetags in BUFFER-OR-NAME."
+  (-flatten
+   (with-current-buffer buffer-or-name
+     (org-element-map
+         (org-element-parse-buffer)
+         '(keyword)
+       #'cashpw/org-get-filetags))))
+
+(defun cashpw/org-get-filetags-in-file (file-path)
+  "Return list of filetags in file at FILE-PATH."
+  (-flatten
+  (with-current-buffer (find-file-noselect file-path)
+    (org-element-map
+        (org-element-parse-buffer)
+        '(keyword)
+      #'cashpw/org-get-filetags))))
 
 ;; (use-package! auth-source-xoauth2
 ;;   :config
@@ -329,13 +342,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  alert-fade-time 60
  alert-default-style 'libnotify)
 
-;; Too early load error
-;; (use-package! org-wild-notifier
-  ;; :after org
-  ;; :config
-  ;; (setq
-   ;; org-wild-notifier-alert-time '(2))
-  ;; (org-wild-notifier-mode))
+(use-package! org-wild-notifier
+  :after org
+  :defer t
+  :custom
+  (org-wild-notifier-alert-time '(0))
+  :init
+  (add-hook 'doom-post-init-hook #'org-wild-notifier-mode t))
 
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
@@ -359,6 +372,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Tomorrow" :n "t" (cmd! (org-agenda nil ".tomorrow"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
+   :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
    (:prefix ("n" . "Roam")
     :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
     :desc "Reading List" :n "r" (cmd! (org-agenda nil ".roam-readinglist")))
@@ -374,11 +388,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week"))))
   (:prefix ("o")
            (:prefix ("n")
-            :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-personal-dir}/commonplace.org")))
+            :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--personal-dir}/commonplace.org")))
             ;; :desc "Todos" :n "c" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/calendar.org")))
-            :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-personal-dir}/journal-2024.org")))
-            :desc "Retrospective" :n "r" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-personal-dir}/retrospective-2024.org")))
-            :desc "Todos" :n "t" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-personal-dir}/todos.org")))))
+            :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--personal-dir}/journal-2024.org")))
+            :desc "Retrospective" :n "r" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--personal-dir}/retrospective-2024.org")))
+            :desc "Todos" :n "t" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--personal-dir}/todos.org")))))
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
@@ -522,8 +536,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (setq
  doom-font (font-spec :family "Fira Code"
-                      :size 16
-                      :weight 'semi-light))
+                      :size (if (cashpw/is-work-laptop-p)
+                                ;; Laptop has a different DPI
+                                28
+                              16)))
 
 (use-package! w3m)
 
@@ -794,7 +810,7 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-create-follow-up-todo ()
   (interactive)
-  (let* ((file cashpw/path--notes-todos-file)
+  (let* ((file cashpw/path--personal-todos)
          (to-short (cashpw/mail-get-short-address
                     (message-field-value "To")))
          (from-short (cashpw/mail-get-short-address
@@ -1037,17 +1053,14 @@ ${content}"))
    +zen-mixed-pitch-modes '()
    writeroom-width 45))
 
-(use-package! flycheck-vale
-  :config
-  (flycheck-vale-setup))
+;; (use-package! flycheck-vale
+;;   :config
+;;   (flycheck-vale-setup))
 
-;; (set-eglot-client! 'org-mode "efm-langserver")
-;; (after! eglot
-;;   (add-to-list 'eglot-server-programs
-;;                '(org-mode . ("efm-langserver")
-;;                  text-mode . ("efm-langserver")
-;;                  gfm-mode . ("efm-langserver")
-;;                  markdown-mode . ("efm-langserver"))))
+(set-eglot-client! 'org-mode '("vale-ls"))
+(after! eglot
+  (add-hook! 'org-mode-hook
+             #'eglot-ensure))
 
 ;; Doom Emacs provides flycheck
 (after! flycheck
@@ -1070,6 +1083,11 @@ ${content}"))
   :tag "Contacts"
   :group 'org)
 
+(defcustom cashpw/contacts--filetag "person"
+  "Filetag on all contacts."
+  :type 'string
+  :group 'cashpw/contacts)
+
 (defcustom cashpw/contacts--birthday-prop "BIRTHDAY"
   "Property name for a contact's birthday."
   :type 'string
@@ -1080,7 +1098,7 @@ ${content}"))
   :type 'string
   :group 'cashpw/contacts)
 
-(defcustom cashpw/contacts--path-dir (concat cashpw/path--proj-dir "/people")
+(defcustom cashpw/contacts--path-dir cashpw/path--notes-dir
   "Directory path."
   :type 'string
   :group 'cashpw/contacts)
@@ -1207,11 +1225,13 @@ Time defaults to `(current-time)'."
     (org-entry-put nil "SCHEDULED" time-string)
     (cashpw/org-set-property--created-at)))
 
-(cl-defun cashpw/contacts-file-p ()
+(defun cashpw/contacts-file-p ()
   "Contacts files are roam files in a specific directory."
-  (and (org-roam-file-p)
-       (file-in-directory-p buffer-file-name
-                            cashpw/contacts--path-dir)))
+  (and
+   (org-roam-file-p)
+   (member
+    cashpw/contacts--filetag
+    (cashpw/org-get-filetags-in-buffer (buffer-name)))))
 
 (defun cashpw/contacts--get-birthday-time ()
   "Get emacs time representation of the contact's birthday."
@@ -1278,15 +1298,7 @@ Based on `org-contacts-anniversaries'."
     ))
 
 (defun cashpw/contacts--get-contacts ()
-  (let ((org-roam-directory "~/proj/people")
-        (org-roam-db-location "~/proj/people/org-roam.db"))
-    (when (emacsql-live-p
-           (org-roam-db--get-connection))
-      (emacsql-close
-       (org-roam-db--get-connection)))
-    (org-roam-db)
-    (org-roam-db-query [:select *
-                        :from nodes])))
+  (cashpw/org-roam-files-with-tag "person"))
 
 (use-package! clocktable-by-category
   :after org)
@@ -1778,7 +1790,6 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
               (minutes (floor (/ diff 60))))
     (let ((effort (org-entry-get (point) org-effort-property)))
       (unless effort
-        (message "need to set effort - minutes %S" minutes)
         (org-entry-put (point)
                        org-effort-property
                        (apply #'format "%d:%02d" (cl-floor minutes 60)))))))
@@ -1802,6 +1813,7 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 (defcustom cashpw/org-gcal--summaries-to-exclude '("Nap"
                                                    "Email, etc"
                                                    "Lunch"
+                                                   "Home" ; Google Calendar working location event
                                                    "Retrospective: Week"
                                                    ".*Work\\(ing\\)? Session.*"
                                                    "End the day"
@@ -1983,15 +1995,23 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
   "Return the scheduled start time for EVENT.
 
 Reference: `org-gcal--update-entry'."
-  (let* ((start-time (plist-get (plist-get event :start) :dateTime)))
-    (parse-iso8601-time-string start-time)))
+  (let* ((start (plist-get event :start))
+         (start-datetime (plist-get start :dateTime))
+         (start-date (plist-get start :date)))
+    (if start-datetime
+        (parse-iso8601-time-string start-datetime)
+      (date-to-time start-date))))
 
 (defun cashpw/org-gcal--end (event)
   "Return the scheduled end time for EVENT.
 
 Reference: `org-gcal--update-entry'."
-  (let* ((end-time (plist-get (plist-get event :end) :dateTime)))
-    (parse-iso8601-time-string end-time)))
+  (let* ((end (plist-get event :end))
+         (end-datetime (plist-get end :dateTime))
+         (end-date (plist-get end :date)))
+    (if end-datetime
+        (parse-iso8601-time-string end-datetime)
+      (date-to-time end-date))))
 
 (defun cashpw/org-gcal--maybe-create-1-on-1-prep (_calendar-id event _update-mode)
   "Insert a 1-on-1 prep heading todo if EVENT is for a 1-on-1 event."
@@ -2546,1349 +2566,8 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (after! org
   (setq
-   org-ellipsis " ▾"
+   org-ellipsis " ▼"
    org-hide-leading-stars t))
-
-(after! org
-  (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))
-        ;; showeverything to make large files open faster
-        org-startup-folded 'showeverything
-        org-log-into-drawer t
-        org-log-repeat t))
-
-(after! org
-  :config
-  (setq
-   org-priority-highest 0
-   org-priority-default 2
-   org-priority-lowest 4))
-
-(after! org
-  :config
-  (setq
-   org-todo-keywords '((sequence
-                        ;; A task that needs doing & is ready to do
-                        "TODO(t)"
-                        ;; A task that is in progress
-                        "INPROGRESS(i)"
-                        ;; Something external is holding up this task
-                        "BLOCKED(b)"
-                        ;; This task is paused/on hold because of me
-                        "HOLD(h)"
-                        ;; A project, which usually contains other tasks
-                        "PROJ(p)"
-                        "|"
-                        ;; Task successfully completed
-                        "DONE(d)"
-                        ;; Calendar event is declined
-                        "DECLINED(`)"
-                        ;; Calendar event is cancelled
-                        "CANCELLED(~)"
-                        ;; Task was moved
-                        "MOVE(m)"
-                        ;; Task was moved
-                        "RESCHEDULE(_)"
-                        ;; Task was cancelled, aborted or is no longer applicable
-                        "KILL(k)")
-                       (sequence
-                        ;; A task that needs doing
-                        "[ ](T)"
-                        ;; Task is in progress
-                        "[-](S)"
-                        ;; Task is being held up or paused
-                        "[?](W)"
-                        "|"
-                        ;; Task was completed
-                        "[X](D)"))
-   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
-                            ("INPROGRESS" . +org-todo-active)
-                            ("[?]"  . +org-todo-onhold)
-                            ("BLOCKED" . +org-todo-onhold)
-                            ("HOLD" . +org-todo-onhold)
-                            ("PROJ" . +org-todo-project))))
-
-;; (after! org
-;;   (add-hook!
-;;    'org-after-todo-state-change-hook
-;;    'save-buffer))
-
-(defcustom cashpw/org-mode-on-inprogress--clock-in-paths
-  nil
-  "TODOs marked as INPROGRESS in these files will trigger a clock in.")
-
-(defun cashpw/org-mode-on-inprogress--in-clock-in-file-p ()
-  (member
-   buffer-file-name
-   cashpw/org-mode-on-inprogress--clock-in-paths))
-
-(defun cashpw/org-mode-when-inprogress ()
-  "Handle inprogress behavior."
-  (when (string-equal (org-get-todo-state)
-                       "INPROGRESS")
-    (cond
-     ((cashpw/org-mode-on-inprogress--in-clock-in-file-p)
-      (org-clock-in)))))
-
-(after! org
-  :config
-  (setq
-   cashpw/org-mode-on-inprogress--clock-in-paths (append
-                                                  ;; `(,(s-lex-format "${cashpw/path--notes-personal-dir}/journal-2024.org")
-                                                  ;;   ,(s-lex-format "${cashpw/path--notes-personal-dir}/retrospective-2024.org")
-                                                  ;;   ,(s-lex-format "${cashpw/path--notes-personal-dir}/todos.org"))
-                                                  (f-glob "*.org"
-                                                          cashpw/path--notes-personal-dir)
-                                                  (f-glob "*.org"
-                                                          cashpw/path--people-dir)))
-  (add-hook! 'org-after-todo-state-change-hook
-             'cashpw/org-mode-when-inprogress))
-
-(after! org
-  :config
-  (setq
-   org-log-done 'time))
-
-(defgroup cashpw/org-mode-on-done nil
-  "Handle Org-mode DONE headlines."
-  :tag "Org-mode on done.")
-
-(defcustom cashpw/org-mode-on-done--noop-hook nil
-  "List of functions which return non-nil to indicate we should do nothing with the current heading."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
-
-(defcustom cashpw/org-mode-on-done--keep-hook nil
-  "List of functions which return non-nil to indicate we should keep the current heading in the done state."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
-
-(defcustom cashpw/org-mode-on-done--delete-hook nil
-  "List of functions which return non-nil to indicate we should delete the current heading."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
-
-(defcustom cashpw/org-mode-weekday-repeat--property "CASHPW_REPEAT_WEEKDAYS"
-  "Property name to indicate how to handle DONE event repeated weekly.
-
-Value is a list of space separated numbers indicating weekdays (Monday is 1, ..., Sunday is 7)."
-  :group 'cashpw/org-mode-weekday-repeat
-  :type 'string)
-
-(cl-defun cashpw/org-mode-weekday-repeat--p (pom)
-  "Return non-nil if the heading at POM is configured to repeat on weekdays."
-  (let ((valid-repeaters '("++1d"
-                           ".+1d")))
-    (and (-contains-p valid-repeaters (org-get-repeat))
-         (cashpw/org-get-property pom
-                                  cashpw/org-mode-weekday-repeat--property))))
-
-(cl-defun cashpw/org-mode-weekday-repeat--weekdays (pom)
-  "Return list of weekdays for entry at POM."
-  (let* ((all-weekdays "1 2 3 4 5 6 7")
-         (repeat-weekdays (split-string (or (cashpw/org-get-property pom
-                                                                     cashpw/org-mode-weekday-repeat--property)
-                                            all-weekdays))))
-    (mapcar #'string-to-number
-            repeat-weekdays)))
-
-(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (current-scheduled-time weekdays)
-  "Return the next valid, by WEEKDAYS, time after CURRENT-SCHEDULED-TIME.
-
-WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
-  (let* (;; The scheduled time may be in the past!
-         (days-between-scheduled-and-today (- (time-to-days (current-time))
-                                              (time-to-days current-scheduled-time)))
-         (scheduled-in-future (< days-between-scheduled-and-today 0))
-         (next-scheduled-time (if (> days-between-scheduled-and-today 0)
-                                  (time-add current-scheduled-time (days-to-time days-between-scheduled-and-today))
-                                current-scheduled-time))
-         (add-one-day (lambda ()
-                        (setq next-scheduled-time (time-add (days-to-time 1)
-                                                            next-scheduled-time)))))
-    (funcall add-one-day)
-    (while (not (-contains-p weekdays
-                             (cashpw/day-of-week next-scheduled-time)))
-      (funcall add-one-day))
-    next-scheduled-time))
-
-(cl-defun cashpw/org-mode-weekday-repeat--maybe-reschedule (pom)
-  "Reschedule heading at POM to the next appropriate weekday."
-  (when (cashpw/org-mode-weekday-repeat--p pom)
-    (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
-           (scheduled-time (org-get-scheduled-time pom))
-           (next-scheduled-time
-            ;; Schedule to the day before the next schedule time because
-            ;; it'll get moved forward one day past when we schedule it
-            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time scheduled-time
-                                                                                weekdays)
-                           (days-to-time 1)))
-           (hh-mm (format-time-string "%H:%M" next-scheduled-time))
-           (format-string
-            (if (string= hh-mm "00:00")
-                "%F"
-              "%F %H:%M")))
-      (org-schedule nil (format-time-string format-string
-                                            next-scheduled-time)))))
-
-(setq current-time-override-time (current-time))
-(defun current-time-override ()
-  current-time-override-time)
-(advice-add 'current-time :override 'current-time-override)
-
-;; Event is scheduled for today
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 2)))
-            (format-time-string "%FT%T%z" tuesday))
-   t))
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 3)))
-            (format-time-string "%FT%T%z" wednesday))
-   t))
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1)))
-            (format-time-string "%FT%T%z" next-monday))
-   t))
-(let* ((friday (date-to-time "2000-01-07T08:00:00-0700"))
-       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
-       (current-time-override-time friday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time friday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" next-monday))
-   t))
-
-
-;; Event is scheduled in the future
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time tuesday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" wednesday))
-   t
-   "Should schedule for next valid future day when scheduled in future."))
-
-;; Event is scheduled in the future
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (friday (date-to-time "2000-01-07T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time wednesday
-                                                                                     '(1 5)))
-            (format-time-string "%FT%T%z" friday))
-   t
-   "Should schedule for next valid future day when scheduled in future."))
-
-;; Event is scheduled in the past
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time tuesday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" wednesday))
-   t
-   "Should schedule for next valid future day when scheduled in past."))
-
-(advice-remove 'current-time 'current-time-override)
-
-(defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
-  "Property name to indicate how to handle DONE event."
-  :group 'cashpw/org-mode-on-done
-  :type 'string)
-
-(defcustom cashpw/org-mode-on-done--property--noop "noop"
-  "No-op."
-  :group 'cashpw/org-mode-on-done
-  :type 'string)
-
-(defcustom cashpw/org-mode-on-done--property--keep "keep"
-  "Keep"
-  :group 'cashpw/org-mode-on-done
-  :type 'string)
-
-(defcustom cashpw/org-mode-on-done--property--delete "delete"
-  "Delete."
-  :group 'cashpw/org-mode-on-done
-  :type 'string)
-
-(defun cashpw/org-mode-on-done--property-value-equals-p (expected-value)
-  "Return non-nil if the heading's `cashpw/org-mode-on-done--property-name' is EXPECTED-VALUE."
-  (let ((actual-value (org-entry-get (point)
-                                     cashpw/org-mode-on-done--property-name)))
-    (equal actual-value
-           expected-value)))
-
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--noop)))
-(add-hook 'cashpw/org-mode-on-done--keep-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)))
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--delete)))
-
-(defcustom cashpw/org-mode-on-done--noop-file-paths '()
-  "TODOs in these files will be noop by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defcustom cashpw/org-mode-on-done--keep-file-paths (append
-                                                     `(,(s-lex-format "${cashpw/path--notes-personal-dir}/journal-2024.org")
-                                                       ,(s-lex-format "${cashpw/path--notes-personal-dir}/retrospective-2024.org"))
-                                                     (cashpw/directory-files--org (s-lex-format "${cashpw/path--home-dir}/proj/people")))
-  "TODOs in these files will be keep by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defcustom cashpw/org-mode-on-done--delete-file-paths '()
-  "TODOs in these files will be delete by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defun cashpw/org-mode-on-done--noop-file-p ()
-  "Return non-nil if current file is a no-op file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--noop-file-paths))
-
-(defun cashpw/org-mode-on-done--keep-file-p ()
-  "Return non-nil if current file is a keep file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--keep-file-paths))
-
-(defun cashpw/org-mode-on-done--delete-file-p ()
-  "Return non-nil if current file is a delete file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--delete-file-paths))
-
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          'cashpw/org-mode-on-done--noop-file-p)
-(add-hook 'cashpw/org-mode-on-done--keep-hook
-          'cashpw/org-mode-on-done--keep-file-p)
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          'cashpw/org-mode-on-done--delete-file-p)
-
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          #'org-get-repeat)
-
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          (lambda ()
-            (string= org-state
-                     "KILL")))
-(add-hook
- 'cashpw/org-mode-on-done--delete-hook
- 'org-roam-file-p)
-
-(defun cashpw/org-mode-on-done--is-noop ()
-  "Return non-nil if we should noop the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--noop-hook))
-
-(defun cashpw/org-mode-on-done--is-keep ()
-  "Return non-nil if we should keep the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--keep-hook))
-
-(defun cashpw/org-mode-on-done--is-delete ()
-  "Return non-nil if we should delete the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--delete-hook))
-
-(defun cashpw/org-mode-when-done ()
-  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (when (org-entry-is-done-p)
-    (org-clock-out-if-current)
-    (when (org-get-repeat)
-      (cashpw/org-mode-weekday-repeat--maybe-reschedule (point)))
-    (cond
-     ((cashpw/org-mode-on-done--is-noop)
-      (progn
-        ;; (unless (org-get-repeat)
-        ;; (org-schedule '(4)))
-        (org-todo "TODO")))
-     ((cashpw/org-mode-on-done--is-keep)
-      nil)
-     ((cashpw/org-mode-on-done--is-delete)
-      (org-cut-subtree))
-     (t
-      (org-archive-subtree-default)))))
-
-(after! org
-  :config
-  (add-hook! 'org-after-todo-state-change-hook
-             'cashpw/org-mode-when-done))
-
-(after! org
-  :config
-  (setq
-   org-structure-template-alist
-   '(("a" . "export ascii")
-     ("c" . "center")
-     ("C" . "comment")
-     ("e" . "example")
-     ("E" . "export")
-     ("Eh" . "export html")
-     ("El" . "export latex")
-     ;; ("i" . "ingredients")
-     ("q" . "quote")
-     ("s" . "src")
-     ("sd" . "src dot :file TODO.png :cmdline -Kdot -Tpng")
-     ("se" . "src emacs-lisp")
-     ("sc" . "src C++")
-     ("sp" . "src python :results output")
-     ("ss" . "src sh :results output")
-     ("v" . "verse"))))
-
-(defun cashpw/org-agenda-buganizer-title ()
-  "Overridden in my work config."
-  "")
-
-(defun cashpw/org-agenda-files--people ()
-  "Return a list of all people files at DIR-PATH."
-  (cashpw/directory-files--org
-   (s-lex-format "${cashpw/path--home-dir}/proj/people")))
-
-(defun cashpw/org-agenda-files--notes-personal ()
-  "Return a list of all personal notes files at DIR-PATH."
-  (cashpw/directory-files--org
-   (s-lex-format "${cashpw/path--home-dir}/proj/notes-personal")))
-
-;; TODO Speed up by pre-computing
-(defun cashpw/org-agenda-files--notes-private ()
-  "Return a list of all private notes files at DIR-PATH."
-  (cashpw/directory-files--org
-   (s-lex-format "${cashpw/path--home-dir}/proj/notes-private")))
-
-;; TODO Speed up by pre-computing
-(defun cashpw/org-agenda-files--notes ()
-  "Return a list of all private notes files at DIR-PATH."
-  (let* ((org-roam-directory cashpw/path--notes-dir)
-         (org-roam-db-location (expand-file-name "org-roam.db"
-                                                 org-roam-directory))
-         (files-to-ignore `(,(s-lex-format "${org-roam-directory}/reading_list.org")
-                            ,(s-lex-format "${org-roam-directory}/todos.org"))))
-    (seq-difference (cashpw/org-roam-todo-files)
-                    files-to-ignore)))
-
-(defun cashpw/org-agenda-files--notes-private ()
-  "Return a list of all private notes files at DIR-PATH."
-  (let* ((org-roam-directory (s-lex-format "${cashpw/path--home-dir}/proj/notes-private"))
-         (org-roam-db-location (expand-file-name
-                                "org-roam.db"
-                                org-roam-directory)))
-    (message org-roam-db-location)
-    (cashpw/org-roam-todo-files)))
-
-(defun cashpw/org-agenda-files--update ()
-  "Update `org-agenda-files' and related variables."
-  (interactive)
-  (setq
-   cashpw/org-agenda-files--people (cashpw/org-agenda-files--people)
-   cashpw/org-agenda-files--notes-personal (cashpw/org-agenda-files--notes-personal)
-   org-agenda-files (append
-                     cashpw/org-agenda-files--people
-                     cashpw/org-agenda-files--notes-personal)))
-(cashpw/org-agenda-files--update)
-
-(use-package! org-agenda)
-(use-package! evil-org-agenda)
-(use-package! org-super-agenda
-  :demand t
-  :after (:all org-agenda
-               evil
-               evil-org-agenda)
-  :hook ((org-agenda-mode . org-super-agenda-mode))
-  :config
-  (setq
-   org-agenda-prefix-format '((agenda . " %i %-20(cashpw/org-agenda-category)%?-12t%-6e% s")
-                              (todo . " %i %-20(cashpw/org-agenda-category) %-6e %-40(cashpw/org-agenda-buganizer-title)")
-                              (tags . " %i %-12c")
-                              (search . " %i %-12c"))
-
-   org-agenda-log-mode-items '(state
-                               closed
-                               clock)
-   org-super-agenda-header-map evil-org-agenda-mode-map
-   ;; https://emacs.stackexchange.com/a/17128
-   org-agenda-sorting-strategy '((agenda time-up priority-down category-keep)
-                                 (todo priority-down category-keep)
-                                 (tags priority-down category-keep)
-                                 (search category-keep)))
-  (defun cashpw/org-agenda-category ()
-    (or (org-get-category)
-        ""))
-
-  (cl-defun org-super-agenda--group-dispatch-take (items (n group))
-    ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
-    "Take N ITEMS that match selectors in GROUP.
-If N is positive, take the first N items, otherwise take the last N items.
-Note: the ordering of entries is not guaranteed to be preserved, so this may
-not always show the expected results."
-    (message (format "%s" group))
-    (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
-            (take-fn (if (cl-minusp n) #'-take-last #'-take))
-            (placement (if (cl-minusp n) "Last" "First"))
-            (name (format "%s %d %s" placement (abs n) name)))
-      (list name non-matching (funcall take-fn (abs n) matching)))))
-
-
-(defun cashpw/org-super-agenda--get-priority (item)
-  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
-  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
-                           (get-text-property 0 'org-hd-marker)))
-               (default-priority "?")
-               (priority (or (cashpw/org--get-priority marker)
-                             default-priority)))
-    (s-lex-format "p${priority}")))
-
-(defun cashpw/org--get-priority (pos)
-  "Return priority of heading at POS, or nil."
-  (let ((priority (org-entry-get pos
-                                 "PRIORITY")))
-    (if (cashpw/is-valid-priority-p priority)
-        priority
-      nil)))
-
-(defun cashpw/org-super-agenda--get-first-n-from-roam-tag (n tag)
-  "Return plist to group the first N headings tagged TAG.
-
-Intended for use with `org-super-agenda-groups'."
-  `(:name ,(s-lex-format "${tag} (${n})")
-    :transformer (replace-regexp-in-string "TODO " ""
-                                           (replace-regexp-in-string "\\[#[0-9]\\] " "" it))
-    :take (,n (:tag ,tag))))
-
-(after! org
-  :config
-  (setq
-   calendar-week-start-day 1
-   org-agenda-entry-text-maxlines 30
-   org-agenda-entry-text-leaders "  "
-   org-agenda-time-grid '((daily
-                           today
-                           require-timed
-                           ;; remove-match
-                           )
-                          (500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000)
-                          ;; (800 1000 1200 1400 1600 1800 2000)
-                          "......" "----------------")
-   ))
-
-(defun cashpw/org-mode-buffer-property-get (property-name)
-  (org-with-point-at 1
-    (when (re-search-forward
-           (concat "^#\\+" property-name ": \\(.*\\)")
-           (point-max) t)
-      (buffer-substring-no-properties
-       (match-beginning 1)
-       (match-end 1)))))
-
-(after! org-agenda
-  (setq
-   org-duration-units `(("m" . 1)
-                        ("min" . 1)
-                        ("mins" . 1)
-                        ("h" . 60)
-                        ("d" . ,(* 60 24))
-                        ("w" . ,(* 60 24 7))
-                        ("mo" . ,(* 60 24 30))
-                        ("mos" . ,(* 60 24 30))
-                        ("M" . ,(* 60 24 30))
-                        ("y" . ,(* 60 24 365.25)))
-   org-agenda-skip-scheduled-if-deadline-is-shown t
-   org-agenda-skip-scheduled-if-done t
-   org-agenda-skip-scheduled-if-done t
-   org-agenda-skip-deadline-if-done t
-   org-agenda-include-deadlines t
-   org-agenda-block-separator nil
-   org-agenda-compact-blocks t
-   org-agenda-start-day nil ;; i.e. today
-   org-agenda-span 3
-   org-agenda-include-diary t
-   org-agenda-start-on-weekday nil))
-
-(defun cashpw/org-agenda-files (context &optional archive)
-  "Return list of agenda files for CONTEXT.
-
-ARCHIVE should be one of `include-archive', `only-archive'.
-
-Returns list of relevant non-archive files by default. Set WITH-ARCHIVES to non-nil to include archive files."
-  (let* ((path (cond
-                ((equal context 'notes)
-                 cashpw/path--notes-dir)
-                ((equal context 'notes-personal)
-                 cashpw/path--notes-personal-dir)
-                ((equal context 'notes-private)
-                 cashpw/path--notes-corp-dir)
-                ((equal context 'people)
-                 cashpw/path--people-dir)
-                (t
-                 "")))
-         (files (f-glob "*.org"
-                        path))
-         (archived-files (f-glob "*.org_archive"
-                                 path)))
-    (cond
-     ((equal archive
-             'archive-and-non-archive)
-      (append files
-              archived-files))
-     ((equal archive
-             'only-archive)
-      archived-files)
-     (t
-      files))))
-
-(defun cashpw/update-agenda-files ()
-  (setq
-   org-agenda-files (append
-                     (cashpw/org-agenda-files 'people
-                                              'non-archive)
-                     (cashpw/org-agenda-files 'notes-personal
-                                              'non-archive))))
-
-(setq
- cashpw/org-agenda-view--super `((agenda
-                                  ""
-                                  ((org-agenda-overriding-header "")
-                                   ;; (org-agenda-files cashpw/org-agenda-files--without-roam)
-                                   (org-agenda-dim-blocked-tasks nil)
-                                   (org-agenda-use-tag-inheritance nil)
-                                   (org-super-agenda-groups
-                                    '((:name "Schedule"
-                                       :time-grid t)
-                                      (:name "Scheduled/Due Today"
-                                       :scheduled today
-                                       :deadline today)
-                                      (:discard
-                                       (:tag "habit"
-                                        :tag "repeating"))
-                                      (:name "Overdue"
-                                       :scheduled past
-                                       :deadline past)
-                                      (;; Toss all other todos
-                                       :discard
-                                       (:todo t))))))
-                                 (alltodo
-                                  ""
-                                  ((org-agenda-overriding-header "")
-                                   ;; (org-agenda-files cashpw/org-agenda-files--without-roam)
-                                   (org-agenda-dim-blocked-tasks nil)
-                                   (org-agenda-use-tag-inheritance nil)
-                                   (org-super-agenda-groups
-                                    '((;; Automatically named "Log"
-                                       :log t)
-                                      (;; PROJ items group actionable TODOs; ignore them.
-                                       :discard
-                                       (:todo "PROJ"))
-                                      (:name "In Progress"
-                                       :todo "INPROGRESS")
-                                      (:discard
-                                       (:tag "repeating"))
-                                      (;; Toss all tasks scheduled for or due in the past.
-                                       :discard
-                                       (:scheduled past
-                                        :deadline past))
-                                      (;; Toss all tasks scheduled for or due today.
-                                       :discard
-                                       (:scheduled today
-                                        :deadline today))
-                                      (;; Toss all tasks scheduled for or due in the future.
-                                       :discard
-                                       (:scheduled future
-                                        :deadline future))
-                                      (;; Group by priority
-                                       :auto-map
-                                       (lambda (item)
-                                         (-when-let* ((marker
-                                                       (or (get-text-property 0 'org-marker item)
-                                                           (get-text-property 0 'org-hd-marker)))
-                                                      (priority
-                                                       (org-entry-get
-                                                        marker
-                                                        "PRIORITY")))
-                                           (s-lex-format
-                                            "p${priority}"))))))))))
-
-(setq
- cashpw/org-agenda-view--today `((agenda
-                                  ""
-                                  ((org-agenda-overriding-header "")
-                                   (org-agenda-dim-blocked-tasks t)
-                                   (org-agenda-use-tag-inheritance t)
-                                   (org-use-property-inheritance t)
-                                   (org-agenda-span 1)
-                                   (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
-                                   (org-super-agenda-groups
-                                    '((:discard
-                                       (:scheduled future
-                                        :deadline future))
-                                      (:name "Schedule"
-                                       :time-grid t
-                                       :order 0
-                                       :transformer (replace-regexp-in-string "TODO " ""
-                                                                              (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
-                                      (:name "In Progress"
-                                       :todo "INPROGRESS")
-                                      (:auto-map cashpw/org-super-agenda--get-priority
-                                       :transformer (plist-put it :items (-map
-                                                                          (lambda (line)
-                                                                            (replace-regexp-in-string "TODO " ""
-                                                                                                      (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
-                                                                          (plist-get it :items))))
-                                      (;; Toss all other todos
-                                       :discard
-                                       (:anything))))))))
-
-(setq
- cashpw/org-agenda-view--tomorrow `((agenda
-                                     ""
-                                     ((org-agenda-overriding-header "")
-                                      (org-agenda-dim-blocked-tasks t)
-                                      (org-agenda-use-tag-inheritance t)
-                                      (org-use-property-inheritance t)
-                                      (org-agenda-span 1)
-                                      (org-agenda-start-day "+1d")
-                                      (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
-                                      (org-super-agenda-groups
-                                       '(
-                                         (:name "Schedule"
-                                          :time-grid t
-                                          :order 0
-                                          :transformer (replace-regexp-in-string "TODO " ""
-                                                                                 (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
-                                         (:name "In Progress"
-                                          :todo "INPROGRESS")
-                                         (:auto-map cashpw/org-super-agenda--get-priority
-                                          :transformer (plist-put it :items (-map
-                                                                             (lambda (line)
-                                                                               (replace-regexp-in-string "TODO " ""
-                                                                                                         (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
-                                                                             (plist-get it :items))))
-                                         ;; (:name "Scheduled/Due Today"
-                                         ;;  :scheduled today
-                                         ;;  :deadline today)
-                                         (;; Toss all other todos
-                                          :discard
-                                          (:anything))))))))
-
-(setq
- cashpw/org-agenda-view--week `((agenda
-                            ""
-                            ((org-agenda-overriding-header "")
-                             (org-agenda-span 7)
-                             (org-super-agenda-groups
-                              '((:name ""
-                                 :and (:not (:tag "repeating")))
-                                (;; Toss all other todos
-                                 :discard
-                                 (:todo t))))))))
-
-(setq
- cashpw/org-agenda-view--plan--week `((agenda
-                                       ""
-                                       (
-                                        ;; (org-agenda-start-with-log-mode nil)
-                                        (org-habit-show-habits-only-for-today nil)
-                                        (org-agenda-overriding-header "")
-                                        (org-agenda-span 'week)
-                                        (org-agenda-show-all-dates t)
-                                        (org-agenda-prefix-format '((agenda . " %i %-20(cashpw/org-agenda-category)%-12t%-5e")))
-                                        (org-super-agenda-groups '(
-                                                                   (:name "Schedule"
-                                                                    :time-grid t
-                                                                    :order 0)
-                                                                   (:auto-map cashpw/org-super-agenda--get-priority)))))
-                                      (alltodo
-                                       ""
-                                       ((org-agenda-overriding-header "\n\n\nTODOs")
-                                        ;; (org-agenda-files (cashpw/org-agenda-files))
-                                        (org-super-agenda-groups
-                                         '((:discard
-                                            (:todo "PROJ"
-                                             :scheduled t
-                                             :deadline t
-                                             ))
-                                           (:auto-map cashpw/org-super-agenda--get-priority)))))))
-
-(defun cashpw/org-agenda-view--review--files-fn ()
-  "Return list of files for review agenda views."
-  (append
-   (cashpw/org-agenda-files 'notes-personal
-                            'archive-and-non-archive)
-   (cashpw/org-agenda-files 'people
-                            'archive-and-non-archive)))
-
-(setq
- cashpw/org-agenda-view--review--logged `((agenda
-                                           ""
-                                           ((org-agenda-overriding-header "")
-                                            (org-agenda-span 'day)
-                                            (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
-                                            (org-agenda-show-log t)
-                                            (org-agenda-start-with-log-mode '(state closed clock))
-                                            (org-agenda-hide-tags-regexp (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
-                                            (org-clocktable-defaults '(:fileskip0 t))
-                                            (org-super-agenda-groups '(
-                                                                       (:name "Logged"
-                                                                        :log t)
-                                                                       (;; Toss all other todos
-                                                                        :discard
-                                                                        (:todo t))))))))
-
-(setq
- cashpw/org-agenda-view--review--clockcheck `((agenda
-                                               ""
-                                               ((org-agenda-overriding-header "")
-                                                (org-agenda-span 'day)
-                                                (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
-                                                (org-agenda-show-log 'clockcheck)
-                                                (org-agenda-start-with-log-mode 'clockcheck)
-                                                (org-clocktable-defaults '(:fileskip0 t))
-                                                (org-super-agenda-groups '((:name "Clockcheck"
-                                                                            :log t)
-                                                                           (;; Toss all other todos
-                                                                            :discard
-                                                                            (:todo t))))))))
-
-(defun clocktable-by-category--get-clocktable (&rest props)
-  "Get a formatted clocktable with parameters according to PROPS.
-The table is created in a temporary buffer, fully formatted and
-fontified, and then returned."
-  ;; Set the defaults
-  (setq props (plist-put props :name "clocktable-by-category"))
-  (unless (plist-member props :maxlevel)
-    (setq props (plist-put props :maxlevel 2)))
-  (unless (plist-member props :scope)
-    (setq props (plist-put props :scope 'agenda)))
-  (setq props (plist-put props :files org-agenda-files))
-  (with-temp-buffer
-    (org-mode)
-    (org-create-dblock props)
-    (org-update-dblock)
-    (font-lock-ensure)
-    (forward-line 2)
-    (buffer-substring (point) (progn
-                                (re-search-forward "^[ \t]*#\\+END" nil t)
-                                (line-beginning-position)))))
-
-;; Override to replace `org-agenda-get-clocktable' with `clocktable-by-category--get-clocktable`
-(defun org-agenda-list (&optional arg start-day span with-hour)
-  "Produce a daily/weekly view from all files in variable `org-agenda-files'.
-The view will be for the current day or week, but from the overview buffer
-you will be able to go to other days/weeks.
-
-With a numeric prefix argument in an interactive call, the agenda will
-span ARG days.  Lisp programs should instead specify SPAN to change
-the number of days.  SPAN defaults to `org-agenda-span'.
-
-START-DAY defaults to TODAY, or to the most recent match for the weekday
-given in `org-agenda-start-on-weekday'.
-
-When WITH-HOUR is non-nil, only include scheduled and deadline
-items if they have an hour specification like [h]h:mm."
-  (interactive "P")
-  (when org-agenda-overriding-arguments
-    (setq arg (car org-agenda-overriding-arguments)
-          start-day (nth 1 org-agenda-overriding-arguments)
-          span (nth 2 org-agenda-overriding-arguments)))
-  (when (and (integerp arg) (> arg 0))
-    (setq span arg arg nil))
-  (when (numberp span)
-    (unless (< 0 span)
-      (user-error "Agenda creation impossible for this span(=%d days)" span)))
-  (catch 'exit
-    (setq org-agenda-buffer-name
-          (org-agenda--get-buffer-name
-           (and org-agenda-sticky
-                (cond ((and org-keys (stringp org-match))
-                       (format "*Org Agenda(%s:%s)*" org-keys org-match))
-                      (org-keys
-                       (format "*Org Agenda(%s)*" org-keys))
-                      (t "*Org Agenda(a)*")))))
-    (org-agenda-prepare "Day/Week")
-    (setq start-day (or start-day org-agenda-start-day))
-    (when (stringp start-day)
-      ;; Convert to an absolute day number
-      (setq start-day (time-to-days (org-read-date nil t start-day))))
-    (org-compile-prefix-format 'agenda)
-    (org-set-sorting-strategy 'agenda)
-    (let* ((span (org-agenda-ndays-to-span (or span org-agenda-span)))
-           (today (org-today))
-           (sd (or start-day today))
-           (ndays (org-agenda-span-to-ndays span sd))
-           (org-agenda-start-on-weekday
-            (and (or (eq ndays 7) (eq ndays 14))
-                 org-agenda-start-on-weekday))
-           (thefiles (org-agenda-files nil 'ifmode))
-           (files thefiles)
-           (start (if (or (null org-agenda-start-on-weekday)
-                          (< ndays 7))
-                      sd
-                    (let* ((nt (calendar-day-of-week
-                                (calendar-gregorian-from-absolute sd)))
-                           (n1 org-agenda-start-on-weekday)
-                           (d (- nt n1)))
-                      (- sd (+ (if (< d 0) 7 0) d)))))
-           (day-numbers (list start))
-           (day-cnt 0)
-           ;; FIXME: This may cause confusion when users are trying to
-           ;; debug agenda.  The debugger will not trigger without
-           ;; redisplay.
-           (inhibit-redisplay (not debug-on-error))
-           (org-agenda-show-log-scoped org-agenda-show-log)
-           s rtn rtnall file date d start-pos end-pos todayp ;; e
-           clocktable-start clocktable-end) ;; filter
-      (setq org-agenda-redo-command
-            (list 'org-agenda-list (list 'quote arg) start-day (list 'quote span) with-hour))
-      (dotimes (_ (1- ndays))
-        (push (1+ (car day-numbers)) day-numbers))
-      (setq day-numbers (nreverse day-numbers))
-      (setq clocktable-start (car day-numbers)
-            clocktable-end (1+ (or (org-last day-numbers) 0)))
-      (setq-local org-starting-day (car day-numbers))
-      (setq-local org-arg-loc arg)
-      (setq-local org-agenda-current-span (org-agenda-ndays-to-span span))
-      (unless org-agenda-compact-blocks
-        (let* ((d1 (car day-numbers))
-               (d2 (org-last day-numbers))
-               (w1 (org-days-to-iso-week d1))
-               (w2 (org-days-to-iso-week d2)))
-          (setq s (point))
-          (org-agenda--insert-overriding-header
-            (concat (org-agenda-span-name span)
-                    "-agenda"
-                    (cond ((<= 350 (- d2 d1)) "")
-                          ((= w1 w2) (format " (W%02d)" w1))
-                          (t (format " (W%02d-W%02d)" w1 w2)))
-                    ":\n")))
-        ;; Add properties if we actually inserted a header.
-        (when (> (point) s)
-          (add-text-properties s (1- (point))
-                               (list 'face 'org-agenda-structure
-                                     'org-date-line t))
-          (org-agenda-mark-header-line s)))
-      (while (setq d (pop day-numbers))
-        (setq date (calendar-gregorian-from-absolute d)
-              s (point))
-        (if (or (setq todayp (= d today))
-                (and (not start-pos) (= d sd)))
-            (setq start-pos (point))
-          (when (and start-pos (not end-pos))
-            (setq end-pos (point))))
-        (setq files thefiles
-              rtnall nil)
-        (while (setq file (pop files))
-          (catch 'nextfile
-            (org-check-agenda-file file)
-            (let ((org-agenda-entry-types org-agenda-entry-types))
-              ;; Starred types override non-starred equivalents
-              (when (member :deadline* org-agenda-entry-types)
-                (setq org-agenda-entry-types
-                      (delq :deadline org-agenda-entry-types)))
-              (when (member :scheduled* org-agenda-entry-types)
-                (setq org-agenda-entry-types
-                      (delq :scheduled org-agenda-entry-types)))
-              ;; Honor with-hour
-              (when with-hour
-                (when (member :deadline org-agenda-entry-types)
-                  (setq org-agenda-entry-types
-                        (delq :deadline org-agenda-entry-types))
-                  (push :deadline* org-agenda-entry-types))
-                (when (member :scheduled org-agenda-entry-types)
-                  (setq org-agenda-entry-types
-                        (delq :scheduled org-agenda-entry-types))
-                  (push :scheduled* org-agenda-entry-types)))
-              (unless org-agenda-include-deadlines
-                (setq org-agenda-entry-types
-                      (delq :deadline* (delq :deadline org-agenda-entry-types))))
-              (cond
-               ((memq org-agenda-show-log-scoped '(only clockcheck))
-                (setq rtn (org-agenda-get-day-entries
-                           file date :closed)))
-               (org-agenda-show-log-scoped
-                (setq rtn (apply #'org-agenda-get-day-entries
-                                 file date
-                                 (append '(:closed) org-agenda-entry-types))))
-               (t
-                (setq rtn (apply #'org-agenda-get-day-entries
-                                 file date
-                                 org-agenda-entry-types)))))
-            (setq rtnall (append rtnall rtn)))) ;; all entries
-        (when org-agenda-include-diary
-          (let ((org-agenda-search-headline-for-time t))
-            (require 'diary-lib)
-            (setq rtn (org-get-entries-from-diary date))
-            (setq rtnall (append rtnall rtn))))
-        (when (or rtnall org-agenda-show-all-dates)
-          (setq day-cnt (1+ day-cnt))
-          (insert
-           (if (stringp org-agenda-format-date)
-               (format-time-string org-agenda-format-date
-                                   (org-time-from-absolute date))
-             (funcall org-agenda-format-date date))
-           "\n")
-          (put-text-property s (1- (point)) 'face
-                             (org-agenda-get-day-face date))
-          (put-text-property s (1- (point)) 'org-date-line t)
-          (put-text-property s (1- (point)) 'org-agenda-date-header t)
-          (put-text-property s (1- (point)) 'org-day-cnt day-cnt)
-          (when todayp
-            (put-text-property s (1- (point)) 'org-today t))
-          (setq rtnall
-                (org-agenda-add-time-grid-maybe rtnall ndays todayp))
-          (when rtnall (insert ;; all entries
-                        (org-agenda-finalize-entries rtnall 'agenda)
-                        "\n"))
-          (put-text-property s (1- (point)) 'day d)
-          (put-text-property s (1- (point)) 'org-day-cnt day-cnt)))
-      (when (and org-agenda-clockreport-mode clocktable-start)
-        (let ((org-agenda-files (org-agenda-files nil 'ifmode))
-              ;; the above line is to ensure the restricted range!
-              (p (copy-sequence org-agenda-clockreport-parameter-plist))
-              tbl)
-          (setq p (org-plist-delete p :block))
-          (setq p (plist-put p :tstart clocktable-start))
-          (setq p (plist-put p :tend clocktable-end))
-          (setq p (plist-put p :scope 'agenda))
-          (setq tbl (apply #'clocktable-by-category--get-clocktable p))
-          (when org-agenda-clock-report-header
-            (insert (propertize org-agenda-clock-report-header 'face 'org-agenda-structure))
-            (unless (string-suffix-p "\n" org-agenda-clock-report-header)
-              (insert "\n")))
-          (insert tbl)))
-      (goto-char (point-min))
-      (or org-agenda-multi (org-agenda-fit-window-to-buffer))
-      (unless (or (not (get-buffer-window org-agenda-buffer-name))
-                  (and (pos-visible-in-window-p (point-min))
-                       (pos-visible-in-window-p (point-max))))
-        (goto-char (1- (point-max)))
-        (recenter -1)
-        (when (not (pos-visible-in-window-p (or start-pos 1)))
-          (goto-char (or start-pos 1))
-          (recenter 1)))
-      (goto-char (or start-pos 1))
-      (add-text-properties (point-min) (point-max)
-                           `(org-agenda-type agenda
-                             org-last-args (,arg ,start-day ,span)
-                             org-redo-cmd ,org-agenda-redo-command
-                             org-series-cmd ,org-cmd))
-      (when (eq org-agenda-show-log-scoped 'clockcheck)
-        (org-agenda-show-clocking-issues))
-      (org-agenda-finalize)
-      (setq buffer-read-only t)
-      (message ""))))
-
-(setq
- cashpw/org-agenda-view--review--clockreport `((agenda
-                                                ""
-                                                ((org-agenda-overriding-header "")
-                                                 (org-agenda-span 'day)
-                                                 (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
-                                                 ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
-                                                 (org-agenda-clockreport-mode t)
-                                                 (org-clocktable-defaults '(:fileskip0 t))
-                                                 (org-super-agenda-groups '(
-                                                                            ;; (:name "Logged"
-                                                                            ;; :log t)
-                                                                            ;; (:log closed)
-                                                                            ;; (:log clock)
-                                                                            (;; Toss all other todos
-                                                                             :discard
-                                                                             (:todo t))))
-                                                 )
-                                                ;; "~/review-day.html"
-                                                )))
-
-(setq
- cashpw/org-agenda-view--roam--roam `((alltodo
-                                       ""
-                                       ((org-agenda-overriding-header "")
-                                        ;; Speed up
-                                        (org-agenda-dim-blocked-tasks nil)
-                                        (org-agenda-inhibit-startup t)
-                                        (org-agenda-use-tag-inheritance nil)
-                                        (org-agenda-ignore-properties '(effort appt category stats))
-                                        ;; TODO Speed up by pre-computing
-                                        (org-agenda-files (append (cashpw/org-agenda-files--notes)
-                                                                  (cashpw/org-agenda-files--notes-private)))
-                                        (org-super-agenda-groups
-                                         `((:name "In Progress"
-                                            :todo "INPROGRESS")
-                                      (:auto-map cashpw/org-super-agenda--get-priority)
-                                           ))))))
-
-(setq
- cashpw/readinglist-file-path (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
- cashpw/org-agenda-view--roam--readinglist `((alltodo
-                                              ""
-                                              ((org-agenda-overriding-header "")
-                                               (org-agenda-prefix-format '((todo . " %i ")))
-                                               (org-agenda-files `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")))
-                                               (org-agenda-dim-blocked-tasks nil)
-                                               (org-super-agenda-groups (--map
-                                                                         (cashpw/org-super-agenda--get-first-n-from-roam-tag 10
-                                                                                                                             it)
-                                                                         (with-current-buffer (find-file-noselect cashpw/readinglist-file-path)
-                                                                           (cashpw/org-mode-get-all-tags-in-file))))))))
-
-(setq
- cashpw/org-agenda-view--no-effort `((alltodo
-                                 ""
-                                 ((org-agenda-overriding-header "")
-                                  (org-super-agenda-groups
-                                   '((;; Automatically named "Log"
-                                      :log t)
-                                     (:discard
-                                      (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-                                       :todo "PROJ"))
-                                     (:name "Without effort"
-                                      :effort< "0:01")))))))
-
-(setq
- cashpw/org-agenda-view--no-priority `((alltodo
-                                   ""
-                                   ((org-agenda-overriding-header "")
-                                    (org-super-agenda-groups
-                                     '((;; Automatically named "Log"
-                                        :log t)
-                                       (:discard
-                                        (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-                                         :todo "PROJ"))
-                                       (:name "Without priority"
-                                        :priority>= "0")))))))
-
-(setq
- cashpw/org-agenda-view--not-scheduled `((alltodo
-                                          ""
-                                          ((org-agenda-overriding-header "")
-                                           (org-super-agenda-groups
-                                            '((;; Automatically named "Log"
-                                               :log t)
-                                              (:discard
-                                               (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-                                                :todo "PROJ"))
-                                              (:discard
-                                               (:scheduled t))
-                                              (:auto-category t)))))))
-
-(defun cashpw/org--scheduled-to-repeat-daily-p (pom)
-  "Return non-nil if the headline at POM repeats daily."
-  (when-let* ((scheduled-alist (org-entry-properties pom
-                                                     "SCHEDULED"))
-              (scheduled-string (cdr (car scheduled-alist))))
-    (or (s-contains-p "++1d" scheduled-string)
-        (s-contains-p ".+1d" scheduled-string))))
-
-(defun cashpw/org--scheduled-to-repeat-weekly-p (pom)
-  "Return non-nil if the headline at POM repeats weekly."
-  (when-let* ((scheduled-alist (org-entry-properties pom
-                                                     "SCHEDULED"))
-              (scheduled-string (cdr (car scheduled-alist))))
-    (or (s-contains-p "++1w" scheduled-string)
-        (s-contains-p ".+1w" scheduled-string))))
-
-(defun cashpw/org--scheduled-to-repeat-p (pom)
-  "Return non-nil if the headline at POM repeats weekly."
-  (when-let* ((scheduled-alist (org-entry-properties pom
-                                                     "SCHEDULED"))
-              (scheduled-string (cdr (car scheduled-alist))))
-    (or (s-contains-p "++" scheduled-string)
-        (s-contains-p ".+" scheduled-string))))
-
-
-(defun cashpw/org-scheduled-in-past-p (&optional point-or-marker)
-  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the past."
-  (let ((point-or-marker (or point-or-marker
-                             (point))))
-    (time-less-p (org-get-scheduled-time point-or-marker)
-                 (current-time))))
-
-(defun cashpw/org-scheduled-in-future-p (&optional point-or-marker)
-  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the future."
-  (let ((point-or-marker (or point-or-marker
-                             (point))))
-    (time-less-p (current-time)
-                 (org-get-scheduled-time point-or-marker))))
-
-(defun cashpw/org-reschedule-overdue-todo (&optional point-or-marker)
-  "Reschedule a todo (at point, or POINT-OR-MARKER) to its next valid repetition date."
-  (interactive)
-  (save-excursion
-    (let ((point-or-marker (or point-or-marker
-                               (point)))
-          (org-log-done nil))
-      (goto-char point-or-marker)
-      (when (org-get-repeat)
-        (while (cashpw/org-scheduled-in-past-p point-or-marker)
-          (org-todo "RESCHEDULE"))))))
-
-(defun cashpw/org-reschedule-overdue-todo-agenda ()
-  "Invoke `cashpw/org-reschedule-overdue-todo' for an agenda view.
-
-Based on `org-agenda-date-later'."
-  (let* ((marker (or (org-get-at-bol 'org-marker)
-                     (org-agenda-error)))
-         (buffer (marker-buffer marker)))
-    (with-current-buffer buffer
-      (cashpw/org-reschedule-overdue-todo marker))))
-
-(setq
- org-agenda-bulk-custom-functions `((?L cashpw/org-reschedule-overdue-todo-agenda))
- cashpw/org-agenda-view--overdue `((agenda
-                                    ""
-                                    ((org-agenda-overriding-header "")
-                                     (org-super-agenda-groups
-                                      '((:discard
-                                         (
-                                          :scheduled future
-                                          :deadline future
-                                          ;; :scheduled nil
-                                          ;; :deadline nil
-                                          :scheduled today
-                                          :deadline today
-                                          ))
-                                        (:auto-map
-                                         (lambda (item)
-                                           (-when-let* ((marker (or (get-text-property 0 'org-marker item)
-                                                                    (get-text-property 0 'org-hd-marker)))
-                                                        (default-priority "?")
-                                                        (priority (or (cashpw/org--get-priority marker)
-                                                                      default-priority)))
-                                             (cond
-                                              ((cashpw/org--scheduled-to-repeat-daily-p marker)
-                                               "Repeats daily")
-                                              ((cashpw/org--scheduled-to-repeat-weekly-p marker)
-                                               "Repeats weekly")
-                                              ((cashpw/org--scheduled-to-repeat-p marker)
-                                               "Repeats")
-                                              (t
-                                               "z-Other")))))
-                                        (;; Toss all other todos
-                                         :discard
-                                         (:todo t))))))))
-
-(setq
- org-agenda-custom-commands `((".overdue" "Overdue" ,cashpw/org-agenda-view--overdue)
-                              (".plan-week" "Week" ,cashpw/org-agenda-view--plan--week)
-                              (".review-clockcheck" "Clock check" ,cashpw/org-agenda-view--review--clockcheck)
-                              (".review-clockreport" "Clock report" ,cashpw/org-agenda-view--review--clockreport)
-                              (".review-logged" "Logged" ,cashpw/org-agenda-view--review--logged)
-                              (".roam-roam" "Roam" ,cashpw/org-agenda-view--roam--roam)
-                              (".roam-readinglist" "Reading list" ,cashpw/org-agenda-view--roam--readinglist)
-                              (".today" "Today" ,cashpw/org-agenda-view--today)
-                              (".tomorrow" "Tomorrow" ,cashpw/org-agenda-view--tomorrow)
-                              (".week" "Week" ,cashpw/org-agenda-view--week)
-                              (".without-effort" "Without effort" ,cashpw/org-agenda-view--no-effort)
-                              (".without-priority" "Priority" ,cashpw/org-agenda-view--no-priority)
-                              (".without-scheduled" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)))
-
-(defun cashpw/org-clock--agenda-with-archives ()
-  "Return list of agenda files to use with clocktable."
-  (append
-   (cashpw/org-agenda-files 'notes-personal
-                            'archive-and-non-archive)
-   (cashpw/org-agenda-files 'people
-                            'archive-and-non-archive)))
-
-(after! org
-  (setq
-   ;; Prevent org-clock from double-checking /every/ agenda file for dangling clock during `org-clock-in'.
-   ;; See https://github.com/doomemacs/doomemacs/issues/5317
-   org-clock-auto-clock-resolution nil))
-
-(defun cashpw/org-clock--clocktable--properties ()
-  "Return default clocktable properties."
-  `(:scope cashpw/org-clock--agenda-with-archives
-    :block ,(format-time-string "%Y-%m-%d")
-    :narrow 200
-    :fileskip0 t
-    :filetitle t
-    :maxlevel 3))
-
-(defun cashpw/org-clock--clocktable--update-default-properties ()
-  "Return default clocktable properties"
-  (setq
-   org-clock-clocktable-default-properties (cashpw/org-clock--clocktable--properties)))
-
-(cashpw/org-clock--clocktable--update-default-properties)
-;; Update the properties once per day as they include `:block' with today's date.
-(let ((seconds-in-day (* 60 60 24)))
-  (cancel-function-timers #'cashpw/org-clock--clocktable--update-default-properties)
-  (run-at-time "00:00"
-               seconds-in-day
-               #'cashpw/org-clock--clocktable--update-default-properties))
-
-(defun cashpw/clocktable-by-category--properties ()
-  "Return clocktable-by-category properties."
-  `(:files-fn cashpw/org-clock--agenda-with-archives
-    :block ,(format-time-string "%Y-%m-%d")
-    :merge-duplicate-headlines t
-    ;; :narrow 200
-    ;; :fileskip0 t
-    ;; :filetitle t
-    ))
-
-(defun cashpw/clocktable-by-category--update-default-properties ()
-  "Return default clocktable-by-category properties"
-  (setq
-   clocktable-by-category--default-properties (cashpw/clocktable-by-category--properties)))
-
-(cashpw/clocktable-by-category--update-default-properties)
-;; Update the properties once per day as they include `:block' with today's date.
-(let ((seconds-in-day (* 60 60 24)))
-  (cancel-function-timers #'cashpw/clocktable-by-category--update-default-properties)
-  (run-at-time "00:00"
-               seconds-in-day
-               #'cashpw/clocktable-by-category--update-default-properties))
-
-(defun cashpw/clocktable-by-tag--properties ()
-  "Return clocktable-by-tag properties."
-  `(:files-fn cashpw/org-clock--agenda-with-archives
-    :block ,(format-time-string "%Y-%m-%d")
-    :merge-duplicate-headlines t
-    ;; :narrow 200
-    ;; :fileskip0 t
-    ;; :filetitle t
-    ))
-
-(defun cashpw/clocktable-by-tag--update-default-properties ()
-  "Return default clocktable-by-tag properties"
-  (setq
-   clocktable-by-tag--default-properties (cashpw/clocktable-by-tag--properties)))
-
-(cashpw/clocktable-by-tag--update-default-properties)
-;; Update the properties once per day as they include `:block' with today's date.
-(let ((seconds-in-day (* 60 60 24)))
-  (cancel-function-timers #'cashpw/clocktable-by-tag--update-default-properties)
-  (run-at-time "00:00"
-               seconds-in-day
-               #'cashpw/clocktable-by-tag--update-default-properties))
 
 (defun cashpw/org-roam--get-filetags ()
   "Return a list of all tags used in roam."
@@ -4088,6 +2767,78 @@ Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp
       (org-insert-heading)
       (insert "TODO Thoughts")
     ))
+
+(defun cashpw/org-roam-files-with-tag (tag)
+  "Return a list of note files containing 'hastodo tag."
+  (seq-uniq
+   (seq-map
+    #'car
+    (org-roam-db-query
+     [:select [nodes:file]
+      :from tags
+      :left-join nodes
+      :on (= tags:node-id
+             nodes:id)
+      :where (like tag
+                   $s1)]
+     tag))))
+
+(defun cashpw/org-roam-files-with-tags (tag1 tag2)
+  "Return a list of note files containing 'hastodo tag."
+  (let ((with-tag1 (cashpw/org-roam-files-with-tag tag1))
+        (with-tag2 (cashpw/org-roam-files-with-tag tag2)))
+    (-intersection
+     with-tag1
+     with-tag2)))
+
+(defun cashpw/org-mode--buffer-has-todo-p ()
+  "Return non-nil if current buffer has any todo entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks."
+  (when (string-equal mode-name "Org")
+    (seq-find (lambda (type)
+                (eq type 'todo))
+              (org-element-map
+                  (org-element-parse-buffer 'headline)
+                  'headline
+                (lambda (h)
+                  (org-element-property :todo-type h))))))
+
+(defun cashpw/org-roam-update-hastodo-tag ()
+  "Update HASTODO tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (+magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-todo-p)
+            (setq tags (cons "hastodo" tags))
+          (setq tags (remove "hastodo" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+
+(defun cashpw/org-roam-todo-files ()
+  "Return a list of note files containing 'hastodo tag." ;
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory)))
+    (cashpw/org-roam-files-with-tag "hastodo")))
 
 (after! doct-org-roam
   (setq
@@ -4432,6 +3183,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (cashpw/org-roam-mirror-roam-refs-to-front-matter)
   (cashpw/org-roam-add-bibliography)
   (cashpw/org-roam-add-flashcards)
+  (cashpw/org-roam-update-hastodo-tag)
   ;; (cashpw/org-hugo-export-wim-to-md)
   )
 
@@ -4492,66 +3244,10 @@ This is an internal function."
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
 
-(defun cashpw/org-mode--buffer-has-todo-p ()
-  "Return non-nil if current buffer has any todo entry.
-
-TODO entries marked as done are ignored, meaning the this
-function returns nil if current buffer contains only completed
-tasks."
-  (when (string-equal mode-name "Org")
-    (seq-find (lambda (type)
-                (eq type 'todo))
-              (org-element-map
-                  (org-element-parse-buffer 'headline)
-                  'headline
-                (lambda (h)
-                  (org-element-property :todo-type h))))))
-
-(defun cashpw/org-roam-update-hastodo-tag ()
-  "Update HASTODO tag in the current buffer."
-  (message "cashpw/org-roam-update-hastodo-tag")
-  (when (and (not (active-minibuffer-window))
-             (vulpea-buffer-p))
-    (save-excursion
-      (goto-char (point-min))
-      (let* ((tags (vulpea-buffer-tags-get))
-             (original-tags tags))
-        (if (cashpw/org-mode--buffer-has-todo-p)
-            (setq tags (cons "hastodo" tags))
-          (setq tags (remove "hastodo" tags)))
-
-        ;; cleanup duplicates
-        (setq tags (seq-uniq tags))
-
-        ;; update tags if changed
-        (when (or (seq-difference tags original-tags)
-                  (seq-difference original-tags tags))
-          (apply #'vulpea-buffer-tags-set tags))))))
-
-(defun vulpea-buffer-p ()
-  "Return non-nil if the currently visited buffer is a note."
-  (and buffer-file-name
-       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
-                        (file-name-directory buffer-file-name))))
-
-(defun cashpw/org-roam-todo-files ()
-  "Return a list of note files containing 'hastodo tag." ;
-  (seq-uniq (seq-map #'car
-                     (org-roam-db-query [:select [nodes:file]
-                                         :from tags
-                                         :left-join nodes
-                                         :on (= tags:node-id nodes:id)
-                                         :where (like tag "hastodo")]))))
-
 (defun vulpea-agenda-files-update (&rest _)
   "Update the value of `org-agenda-files'."
   (setq
    org-agenda-files (cashpw/org-roam-todo-files)))
-
-;; Commented out because it caused the tag to disappear from org-roam.db on sync.
-;; (add-hook 'find-file-hook #'cashpw/org-roam-update-todo-tag)
-(add-hook! 'before-save-hook
-           'cashpw/org-roam-update-hastodo-tag)
 
 (use-package! websocket
   :after org-roam)
@@ -4674,18 +3370,31 @@ ${file}
            'cashpw/org-roam--export-gallery)
 
 (after! doct-org-roam
-(setq
- org-roam-dailies-directory cashpw/path--notes-journal-dir
- org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
-                                                      :type plain
-                                                      :template "%?"
-                                                      :file "%<%Y-%m-%d>.org"
-                                                      :unnarrowed t
-                                                      :children (("Default"
-                                                                  :keys "d"
-                                                                  :head ("#+title: %<%Y-%m-%d>"
-                                                                         "#+author: Cash Prokop-Weaver"
-                                                                         "#+date: [%<%Y-%m-%d %a %H:%M>]"))))))))
+  (setq
+   org-roam-dailies-directory cashpw/path--notes-dir
+   org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
+                                                        :type plain
+                                                        :template "%?"
+                                                        :file "%<%Y-%m-%d>.org"
+                                                        :unnarrowed t
+                                                        :children (("Default"
+                                                                    :keys "d"
+                                                                    :head ("#+title: %<%Y-%m-%d>"
+                                                                           "#+author: Cash Prokop-Weaver"
+                                                                           "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                           "#+filetags: :journal:private:"
+                                                                           ""
+                                                                           "* TODO Journal"
+                                                                           ""
+                                                                           "* Gratitude"
+                                                                           ""
+                                                                           "1. TODO"
+                                                                           "2. TODO"
+                                                                           "3. TODO"
+                                                                           ""
+                                                                           "* TODO Retrospective"
+                                                                           ""
+                                                                           "* Flashcards :noexport:"))))))))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -4698,6 +3407,1286 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
     (org-noter-insert-precise-note)
     (set-buffer current-buffer-name)
     (org-noter-insert-note)))
+
+(defun cashpw/org-agenda-buganizer-title ()
+  "Overridden in my work config."
+  "")
+
+(use-package! org-agenda)
+(use-package! evil-org-agenda)
+(use-package! org-super-agenda
+  :demand t
+  :after (:all org-agenda
+               evil
+               evil-org-agenda)
+  :hook ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   org-agenda-prefix-format '((agenda . " %i %-20(cashpw/org-agenda-category)%?-12t%-6e% s")
+                              (todo . " %i %-20(cashpw/org-agenda-category) %-6e %-40(cashpw/org-agenda-buganizer-title)")
+                              (tags . " %i %-12c")
+                              (search . " %i %-12c"))
+
+   org-agenda-log-mode-items '(state
+                               closed
+                               clock)
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   ;; https://emacs.stackexchange.com/a/17128
+   org-agenda-sorting-strategy '((agenda time-up priority-down category-keep)
+                                 (todo priority-down category-keep)
+                                 (tags priority-down category-keep)
+                                 (search category-keep)))
+  (defun cashpw/org-agenda-category ()
+    (or (org-get-category)
+        ""))
+
+  (cl-defun org-super-agenda--group-dispatch-take (items (n group))
+    ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
+    "Take N ITEMS that match selectors in GROUP.
+If N is positive, take the first N items, otherwise take the last N items.
+Note: the ordering of entries is not guaranteed to be preserved, so this may
+not always show the expected results."
+    (message (format "%s" group))
+    (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
+            (take-fn (if (cl-minusp n) #'-take-last #'-take))
+            (placement (if (cl-minusp n) "Last" "First"))
+            (name (format "%s %d %s" placement (abs n) name)))
+      (list name non-matching (funcall take-fn (abs n) matching)))))
+
+
+(defun cashpw/org-super-agenda--get-priority (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker)))
+               (default-priority "?")
+               (priority (or (cashpw/org--get-priority marker)
+                             default-priority)))
+    (s-lex-format "p${priority}")))
+
+(defun cashpw/org--get-priority (pos)
+  "Return priority of heading at POS, or nil."
+  (let ((priority (org-entry-get pos
+                                 "PRIORITY")))
+    (if (cashpw/is-valid-priority-p priority)
+        priority
+      nil)))
+
+(defun cashpw/org-super-agenda--get-first-n-from-roam-tag (n tag)
+  "Return plist to group the first N headings tagged TAG.
+
+Intended for use with `org-super-agenda-groups'."
+  `(:name ,(s-lex-format "${tag} (${n})")
+    :transformer (replace-regexp-in-string "TODO " ""
+                                           (replace-regexp-in-string "\\[#[0-9]\\] " "" it))
+    :take (,n (:tag ,tag))))
+
+(after! org
+  :config
+  (setq
+   calendar-week-start-day 1
+   org-agenda-entry-text-maxlines 30
+   org-agenda-entry-text-leaders "  "
+   org-agenda-time-grid '((daily
+                           today
+                           require-timed
+                           ;; remove-match
+                           )
+                          (500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000)
+                          ;; (800 1000 1200 1400 1600 1800 2000)
+                          "......" "----------------")
+   ))
+
+(defun cashpw/org-mode-buffer-property-get (property-name)
+  (org-with-point-at 1
+    (when (re-search-forward
+           (concat "^#\\+" property-name ": \\(.*\\)")
+           (point-max) t)
+      (buffer-substring-no-properties
+       (match-beginning 1)
+       (match-end 1)))))
+
+(after! org-agenda
+  (setq
+   org-duration-units `(("m" . 1)
+                        ("min" . 1)
+                        ("mins" . 1)
+                        ("h" . 60)
+                        ("d" . ,(* 60 24))
+                        ("w" . ,(* 60 24 7))
+                        ("mo" . ,(* 60 24 30))
+                        ("mos" . ,(* 60 24 30))
+                        ("M" . ,(* 60 24 30))
+                        ("y" . ,(* 60 24 365.25)))
+   org-agenda-skip-scheduled-if-deadline-is-shown t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-deadline-if-done t
+   org-agenda-include-deadlines t
+   org-agenda-block-separator nil
+   org-agenda-compact-blocks t
+   org-agenda-start-day nil ;; i.e. today
+   org-agenda-span 3
+   org-agenda-include-diary t
+   org-agenda-start-on-weekday nil))
+
+(defun cashpw/org-agenda-files (context &optional include-archive)
+  "Return list of agenda files for CONTEXT.
+
+CONTEXT should be one of:
+
+- `notes'
+- `personal-notes'
+- `people'
+
+Include archived files when INCLUDE-ARCHIVE."
+  (cond
+   ((equal context 'notes)
+    (let* ((org-roam-directory cashpw/path--notes-dir)
+           (org-roam-db-location (expand-file-name "org-roam.db"
+                                                   org-roam-directory))
+           (notes-files (cashpw/org-roam-files-with-tag "hastodo")))
+      (if include-archive
+          (append notes-files
+                  (--map
+                   (concat it "_archive")
+                   notes-files))
+        notes-files))
+    (let* ((org-roam-directory cashpw/path--notes-dir)
+           (org-roam-db-location (expand-file-name "org-roam.db"
+                                                   org-roam-directory)))
+      (cashpw/org-roam-files-with-tag "hastodo")))
+   ((equal context 'personal)
+    (cashpw/directory-files--org
+     cashpw/path--personal-dir
+     include-archive))
+   ((equal context 'people)
+    (let* ((org-roam-directory cashpw/path--notes-dir)
+           (org-roam-db-location (expand-file-name "org-roam.db"
+                                                   org-roam-directory))
+           (people-files (cashpw/org-roam-files-with-tags "hastodo" "person")))
+      (if include-archive
+          (append people-files
+                  (--map
+                   (concat it "_archive")
+                   people-files))
+        people-files)))))
+
+(defun cashpw/org-agenda-files--update ()
+  "Update `org-agenda-files'."
+  (setq
+   org-agenda-files (append
+                     (cashpw/org-agenda-files 'people)
+                     (cashpw/org-agenda-files 'personal))))
+
+(cashpw/org-agenda-files--update)
+nil
+
+(setq
+ cashpw/org-agenda-view--today `((agenda
+                                  ""
+                                  ((org-agenda-overriding-header "")
+                                   (org-agenda-dim-blocked-tasks t)
+                                   (org-agenda-use-tag-inheritance t)
+                                   (org-use-property-inheritance t)
+                                   (org-agenda-span 1)
+                                   (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
+                                   (org-super-agenda-groups
+                                    '((:discard
+                                       (:scheduled future
+                                        :deadline future))
+                                      (:name "Schedule"
+                                       :time-grid t
+                                       :order 0
+                                       :transformer (--> it
+                                                         (replace-regexp-in-string "TODO " "" it)
+                                                         (replace-regexp-in-string "\\[#[0-9]\\] " "" it)
+                                                         (if (or (string-match-p "  Sit" it)
+                                                                 (string-match-p "  Stand" it)
+                                                                 (string-match-p "  Stretch" it)
+                                                                 (string-match-p "  Huel Shake" it))
+                                                             (propertize it 'face '(:foreground "DimGray"))
+                                                           it)))
+                                      (:name "In Progress"
+                                       :todo "INPROGRESS")
+                                      (:auto-map cashpw/org-super-agenda--get-priority
+                                       :transformer (plist-put it :items (-map
+                                                                          (lambda (line)
+                                                                            (replace-regexp-in-string "TODO " ""
+                                                                                                      (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
+                                                                          (plist-get it :items))))
+                                      (;; Toss all other todos
+                                       :discard
+                                       (:anything))))))))
+
+(setq
+ cashpw/org-agenda-view--tomorrow `((agenda
+                                     ""
+                                     ((org-agenda-overriding-header "")
+                                      (org-agenda-dim-blocked-tasks t)
+                                      (org-agenda-use-tag-inheritance t)
+                                      (org-use-property-inheritance t)
+                                      (org-agenda-span 1)
+                                      (org-agenda-start-day "+1d")
+                                      (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
+                                      (org-super-agenda-groups
+                                       '(
+                                         (:name "Schedule"
+                                          :time-grid t
+                                          :order 0
+                                          :transformer (replace-regexp-in-string "TODO " ""
+                                                                                 (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+                                         (:name "In Progress"
+                                          :todo "INPROGRESS")
+                                         (:auto-map cashpw/org-super-agenda--get-priority
+                                          :transformer (plist-put it :items (-map
+                                                                             (lambda (line)
+                                                                               (replace-regexp-in-string "TODO " ""
+                                                                                                         (replace-regexp-in-string "\\[#[0-9]\\] " "" line)))
+                                                                             (plist-get it :items))))
+                                         ;; (:name "Scheduled/Due Today"
+                                         ;;  :scheduled today
+                                         ;;  :deadline today)
+                                         (;; Toss all other todos
+                                          :discard
+                                          (:anything))))))))
+
+(setq
+ cashpw/org-agenda-view--week `((agenda
+                            ""
+                            ((org-agenda-overriding-header "")
+                             (org-agenda-span 7)
+                             (org-super-agenda-groups
+                              '((:name ""
+                                 :and (:not (:tag "repeating")))
+                                (;; Toss all other todos
+                                 :discard
+                                 (:todo t))))))))
+
+(setq
+                                    org-habit-preceding-days 7
+                                    org-habit-following-days 0)
+(setq
+ cashpw/org-agenda-view--habits `((agenda
+                                   ""
+                                   ((org-agenda-overriding-header "")
+                                    (org-agenda-span 1)
+                                    (org-agenda-prefix-format '((agenda . "%-20(cashpw/org-agenda-category)")))
+                                    (org-agenda-hide-tags-regexp ".*")
+                                    (org-agenda-format-date "")
+                                    (org-habit-show-all-today t)
+                                    ;; (org-habit-show-habits-only-for-today nil)
+                                    (org-super-agenda-groups
+                                     '(
+                                       (:name ""
+                                        :habit t
+                                        :transformer (replace-regexp-in-string "TODO " ""
+                                                                               (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+                                       (;; Toss everything else
+                                        :discard
+                                        (:todo t
+                                         :todo nil))))))))
+
+(setq
+ cashpw/org-agenda-view--plan--week `((agenda
+                                       ""
+                                       (
+                                        ;; (org-agenda-start-with-log-mode nil)
+                                        (org-habit-show-habits-only-for-today nil)
+                                        (org-agenda-overriding-header "")
+                                        (org-agenda-span 'week)
+                                        (org-agenda-show-all-dates t)
+                                        (org-agenda-prefix-format '((agenda . " %i %-20(cashpw/org-agenda-category)%-12t%-5e")))
+                                        (org-super-agenda-groups '(
+                                                                   (:name "Schedule"
+                                                                    :time-grid t
+                                                                    :order 0)
+                                                                   (:auto-map cashpw/org-super-agenda--get-priority)))))
+                                      (alltodo
+                                       ""
+                                       ((org-agenda-overriding-header "\n\n\nTODOs")
+                                        (org-super-agenda-groups
+                                         '((:discard
+                                            (:todo "PROJ"
+                                             :scheduled t
+                                             :deadline t
+                                             ))
+                                           (:auto-map cashpw/org-super-agenda--get-priority)))))))
+
+(defun cashpw/org-agenda-view--review--files-fn ()
+  "Return list of files for review agenda views."
+  (append
+   (cashpw/org-agenda-files
+    'personal)
+   (cashpw/org-agenda-files
+    'people)))
+
+(setq
+ cashpw/org-agenda-view--review--logged `((agenda
+                                           ""
+                                           ((org-agenda-overriding-header "")
+                                            (org-agenda-span 'day)
+                                            (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+                                            (org-agenda-show-log t)
+                                            (org-agenda-start-with-log-mode '(state closed clock))
+                                            (org-agenda-hide-tags-regexp (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
+                                            (org-clocktable-defaults '(:fileskip0 t))
+                                            (org-super-agenda-groups '(
+                                                                       (:name "Logged"
+                                                                        :log t)
+                                                                       (;; Toss all other todos
+                                                                        :discard
+                                                                        (:todo t))))))))
+
+(setq
+ cashpw/org-agenda-view--review--clockcheck `((agenda
+                                               ""
+                                               ((org-agenda-overriding-header "")
+                                                (org-agenda-span 'day)
+                                                (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+                                                (org-agenda-show-log 'clockcheck)
+                                                (org-agenda-start-with-log-mode 'clockcheck)
+                                                (org-clocktable-defaults '(:fileskip0 t))
+                                                (org-super-agenda-groups '((:name "Clockcheck"
+                                                                            :log t)
+                                                                           (;; Toss all other todos
+                                                                            :discard
+                                                                            (:todo t))))))))
+
+(defun clocktable-by-category--get-clocktable (&rest props)
+  "Get a formatted clocktable with parameters according to PROPS.
+The table is created in a temporary buffer, fully formatted and
+fontified, and then returned."
+  ;; Set the defaults
+  (setq props (plist-put props :name "clocktable-by-category"))
+  (unless (plist-member props :maxlevel)
+    (setq props (plist-put props :maxlevel 2)))
+  (unless (plist-member props :scope)
+    (setq props (plist-put props :scope 'agenda)))
+  (setq props (plist-put props :files org-agenda-files))
+  (with-temp-buffer
+    (org-mode)
+    (org-create-dblock props)
+    (org-update-dblock)
+    (font-lock-ensure)
+    (forward-line 2)
+    (buffer-substring (point) (progn
+                                (re-search-forward "^[ \t]*#\\+END" nil t)
+                                (line-beginning-position)))))
+
+;; Override to replace `org-agenda-get-clocktable' with `clocktable-by-category--get-clocktable`
+(defun org-agenda-list (&optional arg start-day span with-hour)
+  "Produce a daily/weekly view from all files in variable `org-agenda-files'.
+The view will be for the current day or week, but from the overview buffer
+you will be able to go to other days/weeks.
+
+With a numeric prefix argument in an interactive call, the agenda will
+span ARG days.  Lisp programs should instead specify SPAN to change
+the number of days.  SPAN defaults to `org-agenda-span'.
+
+START-DAY defaults to TODAY, or to the most recent match for the weekday
+given in `org-agenda-start-on-weekday'.
+
+When WITH-HOUR is non-nil, only include scheduled and deadline
+items if they have an hour specification like [h]h:mm."
+  (interactive "P")
+  (when org-agenda-overriding-arguments
+    (setq arg (car org-agenda-overriding-arguments)
+          start-day (nth 1 org-agenda-overriding-arguments)
+          span (nth 2 org-agenda-overriding-arguments)))
+  (when (and (integerp arg) (> arg 0))
+    (setq span arg arg nil))
+  (when (numberp span)
+    (unless (< 0 span)
+      (user-error "Agenda creation impossible for this span(=%d days)" span)))
+  (catch 'exit
+    (setq org-agenda-buffer-name
+          (org-agenda--get-buffer-name
+           (and org-agenda-sticky
+                (cond ((and org-keys (stringp org-match))
+                       (format "*Org Agenda(%s:%s)*" org-keys org-match))
+                      (org-keys
+                       (format "*Org Agenda(%s)*" org-keys))
+                      (t "*Org Agenda(a)*")))))
+    (org-agenda-prepare "Day/Week")
+    (setq start-day (or start-day org-agenda-start-day))
+    (when (stringp start-day)
+      ;; Convert to an absolute day number
+      (setq start-day (time-to-days (org-read-date nil t start-day))))
+    (org-compile-prefix-format 'agenda)
+    (org-set-sorting-strategy 'agenda)
+    (let* ((span (org-agenda-ndays-to-span (or span org-agenda-span)))
+           (today (org-today))
+           (sd (or start-day today))
+           (ndays (org-agenda-span-to-ndays span sd))
+           (org-agenda-start-on-weekday
+            (and (or (eq ndays 7) (eq ndays 14))
+                 org-agenda-start-on-weekday))
+           (thefiles (org-agenda-files nil 'ifmode))
+           (files thefiles)
+           (start (if (or (null org-agenda-start-on-weekday)
+                          (< ndays 7))
+                      sd
+                    (let* ((nt (calendar-day-of-week
+                                (calendar-gregorian-from-absolute sd)))
+                           (n1 org-agenda-start-on-weekday)
+                           (d (- nt n1)))
+                      (- sd (+ (if (< d 0) 7 0) d)))))
+           (day-numbers (list start))
+           (day-cnt 0)
+           ;; FIXME: This may cause confusion when users are trying to
+           ;; debug agenda.  The debugger will not trigger without
+           ;; redisplay.
+           (inhibit-redisplay (not debug-on-error))
+           (org-agenda-show-log-scoped org-agenda-show-log)
+           s rtn rtnall file date d start-pos end-pos todayp ;; e
+           clocktable-start clocktable-end) ;; filter
+      (setq org-agenda-redo-command
+            (list 'org-agenda-list (list 'quote arg) start-day (list 'quote span) with-hour))
+      (dotimes (_ (1- ndays))
+        (push (1+ (car day-numbers)) day-numbers))
+      (setq day-numbers (nreverse day-numbers))
+      (setq clocktable-start (car day-numbers)
+            clocktable-end (1+ (or (org-last day-numbers) 0)))
+      (setq-local org-starting-day (car day-numbers))
+      (setq-local org-arg-loc arg)
+      (setq-local org-agenda-current-span (org-agenda-ndays-to-span span))
+      (unless org-agenda-compact-blocks
+        (let* ((d1 (car day-numbers))
+               (d2 (org-last day-numbers))
+               (w1 (org-days-to-iso-week d1))
+               (w2 (org-days-to-iso-week d2)))
+          (setq s (point))
+          (org-agenda--insert-overriding-header
+            (concat (org-agenda-span-name span)
+                    "-agenda"
+                    (cond ((<= 350 (- d2 d1)) "")
+                          ((= w1 w2) (format " (W%02d)" w1))
+                          (t (format " (W%02d-W%02d)" w1 w2)))
+                    ":\n")))
+        ;; Add properties if we actually inserted a header.
+        (when (> (point) s)
+          (add-text-properties s (1- (point))
+                               (list 'face 'org-agenda-structure
+                                     'org-date-line t))
+          (org-agenda-mark-header-line s)))
+      (while (setq d (pop day-numbers))
+        (setq date (calendar-gregorian-from-absolute d)
+              s (point))
+        (if (or (setq todayp (= d today))
+                (and (not start-pos) (= d sd)))
+            (setq start-pos (point))
+          (when (and start-pos (not end-pos))
+            (setq end-pos (point))))
+        (setq files thefiles
+              rtnall nil)
+        (while (setq file (pop files))
+          (catch 'nextfile
+            (org-check-agenda-file file)
+            (let ((org-agenda-entry-types org-agenda-entry-types))
+              ;; Starred types override non-starred equivalents
+              (when (member :deadline* org-agenda-entry-types)
+                (setq org-agenda-entry-types
+                      (delq :deadline org-agenda-entry-types)))
+              (when (member :scheduled* org-agenda-entry-types)
+                (setq org-agenda-entry-types
+                      (delq :scheduled org-agenda-entry-types)))
+              ;; Honor with-hour
+              (when with-hour
+                (when (member :deadline org-agenda-entry-types)
+                  (setq org-agenda-entry-types
+                        (delq :deadline org-agenda-entry-types))
+                  (push :deadline* org-agenda-entry-types))
+                (when (member :scheduled org-agenda-entry-types)
+                  (setq org-agenda-entry-types
+                        (delq :scheduled org-agenda-entry-types))
+                  (push :scheduled* org-agenda-entry-types)))
+              (unless org-agenda-include-deadlines
+                (setq org-agenda-entry-types
+                      (delq :deadline* (delq :deadline org-agenda-entry-types))))
+              (cond
+               ((memq org-agenda-show-log-scoped '(only clockcheck))
+                (setq rtn (org-agenda-get-day-entries
+                           file date :closed)))
+               (org-agenda-show-log-scoped
+                (setq rtn (apply #'org-agenda-get-day-entries
+                                 file date
+                                 (append '(:closed) org-agenda-entry-types))))
+               (t
+                (setq rtn (apply #'org-agenda-get-day-entries
+                                 file date
+                                 org-agenda-entry-types)))))
+            (setq rtnall (append rtnall rtn)))) ;; all entries
+        (when org-agenda-include-diary
+          (let ((org-agenda-search-headline-for-time t))
+            (require 'diary-lib)
+            (setq rtn (org-get-entries-from-diary date))
+            (setq rtnall (append rtnall rtn))))
+        (when (or rtnall org-agenda-show-all-dates)
+          (setq day-cnt (1+ day-cnt))
+          (insert
+           (if (stringp org-agenda-format-date)
+               (format-time-string org-agenda-format-date
+                                   (org-time-from-absolute date))
+             (funcall org-agenda-format-date date))
+           "\n")
+          (put-text-property s (1- (point)) 'face
+                             (org-agenda-get-day-face date))
+          (put-text-property s (1- (point)) 'org-date-line t)
+          (put-text-property s (1- (point)) 'org-agenda-date-header t)
+          (put-text-property s (1- (point)) 'org-day-cnt day-cnt)
+          (when todayp
+            (put-text-property s (1- (point)) 'org-today t))
+          (setq rtnall
+                (org-agenda-add-time-grid-maybe rtnall ndays todayp))
+          (when rtnall (insert ;; all entries
+                        (org-agenda-finalize-entries rtnall 'agenda)
+                        "\n"))
+          (put-text-property s (1- (point)) 'day d)
+          (put-text-property s (1- (point)) 'org-day-cnt day-cnt)))
+      (when (and org-agenda-clockreport-mode clocktable-start)
+        (let ((org-agenda-files (org-agenda-files nil 'ifmode))
+              ;; the above line is to ensure the restricted range!
+              (p (copy-sequence org-agenda-clockreport-parameter-plist))
+              tbl)
+          (setq p (org-plist-delete p :block))
+          (setq p (plist-put p :tstart clocktable-start))
+          (setq p (plist-put p :tend clocktable-end))
+          (setq p (plist-put p :scope 'agenda))
+          (setq tbl (apply #'clocktable-by-category--get-clocktable p))
+          (when org-agenda-clock-report-header
+            (insert (propertize org-agenda-clock-report-header 'face 'org-agenda-structure))
+            (unless (string-suffix-p "\n" org-agenda-clock-report-header)
+              (insert "\n")))
+          (insert tbl)))
+      (goto-char (point-min))
+      (or org-agenda-multi (org-agenda-fit-window-to-buffer))
+      (unless (or (not (get-buffer-window org-agenda-buffer-name))
+                  (and (pos-visible-in-window-p (point-min))
+                       (pos-visible-in-window-p (point-max))))
+        (goto-char (1- (point-max)))
+        (recenter -1)
+        (when (not (pos-visible-in-window-p (or start-pos 1)))
+          (goto-char (or start-pos 1))
+          (recenter 1)))
+      (goto-char (or start-pos 1))
+      (add-text-properties (point-min) (point-max)
+                           `(org-agenda-type agenda
+                             org-last-args (,arg ,start-day ,span)
+                             org-redo-cmd ,org-agenda-redo-command
+                             org-series-cmd ,org-cmd))
+      (when (eq org-agenda-show-log-scoped 'clockcheck)
+        (org-agenda-show-clocking-issues))
+      (org-agenda-finalize)
+      (setq buffer-read-only t)
+      (message ""))))
+
+(setq
+ cashpw/org-agenda-view--review--clockreport `((agenda
+                                                ""
+                                                ((org-agenda-overriding-header "")
+                                                 (org-agenda-span 'day)
+                                                 (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+                                                 ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
+                                                 (org-agenda-clockreport-mode t)
+                                                 (org-clocktable-defaults '(:fileskip0 t))
+                                                 (org-super-agenda-groups '(
+                                                                            ;; (:name "Logged"
+                                                                            ;; :log t)
+                                                                            ;; (:log closed)
+                                                                            ;; (:log clock)
+                                                                            (;; Toss all other todos
+                                                                             :discard
+                                                                             (:todo t))))
+                                                 )
+                                                ;; "~/review-day.html"
+                                                )))
+
+(setq
+ cashpw/org-agenda-view--roam--roam `((alltodo
+                                       ""
+                                       ((org-agenda-overriding-header "")
+                                        ;; Speed up
+                                        (org-agenda-dim-blocked-tasks nil)
+                                        (org-agenda-inhibit-startup t)
+                                        (org-agenda-use-tag-inheritance nil)
+                                        (org-agenda-ignore-properties '(effort appt category stats))
+                                        ;; TODO Speed up by pre-computing
+                                        (org-agenda-files (seq-difference (cashpw/org-roam-todo-files)
+                                                                          `(,(s-lex-format "${org-roam-directory}/reading_list.org")
+                                                                            ,(s-lex-format "${org-roam-directory}/todos.org"))))
+                                        (org-super-agenda-groups
+                                         `((:name "In Progress"
+                                            :todo "INPROGRESS")
+                                           (:auto-map cashpw/org-super-agenda--get-priority)))))))
+
+(setq
+ cashpw/readinglist-file-path (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
+ cashpw/org-agenda-view--roam--readinglist `((alltodo
+                                              ""
+                                              ((org-agenda-overriding-header "")
+                                               (org-agenda-prefix-format '((todo . " %i ")))
+                                               (org-agenda-files `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")))
+                                               (org-agenda-dim-blocked-tasks nil)
+                                               (org-super-agenda-groups
+                                                (--map
+                                                 (cashpw/org-super-agenda--get-first-n-from-roam-tag 10
+                                                                                                     it)
+                                                 (with-current-buffer (find-file-noselect cashpw/readinglist-file-path)
+                                                   (cashpw/org-mode-get-all-tags-in-file))))))))
+
+(setq
+ cashpw/org-agenda-view--no-effort `((alltodo
+                                 ""
+                                 ((org-agenda-overriding-header "")
+                                  (org-super-agenda-groups
+                                   '((;; Automatically named "Log"
+                                      :log t)
+                                     (:discard
+                                      (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                       :todo "PROJ"))
+                                     (:name "Without effort"
+                                      :effort< "0:01")))))))
+
+(setq
+ cashpw/org-agenda-view--no-priority `((alltodo
+                                   ""
+                                   ((org-agenda-overriding-header "")
+                                    (org-super-agenda-groups
+                                     '((;; Automatically named "Log"
+                                        :log t)
+                                       (:discard
+                                        (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                         :todo "PROJ"))
+                                       (:name "Without priority"
+                                        :priority>= "0")))))))
+
+(setq
+ cashpw/org-agenda-view--not-scheduled `((alltodo
+                                          ""
+                                          ((org-agenda-overriding-header "")
+                                           (org-super-agenda-groups
+                                            '((;; Automatically named "Log"
+                                               :log t)
+                                              (:discard
+                                               (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                                :todo "PROJ"))
+                                              (:discard
+                                               (:scheduled t))
+                                              (:auto-category t)))))))
+
+(defun cashpw/org--scheduled-to-repeat-daily-p (pom)
+  "Return non-nil if the headline at POM repeats daily."
+  (when-let* ((scheduled-alist (org-entry-properties pom
+                                                     "SCHEDULED"))
+              (scheduled-string (cdr (car scheduled-alist))))
+    (or (s-contains-p "++1d" scheduled-string)
+        (s-contains-p ".+1d" scheduled-string))))
+
+(defun cashpw/org--scheduled-to-repeat-weekly-p (pom)
+  "Return non-nil if the headline at POM repeats weekly."
+  (when-let* ((scheduled-alist (org-entry-properties pom
+                                                     "SCHEDULED"))
+              (scheduled-string (cdr (car scheduled-alist))))
+    (or (s-contains-p "++1w" scheduled-string)
+        (s-contains-p ".+1w" scheduled-string))))
+
+(defun cashpw/org--scheduled-to-repeat-p (pom)
+  "Return non-nil if the headline at POM repeats weekly."
+  (when-let* ((scheduled-alist (org-entry-properties pom
+                                                     "SCHEDULED"))
+              (scheduled-string (cdr (car scheduled-alist))))
+    (or (s-contains-p "++" scheduled-string)
+        (s-contains-p ".+" scheduled-string))))
+
+
+(defun cashpw/org-scheduled-in-past-p (&optional point-or-marker)
+  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the past."
+  (let ((point-or-marker (or point-or-marker
+                             (point))))
+    (time-less-p (org-get-scheduled-time point-or-marker)
+                 (current-time))))
+
+(defun cashpw/org-scheduled-in-future-p (&optional point-or-marker)
+  "Return non-nil if the heading at POINT-OR-MARKER is scheduled in the future."
+  (let ((point-or-marker (or point-or-marker
+                             (point))))
+    (time-less-p (current-time)
+                 (org-get-scheduled-time point-or-marker))))
+
+(defun cashpw/org-reschedule-overdue-todo (&optional point-or-marker)
+  "Reschedule a todo (at point, or POINT-OR-MARKER) to its next valid repetition date."
+  (interactive)
+  (save-excursion
+    (let ((point-or-marker (or point-or-marker
+                               (point)))
+          (org-log-done nil))
+      (goto-char point-or-marker)
+      (when (org-get-repeat)
+        (while (cashpw/org-scheduled-in-past-p point-or-marker)
+          (org-todo "RESCHEDULE"))))))
+
+(defun cashpw/org-reschedule-overdue-todo-agenda ()
+  "Invoke `cashpw/org-reschedule-overdue-todo' for an agenda view.
+
+Based on `org-agenda-date-later'."
+  (let* ((marker (or (org-get-at-bol 'org-marker)
+                     (org-agenda-error)))
+         (buffer (marker-buffer marker)))
+    (with-current-buffer buffer
+      (cashpw/org-reschedule-overdue-todo marker))))
+
+(setq
+ org-agenda-bulk-custom-functions `((?L cashpw/org-reschedule-overdue-todo-agenda))
+
+ cashpw/org-agenda-view--overdue `((agenda
+                                    ""
+                                    ((org-agenda-overriding-header "")
+                                     (org-super-agenda-groups
+                                      '((:discard
+                                         (
+                                          :scheduled future
+                                          :deadline future
+                                          ;; :scheduled nil
+                                          ;; :deadline nil
+                                          :scheduled today
+                                          :deadline today
+                                          ))
+                                        (:auto-map
+                                         (lambda (item)
+                                           (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                                                                    (get-text-property 0 'org-hd-marker)))
+                                                        (default-priority "?")
+                                                        (priority (or (cashpw/org--get-priority marker)
+                                                                      default-priority)))
+                                             (cond
+                                              ((cashpw/org--scheduled-to-repeat-daily-p marker)
+                                               "1 Repeats daily")
+                                              ((cashpw/org--scheduled-to-repeat-weekly-p marker)
+                                               "2 Repeats weekly")
+                                              ((cashpw/org--scheduled-to-repeat-p marker)
+                                               "3 Repeats")
+                                              (t
+                                               "4 Doesn't repeat")))))
+                                        (;; Toss all other todos
+                                         :discard
+                                         (:todo t))))))))
+
+(setq
+ org-agenda-custom-commands `((".overdue" "Overdue" ,cashpw/org-agenda-view--overdue)
+                              (".plan-week" "Week" ,cashpw/org-agenda-view--plan--week)
+                              (".review-clockcheck" "Clock check" ,cashpw/org-agenda-view--review--clockcheck)
+                              (".review-clockreport" "Clock report" ,cashpw/org-agenda-view--review--clockreport)
+                              (".review-logged" "Logged" ,cashpw/org-agenda-view--review--logged)
+                              (".roam-roam" "Roam" ,cashpw/org-agenda-view--roam--roam)
+                              (".roam-readinglist" "Reading list" ,cashpw/org-agenda-view--roam--readinglist)
+                              (".today" "Today" ,cashpw/org-agenda-view--today)
+                              (".tomorrow" "Tomorrow" ,cashpw/org-agenda-view--tomorrow)
+                              (".week" "Week" ,cashpw/org-agenda-view--week)
+                              (".habits" "Habits" ,cashpw/org-agenda-view--habits)
+                              (".without-effort" "Without effort" ,cashpw/org-agenda-view--no-effort)
+                              (".without-priority" "Priority" ,cashpw/org-agenda-view--no-priority)
+                              (".without-scheduled" "Not scheduled" ,cashpw/org-agenda-view--not-scheduled)))
+
+(defun cashpw/org-clock--agenda-with-archives ()
+  "Return list of agenda files to use with clocktable."
+  (append
+   (cashpw/org-agenda-files 'personal
+                            t)
+   (cashpw/org-agenda-files 'people
+                            t)))
+
+(after! org
+  (setq
+   ;; Prevent org-clock from double-checking /every/ agenda file for dangling clock during `org-clock-in'.
+   ;; See https://github.com/doomemacs/doomemacs/issues/5317
+   org-clock-auto-clock-resolution nil))
+
+(defun cashpw/org-clock--clocktable--properties ()
+  "Return default clocktable properties."
+  `(:scope cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d")
+    :narrow 200
+    :fileskip0 t
+    :filetitle t
+    :maxlevel 3))
+
+(defun cashpw/org-clock--clocktable--update-default-properties ()
+  "Return default clocktable properties"
+  (setq
+   org-clock-clocktable-default-properties (cashpw/org-clock--clocktable--properties)))
+
+(cashpw/org-clock--clocktable--update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers #'cashpw/org-clock--clocktable--update-default-properties)
+  (run-at-time "00:00"
+               seconds-in-day
+               #'cashpw/org-clock--clocktable--update-default-properties))
+
+(defun cashpw/clocktable-by-category--properties ()
+  "Return clocktable-by-category properties."
+  `(:files-fn cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d")
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-category--update-default-properties ()
+  "Return default clocktable-by-category properties"
+  (setq
+   clocktable-by-category--default-properties (cashpw/clocktable-by-category--properties)))
+
+(cashpw/clocktable-by-category--update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers #'cashpw/clocktable-by-category--update-default-properties)
+  (run-at-time "00:00"
+               seconds-in-day
+               #'cashpw/clocktable-by-category--update-default-properties))
+
+(defun cashpw/clocktable-by-tag--properties ()
+  "Return clocktable-by-tag properties."
+  `(:files-fn cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d")
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-tag--update-default-properties ()
+  "Return default clocktable-by-tag properties"
+  (setq
+   clocktable-by-tag--default-properties (cashpw/clocktable-by-tag--properties)))
+
+(cashpw/clocktable-by-tag--update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers #'cashpw/clocktable-by-tag--update-default-properties)
+  (run-at-time "00:00"
+               seconds-in-day
+               #'cashpw/clocktable-by-tag--update-default-properties))
+
+(after! org
+  (setq org-refile-targets '((nil :maxlevel . 9)
+                             (org-agenda-files :maxlevel . 9))
+        ;; showeverything to make large files open faster
+        org-startup-folded 'showeverything
+        org-log-into-drawer t
+        org-log-repeat t))
+
+(after! org
+  :config
+  (setq
+   org-priority-highest 0
+   org-priority-default 2
+   org-priority-lowest 4))
+
+(after! org
+  :config
+  (setq
+   org-todo-keywords '((sequence
+                        ;; A task that needs doing & is ready to do
+                        "TODO(t)"
+                        ;; A task that is in progress
+                        "INPROGRESS(i)"
+                        ;; Something external is holding up this task
+                        "BLOCKED(b)"
+                        ;; This task is paused/on hold because of me
+                        "HOLD(h)"
+                        ;; A project, which usually contains other tasks
+                        "PROJ(p)"
+                        "|"
+                        ;; Task successfully completed
+                        "DONE(d)"
+                        ;; Calendar event is declined
+                        "DECLINED(`)"
+                        ;; Calendar event is cancelled
+                        "CANCELLED(~)"
+                        ;; Task was moved
+                        "MOVE(m)"
+                        ;; Task was moved
+                        "RESCHEDULE(_)"
+                        ;; Task was cancelled, aborted or is no longer applicable
+                        "KILL(k)")
+                       (sequence
+                        ;; A task that needs doing
+                        "[ ](T)"
+                        ;; Task is in progress
+                        "[-](S)"
+                        ;; Task is being held up or paused
+                        "[?](W)"
+                        "|"
+                        ;; Task was completed
+                        "[X](D)"))
+   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
+                            ("INPROGRESS" . +org-todo-active)
+                            ("[?]"  . +org-todo-onhold)
+                            ("BLOCKED" . +org-todo-onhold)
+                            ("HOLD" . +org-todo-onhold)
+                            ("PROJ" . +org-todo-project))))
+
+;; (after! org
+;;   (add-hook!
+;;    'org-after-todo-state-change-hook
+;;    'save-buffer))
+
+(defcustom cashpw/org-mode-on-inprogress--clock-in-paths
+  nil
+  "TODOs marked as INPROGRESS in these files will trigger a clock in.")
+
+(defun cashpw/org-mode-on-inprogress--in-clock-in-file-p ()
+  (member
+   buffer-file-name
+   cashpw/org-mode-on-inprogress--clock-in-paths))
+
+(defun cashpw/org-mode-when-inprogress ()
+  "Handle inprogress behavior."
+  (when (string-equal (org-get-todo-state)
+                      "INPROGRESS")
+    (cond
+     ((cashpw/org-mode-on-inprogress--in-clock-in-file-p)
+      (org-clock-in))
+     ;; Trying this out for a while
+     (t
+      (org-clock-in)))))
+
+(after! org
+  :config
+  (setq
+   cashpw/org-mode-on-inprogress--clock-in-paths (append
+                                                  (f-glob "*.org"
+                                                          cashpw/path--personal-dir)
+
+                                                  (let* ((org-roam-directory cashpw/path--notes-dir)
+                                                         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                                                                 org-roam-directory)))
+                                                    (cashpw/org-roam-files-with-tag "person"))))
+  (add-hook! 'org-after-todo-state-change-hook
+             'cashpw/org-mode-when-inprogress))
+
+(after! org
+  :config
+  (setq
+   org-log-done 'time))
+
+(defgroup cashpw/org-mode-on-done nil
+  "Handle Org-mode DONE headlines."
+  :tag "Org-mode on done.")
+
+(defcustom cashpw/org-mode-on-done--noop-hook nil
+  "List of functions which return non-nil to indicate we should do nothing with the current heading."
+  :group 'cashpw/org-mode-on-done
+  :type 'hook)
+
+(defcustom cashpw/org-mode-on-done--keep-hook nil
+  "List of functions which return non-nil to indicate we should keep the current heading in the done state."
+  :group 'cashpw/org-mode-on-done
+  :type 'hook)
+
+(defcustom cashpw/org-mode-on-done--delete-hook nil
+  "List of functions which return non-nil to indicate we should delete the current heading."
+  :group 'cashpw/org-mode-on-done
+  :type 'hook)
+
+(defcustom cashpw/org-mode-weekday-repeat--property "CASHPW_REPEAT_WEEKDAYS"
+  "Property name to indicate how to handle DONE event repeated weekly.
+
+Value is a list of space separated numbers indicating weekdays (Monday is 1, ..., Sunday is 7)."
+  :group 'cashpw/org-mode-weekday-repeat
+  :type 'string)
+
+(cl-defun cashpw/org-mode-weekday-repeat--p (pom)
+  "Return non-nil if the heading at POM is configured to repeat on weekdays."
+  (let ((valid-repeaters '("++1d"
+                           ".+1d")))
+    (and (-contains-p valid-repeaters (org-get-repeat))
+         (cashpw/org-get-property pom
+                                  cashpw/org-mode-weekday-repeat--property))))
+
+(cl-defun cashpw/org-mode-weekday-repeat--weekdays (pom)
+  "Return list of weekdays for entry at POM."
+  (let* ((all-weekdays "1 2 3 4 5 6 7")
+         (repeat-weekdays (split-string (or (cashpw/org-get-property pom
+                                                                     cashpw/org-mode-weekday-repeat--property)
+                                            all-weekdays))))
+    (mapcar #'string-to-number
+            repeat-weekdays)))
+
+(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (current-scheduled-time weekdays)
+  "Return the next valid, by WEEKDAYS, time after CURRENT-SCHEDULED-TIME.
+
+WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
+  (let* (;; The scheduled time may be in the past!
+         (days-between-scheduled-and-today (- (time-to-days (current-time))
+                                              (time-to-days current-scheduled-time)))
+         (scheduled-in-future (< days-between-scheduled-and-today 0))
+         (next-scheduled-time (if (> days-between-scheduled-and-today 0)
+                                  (time-add current-scheduled-time (days-to-time days-between-scheduled-and-today))
+                                current-scheduled-time))
+         (add-one-day (lambda ()
+                        (setq next-scheduled-time (time-add (days-to-time 1)
+                                                            next-scheduled-time)))))
+    (funcall add-one-day)
+    (while (not (-contains-p weekdays
+                             (cashpw/day-of-week next-scheduled-time)))
+      (funcall add-one-day))
+    next-scheduled-time))
+
+(cl-defun cashpw/org-mode-weekday-repeat--maybe-reschedule (pom)
+  "Reschedule heading at POM to the next appropriate weekday."
+  (when (cashpw/org-mode-weekday-repeat--p pom)
+    (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
+           (scheduled-time (org-get-scheduled-time pom))
+           (next-scheduled-time
+            ;; Schedule to the day before the next schedule time because
+            ;; it'll get moved forward one day past when we schedule it
+            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time scheduled-time
+                                                                                weekdays)
+                           (days-to-time 1)))
+           (hh-mm (format-time-string "%H:%M" next-scheduled-time))
+           (format-string
+            (if (string= hh-mm "00:00")
+                "%F"
+              "%F %H:%M")))
+      (org-schedule nil (format-time-string format-string
+                                            next-scheduled-time)))))
+
+(setq current-time-override-time (current-time))
+(defun current-time-override ()
+  current-time-override-time)
+(advice-add 'current-time :override 'current-time-override)
+
+;; Event is scheduled for today
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 2)))
+            (format-time-string "%FT%T%z" tuesday))
+   t))
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 3)))
+            (format-time-string "%FT%T%z" wednesday))
+   t))
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1)))
+            (format-time-string "%FT%T%z" next-monday))
+   t))
+(let* ((friday (date-to-time "2000-01-07T08:00:00-0700"))
+       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
+       (current-time-override-time friday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time friday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" next-monday))
+   t))
+
+
+;; Event is scheduled in the future
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time tuesday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" wednesday))
+   t
+   "Should schedule for next valid future day when scheduled in future."))
+
+;; Event is scheduled in the future
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (friday (date-to-time "2000-01-07T08:00:00-0700"))
+       (current-time-override-time monday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time wednesday
+                                                                                     '(1 5)))
+            (format-time-string "%FT%T%z" friday))
+   t
+   "Should schedule for next valid future day when scheduled in future."))
+
+;; Event is scheduled in the past
+(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
+       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
+       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
+       (current-time-override-time tuesday))
+  (cl-assert
+   (string= (format-time-string "%FT%T%z"
+                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
+                                                                                     '(1 2 3 4 5)))
+            (format-time-string "%FT%T%z" wednesday))
+   t
+   "Should schedule for next valid future day when scheduled in past."))
+
+(advice-remove 'current-time 'current-time-override)
+
+(defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
+  "Property name to indicate how to handle DONE event."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--noop "noop"
+  "No-op."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--keep "keep"
+  "Keep"
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--delete "delete"
+  "Delete."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defun cashpw/org-mode-on-done--property-value-equals-p (expected-value)
+  "Return non-nil if the heading's `cashpw/org-mode-on-done--property-name' is EXPECTED-VALUE."
+  (let ((actual-value (org-entry-get (point)
+                                     cashpw/org-mode-on-done--property-name)))
+    (equal actual-value
+           expected-value)))
+
+(add-hook 'cashpw/org-mode-on-done--noop-hook
+          (lambda ()
+            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--noop)))
+(add-hook 'cashpw/org-mode-on-done--keep-hook
+          (lambda ()
+            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)))
+(add-hook 'cashpw/org-mode-on-done--delete-hook
+          (lambda ()
+            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--delete)))
+
+(defcustom cashpw/org-mode-on-done--noop-file-paths '()
+  "TODOs in these files will be noop by default."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defcustom cashpw/org-mode-on-done--keep-file-paths (append
+                                                     `(,(s-lex-format "${cashpw/path--personal-dir}/journal-2024.org")
+                                                       ,(s-lex-format "${cashpw/path--personal-dir}/retrospective-2024.org"))
+                                                     ;; (cashpw/directory-files--org (s-lex-format "${cashpw/path--home-dir}/proj/people"))
+                                                     )
+  "TODOs in these files will be keep by default."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defcustom cashpw/org-mode-on-done--delete-file-paths '()
+  "TODOs in these files will be delete by default."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--noop-file-p ()
+  "Return non-nil if current file is a no-op file."
+  (member buffer-file-name
+          cashpw/org-mode-on-done--noop-file-paths))
+
+(defun cashpw/org-mode-on-done--keep-file-p ()
+  "Return non-nil if current file is a keep file."
+  (member buffer-file-name
+          cashpw/org-mode-on-done--keep-file-paths))
+
+(defun cashpw/org-mode-on-done--delete-file-p ()
+  "Return non-nil if current file is a delete file."
+  (member buffer-file-name
+          cashpw/org-mode-on-done--delete-file-paths))
+
+(add-hook 'cashpw/org-mode-on-done--noop-hook
+          'cashpw/org-mode-on-done--noop-file-p)
+(add-hook 'cashpw/org-mode-on-done--keep-hook
+          'cashpw/org-mode-on-done--keep-file-p)
+(add-hook 'cashpw/org-mode-on-done--delete-hook
+          'cashpw/org-mode-on-done--delete-file-p)
+
+(add-hook 'cashpw/org-mode-on-done--noop-hook
+          #'org-get-repeat)
+
+(add-hook 'cashpw/org-mode-on-done--delete-hook
+          (lambda ()
+            (string= org-state
+                     "KILL")))
+(add-hook
+ 'cashpw/org-mode-on-done--delete-hook
+ 'org-roam-file-p)
+
+(defun cashpw/org-mode-on-done--is-noop ()
+  "Return non-nil if we should noop the current entry."
+  (-any 'funcall
+        cashpw/org-mode-on-done--noop-hook))
+
+(defun cashpw/org-mode-on-done--is-keep ()
+  "Return non-nil if we should keep the current entry."
+  (-any 'funcall
+        cashpw/org-mode-on-done--keep-hook))
+
+(defun cashpw/org-mode-on-done--is-delete ()
+  "Return non-nil if we should delete the current entry."
+  (-any 'funcall
+        cashpw/org-mode-on-done--delete-hook))
+
+(defun cashpw/org-mode-when-done ()
+  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
+  (when (org-entry-is-done-p)
+    (org-clock-out-if-current)
+    (when (org-get-repeat)
+      (cashpw/org-mode-weekday-repeat--maybe-reschedule (point)))
+    (cond
+     ((cashpw/org-mode-on-done--is-noop)
+      (progn
+        ;; (unless (org-get-repeat)
+        ;; (org-schedule '(4)))
+        (org-todo "TODO")))
+     ((cashpw/org-mode-on-done--is-keep)
+      nil)
+     ((cashpw/org-mode-on-done--is-delete)
+      (org-cut-subtree))
+     (t
+      (org-archive-subtree-default)))))
+
+(after! org
+  :config
+  (add-hook! 'org-after-todo-state-change-hook
+             'cashpw/org-mode-when-done))
+
+(after! org
+  :config
+  (setq
+   org-structure-template-alist
+   '(("a" . "export ascii")
+     ("c" . "center")
+     ("C" . "comment")
+     ("e" . "example")
+     ("E" . "export")
+     ("Eh" . "export html")
+     ("El" . "export latex")
+     ;; ("i" . "ingredients")
+     ("q" . "quote")
+     ("s" . "src")
+     ("sd" . "src dot :file TODO.png :cmdline -Kdot -Tpng")
+     ("se" . "src emacs-lisp")
+     ("sc" . "src C++")
+     ("sp" . "src python :results output")
+     ("ss" . "src sh :results output")
+     ("v" . "verse"))))
 
 (setq
  ;; org-roam
@@ -4721,6 +4710,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                                       "%?"
                                                       ""
                                                       "** TODO Back"
+                                                      ""
+                                                      "TODO"
+                                                      ""
                                                       "** TODO Source"
                                                       )
                                            :prepare-finalize ,(lambda ()
@@ -4738,6 +4730,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                                       "%?"
                                                       ""
                                                       "** TODO Back"
+                                                      ""
+                                                      "TODO"
+                                                      ""
                                                       "** TODO Source"
                                                       )
                                            :prepare-finalize ,(lambda ()
@@ -4771,6 +4766,9 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
                                                           "%?"
                                                           ""
                                                           "** TODO Back"
+                                                          ""
+                                                          "TODO"
+                                                          ""
                                                           "** TODO Source")
                                                :prepare-finalize ,(lambda ()
                                                                     (goto-char (point-min))
@@ -4795,7 +4793,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 
  cashpw/org-capture-templates--todo--email `("Email"
                                              :keys "e"
-                                             :file cashpw/path--notes-todos-file
+                                             :file cashpw/path--personal-todos
                                              :children (("Email"
                                                          :keys "e"
                                                          :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
@@ -4816,7 +4814,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
  ;; General
  cashpw/org-capture-templates--todo--todo `("Todo"
                                             :keys "t"
-                                            :file ,(lambda () (s-lex-format "${cashpw/path--notes-personal-dir}/todos.org"))
+                                            :file ,(lambda () (s-lex-format "${cashpw/path--personal-dir}/todos.org"))
                                             :template ("* TODO %?"
                                                        ":PROPERTIES:"
                                                        ":Created: %U"
@@ -5182,7 +5180,11 @@ All args are passed to `org-roam-node-read'."
                         filepath)
                (with-current-buffer roam-file-buffer
                  (remove-hook 'before-save-hook 'org-encrypt-entries t)
-                 (org-hugo-export-to-md))
+                 (if (not (s-contains-p ":private:"
+                                        (cashpw/org-get-setting "filetags")))
+                     (org-hugo-export-to-md)
+                   (message "casphw/org-hugo-export-all: Skipping %s (private)"
+                            filepath)))
                (kill-buffer roam-file-buffer)
                (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
                         (1+ i)
@@ -5214,7 +5216,7 @@ All args are passed to `org-roam-node-read'."
         (memoize-restore 'org-roam-node-file)
         (memoize-restore 'citeproc-hash-itemgetter-from-any)
         (when prev-global-flycheck-mode
-        (global-flycheck-mode )
+          (global-flycheck-mode )
           )
 
         (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))

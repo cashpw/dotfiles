@@ -22,7 +22,7 @@
   :recipe (:host github
            :repo "skeeto/emacs-memoize"))
 
-;; (package! org-wild-notifier)
+(package! org-wild-notifier)
 
 (defmacro k-time (&rest body)
   "Measure and return the time it takes evaluating BODY."
@@ -113,7 +113,7 @@
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
 
-(package! flycheck-vale)
+;; (package! flycheck-vale)
 
 ;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
 ;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
