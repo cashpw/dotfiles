@@ -5113,7 +5113,26 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
                                                          ,cashpw/org-fc--capture-template--vocab
                                                          ,cashpw/org-fc--capture-template--text-input))))))))
 
+(after! org
+  (setq
+   ;; Prefer IDs to filenames+headers when creating links.
+   ;; Headers can change, filenames can change, the IDs won't change
+   ;; and can move to follow the relevant content.
+   org-id-link-to-org-use-id t))
+
 (use-package! deflink)
+
+(deflink "amazon"
+         "https://amazon.com/dp/%s")
+
+(deflink "google-doc"
+         "https://docs.google.com/document/d/%s")
+
+(deflink "google-sheets"
+         "https://docs.google.com/spreadsheets/d/%s")
+
+(deflink "google-slides"
+         "https://docs.google.com/presentation/d/%s")
 
 (defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
   "Read an `org-roam-node', returning its id.
@@ -5127,6 +5146,21 @@ All args are passed to `org-roam-node-read'."
 
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
+
+(deflink "instagram"
+         "https://instagram.com/%s")
+
+(deflink "isbn"
+         "https://books.google.com/books?vid=ISBN/%s")
+
+(deflink "reddit"
+         "https://reddit.com/%s")
+
+(deflink "stackoverflow"
+         "https://stackoverflow.com/%s")
+
+(deflink "twitter"
+         "https://twitter.com")
 
 ;; (use-package! org-transclusion
 ;;   :after org

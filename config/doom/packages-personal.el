@@ -243,43 +243,9 @@
 
 (package! vulpea)
 
-(after! org
-  (setq
-   ;; Prefer IDs to filenames+headers when creating links.
-   ;; Headers can change, filenames can change, the IDs won't change
-   ;; and can move to follow the relevant content.
-   org-id-link-to-org-use-id t))
-
 (package! deflink
   :recipe (:host github
            :repo "cashpw/deflink"))
-
-(defhttplink "amazon"
-             "https://amazon.com/dp/%s")
-
-(defhttplink "google-doc"
-             "https://docs.google.com/document/d/%s")
-
-(defhttplink "google-sheets"
-             "https://docs.google.com/spreadsheets/d/%s")
-
-(defhttplink "google-slides"
-             "https://docs.google.com/presentation/d/%s")
-
-(defhttplink "instagram"
-             "https://instagram.com/%s")
-
-(defhttplink "isbn"
-             "https://books.google.com/books?vid=ISBN/%s")
-
-(defhttplink "reddit"
-             "https://reddit.com/%s")
-
-(defhttplink "stackoverflow"
-             "https://stackoverflow.com/%s")
-
-(defhttplink "twitter"
-             "https://twitter.com")
 
 (package! pdf-tools)
 

@@ -7033,15 +7033,9 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
                                                          ,cashpw/org-fc--capture-template--text-input))))))))
 #+end_src
 
-
-
-
-
-
-
 *** Links
 
-#+begin_src emacs-lisp :tangle packages-personal.el
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org
   (setq
    ;; Prefer IDs to filenames+headers when creating links.
@@ -7062,9 +7056,9 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
 
 **** Amazon
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "amazon"
-             "https://amazon.com/dp/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "amazon"
+         "https://amazon.com/dp/%s")
 #+end_src
 
 **** Digital Object Identifier (DOI)
@@ -7073,23 +7067,23 @@ See [[*=ol-doi=][=ol-doi=]].
 
 **** Google Documents
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "google-doc"
-             "https://docs.google.com/document/d/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "google-doc"
+         "https://docs.google.com/document/d/%s")
 #+end_src
 
 **** Google Sheets
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "google-sheets"
-             "https://docs.google.com/spreadsheets/d/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "google-sheets"
+         "https://docs.google.com/spreadsheets/d/%s")
 #+end_src
 
 **** Google Slides
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "google-slides"
-             "https://docs.google.com/presentation/d/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "google-slides"
+         "https://docs.google.com/presentation/d/%s")
 #+end_src
 
 **** ID
@@ -7114,37 +7108,37 @@ All args are passed to `org-roam-node-read'."
 
 **** Instagram
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "instagram"
-             "https://instagram.com/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "instagram"
+         "https://instagram.com/%s")
 #+end_src
 
 **** ISBN
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "isbn"
-             "https://books.google.com/books?vid=ISBN/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "isbn"
+         "https://books.google.com/books?vid=ISBN/%s")
 #+end_src
 
 **** Reddit
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "reddit"
-             "https://reddit.com/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "reddit"
+         "https://reddit.com/%s")
 #+end_src
 
 **** Stackoverflow
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "stackoverflow"
-             "https://stackoverflow.com/%s")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "stackoverflow"
+         "https://stackoverflow.com/%s")
 #+end_src
 
 **** Twitter
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(defhttplink "twitter"
-             "https://twitter.com")
+#+begin_src emacs-lisp :tangle config-personal.el
+(deflink "twitter"
+         "https://twitter.com")
 #+end_src
 
 *** Transclusion
