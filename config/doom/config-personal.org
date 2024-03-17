@@ -3613,7 +3613,7 @@ Provide support for multi-character =org-mode= structure template shortcuts (e.g
 ;; org-tempo is provided by org-mode
 #+end_src
 
-#+begin_src emacs-lisp :tangle config-personal.el
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-tempo)
 #+end_src
 
@@ -3643,7 +3643,7 @@ https://github.com/flexibeast/org-vcard#table-of-contents
 
 **** =org-vcard=
 
-#+begin_src emacs-lisp :tangle config-personal.el
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-vcard)
 #+end_src
 

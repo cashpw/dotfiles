@@ -219,7 +219,7 @@
 
 (package! org-roam-ui)
 
-(package! org-special-block-extras)
+;; (package! org-special-block-extras)
 
 (package! org-super-agenda)
 

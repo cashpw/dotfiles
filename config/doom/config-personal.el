@@ -2095,24 +2095,24 @@ Reference: `org-gcal--update-entry'."
 (use-package! org-roam
   :after org)
 
-(use-package! org-special-block-extras
-  :after org
-  :hook (org-mode . org-special-block-extras-mode)
-  :custom
-  (o-docs-libraries
-   '("~/org-special-block-extras/documentation.org")
-   "The places where I keep my ‘#+documentation’")
-  (org-defblock hugogallery
-                (editor "Editor HugoGallery") ()
-                "Docstring"
-                (if (not (equal backend 'hugo))
-                    contents
-                  (format "{{< gallery >}}%s{{< /gallery >}}"
-                          (replace-regexp-in-string ":class:class"
-                                                    ":class"
-                                                    (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
-                                                                              "\\1:class hugo-gallery-image "
-                                                                              contents))))))
+;; (use-package! org-special-block-extras
+;;   :after org
+;;   :hook (org-mode . org-special-block-extras-mode)
+;;   :custom
+;;   (o-docs-libraries
+;;    '("~/org-special-block-extras/documentation.org")
+;;    "The places where I keep my ‘#+documentation’")
+;;   (org-defblock hugogallery
+;;                 (editor "Editor HugoGallery") ()
+;;                 "Docstring"
+;;                 (if (not (equal backend 'hugo))
+;;                     contents
+;;                   (format "{{< gallery >}}%s{{< /gallery >}}"
+;;                           (replace-regexp-in-string ":class:class"
+;;                                                     ":class"
+;;                                                     (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
+;;                                                                               "\\1:class hugo-gallery-image "
+;;                                                                               contents))))))
 
 (use-package! org-tempo)
 
