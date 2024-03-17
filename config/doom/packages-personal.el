@@ -252,37 +252,36 @@
    ;; and can move to follow the relevant content.
    org-id-link-to-org-use-id t))
 
-(package! org-link-base
+(package! deflink
   :recipe (:host github
-           :repo "cashpw/org-link-base"))
+           :repo "cashpw/deflink"))
 
-(package! org-link-isbn
-  :recipe (:host github
-           :repo "cashpw/org-link-isbn"))
+(defhttplink "amazon"
+             "https://amazon.com/dp/%s")
 
-(package! org-link-instagram
-  :recipe (:host github
-           :repo "cashpw/org-link-instagram"))
+(defhttplink "google-doc"
+             "https://docs.google.com/document/d/%s")
 
-(package! org-link-twitter
-  :recipe (:host github
-           :repo "cashpw/org-link-twitter"))
+(defhttplink "google-sheets"
+             "https://docs.google.com/spreadsheets/d/%s")
 
-(package! org-link-google-doc
-  :recipe (:host github
-           :repo "cashpw/org-link-google-doc"))
+(defhttplink "google-slides"
+             "https://docs.google.com/presentation/d/%s")
 
-(package! org-link-google-sheet
-  :recipe (:host github
-           :repo "cashpw/org-link-google-sheet"))
+(defhttplink "instagram"
+             "https://instagram.com/%s")
 
-(package! org-link-amazon
-  :recipe (:host github
-           :repo "cashpw/org-link-amazon"))
+(defhttplink "isbn"
+             "https://books.google.com/books?vid=ISBN/%s")
 
-(package! org-link-reddit
-  :recipe (:host github
-           :repo "cashpw/org-link-reddit"))
+(defhttplink "reddit"
+             "https://reddit.com/%s")
+
+(defhttplink "stackoverflow"
+             "https://stackoverflow.com/%s")
+
+(defhttplink "twitter"
+             "https://twitter.com")
 
 (package! pdf-tools)
 

@@ -6841,112 +6841,53 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
    org-id-link-to-org-use-id t))
 #+end_src
 
-**** Base
-
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-base
+(package! deflink
   :recipe (:host github
-           :repo "cashpw/org-link-base"))
+           :repo "cashpw/deflink"))
 #+end_src
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-base)
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! deflink)
+#+end_src
+
+**** Amazon
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(defhttplink "amazon"
+             "https://amazon.com/dp/%s")
 #+end_src
 
 **** Digital Object Identifier (DOI)
 
 See [[*=ol-doi=][=ol-doi=]].
 
-**** ISBN
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-isbn
-  :recipe (:host github
-           :repo "cashpw/org-link-isbn"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-isbn)
-#+end_src
-
-**** Instagram
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-instagram
-  :recipe (:host github
-           :repo "cashpw/org-link-instagram"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-instagram)
-#+end_src
-
-**** Twitter
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-twitter
-  :recipe (:host github
-           :repo "cashpw/org-link-twitter"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-twitter)
-#+end_src
-
 **** Google Documents
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-google-doc
-  :recipe (:host github
-           :repo "cashpw/org-link-google-doc"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-google-doc)
+(defhttplink "google-doc"
+             "https://docs.google.com/document/d/%s")
 #+end_src
 
 **** Google Sheets
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-google-sheet
-  :recipe (:host github
-           :repo "cashpw/org-link-google-sheet"))
+(defhttplink "google-sheets"
+             "https://docs.google.com/spreadsheets/d/%s")
 #+end_src
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-google-sheet)
-#+end_src
-
-**** Amazon
+**** Google Slides
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-amazon
-  :recipe (:host github
-           :repo "cashpw/org-link-amazon"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-amazon)
-#+end_src
-
-**** Reddit
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-link-reddit
-  :recipe (:host github
-           :repo "cashpw/org-link-reddit"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-link-reddit
-  )
+(defhttplink "google-slides"
+             "https://docs.google.com/presentation/d/%s")
 #+end_src
 
 **** ID
 
 Auto-complete =id:= with known =org-roam= IDs.
 
-#+begin_src emacs-lisp :tangle config-personal.el
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
   "Read an `org-roam-node', returning its id.
 

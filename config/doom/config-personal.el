@@ -4838,22 +4838,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
                                                          ,cashpw/org-fc--capture-template--vocab
                                                          ,cashpw/org-fc--capture-template--text-input))))))))
 
-(use-package! org-link-base)
-
-(use-package! org-link-isbn)
-
-(use-package! org-link-instagram)
-
-(use-package! org-link-twitter)
-
-(use-package! org-link-google-doc)
-
-(use-package! org-link-google-sheet)
-
-(use-package! org-link-amazon)
-
-(use-package! org-link-reddit
-  )
+(use-package! deflink)
 
 (defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
   "Read an `org-roam-node', returning its id.
