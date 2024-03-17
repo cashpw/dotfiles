@@ -46,7 +46,6 @@
  ;;hydra
  indent-guides     ; highlighted indent columns
  (ligatures         ; ligatures and symbols to make your code pretty again
-  +fira
   +extra)
  ;;minimap           ; show a map of the code on the side
  modeline            ; snazzy, Atom-inspired modeline, plus API
@@ -99,14 +98,11 @@
  vterm               ; the best terminal emulation in Emacs
 
  :checkers
- ;; tasing you for every semicolon you forget
  (syntax
   +flymake)
- ;; tasing you for misspelling mispelling
  (spell
   +flyspell
   +everywhere)
- ;; tasing grammar mistake every you make
  ;; grammar
 
  :tools
