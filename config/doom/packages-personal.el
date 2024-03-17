@@ -91,8 +91,6 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
-;; (unpin! doom-modeline)
-
 ;; (package! svg-tag-mode)
 
 (package! nerd-icons)

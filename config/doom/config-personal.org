@@ -1253,19 +1253,13 @@ everywhere
 #+end_src
 #+HTMl: </details>
 
-** =doom-modeline=
-
-Unpin to speed things up and fix broken icons; see [[github:doomemacs/doomemacs/issues/7368][doomemacs#7368]].
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-;; (unpin! doom-modeline)
-#+end_src
-
 * Appearance
 
 ** Packages
 
 *** =svg-tag-mode=
+
+Disabled because it was slow.
 
 **** Package
 
