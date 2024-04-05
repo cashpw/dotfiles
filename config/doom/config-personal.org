@@ -3723,12 +3723,13 @@ Return nil if no attendee exists with that EMAIL."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defcustom cashpw/org-gcal--profile-personal
-  `(:fetch-file-alist (("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
+  `(:fetch-file-alist (("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar)
+                       ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
     :client-secret ,(cashpw/get-secret
                      "org-gcal--personal")
     :summaries-to-exclude ("^Nap$"
-                           "^Sleep$"
+                           "^Sleeping$"
                            "^Work$"
                            "^Lunch$"
                            "^Home" ; Google Calendar working location event
@@ -3744,40 +3745,36 @@ Return nil if no attendee exists with that EMAIL."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defcustom cashpw/org-gcal--profile-sleep
-  `(:fetch-file-alist (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,(s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")))
+  `(:fetch-file-alist
+    (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(cashpw/get-secret "org-gcal--personal"))
+    :client-secret ,(cashpw/get-secret
+                     "org-gcal--personal")
+    :summaries-to-exclude '())
   "Personal configuration for `org-gcal'."
   :group 'cashpw
   :type 'sexp)
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
-  (interactive "nDays to fetch: ")
-  (org-gcal-sync-tokens-clear)
-  (add-hook!
-   'org-gcal-after-update-entry-functions
-   #'cashpw/org-gcal--set-logbook
-   #'cashpw/org-gcal--set-todo-done)
-  (let ((calendar-path
-         (cdr
-          (car
-           org-gcal-fetch-file-alist)))
-        (org-gcal-up-days n-days)
-        (cashpw/org-gcal--summaries-to-exclude '())
-        (org-gcal-down-days 1)
-        (previous-profile
-         cashpw/org-gcal--current-profile))
-    (cashpw/org-gcal-activate-profile
-     cashpw/org-gcal--profile-sleep)
-    (let ((org-agenda-files `(,calendar-path)))
-      (org-gcal-fetch))
-    (cashpw/org-gcal-activate-profile
-     previous-profile))
-  (remove-hook!
-    'org-gcal-after-update-entry-functions
-    #'cashpw/org-gcal--set-logbook
-    #'cashpw/org-gcal--set-todo-done))
+  (cashpw/org-gcal-clear-and-fetch)
+  ;; (interactive "nDays to fetch: ")
+  ;; (org-gcal-sync-tokens-clear)
+  ;; (let ((calendar-path
+  ;;        (cdr
+  ;;         (car
+  ;;          org-gcal-fetch-file-alist)))
+  ;;       (org-gcal-up-days n-days)
+  ;;       (org-gcal-down-days 1)
+  ;;       (previous-profile
+  ;;        cashpw/org-gcal--current-profile))
+  ;;   (cashpw/org-gcal-activate-profile
+  ;;    cashpw/org-gcal--profile-sleep)
+  ;;   (let ((org-agenda-files `(,calendar-path)))
+  ;;     (org-gcal-fetch))
+  ;;   (cashpw/org-gcal-activate-profile
+  ;;    previous-profile))
+  )
 #+end_src
 
 ****** Fetch
@@ -3811,8 +3808,8 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-gcal
   :custom
   (plstore-cache-passphrase-for-symmetric-encryption t)
-  (org-gcal-up-days 1)
-  (org-gcal-down-days 7)
+  (org-gcal-up-days 30)
+  (org-gcal-down-days 30)
   (org-gcal-remove-cancelled-events t)
   (org-gcal-remove-events-with-cancelled-todo t)
   ;; See https://github.com/kidd/org-gcal.el/issues/172
@@ -4553,8 +4550,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 Don't call directly. Use `cashpw/org-agenda-files'."
   (append
    `(,cashpw/path--personal-todos
-     ,cashpw/path--personal-calendar
-     ,cashpw/path--sleep-calendar)))
+     ,cashpw/path--personal-calendar)))
 
 (defun cashpw/org-agenda-files--projects ()
   "Return list of project agenda files.
@@ -6216,7 +6212,7 @@ items if they have an hour specification like [h]h:mm."
 (defun cashpw/org-clock--agenda-with-archives ()
   "Return list of agenda files to use with clocktable."
   (append
-   ;; (cashpw/org-agenda-files 'notes-with-todos)
+   `(,cashpw/path--sleep-calendar)
    (cashpw/org-agenda-files 'personal t)
    (cashpw/org-agenda-files 'calendar t)
    (cashpw/org-agenda-files 'journal-this-year t)
@@ -6884,27 +6880,28 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 (defun cashpw/org-mode-on-done--noop-filetag-p ()
   "Return non-nil if current file has a no-op filetag."
-  (> 0
-      (length
-       (-intersection
-       cashpw/org-mode-on-done--noop-filetags
-       (org-extras-filetags-in-buffer (buffer-name))))))
+  (>
+   (length
+    (-intersection
+     cashpw/org-mode-on-done--noop-filetags
+     (org-extras-filetags-in-buffer (buffer-name))))
+   0))
 
 (defun cashpw/org-mode-on-done--keep-filetag-p ()
   "Return non-nil if current file has a keep filetag."
-  (> 0
-      (length
-       (-intersection
+  (> (length
+      (-intersection
        cashpw/org-mode-on-done--keep-filetags
-       (org-extras-filetags-in-buffer (buffer-name))))))
+       (org-extras-filetags-in-buffer (buffer-name))))
+     0))
 
 (defun cashpw/org-mode-on-done--delete-filetag-p ()
   "Return non-nil if current file has a delete filetag."
-  (> 0
-      (length
-       (-intersection
+  (> (length
+      (-intersection
        cashpw/org-mode-on-done--delete-filetags
-       (org-extras-filetags-in-buffer (buffer-name))))))
+       (org-extras-filetags-in-buffer (buffer-name))))
+     0))
 
 (add-hook 'cashpw/org-mode-on-done--noop-hook
           'cashpw/org-mode-on-done--noop-filetag-p)
