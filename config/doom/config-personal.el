@@ -170,7 +170,13 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (defcustom cashpw/path--personal-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")
-  "Personal TODOs file."
+  "Personal calendar file."
+  :group 'cashpw
+  :type 'string)
+
+(defcustom cashpw/path--sleep-calendar
+  (s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")
+  "Sleep calendar file."
   :group 'cashpw
   :type 'string)
 
@@ -485,7 +491,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
            (:prefix ("n")
             :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
             :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-            :desc "Todos" :n "t" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/todos.org")))))
+            :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
@@ -2339,7 +2345,7 @@ Return nil if no attendee exists with that EMAIL."
     (org-gcal-reload-client-id-secret)))
 
 (defcustom cashpw/org-gcal--profile-personal
-  `(:fetch-file-alist (("cashbweaver@gmail.com" . ,(s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")))
+  `(:fetch-file-alist (("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
     :client-secret ,(cashpw/get-secret
                      "org-gcal--personal")
@@ -2818,9 +2824,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 Don't call directly. Use `cashpw/org-agenda-files'."
   (append
-   `(,(s-lex-format "${cashpw/path--notes-dir}/todos.org")
-     ,(s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")
-     ,(s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org"))))
+   `(,cashpw/path--personal-todos
+     ,cashpw/path--personal-calendar
+     ,cashpw/path--sleep-calendar)))
 
 (defun cashpw/org-agenda-files--projects ()
   "Return list of project agenda files.
@@ -4205,7 +4211,7 @@ items if they have an hour specification like [h]h:mm."
       (org-agenda-ignore-properties '(effort appt category stats))
       (org-agenda-files (seq-difference (cashpw/org-agenda-files 'notes-with-todo)
                                         `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
-                                          ,(s-lex-format "${cashpw/path--notes-dir}/todos.org"))))
+                                          ,cashpw/path--personal-todos)))
       (org-super-agenda-groups
        `((:discard
           (:scheduled t
@@ -4906,24 +4912,27 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 (defun cashpw/org-mode-on-done--noop-filetag-p ()
   "Return non-nil if current file has a no-op filetag."
-  (>= 1
-      (-intersection
+  (> 0
+      (length
+       (-intersection
        cashpw/org-mode-on-done--noop-filetags
-       (org-extras-filetags-in-buffer (buffer-name)))))
+       (org-extras-filetags-in-buffer (buffer-name))))))
 
 (defun cashpw/org-mode-on-done--keep-filetag-p ()
   "Return non-nil if current file has a keep filetag."
-  (>= 1
-      (-intersection
+  (> 0
+      (length
+       (-intersection
        cashpw/org-mode-on-done--keep-filetags
-       (org-extras-filetags-in-buffer (buffer-name)))))
+       (org-extras-filetags-in-buffer (buffer-name))))))
 
-(defun cashpw/org-mode-on-done--delete-file-p ()
+(defun cashpw/org-mode-on-done--delete-filetag-p ()
   "Return non-nil if current file has a delete filetag."
-  (>= 1
-      (-intersection
+  (> 0
+      (length
+       (-intersection
        cashpw/org-mode-on-done--delete-filetags
-       (org-extras-filetags-in-buffer (buffer-name)))))
+       (org-extras-filetags-in-buffer (buffer-name))))))
 
 (add-hook 'cashpw/org-mode-on-done--noop-hook
           'cashpw/org-mode-on-done--noop-filetag-p)
