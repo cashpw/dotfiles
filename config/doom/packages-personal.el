@@ -1,3 +1,7 @@
+(package! day-of-week
+  :recipe (:host github
+           :repo "cashpw/day-of-week"))
+
 ;; (package! auth-source-xoauth2)
 
 (package! command-log-mode)
@@ -23,6 +27,10 @@
            :repo "skeeto/emacs-memoize"))
 
 (package! org-wild-notifier)
+
+(package! scheduled-alert
+  :recipe (:host github
+           :repo "cashpw/scheduled-alert"))
 
 (defmacro k-time (&rest body)
   "Measure and return the time it takes evaluating BODY."
@@ -105,6 +113,8 @@
 
 (package! smtpmail)
 
+(package! gnuplot)
+
 (package! aggressive-indent)
 
 (package! operate-on-number
@@ -151,6 +161,10 @@
            :repo "emacsmirror/org-contrib")
   :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
 
+(package! org-extras
+  :recipe (:host github
+           :repo "cashpw/org-extras"))
+
 (package! citar-org-roam
   :recipe (:host github
            :repo "emacs-citar/citar-org-roam"))
@@ -176,8 +190,6 @@
 
 (package! orgtbl-aggregate)
 
-;; (package! org-ai)
-
 (package! org-download)
 
 (package! org-fc
@@ -188,10 +200,6 @@
            :files (:defaults "awk" "demo.org")))
 
 (unpin! org-gcal)
-
-;; (package! org-gtasks
-;;   :recipe (:host github
-;;            :repo "JulienMasson/org-gtasks"))
 
 (package! org-mime)
 
@@ -229,6 +237,8 @@
 ;; org-tempo is provided by org-mode
 
 ;; (package! org-transclusion)
+
+(package! org-tree-slide)
 
 (package! org-vcard)
 

@@ -12,4 +12,4 @@
 	url = https://github.com/cashweaver/local-open
 [submodule "config/i3blocks"]
 	path = config/i3blocks
-	url = git@github.com:cashpw/i3blocks-contrib.git
+	url = git@github.com:vivien/i3blocks-contrib.git
