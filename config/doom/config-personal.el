@@ -3650,6 +3650,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
      (search category-keep)))
 
   :config
+  (setq org-super-agenda-header-map evil-org-agenda-mode-map)
   (cl-defun org-super-agenda--group-dispatch-take (items (n group))
     ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
     "Take N ITEMS that match selectors in GROUP.
