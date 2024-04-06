@@ -4455,6 +4455,23 @@ tasks."
                               end-time))))
 #+end_src
 
+**** Set =LAST_MODIFIED=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-set-last-modified ()
+  "Update the LAST_MODIFIED property on the file."
+  (interactive)
+  (when (derived-mode-p
+         'org-mode)
+    (save-excursion
+      (goto-char
+       (point-min))
+      (org-set-property
+       "LAST_MODIFIED"
+       (format-time-string
+        "[%Y-%m-%d %a %H:%M]")))))
+#+end_src
+
 **** Insert holiday reminders
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none

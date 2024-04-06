@@ -2734,6 +2734,19 @@ tasks."
                               start-time
                               end-time))))
 
+(defun cashpw/org-set-last-modified ()
+  "Update the LAST_MODIFIED property on the file."
+  (interactive)
+  (when (derived-mode-p
+         'org-mode)
+    (save-excursion
+      (goto-char
+       (point-min))
+      (org-set-property
+       "LAST_MODIFIED"
+       (format-time-string
+        "[%Y-%m-%d %a %H:%M]")))))
+
 (defun cashpw/org--insert-holiday-reminders (year)
   "Insert TODO reminders for holidays."
   (interactive
