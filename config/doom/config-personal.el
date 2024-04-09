@@ -1498,7 +1498,7 @@ Based on `org-contacts-anniversaries'."
 
 ;; (remove-hook! 'org-mode-hook #'org-fancy-priorities-mode)
 
-(defvar         cashpw/org-fc--card-timer
+(defvar cashpw/org-fc--card-timer
   nil
   "The timer for the current card.")
 

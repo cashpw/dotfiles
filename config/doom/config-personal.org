@@ -2109,7 +2109,6 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 (use-package! gnuplot)
 #+end_src
 
-
 * Languages
 ** General
 *** Completion
@@ -2347,17 +2346,20 @@ org-mode utility functions
 /[[github:cashpw/org-extras][cashpw/org-extras]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-extras
   :recipe (:host github
            :repo "cashpw/org-extras"))
 #+end_src
 
+***** Config
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-extras
   :after org)
 #+end_src
-
 
 **** =cashpw/contacts=
 ***** TODO Move this to separate package file.
@@ -2592,6 +2594,8 @@ Doom emacs installs =citar=.
 
 **** =citar-org-roam=
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! citar-org-roam
   :recipe (:host github
@@ -2605,11 +2609,15 @@ Group clocktable entries by their CATEGORY property.
 /[[github:cashpw/clocktable-by-category][cashpw/clocktable-by-category]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! clocktable-by-category
   :recipe (:host github
            :repo "cashpw/clocktable-by-category"))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! clocktable-by-category
@@ -2623,11 +2631,15 @@ Group clocktable entries by their first tag.
 /[[github:cashpw/clocktable-by-tag][cashpw/clocktable-by-tag]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! clocktable-by-tag
   :recipe (:host github
            :repo "cashpw/clocktable-by-tag"))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! clocktable-by-tag
@@ -2642,16 +2654,24 @@ Group clocktable entries by their first tag.
 /[[github:progfolio/doct][progfolio/doct]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! doct)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! doct
   :commands (doct))
 #+end_src
 
+I use =doct= to configure my [[id:79489d89-5e68-403c-b4cd-a9b8a8598714][capture templates]].
+
 **** =doct-org-roam=
+
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! doct-org-roam
@@ -2659,10 +2679,15 @@ Group clocktable entries by their first tag.
            :repo "cashpw/doct-org-roam"))
 #+end_src
 
+***** Config
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! doct-org-roam
   :after doct)
 #+end_src
+
+I use =doct-org-roam= to configure my [[id:268230cd-01a4-4726-a9df-265e25839a11][capture templates]].
+
 **** =oc= (Org Citations)
 
 Emacs provides =oc= .
@@ -2675,12 +2700,16 @@ Digital Object Identifier (DOI) link support.
 This library introduces the "doi" link type in Org, and provides code for opening and exporting such links.
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! ol-doi
   :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
            :branch "main"
            :files ("lisp/ol-doi.el")))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 ;; (use-package! ol-doi
@@ -2695,9 +2724,13 @@ Aggregating a table is creating a new table by computing sums, averages, and so 
 /[[github:abo-abo/org-download]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! orgtbl-aggregate)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! orgtbl-aggregate)
@@ -2728,9 +2761,13 @@ Point B (the target) is an Emacs org-mode buffer where the inline link will be i
 /[[github:abo-abo/org-download]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-download)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-download
@@ -2754,6 +2791,8 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 [cite:@leonOrgFlashcards2022]
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-fc
   :recipe (:host github
@@ -2763,8 +2802,10 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
            :files (:defaults "awk" "demo.org")))
 #+end_src
 
+***** Config
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defvar         cashpw/org-fc--card-timer
+(defvar cashpw/org-fc--card-timer
   nil
   "The timer for the current card.")
 
@@ -3901,9 +3942,13 @@ This approximates a WYSiWYG HTML mail editor from within Emacs, and can be usefu
 /[[github:org-mime/org-mime][org-mime/org-mime]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-mime)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-mime)
@@ -3919,11 +3964,15 @@ It does not change the default behavior, it adds two functions to have multiple 
 https://gitlab.com/OlMon/org-multi-clock
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-multi-clock
   :recipe (:host gitlab
            :repo "OlMon/org-multi-clock"))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-multi-clock)
@@ -3937,13 +3986,15 @@ Org-noter’s purpose is to let you create notes that are kept in sync when you 
 /[[github:weirdNox/org-noter][weirdNox/org-noter]]/
 #+end_quote
 
-I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]]
+***** Config
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-noter
   :recipe (:host github
            :repo "cashpw/org-noter"))
 #+end_src
+
+I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
 
 **** =org-notmuch=
 
@@ -3953,9 +4004,13 @@ One of the more popular Notmuch [[[https://notmuchmail.org/][Notmuch]]] message 
 [cite:@Notmuchemacs]
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! ol-notmuch)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! ol-notmuch
@@ -3972,6 +4027,8 @@ https://orgmode.org/worg/org-contrib/org-protocol.html
 Doom provides =org-protocol=
 
 **** =org-protocol=
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-protocol
@@ -4002,6 +4059,8 @@ org-protocol is awesome, but browsers do a pretty poor job of turning a page’s
 https://github.com/alphapapa/org-protocol-capture-html
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-protocol-capture-html
   :recipe (:host github
@@ -4015,9 +4074,13 @@ https://github.com/alphapapa/org-protocol-capture-html
 This package provides a query language for Org files. It offers two syntax styles: Lisp-like sexps and search engine-like keywords.
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-ql)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-ql)
@@ -4025,11 +4088,15 @@ This package provides a query language for Org files. It offers two syntax style
 
 **** =org-recipes=
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-recipes
   :recipe (:host github
            :repo "cashpw/org-recipes"))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-recipes
@@ -4061,9 +4128,13 @@ Org-Roam-UI is a frontend for exploring and interacting with your [[https://gith
 https://github.com/org-roam/org-roam-ui
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-roam-ui)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-roam
@@ -4078,9 +4149,15 @@ A unified interface for Emacs' Org-mode block & link types
 [cite:@al-hassyUnifiedInterfaceEmacsOrgmodeBlockLinkTypes2023]
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; (package! org-special-block-extras)
 #+end_src
+
+Disabled because it slows down in org files.
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 ;; (use-package! org-special-block-extras
@@ -4111,26 +4188,38 @@ This package lets you "supercharge" your Org daily/weekly agenda. The idea is to
 /[[github:alphapapa/org-super-agenda][alphapapa/org-super-agenda]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-super-agenda)
 #+end_src
 **** =org-superstar=
 
 #+begin_quote
-TODO
+Prettify headings and plain lists in Org mode. This package is a direct descendant of ‘org-bullets’, with most of the code base completely rewritten. Currently, this package supports:
+
+https://github.com/integral-dw/org-superstar-mode
 #+end_quote
+
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-superstar
   :disable t)
 #+end_src
 
+Disabled because it slows down org files.
+
 **** =org-tempo=
 Provide support for multi-character =org-mode= structure template shortcuts (e.g. =<sp= for python code; see [[id:ce915eb8-d352-4aa2-9dca-5ada71fd18e1][Blocks]])
+
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; org-tempo is provided by org-mode
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-tempo)
@@ -4143,6 +4232,7 @@ Org-transclusion lets you insert a copy of text content via a file link or ID li
 [[github:nobiot/org-transclusion]]
 #+end_quote
 
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; (package! org-transclusion)
@@ -4156,10 +4246,13 @@ Org-transclusion lets you insert a copy of text content via a file link or ID li
 [[github:nobiot/org-transclusion]]
 #+end_quote
 
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-tree-slide)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-tree-slide)
@@ -4173,11 +4266,15 @@ Org-transclusion lets you insert a copy of text content via a file link or ID li
 https://github.com/flexibeast/org-vcard#table-of-contents
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-vcard)
 #+end_src
 
 **** =org-vcard=
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-vcard)
@@ -4189,6 +4286,8 @@ ox-hugo is an Org exporter backend that exports Org to Hugo-compatible Markdown 
 
 /[[github:kaushalmodi/ox-hugo]]/
 #+end_quote
+
+***** Package
 
 My corporate profile loads [[github:cashpw/ox-hugo-corp][cashpw/ox-hugo-corp]] -- a corporate-safe version of ox-hugo.
 
@@ -4210,6 +4309,7 @@ ox-pandoc is an exporter for Org mode which converts Org-mode files to a wide va
 /[[github:emacsorphanage/ox-pandoc][emacsorphanage/ox-pandoc]]/
 #+end_quote
 
+***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! ox-pandoc)
@@ -4223,11 +4323,15 @@ Group clocktable entries by their first tag.
 /[[github:cashpw/summarize-agenda-time][cashpw/summarize-agenda-time]]/
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! summarize-agenda-time
   :recipe (:host github
            :repo "cashpw/summarize-agenda-time"))
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! summarize-agenda-time
@@ -4245,15 +4349,20 @@ Group clocktable entries by their first tag.
 #+end_src
 
 **** =vulpea=
+
 #+begin_quote
 A collection of functions for note taking based on =org= and =org-roam=. This repository primary goal is to be a tested library for other applications and utilities around note taking.
 
 [cite:@VulpeaVulpeabuffer6a735c34f1f64e1f70da77989e9ce8da7864e5ffD12frostedVulpea]
 #+end_quote
 
+***** Package
+
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! vulpea)
 #+end_src
+
+***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! vulpea)
@@ -4714,7 +4823,50 @@ I use =org-roam= for public and private notes and keep them all in the same dire
 
 ***** Config
 
+Override =org-roam-db-sync= to insert a =message= call to aid in understanding why it's called so often in my Emacs start-up.
+
+#+begin_src emacs-lisp
+(defun org-roam-db-sync (&optional force)
+  "Synchronize the cache state with the current Org files on-disk.
+If FORCE, force a rebuild of the cache from scratch."
+  (interactive "P")
+  (message "org-roam-db-sync called %s force" (if force "with" "without"))
+  (org-roam-db--close) ;; Force a reconnect
+  (when force (delete-file org-roam-db-location))
+  (org-roam-db) ;; To initialize the database, no-op if already initialized
+  (org-roam-require '(org-ref oc))
+  (let* ((gc-cons-threshold org-roam-db-gc-threshold)
+         (org-agenda-files nil)
+         (org-roam-files (org-roam-list-files))
+         (current-files (org-roam-db--get-current-files))
+         (modified-files nil))
+    (dolist (file org-roam-files)
+      (let ((contents-hash (org-roam-db--file-hash file)))
+        (unless (string= (gethash file current-files)
+                         contents-hash)
+          (push file modified-files)))
+      (remhash file current-files))
+    (emacsql-with-transaction (org-roam-db)
+      (org-roam-dolist-with-progress (file (hash-table-keys current-files))
+          "Clearing removed files..."
+        (org-roam-db-clear-file file))
+      (org-roam-dolist-with-progress (file modified-files)
+          "Processing modified files..."
+        (condition-case err
+            (org-roam-db-update-file file 'no-require)
+          (error
+           (org-roam-db-clear-file file)
+           (lwarn 'org-roam :error "Failed to process %s with error %s, skipping..."
+                  file (error-message-string err))))))))
+#+end_src
+
+#+RESULTS:
+: org-roam-db-sync
+
 ****** Capture templates
+:PROPERTIES:
+:ID:       268230cd-01a4-4726-a9df-265e25839a11
+:END:
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! doct-org-roam
@@ -7066,6 +7218,9 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
 #+end_src
 
 *** TODO Capture Templates
+:PROPERTIES:
+:ID:       79489d89-5e68-403c-b4cd-a9b8a8598714
+:END:
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
