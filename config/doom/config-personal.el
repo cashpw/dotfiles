@@ -3568,16 +3568,17 @@ ${file}
                                                                     :head ("#+title: %<%Y-%m-%d>"
                                                                            "#+author: Cash Prokop-Weaver"
                                                                            "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                           "#+filetags: :journal:private:"
+                                                                           "#+category: Journal"
+                                                                           "#+filetags: :journal:private:hastodo:"
                                                                            "
 * TODO Journal
-:SCHEDULED: [%<%Y-%m-%d %a>]
+SCHEDULED: <%<%Y-%m-%d %a>>
 :PROPERTIES:
 :Effort:   15m
 :END:
 
 * TODO Gratitude
-:SCHEDULED: [%<%Y-%m-%d %a>]
+SCHEDULED: <%<%Y-%m-%d %a>>
 :PROPERTIES:
 :Effort:   2m
 :END:
@@ -3587,7 +3588,7 @@ ${file}
 3. TODO
 
 * TODO Retrospective
-:SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d>\") (days-to-time 1)) nil t)
+SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d>\") (days-to-time 1)))
 :PROPERTIES:
 :Effort:   1m
 :END:
