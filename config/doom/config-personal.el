@@ -150,6 +150,22 @@ Reference: https://emacs.stackexchange.com/a/43985"
      daylight-savings-time-p
      utc-offset)))
 
+(defun cashpw/grep (command-string)
+  "Return grep, with COMMAND-STRING, results as a list."
+  (split-string
+   (shell-command-to-string
+    (format
+     "grep %s"
+     command-string))))
+
+(defun cashpw/rgrep (command-string)
+  "Return rgrep, with COMMAND-STRING, results as a list."
+  (split-string
+   (shell-command-to-string
+    (format
+     "rgrep %s"
+     command-string))))
+
 (defcustom cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
   "Projects directory."
@@ -2668,31 +2684,22 @@ The exporting happens only when Org Capture is not in progress."
 
 (defun cashpw/org-roam-files-with-tag (tag &optional skip-sync)
   "Return a list of note files containing 'hastodo tag."
-  (when skip-sync
-    (org-roam-db-sync))
-  (seq-uniq
-   (seq-map
-    #'car
-    (org-roam-db-query
-     [:select [nodes:file]
-      :from tags
-      :left-join nodes
-      :on (= tags:node-id
-             nodes:id)
-      :where (like tag
-                   $s1)]
-     tag))))
+  (cashpw/rgrep
+   (format
+   "-l '#.filetags.*:%s:' %s*.org"
+   tag
+   (cashpw/maybe-add-trailing-forward-slash
+    org-roam-directory))))
 
 (defun cashpw/org-roam-files-with-tags (tag1 tag2 &rest tags)
   "Return a list of note files tagged with all TAGS."
-  (org-roam-db-sync)
-  (--reduce
-   (-intersection acc it)
-   (--map
-    (cashpw/org-roam-files-with-tag it t)
-    (append tags
-            (list tag1)
-            (list tag2)))))
+  (cashpw/grep
+   (format
+    "-Pl '^(?=.*filetags:.*:%s:)(?=.*filetags.*:%s:)' %s*.org"
+    tag1
+    tag2
+    (cashpw/maybe-add-trailing-forward-slash
+     org-roam-directory))))
 
 (defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
