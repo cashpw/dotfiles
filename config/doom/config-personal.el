@@ -1984,34 +1984,7 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
            60)))))))
 
 (defcustom cashpw/org-gcal--summary-categories
-  (-flatten
-   (--map
-    (-flatten
-     (let ((category (car it))
-           (summaries (cdr it)))
-       (--map
-        `(,it . ,category)
-        summaries)))
-    '(("Fitness" . ("Shoulders"
-                    "Back"
-                    "Chest"
-                    "Legs"
-                    "Mobility, Grip, Neck"
-                    "Cardio"
-                    "Stretch"
-                    "Walk"))
-      ("Hygeine" . ("Shower"
-                    "Brush teeth"
-                    "Shave"
-                    "Acne"))
-      ("Pottery" . ("Pottery"
-                    "Wheel Projects with Khaled"))
-      ("Study" . ("Study"
-                  "Flashcards"))
-      ("Food" . ("Huel shake"))
-      ("Sleep" . ("Sleep"
-                  "Fall asleep"))
-      ("R&R" . ("R&R")))))
+  '()
   "List of calendar event summaries and their categories."
   :group 'cashpw
   :type 'sexp)
@@ -2019,13 +1992,15 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 (defun cashpw/org-gcal--set-category (_calendar-id event _update-mode)
   "Set appropriate category for EVENT."
   (when-let ((summary (plist-get event :summary)))
+    (message "Setting category for %s" summary)
     (dolist (summary-category cashpw/org-gcal--summary-categories)
       (when (string-match-p (car summary-category) summary)
         (org-set-property
          "CATEGORY"
          (cdr summary-category))))))
 
-(defcustom cashpw/org-gcal--summaries-to-exclude '()
+(defcustom cashpw/org-gcal--summaries-to-exclude
+  '()
   "List of event summaries, as regexps, (titles) which should be excluded during sync/fetch."
   :type '(repeat string)
   :group 'org-gcal)
@@ -2033,6 +2008,7 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 (defun cashpw/org-gcal--filter-summaries (item)
   "Return nil to exclude the result."
   (let ((summary (plist-get item :summary)))
+    (message "Filtering summary: %s" summary)
     (if (--any (string-match it summary)
                cashpw/org-gcal--summaries-to-exclude)
         nil
@@ -2215,8 +2191,7 @@ Return nil if no attendee exists with that EMAIL."
     (org-read-date t t time-string nil)))
 
 (defcustom cashpw/org-gcal--no-prep-reminder-summaries
-  '("Walk"
-    "Clean house")
+  '()
   "List of event summaries (titles), as regexps, for which we shouldn't create 'Prepare: ...' todos."
   :type '(repeat string)
   :group 'org-gcal)
@@ -2315,7 +2290,11 @@ Return nil if no attendee exists with that EMAIL."
             (plist-get
              event
              :end)
-            :dateTime))))
+            :dateTime)))
+         (inhibit-message
+          t)
+         (message-log-max
+          nil))
       (cashpw/org-gcal--set-logbook
        start-time
        end-time)
@@ -2333,14 +2312,42 @@ Return nil if no attendee exists with that EMAIL."
    t
    end-time))
 
+(defcustom cashpw/org-gcal--current-profile
+  nil
+  "The current active profile, set in `cashpw/org-gcal-activate-profile'."
+  :type 'string
+  :group 'cashpw)
+
 (defun cashpw/org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
-   cashpw/org-gcal--summaries-to-exclude (plist-get profile :summaries-to-exclude)
    cashpw/org-gcal--current-profile profile
-   org-gcal-client-id (plist-get profile :client-id)
-   org-gcal-client-secret (plist-get profile :client-secret)
-   org-gcal-fetch-file-alist (plist-get profile :fetch-file-alist))
+   cashpw/org-gcal--no-prep-reminder-summaries (plist-get
+                                                profile
+                                                :no-prep-reminder-summaries)
+   cashpw/org-gcal--summary-categories (-flatten
+                                        (--map
+                                         (-flatten
+                                          (let ((category (car it))
+                                                (summaries (cdr it)))
+                                            (--map
+                                             `(,it . ,category)
+                                             summaries)))
+                                         (plist-get
+                                          profile
+                                          :summary-categories)))
+   cashpw/org-gcal--summaries-to-exclude (plist-get
+                                          profile
+                                          :summaries-to-exclude)
+   org-gcal-client-id (plist-get
+                       profile
+                       :client-id)
+   org-gcal-client-secret (plist-get
+                           profile
+                           :client-secret)
+   org-gcal-fetch-file-alist (plist-get
+                              profile
+                              :fetch-file-alist))
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
 
@@ -2350,14 +2357,35 @@ Return nil if no attendee exists with that EMAIL."
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
     :client-secret ,(cashpw/get-secret
                      "org-gcal--personal")
+    :no-prep-reminder-summaries ("Walk"
+                                 "Clean house")
+    :summary-categories (("Fitness" . ("Shoulders"
+                                       "Back"
+                                       "Chest"
+                                       "Legs"
+                                       "Mobility, Grip, Neck"
+                                       "Cardio"
+                                       "Stretch"
+                                       "Walk"))
+                         ("Hygeine" . ("Shower"
+                                       "Brush teeth"
+                                       "Teeth"
+                                       "Shave"
+                                       "Acne"))
+                         ("Pottery" . ("Pottery"
+                                       "Wheel Projects with Khaled"))
+                         ("Study" . ("Study"
+                                     "Flashcards"))
+                         ("Food" . ("Huel shake"))
+                         ("Sleep" . ("Sleep"
+                                     "Fall asleep"))
+                         ("R&R" . ("R&R")))
     :summaries-to-exclude ("^Nap$"
                            "^Sleeping$"
                            "^Work$"
                            "^Lunch$"
-                           "^Home" ; Google Calendar working location event
                            "^End the day"
-                           "^Evening chores"
-                           "^Focus time (ask before scheduling)"))
+                           "^Evening chores"))
   "Personal configuration for `org-gcal'."
   :group 'cashpw
   :type 'sexp)
@@ -2418,8 +2446,8 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-gcal
   :custom
   (plstore-cache-passphrase-for-symmetric-encryption t)
-  (org-gcal-up-days 30)
-  (org-gcal-down-days 30)
+  (org-gcal-up-days 1)
+  (org-gcal-down-days 7)
   (org-gcal-remove-cancelled-events t)
   (org-gcal-remove-events-with-cancelled-todo t)
   ;; See https://github.com/kidd/org-gcal.el/issues/172
