@@ -2382,6 +2382,7 @@ Return nil if no attendee exists with that EMAIL."
                          ("R&R" . ("R&R")))
     :summaries-to-exclude ("^Nap$"
                            "^Sleeping$"
+                           "^Journal$"  ; Journal TODOs are in the journal files.
                            "^Work$"
                            "^Lunch$"
                            "^End the day"
