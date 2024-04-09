@@ -2666,9 +2666,10 @@ The exporting happens only when Org Capture is not in progress."
         ;;     (save-buffer)))
         ))))
 
-(defun cashpw/org-roam-files-with-tag (tag)
+(defun cashpw/org-roam-files-with-tag (tag &optional skip-sync)
   "Return a list of note files containing 'hastodo tag."
-  (org-roam-db-sync)
+  (when skip-sync
+    (org-roam-db-sync))
   (seq-uniq
    (seq-map
     #'car
@@ -2688,7 +2689,7 @@ The exporting happens only when Org Capture is not in progress."
   (--reduce
    (-intersection acc it)
    (--map
-    (cashpw/org-roam-files-with-tag it)
+    (cashpw/org-roam-files-with-tag it t)
     (append tags
             (list tag1)
             (list tag2)))))
