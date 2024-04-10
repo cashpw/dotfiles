@@ -165,6 +165,10 @@
   :recipe (:host github
            :repo "cashpw/org-extras"))
 
+(package! org-roam-contacts
+  :recipe (:host github
+           :repo "cashpw/org-roam-contacts"))
+
 (package! citar-org-roam
   :recipe (:host github
            :repo "emacs-citar/citar-org-roam"))
