@@ -369,11 +369,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
   :config
   (setq-default
-   gptel-model "gemini-pro"
+   gptel-model "gemini-1.5-pro-latest"
    gptel-backend (gptel-make-gemini "Gemini"
                    :key (cashpw/get-secret "personal-gemini")
-                   :models '("gemini-pro"
-                             "gemini-ultra")
                    :stream t))
 
   (defun cashpw/gptel-send (prompt)
