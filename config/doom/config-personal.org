@@ -3498,31 +3498,28 @@ Return nil if no attendee exists with that EMAIL."
           (plist-get
            event
            :summary)))
-    (when-let
-        ((start-time
-          (org-gcal--parse-calendar-time-string
-           (plist-get
-            (plist-get
-             event
-             :start)
-            :dateTime)))
-         (end-time
-          (org-gcal--parse-calendar-time-string
-           (plist-get
-            (plist-get
-             event
-             :end)
-            :dateTime)))
-         (inhibit-message
-          t)
-         (message-log-max
-          nil))
-      (cashpw/org-gcal--set-logbook
-       start-time
-       end-time)
-      ;; (org-todo
-      ;;  "DONE")
-      )))
+    (let ((inhibit-message
+           t)
+          (message-log-max
+           nil))
+      (when-let
+          ((start-time
+            (org-gcal--parse-calendar-time-string
+             (plist-get
+              (plist-get
+               event
+               :start)
+              :dateTime)))
+           (end-time
+            (org-gcal--parse-calendar-time-string
+             (plist-get
+              (plist-get
+               event
+               :end)
+              :dateTime))))
+        (cashpw/org-gcal--set-logbook
+         start-time
+         end-time)))))
 
 (defun cashpw/org-gcal--set-logbook (start-time end-time)
   "Set logbook entries for EVENT for the full scheduled time."
@@ -3638,24 +3635,19 @@ Return nil if no attendee exists with that EMAIL."
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
-  (cashpw/org-gcal-clear-and-fetch)
-  ;; (interactive "nDays to fetch: ")
-  ;; (org-gcal-sync-tokens-clear)
-  ;; (let ((calendar-path
-  ;;        (cdr
-  ;;         (car
-  ;;          org-gcal-fetch-file-alist)))
-  ;;       (org-gcal-up-days n-days)
-  ;;       (org-gcal-down-days 1)
-  ;;       (previous-profile
-  ;;        cashpw/org-gcal--current-profile))
-  ;;   (cashpw/org-gcal-activate-profile
-  ;;    cashpw/org-gcal--profile-sleep)
-  ;;   (let ((org-agenda-files `(,calendar-path)))
-  ;;     (org-gcal-fetch))
-  ;;   (cashpw/org-gcal-activate-profile
-  ;;    previous-profile))
-  )
+  (interactive "nDays to fetch: ")
+  (org-gcal-sync-tokens-clear)
+  (let ((org-gcal-up-days
+         n-days)
+        (org-gcal-down-days
+         1))
+    (cl-letf (((symbol-function
+                'cashpw/org-gcal--filter-summaries)
+               (lambda (summary)
+                 (string=
+                  summary
+                  "Sleep"))))
+      (org-gcal-fetch))))
 #+end_src
 
 ****** Fetch
