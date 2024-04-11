@@ -696,9 +696,25 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                 "~/.config/email-signature-personal"))
    gnus-alias-default-identity "cashbweaver@gmail"))
 
+(defun cashpw/notmuch--toggle-all-open ()
+  "Toggle `cashpw/notmuch-all-open' between nil and t."
+  (condition-case nil
+      (setq-local
+       cashpw/notmuch-all-open (not cashpw/notmuch-all-open))
+    (error
+     (setq-local
+      cashpw/notmuch-all-open t)
+     nil)))
+
 (defun cashpw/notmuch-show-open-or-close-all ()
   "Toggle between showing and hiding all messages in the thread."
-  (interactive))
+  (interactive)
+  (cashpw/notmuch--toggle-all-open)
+  (if cashpw/notmuch-all-open
+      (progn
+        (universal-argument)
+        (notmuch-show-open-or-close-all))
+    (notmuch-show-open-or-close-all)))
 
 (defun cashpw/notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."

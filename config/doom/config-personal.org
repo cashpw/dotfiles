@@ -1561,9 +1561,25 @@ Doom emacs provides =notmuch= through =init.el=.
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch--toggle-all-open ()
+  "Toggle `cashpw/notmuch-all-open' between nil and t."
+  (condition-case nil
+      (setq-local
+       cashpw/notmuch-all-open (not cashpw/notmuch-all-open))
+    (error
+     (setq-local
+      cashpw/notmuch-all-open t)
+     nil)))
+
 (defun cashpw/notmuch-show-open-or-close-all ()
   "Toggle between showing and hiding all messages in the thread."
-  (interactive))
+  (interactive)
+  (cashpw/notmuch--toggle-all-open)
+  (if cashpw/notmuch-all-open
+      (progn
+        (universal-argument)
+        (notmuch-show-open-or-close-all))
+    (notmuch-show-open-or-close-all)))
 
 (defun cashpw/notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
