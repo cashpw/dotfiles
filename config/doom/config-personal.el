@@ -353,51 +353,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (use-package! titlecase)
 
-;; (use-package! llm)
-;;   :config
-;;   )
-
-(use-package! gptel
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-directives '((default . "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")
-                      (chain-of-thought . "You are a large language model living and a helpful assistant. First, enumerate a list of steps one should follow to find an appropriate answer. Second, follow those steps and show your work.")
-                      (follow-up . "Assume the persona of a peer and colleague who is working with me to understand and expand on an idea or question. Respond with between three and ten follow-up questions or considerations. Format your response in markdown.")
-                      (writing . "You are a large language model and a writing assistant. Respond concisely.")
-                      (programming . "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt, or note.")
-                      (chat . "You are a large language model and a conversation partner. Respond concisely.")))
-
-  :config
-  (setq-default
-   gptel-model "gemini-1.5-pro-latest"
-   gptel-backend (gptel-make-gemini "Gemini"
-                   :key (cashpw/get-secret "personal-gemini")
-                   :stream t))
-
-  (defun cashpw/gptel-send (prompt)
-    "Invoke `gptel-send' with specific PROMPT."
-    (let ((gptel--system-message prompt))
-      (gptel-send))))
-
-(after! (:and gptel whisper)
-  (setq
-   cashpw/gptel-after-whisper nil)
-
-  (defun cashpw/whisper-run-and-cue-gptel ()
-    (interactive)
-    (setq
-     cashpw/gptel-after-whisper t)
-    (whisper-run))
-
-  (defun cashpw/maybe-gptel-after-whisper ()
-    (when cashpw/gptel-after-whisper
-      (gptel-send)
-      (setq
-       cashpw/gptel-after-whisper nil)))
-
-  (add-hook 'whisper-post-insert-hook
-            #'cashpw/maybe-gptel-after-whisper))
-
 (use-package! whisper
   :config
   (setq whisper-install-directory "~/.config/emacs/.local/cache/"
@@ -1148,6 +1103,65 @@ ${content}"))
            'cashpw/source-control--commit--insert-message)
 
 (use-package! gnuplot)
+
+(defvar cashpw/llm--default-prompt
+  "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")
+
+(defvar cashpw/llm--chain-of-thought-prompt
+  "You are a large language model living and a helpful assistant. First, enumerate a list of steps one should follow to find an appropriate answer. Second, follow those steps and show your work.")
+
+(defvar cashpw/llm--follow-up-prompt
+  "Assume the persona of a peer and colleague who is working with me to understand and expand on an idea or question. Respond with between three and ten follow-up questions or considerations. Format your response in markdown.")
+
+(defvar cashpw/llm--writing-prompt
+  "You are a large language model and a writing assistant. Respond concisely.")
+
+(defvar cashpw/llm--programming-prompt
+  "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt, or note.")
+
+(defvar cashpw/llm--chat-prompt
+  "You are a large language model and a conversation partner. Respond concisely.")
+
+(use-package! gptel
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-directives `((default . ,cashpw/llm--default-prompt)
+                      (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
+                      (follow-up . ,cashpw/llm--follow-up-prompt)
+                      (writing . ,cashpw/llm--writing-prompt)
+                      (programming . ,cashpw/llm--programming-prompt)
+                      (chat . ,cashpw/llm--chat-prompt)))
+
+  :config
+  (setq-default
+   gptel-model "gemini-1.5-pro-latest"
+   gptel-backend (gptel-make-gemini "Gemini"
+                   :key (cashpw/get-secret "personal-gemini")
+                   :stream t))
+
+  (defun cashpw/gptel-send (prompt)
+    "Invoke `gptel-send' with specific PROMPT."
+    (let ((gptel--system-message prompt))
+      (gptel-send))))
+
+(after! (:and gptel whisper)
+  (setq
+   cashpw/gptel-after-whisper nil)
+
+  (defun cashpw/whisper-run-and-cue-gptel ()
+    (interactive)
+    (setq
+     cashpw/gptel-after-whisper t)
+    (whisper-run))
+
+  (defun cashpw/maybe-gptel-after-whisper ()
+    (when cashpw/gptel-after-whisper
+      (gptel-send)
+      (setq
+       cashpw/gptel-after-whisper nil)))
+
+  (add-hook 'whisper-post-insert-hook
+            #'cashpw/maybe-gptel-after-whisper))
 
 (setq
  company-idle-delay 1

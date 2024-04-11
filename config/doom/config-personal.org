@@ -568,81 +568,6 @@ Convert English text to Title Case.
 (use-package! titlecase)
 #+end_src
 
-*** =llm= (LLM; AI)
-
-**** Package
-#+begin_src emacs-lisp :tangle packages-personal.el
-;; (package! llm)
-#+end_src
-
-**** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (use-package! llm)
-;;   :config
-;;   )
-#+end_src
-
-*** =gptel= (LLM; AI)
-
-#+begin_quote
-GPTel is a simple Large Language Model chat client for Emacs, with support for multiple models and backends.
-
-[cite:@karthinkKarthinkGptel2024]
-#+end_quote
-
-**** Package
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! gptel)
-#+end_src
-
-**** Config
-
-1. Enumerate the steps you take to reason through and arrive at your response.
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! gptel
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-directives '((default . "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")
-                      (chain-of-thought . "You are a large language model living and a helpful assistant. First, enumerate a list of steps one should follow to find an appropriate answer. Second, follow those steps and show your work.")
-                      (follow-up . "Assume the persona of a peer and colleague who is working with me to understand and expand on an idea or question. Respond with between three and ten follow-up questions or considerations. Format your response in markdown.")
-                      (writing . "You are a large language model and a writing assistant. Respond concisely.")
-                      (programming . "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt, or note.")
-                      (chat . "You are a large language model and a conversation partner. Respond concisely.")))
-
-  :config
-  (setq-default
-   gptel-model "gemini-1.5-pro-latest"
-   gptel-backend (gptel-make-gemini "Gemini"
-                   :key (cashpw/get-secret "personal-gemini")
-                   :stream t))
-
-  (defun cashpw/gptel-send (prompt)
-    "Invoke `gptel-send' with specific PROMPT."
-    (let ((gptel--system-message prompt))
-      (gptel-send))))
-
-(after! (:and gptel whisper)
-  (setq
-   cashpw/gptel-after-whisper nil)
-
-  (defun cashpw/whisper-run-and-cue-gptel ()
-    (interactive)
-    (setq
-     cashpw/gptel-after-whisper t)
-    (whisper-run))
-
-  (defun cashpw/maybe-gptel-after-whisper ()
-    (when cashpw/gptel-after-whisper
-      (gptel-send)
-      (setq
-       cashpw/gptel-after-whisper nil)))
-
-  (add-hook 'whisper-post-insert-hook
-            #'cashpw/maybe-gptel-after-whisper))
-#+end_src
-
 *** =whisper.el=
 
 #+begin_quote
@@ -2108,6 +2033,91 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! gnuplot)
+#+end_src
+
+** Large language models (LLMs)
+
+*** Prompts
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/llm--default-prompt
+  "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")
+
+(defvar cashpw/llm--chain-of-thought-prompt
+  "You are a large language model living and a helpful assistant. First, enumerate a list of steps one should follow to find an appropriate answer. Second, follow those steps and show your work.")
+
+(defvar cashpw/llm--follow-up-prompt
+  "Assume the persona of a peer and colleague who is working with me to understand and expand on an idea or question. Respond with between three and ten follow-up questions or considerations. Format your response in markdown.")
+
+(defvar cashpw/llm--writing-prompt
+  "You are a large language model and a writing assistant. Respond concisely.")
+
+(defvar cashpw/llm--programming-prompt
+  "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt, or note.")
+
+(defvar cashpw/llm--chat-prompt
+  "You are a large language model and a conversation partner. Respond concisely.")
+#+end_src
+
+*** Packages
+**** =gptel=
+
+#+begin_quote
+GPTel is a simple Large Language Model chat client for Emacs, with support for multiple models and backends.
+
+[cite:@karthinkKarthinkGptel2024]
+#+end_quote
+
+***** Package
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! gptel)
+#+end_src
+
+***** Config
+
+1. Enumerate the steps you take to reason through and arrive at your response.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! gptel
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-directives `((default . ,cashpw/llm--default-prompt)
+                      (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
+                      (follow-up . ,cashpw/llm--follow-up-prompt)
+                      (writing . ,cashpw/llm--writing-prompt)
+                      (programming . ,cashpw/llm--programming-prompt)
+                      (chat . ,cashpw/llm--chat-prompt)))
+
+  :config
+  (setq-default
+   gptel-model "gemini-1.5-pro-latest"
+   gptel-backend (gptel-make-gemini "Gemini"
+                   :key (cashpw/get-secret "personal-gemini")
+                   :stream t))
+
+  (defun cashpw/gptel-send (prompt)
+    "Invoke `gptel-send' with specific PROMPT."
+    (let ((gptel--system-message prompt))
+      (gptel-send))))
+
+(after! (:and gptel whisper)
+  (setq
+   cashpw/gptel-after-whisper nil)
+
+  (defun cashpw/whisper-run-and-cue-gptel ()
+    (interactive)
+    (setq
+     cashpw/gptel-after-whisper t)
+    (whisper-run))
+
+  (defun cashpw/maybe-gptel-after-whisper ()
+    (when cashpw/gptel-after-whisper
+      (gptel-send)
+      (setq
+       cashpw/gptel-after-whisper nil)))
+
+  (add-hook 'whisper-post-insert-hook
+            #'cashpw/maybe-gptel-after-whisper))
 #+end_src
 
 * Languages

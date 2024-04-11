@@ -14,10 +14,6 @@
 
 (package! titlecase)
 
-;; (package! llm)
-
-(package! gptel)
-
 (package! whisper
   :recipe (:host github
            :repo "natrys/whisper.el"))
@@ -114,6 +110,8 @@
 (package! smtpmail)
 
 (package! gnuplot)
+
+(package! gptel)
 
 (package! aggressive-indent)
 
