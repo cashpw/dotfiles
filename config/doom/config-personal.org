@@ -1470,7 +1470,6 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! w3m)
 #+end_src
-
 ** Calendar
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
