@@ -1043,6 +1043,32 @@ TAGS which start with \"-\" are excluded."
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "waiting"))))
 
+(defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
+  "Converts the current buffer to org-mode in place."
+  (interactive)
+  (let ((buffer-content
+         (buffer-string))
+        (tmp-file
+         (format
+          "/tmp/%s.md"
+          (format-time-string
+           "%s" (current-time)))))
+    (with-temp-buffer
+      (insert
+       buffer-content)
+      (write-file
+       tmp-file))
+    (erase-buffer)
+    (insert
+     (shell-command-to-string
+      (concat
+       (format
+        "pandoc --wrap=none -f markdown -t org %s"
+        tmp-file)
+       ;; Remove :PROPERTIES: drawers beneath headings
+       " | sed -E '/^[[:space:]]*:/d'")))
+    (org-mode)))
+
 (defgroup cashpw/source-control nil
   "Source control."
   :group 'cashpw)

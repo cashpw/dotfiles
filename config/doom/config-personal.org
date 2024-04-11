@@ -1952,6 +1952,45 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 
 #+end_src
 
+** =pandoc=
+
+#+begin_quote
+If you need to convert files from one markup format into another, pandoc is your swiss-army knife.
+
+https://pandoc.org/
+#+end_quote
+
+*** Helper functions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
+  "Converts the current buffer to org-mode in place."
+  (interactive)
+  (let ((buffer-content
+         (buffer-string))
+        (tmp-file
+         (format
+          "/tmp/%s.md"
+          (format-time-string
+           "%s" (current-time)))))
+    (with-temp-buffer
+      (insert
+       buffer-content)
+      (write-file
+       tmp-file))
+    (erase-buffer)
+    (insert
+     (shell-command-to-string
+      (concat
+       (format
+        "pandoc --wrap=none -f markdown -t org %s"
+        tmp-file)
+       ;; Remove :PROPERTIES: drawers beneath headings
+       " | sed -E '/^[[:space:]]*:/d'")))
+    (org-mode)))
+#+end_src
+
+
 ** Source control
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
