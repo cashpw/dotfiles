@@ -710,7 +710,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (use-package! ox-gfm)
 (after! emacs-everywhere
   (setq
-   emacs-everywhere-pandoc-args "-f markdown-auto_identifiers -f markdown-smart -f markdown+pipe_tables")
+   emacs-everywhere-pandoc-md-args '("-f" "markdown-auto_identifiers"
+                                     "-f" "markdown-smart"
+                                     "-f" "markdown+pipe_tables"
+                                     "-t" "org")
   (add-to-list 'emacs-everywhere-markdown-windows "Buganizer")
   (add-to-list 'emacs-everywhere-markdown-windows "Critique")
   (map!
