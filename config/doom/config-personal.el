@@ -668,13 +668,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    emacs-everywhere-pandoc-md-args '("-f" "markdown-auto_identifiers"
                                      "-f" "markdown-smart"
                                      "-f" "markdown+pipe_tables"
-                                     "-t" "org")
-  (add-to-list 'emacs-everywhere-markdown-windows "Buganizer")
-  (add-to-list 'emacs-everywhere-markdown-windows "Critique")
-  (map!
-   :map emacs-everywhere-mode-map
-   ;; https://github.com/tecosaur/emacs-everywhere/issues/75
-   "C-c C-c" #'emacs-everywhere--finish-or-ctrl-c-ctrl-c))
+                                     "-t" "org"))
+  (--each
+      '("Buganizer"
+        "Critique")
+    (add-to-list
+     'emacs-everywhere-markdown-windows
+     it)))
 
 (use-package! gnus-alias
   :config
