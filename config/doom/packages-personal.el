@@ -2,25 +2,31 @@
   :recipe (:host github
            :repo "cashpw/day-of-week"))
 
+(package! aggressive-indent)
+
 ;; (package! auth-source-xoauth2)
 
-(package! command-log-mode)
-
 (package! centered-cursor-mode)
+
+(package! command-log-mode)
 
 (package! free-keys
   :recipe (:host github
            :repo "Fuco1/free-keys"))
+
+(package! memoize
+  :recipe (:host github
+           :repo "skeeto/emacs-memoize"))
+
+(package! operate-on-number
+  :recipe (:host github
+           :repo "knu/operate-on-number.el"))
 
 (package! titlecase)
 
 (package! whisper
   :recipe (:host github
            :repo "natrys/whisper.el"))
-
-(package! memoize
-  :recipe (:host github
-           :repo "skeeto/emacs-memoize"))
 
 (package! org-wild-notifier)
 
@@ -113,11 +119,9 @@
 
 (package! gptel)
 
-(package! aggressive-indent)
-
-(package! operate-on-number
+(package! eglot-booster
   :recipe (:host github
-           :repo "knu/operate-on-number.el"))
+           :repo "jdtsmith/eglot-booster"))
 
 ;; (package! flycheck-vale)
 

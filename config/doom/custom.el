@@ -5,25 +5,7 @@
  ;; If there is more than one, they won't work right.
  '(magit-todos-insert-after '(bottom) nil nil "Changed by setter of obsolete option `magit-todos-insert-at'")
  '(safe-local-variable-values
-   '((eval and
-      (fboundp 'toc-org-mode)
-      (toc-org-mode 1))
-     (toc-org-max-depth . 4)
-     (elisp-lint-indent-specs
-      (describe . 1)
-      (it . 1)
-      (thread-first . 0)
-      (cl-flet . 1)
-      (cl-flet* . 1)
-      (org-element-map . defun)
-      (org-roam-dolist-with-progress . 2)
-      (org-roam-with-temp-buffer . 1)
-      (org-with-point-at . 1)
-      (magit-insert-section . defun)
-      (magit-section-case . 0)
-      (org-roam-with-file . 2))
-     (elisp-lint-ignored-validators "byte-compile" "package-lint")
-     (eval progn
+   '((eval progn
       (defun cashpw/get-property
           (property)
         (save-excursion
@@ -42,21 +24,21 @@
                                       (replace-regexp-in-string " " "-" roam-alias))))
          (split-string roam-aliases "\" \"" nil)))
       (defun cashpw/get-aliases nil
-        (interactive)
-        (let*
-            ((roam-aliases
-              (cashpw/get-property "ROAM_ALIASES"))
-             (aliases
-              (if roam-aliases
-                  (cashpw/split-aliases-to-string roam-aliases)
-                'nil)))
-          (string-join
-           (mapcar
-            (lambda
-              (roam-alias)
-              (s-lex-format "/posts/${roam-alias}"))
-            aliases)
-           " ")))
+       (interactive)
+       (let*
+           ((roam-aliases
+             (cashpw/get-property "ROAM_ALIASES"))
+            (aliases
+             (if roam-aliases
+                 (cashpw/split-aliases-to-string roam-aliases)
+               'nil)))
+         (string-join
+          (mapcar
+           (lambda
+             (roam-alias)
+             (s-lex-format "/posts/${roam-alias}"))
+           aliases)
+          " ")))
       (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save)
       (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified))
      (eval setq-local org-roam-directory
@@ -72,7 +54,6 @@
       org-roam-db-location
       (expand-file-name "org-roam.db" org-roam-directory)
       org-hugo-auto-set-lastmod t)
-     (eval setq-local org-refile-use-outline-path nil)
      (eval progn
       (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save)
       (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified))
@@ -103,4 +84,4 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(ts-fold-replacement-face ((t (:foreground unspecified :box nil :inherit font-lock-comment-face :weight light)))))
+ )

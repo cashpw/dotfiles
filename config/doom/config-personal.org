@@ -69,6 +69,32 @@ Use YEAR-MONTH-DAY date style.
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! day-of-week)
 #+end_src
+**** Search and replace
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/replace-regexp-in-buffer (regexp replacement &optional buffer)
+  "Replace all occurences of REGEXP in BUFFER with REPLACMENT."
+  (with-current-buffer
+      (or buffer
+          (current-buffer))
+    (save-excursion
+      (goto-char
+       (point-min))
+      (while (re-search-forward
+              regexp
+              nil
+              t)
+        (replace-match
+         replacement)))))
+
+(defun cashpw/replace-regexp-in-file (regexp replacement file-path)
+  "Replace all occurences of REGEXP in FILE-PATH with REPLACMENT."
+  (cashpw/replace-regexp-in-buffer
+   regexp
+   replacement
+   (find-file-noselect
+    file-path)))
+#+end_src
 
 **** ISO Week
 
@@ -463,6 +489,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 #+end_src
 
 ** Packages
+*** =aggressive-indent=
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! aggressive-indent)
+#+end_src
+
 *** =auth-source-xoauth2=
 
 #+begin_quote
@@ -484,6 +517,20 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 ;;   :config
 ;;   ;; (auth-source-xoauth2-enable)
 ;;   )
+#+end_src
+
+*** =centered-cursor-mode=
+
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! centered-cursor-mode)
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! centered-cursor-mode)
 #+end_src
 
 *** =command-log-mode=
@@ -509,20 +556,6 @@ Alternatives include:
    command-log-mode-open-log-turns-on-mode t
    command-log-mode-window-size 80
    command-log-mode-is-global t))
-#+end_src
-
-*** =centered-cursor-mode=
-
-**** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! centered-cursor-mode)
-#+end_src
-
-**** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! centered-cursor-mode)
 #+end_src
 
 *** =evil=
@@ -551,6 +584,41 @@ Show free bindings in current buffer.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! free-keys)
+#+end_src
+
+*** =memoize=
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! memoize
+  :recipe (:host github
+           :repo "skeeto/emacs-memoize"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! memoize)
+#+end_src
+
+*** =operate-on-number=
+
+#+begin_quote
+Suppose the point is on some number.  If you want to double it,
+invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
+
+/[[github:knu/operate-on-number.el/blob/master/operate-on-number.el][operate-on-number.el]]/
+#+end_quote
+
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! operate-on-number
+  :recipe (:host github
+           :repo "knu/operate-on-number.el"))
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! operate-on-number)
 #+end_src
 
 *** =titlecase=
@@ -608,16 +676,20 @@ How long does each model take to transcribe "I'm saying this at <HH:MM> and <SS>
         whisper-return-cursor-to-start nil))
 #+end_src
 
-*** =memoize=
+*** =writeroom-mode=
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! memoize
-  :recipe (:host github
-           :repo "skeeto/emacs-memoize"))
-#+end_src
+**** Package
+
+=init.el= provides =writeroom-mode=.
+
+**** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! memoize)
+(use-package! writeroom-mode
+  :config
+  (setq
+   +zen-mixed-pitch-modes '()
+   writeroom-width 45))
 #+end_src
 
 ** Notifications
@@ -989,6 +1061,9 @@ The base configuration files (=init.el=, =config.el=, and =packages.el=) include
 #+HTMl: </details>
 
 ** =init.el=
+:PROPERTIES:
+:ID:       c3d59127-e33c-4849-9708-74548f6ffc5c
+:END:
 
 #+begin_src emacs-lisp :tangle init.el :noweb no-export
 (doom!
@@ -1157,9 +1232,8 @@ biblio            ; Writes a PhD for you (citation needed)
 ;;gist              ; interacting with github gists
 lookup              ; navigate your code and its documentation
 (lsp               ; M-x vscode
- +eglot ;; Coordinate with corp LSP which uses Eglot
- ;; +peek
- )
+ ;; Prefer `eglot' because corporate tools also use Eglot.
+ +eglot)
 magit             ; a git porcelain for Emacs
 ;;make              ; run make tasks from Emacs
 ;;pass              ; password manager for nerds
@@ -1481,7 +1555,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 *** Packages
 **** =calfw=
 
-Provided through =app/calendar= in =init.el=.
+Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =calfw= through =app/calendar=.
 
 ** =ediff=
 
@@ -1559,7 +1633,9 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
 
 Doom emacs provides =notmuch= through =init.el=.
 
-***** Config
+***** Helper functions
+
+****** Toggle thread open/closed
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/notmuch--toggle-all-open ()
@@ -1581,7 +1657,11 @@ Doom emacs provides =notmuch= through =init.el=.
         (universal-argument)
         (notmuch-show-open-or-close-all))
     (notmuch-show-open-or-close-all)))
+#+end_src
 
+****** Tags
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/notmuch--search-thread-has-tag-p (match-tag)
   "Whether or not the thread has a tag."
   (interactive)
@@ -1601,35 +1681,6 @@ Doom emacs provides =notmuch= through =init.el=.
   (let ((tags (assoc key cashpw/notmuch-tag-alist)))
     (apply 'notmuch-search-tag (cdr tags))))
 
-(defun cashpw/notmuch-search-super-archive (&optional beg end)
-  "Super archive the selected thread; based on `notmuch-search-archive-thread'."
-  (interactive (notmuch-interactive-region))
-  (notmuch-search-tag
-   cashpw/notmuch-super-archive-tags
-   beg
-   end)
-  (when (eq beg
-            end)
-    (notmuch-search-next-thread)))
-
-(defun cashpw/notmuch-search-follow-up ()
-  "Capture the email at point in search for following up."
-  (interactive)
-  (notmuch-search-show-thread)
-  (goto-char
-   (point-max))
-  (org-capture
-   ;; goto
-   nil
-   ;; keys
-   "tef"))
-
-(defun cashpw/org-notmuch-capture-follow-up-mail ()
-  "Capture mail to org mode."
-  (interactive)
-  (org-store-link nil)
-  (org-capture nil "ef"))
-
 (defun cashpw/notmuch--tag-search (key name tags)
   "Return a notmuch search query named NAME, assigned to KEY, which queries the provided TAGS.
 
@@ -1648,7 +1699,53 @@ TAGS which start with \"-\" are excluded."
     `(:key ,key
       :name ,name
       :query ,query)))
+#+end_src
 
+****** Archive
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch-search-super-archive (&optional beg end)
+  "Super archive the selected thread; based on `notmuch-search-archive-thread'."
+  (interactive (notmuch-interactive-region))
+  (notmuch-search-tag
+   cashpw/notmuch-super-archive-tags
+   beg
+   end)
+  (when (eq beg
+            end)
+    (notmuch-search-next-thread)))
+#+end_src
+
+****** Todo
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch-search-follow-up ()
+  "Capture the email at point in search for following up."
+  (interactive)
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef"))
+
+(defun cashpw/notmuch-search-todo ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tee"))
+#+end_src
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
@@ -1930,22 +2027,22 @@ I need to use a different =send-mail-function= when sending email at work. I ove
   (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
   (evil-define-key 'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
   (evil-define-key 'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
-  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
 
-  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
-  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
-  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+  ;; Create todos
+  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
+  ;; Note this unbinds `notmuch-search-filter-by-tag'.
+  (evil-define-key 'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "T0" '(lambda ()
                                                            "Toggle p0"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tr" '(lambda ()
                                                            "Toggle Read!"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tw" '(lambda ()
                                                            "Toggle waiting"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "waiting"))))
@@ -2244,54 +2341,36 @@ Fix a bug in which =orderless= doesn't work because =completino--capf-wrapper= s
         (if res (cons fun res)))))
 #+end_src
 
-*** Packages
-**** =aggressive-indent=
-***** Package
+*** Language server (LSP)
 
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! aggressive-indent)
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (eglot)
 #+end_src
 
-**** =operate-on-number=
+**** Packages
+
+***** =eglot-booster=
 
 #+begin_quote
-Suppose the point is on some number.  If you want to double it,
-invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
+The [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] project provides a rust-based wrapper program which substantially speeds up emacs' interactions with lsp servers. This small package enables [[https://github.com/joaotavora/eglot][eglot]] to use it.
 
-/[[github:knu/operate-on-number.el/blob/master/operate-on-number.el][operate-on-number.el]]/
+[[github:jdtsmith/eglot-booster]]
 #+end_quote
 
-***** Package
-
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! operate-on-number
+(package! eglot-booster
   :recipe (:host github
-           :repo "knu/operate-on-number.el"))
+           :repo "jdtsmith/eglot-booster"))
 #+end_src
 
-***** Config
-
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! operate-on-number)
-#+end_src
+(use-package! eglot-booster
+  :after eglot
 
-**** =writeroom-mode=
-
-***** Package
-
-=init.el= provides =writeroom-mode=.
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! writeroom-mode
   :config
-  (setq
-   +zen-mixed-pitch-modes '()
-   writeroom-width 45))
+  (eglot-booster-mode))
 #+end_src
 
-*** Language server
 
 *** Syntax
 **** Packages
@@ -2315,16 +2394,9 @@ May remove in future in favor of a [[https://notes.alexkehayias.com/using-vale-w
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (set-eglot-client! 'org-mode '("vale-ls"))
 
-(defun cashpw/eglot-ensure ()
-  "Use in placre of `eglot-ensure'."
-  (unless (or org-fc-review-edit-mode
-              org-fc-review-flip-mode
-              org-fc-review-rate-mode)
-    (eglot-ensure)))
-
 (after! eglot
   (add-hook! 'org-mode-hook
-             #'cashpw/eglot-ensure))
+             #'eglot-ensure))
 #+end_src
 
 *** Flycheck
@@ -2694,6 +2766,16 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (doom/reset-font-size))
   (setq
    org-image-actual-width 1200)
+  (eglot-shutdown-all)
+  (advice-add
+   'eglot--maybe-activate-editing-mode
+   :override #'ignore)
+  (advice-add
+   'eglot--connect
+   :override #'ignore)
+  (advice-add
+   'eglot-ensure
+   :override #'ignore)
   (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
   (doom/increase-font-size 2))
@@ -2717,6 +2799,15 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
   (global-flycheck-mode)
+  (advice-remove
+   'eglot--connect
+   #'ignore)
+  (advice-remove
+   'eglot--maybe-activate-editing-mode
+   #'ignore)
+  (advice-remove
+   'eglot-ensure
+   #'ignore)
   (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
@@ -4459,14 +4550,30 @@ tasks."
                               end-time))))
 #+end_src
 
+**** =cashpw/org--archive-buffer-p=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org--archive-buffer-p (buffer)
+  "Return non-nil if BUFFER is an org-mode archive."
+  (string-match-p
+   "org_archive$"
+   (or
+    (buffer-file-name buffer)
+    "")))
+#+end_src
+
 **** Set =LAST_MODIFIED=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-set-last-modified ()
   "Update the LAST_MODIFIED property on the file."
   (interactive)
-  (when (derived-mode-p
-         'org-mode)
+  (when (and
+         (not
+          (cashpw/org--archive-buffer-p
+           (current-buffer)))
+         (derived-mode-p
+          'org-mode))
     (save-excursion
       (goto-char
        (point-min))
@@ -4646,6 +4753,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 ;;(after! org-roam
   ;;(cashpw/org-agenda-files--update))
 #+end_src
+
 
 *** TODO
 
@@ -5032,32 +5140,50 @@ Optional:
           (zero-or-one "\[#" (= 1 alphanumeric) "\]")
           (zero-or-one " ")
           (literal heading-text))))
-  (unless (cashpw/buffer-contains-regexp-p heading-regexp)
-    (save-excursion
-      (goto-char (point-max))
-      (org-insert-heading nil t t)
-      (insert heading-text)
-      (when tags
-        (org-set-tags tags))
-      (when priority
-        (org-priority priority))
-      (when todo
-        (org-todo todo))))))
+    (unless (cashpw/buffer-contains-regexp-p heading-regexp)
+      (save-excursion
+        (goto-char (point-max))
+        (org-insert-heading nil t t)
+        (insert heading-text)
+        (when tags
+          (org-set-tags tags))
+        (when priority
+          (org-priority priority))
+        (when todo
+          (org-todo todo))))))
+
+(defun cashpw/org-roam--current-buffer-not-archive-p ()
+  "TODO."
+  (not
+   (cashpw/org--archive-buffer-p
+    (current-buffer))))
+
+(defun cashpw/org-roam--current-file-path-no-flashcard-p ()
+  "TODO."
+  (not
+   (member
+    (buffer-file-name)
+    cashpw/org-roam--file-path-exceptions-to-add-flashcards)))
+
+(defcustom cashpw/org-roam--skip-add-flashcard-fns
+  '(org-roam-file-p
+    cashpw/org-roam--current-buffer-not-archive-p
+    cashpw/org-roam--current-file-path-no-flashcard-p)
+  "Add a flashcard only if all of these functions return nil."
+  :type 'hook)
 
 (defun cashpw/org-roam-add-flashcards (&optional todo priority tags)
   "Add flashcard heading to the current buffer."
   (interactive)
-  (when (and
-         (org-roam-file-p)
-         (not
-          (member
-           (buffer-file-name)
-           cashpw/org-roam--file-path-exceptions-to-add-flashcards))))
-  (cashpw/org--add-heading-if-missing
-   "Flashcards"
-   todo
-   priority
-   tags))
+  (when (--none-p
+         (funcall it)
+         cashpw/org-roam--skip-add-flashcard-fns)
+    (message "Adding flashcard")
+    (cashpw/org--add-heading-if-missing
+     "Flashcards"
+     todo
+     priority
+     tags)))
 
 (defun cashpw/org-roam-insert-tag-link ()
   "Insert a link to the selected tag"
@@ -5246,7 +5372,11 @@ This is an internal function."
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-roam--export-backlinks (backend)
   "Add backlinks to roam buffer for export; see `org-export-before-processing-hook'."
+  (message "]]]]]] cashpw/org-roam--export-backlinks")
+  (message "]]]]]] buffer-name: %s"
+           (buffer-name))
   (when (org-roam-file-p)
+    (message "]]]]] is roam file")
     (let* ((current-node (org-roam-node-at-point))
            (current-node-file (org-roam-node-file current-node))
            (backlinks (let ((-compare-fn (lambda (a b)
@@ -5272,7 +5402,8 @@ This is an internal function."
                                  backlinks)))
       (unless (string= backlinks-as-string "")
         (save-excursion
-          (goto-char (point-max))
+          (goto-char
+           (point-max))
           (insert (concat "\n* Backlinks\n"
                           backlinks-as-string)))))))
 
@@ -5376,14 +5507,14 @@ ${file}
                                                                            "#+category: Journal"
                                                                            "#+filetags: :journal:private:hastodo:"
                                                                            "
-,* TODO Journal
-SCHEDULED: <%<%Y-%m-%d %a>>
+,* TODO [#2] Journal
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   15m
 :END:
 
-,* TODO Gratitude
-SCHEDULED: <%<%Y-%m-%d %a>>
+,* TODO [#2] Gratitude
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   2m
 :END:
@@ -5392,7 +5523,7 @@ SCHEDULED: <%<%Y-%m-%d %a>>
 2. TODO
 3. TODO
 
-,* TODO Retrospective
+,* TODO [#2] Retrospective
 SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 00:00:00\") (days-to-time 1)))
 :PROPERTIES:
 :Effort:   1m
@@ -7066,7 +7197,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
      ("v" . "verse"))))
 #+end_src
 
-*** TODO Capture Templates
+*** Capture Templates
 :PROPERTIES:
 :ID:       79489d89-5e68-403c-b4cd-a9b8a8598714
 :END:
@@ -7183,6 +7314,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
                                                          :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
                                                          :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
                                                          :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
+                                                                    "SCHEDULED: <%<%F %a>>"
                                                                     ":PROPERTIES:"
                                                                     ":Created: %U"
                                                                     ":END:"))

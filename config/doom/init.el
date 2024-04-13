@@ -117,9 +117,8 @@
  ;;gist              ; interacting with github gists
  lookup              ; navigate your code and its documentation
  (lsp               ; M-x vscode
-  +eglot ;; Coordinate with corp LSP which uses Eglot
-  ;; +peek
-  )
+  ;; Prefer `eglot' because corporate tools also use Eglot.
+  +eglot)
  magit             ; a git porcelain for Emacs
  ;;make              ; run make tasks from Emacs
  ;;pass              ; password manager for nerds

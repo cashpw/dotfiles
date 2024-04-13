@@ -22,6 +22,29 @@
 
 (use-package! day-of-week)
 
+(defun cashpw/replace-regexp-in-buffer (regexp replacement &optional buffer)
+  "Replace all occurences of REGEXP in BUFFER with REPLACMENT."
+  (with-current-buffer
+      (or buffer
+          (current-buffer))
+    (save-excursion
+      (goto-char
+       (point-min))
+      (while (re-search-forward
+              regexp
+              nil
+              t)
+        (replace-match
+         replacement)))))
+
+(defun cashpw/replace-regexp-in-file (regexp replacement file-path)
+  "Replace all occurences of REGEXP in FILE-PATH with REPLACMENT."
+  (cashpw/replace-regexp-in-buffer
+   regexp
+   replacement
+   (find-file-noselect
+    file-path)))
+
 (defun cashpw/iso-week-to-time(year week day)
   "Convert ISO year, week, day to elisp time value.
 
@@ -335,6 +358,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;;   ;; (auth-source-xoauth2-enable)
 ;;   )
 
+(use-package! centered-cursor-mode)
+
 (use-package! command-log-mode
   :config
   (setq
@@ -342,14 +367,16 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    command-log-mode-window-size 80
    command-log-mode-is-global t))
 
-(use-package! centered-cursor-mode)
-
 (after! evil
   ;; Speed up org-mode table editing
   ;; https://github.com/emacs-evil/evil/issues/1623#issuecomment-1414406022
   (advice-remove 'set-window-buffer #'ad-Advice-set-window-buffer))
 
 (use-package! free-keys)
+
+(use-package! memoize)
+
+(use-package! operate-on-number)
 
 (use-package! titlecase)
 
@@ -365,7 +392,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
         whisper--ffmpeg-input-device "hw:0"
         whisper-return-cursor-to-start nil))
 
-(use-package! memoize)
+(use-package! writeroom-mode
+  :config
+  (setq
+   +zen-mixed-pitch-modes '()
+   writeroom-width 45))
 
 (setq
  alert-fade-time 60
@@ -735,6 +766,25 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (let ((tags (assoc key cashpw/notmuch-tag-alist)))
     (apply 'notmuch-search-tag (cdr tags))))
 
+(defun cashpw/notmuch--tag-search (key name tags)
+  "Return a notmuch search query named NAME, assigned to KEY, which queries the provided TAGS.
+
+TAGS which start with \"-\" are excluded."
+  (let ((query (string-join
+                (mapcar
+                 (lambda (tag)
+                   (if (s-starts-with-p "-"
+                                        tag)
+                       (let ((tag (string-trim-left tag
+                                                    "-")))
+                         (s-lex-format "-tag:${tag}"))
+                     (s-lex-format "tag:${tag}")))
+                 tags)
+                " AND ")))
+    `(:key ,key
+      :name ,name
+      :query ,query)))
+
 (defun cashpw/notmuch-search-super-archive (&optional beg end)
   "Super archive the selected thread; based on `notmuch-search-archive-thread'."
   (interactive (notmuch-interactive-region))
@@ -758,30 +808,17 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    ;; keys
    "tef"))
 
-(defun cashpw/org-notmuch-capture-follow-up-mail ()
-  "Capture mail to org mode."
+(defun cashpw/notmuch-search-todo ()
+  "Capture the email at point in search for a todo."
   (interactive)
-  (org-store-link nil)
-  (org-capture nil "ef"))
-
-(defun cashpw/notmuch--tag-search (key name tags)
-  "Return a notmuch search query named NAME, assigned to KEY, which queries the provided TAGS.
-
-TAGS which start with \"-\" are excluded."
-  (let ((query (string-join
-                (mapcar
-                 (lambda (tag)
-                   (if (s-starts-with-p "-"
-                                        tag)
-                       (let ((tag (string-trim-left tag
-                                                    "-")))
-                         (s-lex-format "-tag:${tag}"))
-                     (s-lex-format "tag:${tag}")))
-                 tags)
-                " AND ")))
-    `(:key ,key
-      :name ,name
-      :query ,query)))
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tee"))
 
 (after! notmuch
   (setq
@@ -1023,22 +1060,22 @@ TAGS which start with \"-\" are excluded."
   (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
   (evil-define-key 'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
   (evil-define-key 'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
-  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
 
-  ;; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
-  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
-  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+  ;; Create todos
+  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
+  ;; Note this unbinds `notmuch-search-filter-by-tag'.
+  (evil-define-key 'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "T0" '(lambda ()
                                                            "Toggle p0"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tr" '(lambda ()
                                                            "Toggle Read!"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tw" '(lambda ()
                                                            "Toggle waiting"
                                                            (interactive)
                                                            (cashpw/notmuch-search-toggle-tag "waiting"))))
@@ -1260,13 +1297,13 @@ ${content}"))
             (push fun completion--capf-misbehave-funs))))
         (if res (cons fun res)))))
 
-(use-package! operate-on-number)
+;; (eglot)
 
-(use-package! writeroom-mode
+(use-package! eglot-booster
+  :after eglot
+
   :config
-  (setq
-   +zen-mixed-pitch-modes '()
-   writeroom-width 45))
+  (eglot-booster-mode))
 
 ;; (use-package! flycheck-vale
 ;;   :config
@@ -1274,16 +1311,9 @@ ${content}"))
 
 (set-eglot-client! 'org-mode '("vale-ls"))
 
-(defun cashpw/eglot-ensure ()
-  "Use in placre of `eglot-ensure'."
-  (unless (or org-fc-review-edit-mode
-              org-fc-review-flip-mode
-              org-fc-review-rate-mode)
-    (eglot-ensure)))
-
 (after! eglot
   (add-hook! 'org-mode-hook
-             #'cashpw/eglot-ensure))
+             #'eglot-ensure))
 
 ;; Doom Emacs provides flycheck
 (after! flycheck
@@ -1368,6 +1398,16 @@ ${content}"))
     (doom/reset-font-size))
   (setq
    org-image-actual-width 1200)
+  (eglot-shutdown-all)
+  (advice-add
+   'eglot--maybe-activate-editing-mode
+   :override #'ignore)
+  (advice-add
+   'eglot--connect
+   :override #'ignore)
+  (advice-add
+   'eglot-ensure
+   :override #'ignore)
   (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
   (doom/increase-font-size 2))
@@ -1391,6 +1431,15 @@ ${content}"))
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
   (global-flycheck-mode)
+  (advice-remove
+   'eglot--connect
+   #'ignore)
+  (advice-remove
+   'eglot--maybe-activate-editing-mode
+   #'ignore)
+  (advice-remove
+   'eglot-ensure
+   #'ignore)
   (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
@@ -2603,11 +2652,23 @@ tasks."
                               start-time
                               end-time))))
 
+(defun cashpw/org--archive-buffer-p (buffer)
+  "Return non-nil if BUFFER is an org-mode archive."
+  (string-match-p
+   "org_archive$"
+   (or
+    (buffer-file-name buffer)
+    "")))
+
 (defun cashpw/org-set-last-modified ()
   "Update the LAST_MODIFIED property on the file."
   (interactive)
-  (when (derived-mode-p
-         'org-mode)
+  (when (and
+         (not
+          (cashpw/org--archive-buffer-p
+           (current-buffer)))
+         (derived-mode-p
+          'org-mode))
     (save-excursion
       (goto-char
        (point-min))
@@ -3093,32 +3154,50 @@ Optional:
           (zero-or-one "\[#" (= 1 alphanumeric) "\]")
           (zero-or-one " ")
           (literal heading-text))))
-  (unless (cashpw/buffer-contains-regexp-p heading-regexp)
-    (save-excursion
-      (goto-char (point-max))
-      (org-insert-heading nil t t)
-      (insert heading-text)
-      (when tags
-        (org-set-tags tags))
-      (when priority
-        (org-priority priority))
-      (when todo
-        (org-todo todo))))))
+    (unless (cashpw/buffer-contains-regexp-p heading-regexp)
+      (save-excursion
+        (goto-char (point-max))
+        (org-insert-heading nil t t)
+        (insert heading-text)
+        (when tags
+          (org-set-tags tags))
+        (when priority
+          (org-priority priority))
+        (when todo
+          (org-todo todo))))))
+
+(defun cashpw/org-roam--current-buffer-not-archive-p ()
+  "TODO."
+  (not
+   (cashpw/org--archive-buffer-p
+    (current-buffer))))
+
+(defun cashpw/org-roam--current-file-path-no-flashcard-p ()
+  "TODO."
+  (not
+   (member
+    (buffer-file-name)
+    cashpw/org-roam--file-path-exceptions-to-add-flashcards)))
+
+(defcustom cashpw/org-roam--skip-add-flashcard-fns
+  '(org-roam-file-p
+    cashpw/org-roam--current-buffer-not-archive-p
+    cashpw/org-roam--current-file-path-no-flashcard-p)
+  "Add a flashcard only if all of these functions return nil."
+  :type 'hook)
 
 (defun cashpw/org-roam-add-flashcards (&optional todo priority tags)
   "Add flashcard heading to the current buffer."
   (interactive)
-  (when (and
-         (org-roam-file-p)
-         (not
-          (member
-           (buffer-file-name)
-           cashpw/org-roam--file-path-exceptions-to-add-flashcards))))
-  (cashpw/org--add-heading-if-missing
-   "Flashcards"
-   todo
-   priority
-   tags))
+  (when (--none-p
+         (funcall it)
+         cashpw/org-roam--skip-add-flashcard-fns)
+    (message "Adding flashcard")
+    (cashpw/org--add-heading-if-missing
+     "Flashcards"
+     todo
+     priority
+     tags)))
 
 (defun cashpw/org-roam-insert-tag-link ()
   "Insert a link to the selected tag"
@@ -3290,7 +3369,11 @@ This is an internal function."
 
 (defun cashpw/org-roam--export-backlinks (backend)
   "Add backlinks to roam buffer for export; see `org-export-before-processing-hook'."
+  (message "]]]]]] cashpw/org-roam--export-backlinks")
+  (message "]]]]]] buffer-name: %s"
+           (buffer-name))
   (when (org-roam-file-p)
+    (message "]]]]] is roam file")
     (let* ((current-node (org-roam-node-at-point))
            (current-node-file (org-roam-node-file current-node))
            (backlinks (let ((-compare-fn (lambda (a b)
@@ -3316,7 +3399,8 @@ This is an internal function."
                                  backlinks)))
       (unless (string= backlinks-as-string "")
         (save-excursion
-          (goto-char (point-max))
+          (goto-char
+           (point-max))
           (insert (concat "\n* Backlinks\n"
                           backlinks-as-string)))))))
 
@@ -3409,14 +3493,14 @@ ${file}
                                                                            "#+category: Journal"
                                                                            "#+filetags: :journal:private:hastodo:"
                                                                            "
-* TODO Journal
-SCHEDULED: <%<%Y-%m-%d %a>>
+* TODO [#2] Journal
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   15m
 :END:
 
-* TODO Gratitude
-SCHEDULED: <%<%Y-%m-%d %a>>
+* TODO [#2] Gratitude
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   2m
 :END:
@@ -3425,7 +3509,7 @@ SCHEDULED: <%<%Y-%m-%d %a>>
 2. TODO
 3. TODO
 
-* TODO Retrospective
+* TODO [#2] Retrospective
 SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 00:00:00\") (days-to-time 1)))
 :PROPERTIES:
 :Effort:   1m
@@ -5003,6 +5087,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
                                                          :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
                                                          :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
                                                          :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
+                                                                    "SCHEDULED: <%<%F %a>>"
                                                                     ":PROPERTIES:"
                                                                     ":Created: %U"
                                                                     ":END:"))
