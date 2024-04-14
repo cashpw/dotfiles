@@ -1301,19 +1301,46 @@ ${content}"))
 
 (use-package! eglot-booster
   :after eglot
-
   :config
   (eglot-booster-mode))
+
+(defun cashpw/eglot-pause ()
+  "Pause eglot; see `cashpw/eglot-unpause'."
+  (interactive)
+  (eglot-shutdown-all)
+  (advice-add
+   'eglot--maybe-activate-editing-mode
+   :override #'ignore)
+  (advice-add
+   'eglot--connect
+   :override #'ignore)
+  (advice-add
+   'eglot-ensure
+   :override #'ignore))
+
+(defun cashpw/eglot-unpause ()
+  "Unpause eglot; see `cashpw/eglot-pause'."
+  (interactive)
+  (advice-remove
+   'eglot--connect
+   #'ignore)
+  (advice-remove
+   'eglot--maybe-activate-editing-mode
+   #'ignore)
+  (advice-remove
+   'eglot-ensure
+   #'ignore))
 
 ;; (use-package! flycheck-vale
 ;;   :config
 ;;   (flycheck-vale-setup))
 
-(set-eglot-client! 'org-mode '("vale-ls"))
+(set-eglot-client!
+ 'org-mode
+ '("vale-ls"))
 
-(after! eglot
-  (add-hook! 'org-mode-hook
-             #'eglot-ensure))
+(add-hook! 'org-mode-hook
+           #'eglot-ensure)
 
 ;; Doom Emacs provides flycheck
 (after! flycheck
@@ -1398,16 +1425,7 @@ ${content}"))
     (doom/reset-font-size))
   (setq
    org-image-actual-width 1200)
-  (eglot-shutdown-all)
-  (advice-add
-   'eglot--maybe-activate-editing-mode
-   :override #'ignore)
-  (advice-add
-   'eglot--connect
-   :override #'ignore)
-  (advice-add
-   'eglot-ensure
-   :override #'ignore)
+  (cashpw/eglot-pause)
   (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
   (doom/increase-font-size 2))
@@ -1431,15 +1449,7 @@ ${content}"))
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
   (global-flycheck-mode)
-  (advice-remove
-   'eglot--connect
-   #'ignore)
-  (advice-remove
-   'eglot--maybe-activate-editing-mode
-   #'ignore)
-  (advice-remove
-   'eglot-ensure
-   #'ignore)
+  (cashpw/eglot-unpause)
   (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
@@ -5420,125 +5430,151 @@ All args are passed to `org-roam-node-read'."
      (file-notify-rm-watch key))
    file-notify-descriptors))
 
-(defun cashpw/org-hugo-export-all (&optional directory)
-  "Export all hugo files in DIRECTORY."
+(defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
+  "Export all hugo files in DIRECTORY.
+
+Optionally skip FILES-TO-IGNORE."
   (interactive)
-  (let* ((directory (or directory
-                        (s-lex-format "${cashpw/path--home-dir}/proj/notes")))
-         (org-roam-directory directory)
-         (files-to-ignore `(
-                            ;; ,(s-lex-format "${directory}/unread.org")
-                            ;; ,(s-lex-format "${directory}/todos.org")
-                            ))
-         (files-to-export (seq-difference (directory-files
-                                           directory
-                                           ;; full
-                                           t
-                                           ;; match
-                                           ".org$")
-                                          files-to-ignore))
-         ;; For debugging
-         (files-to-export (-slice files-to-export (+ 365 122 159 472 53 322)))
-         (count-files-to-export (length
-                                 files-to-export))
-         ;; Last updated: 2023-12-05
-         (recent-run-file-count 1467)
-         (recent-run-seconds 7791)
-         (seconds-per-file (/ recent-run-seconds
-                              recent-run-file-count))
-         (calc-remaining-minutes (lambda (current-file-number)
-                                   (let ((files-left (- count-files-to-export current-file-number)))
-                                     (/ (* seconds-per-file
-                                           files-left)
-                                        60))))
-         (run-time-estimate (org-duration-from-minutes (funcall calc-remaining-minutes 0)))
-         (log-file-path "/tmp/hugo-export.log")
-         (last-percent-start-time nil)
-         (should-run (y-or-n-p (s-lex-format
-                                "Found ${count-files-to-export} nodes in ${directory}. Export estimate: ${run-time-estimate}."))))
-    (when should-run
-      (let* ((progress-reporter (make-progress-reporter "Exporting roam notes"
-                                                        0
-                                                        (length files-to-export)))
-             (start-time (current-time))
-             (org-id-extra-files (org-roam-list-files))
-             (prev-global-flycheck-mode global-flycheck-mode)
-             (i 0))
-        ;; Speed up the export
-        (memoize 'citeproc-hash-itemgetter-from-any)
-        (advice-add 'org-id-find :override 'org-roam-id-find)
-        (memoize 'org-roam-node-id)
-        (memoize 'org-roam-node-file)
-        (global-flycheck-mode -1)
-        (save-excursion
-          (mapc
-           (lambda (filepath)
-             (let ((inner-start-time (current-time))
-                   (inhibit-message t)
-                   (roam-file-buffer (find-file-noselect filepath))
-                   (start-time (current-time)))
-               (when (= 0 (% i 10))
-                 (message "[cashpw] fix cannot redirect stderr too many open files")
-                 ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
-                 (cashpw/kill-all-markdown-buffers)
-                 (file-notify-rm-all-watches))
-               (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
-                        (1+ i)
-                        count-files-to-export
-                        filepath)
-               (with-current-buffer roam-file-buffer
-                 (remove-hook 'before-save-hook 'org-encrypt-entries t)
-                 (if (not (s-contains-p ":private:"
-                                        (org-extras-get-setting "filetags")))
-                     (org-hugo-export-to-md)
-                   (message "casphw/org-hugo-export-all: Skipping %s (private)"
-                            filepath)))
-               (kill-buffer roam-file-buffer)
-               (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
-                        (1+ i)
-                        count-files-to-export
-                        filepath
-                        (float-time (time-since inner-start-time)))
-               (let* ((log-file-path "/tmp/hugo-export.log")
-                      (end-time (current-time))
-                      (file-number (1+ i))
-                      (time-string (format-time-string "%Y-%m-%d %H:%M:%S"))
-                      (export-duration-in-seconds (float-time (subtract-time end-time
-                                                                             start-time))))
-                 (append-to-file (s-lex-format "${time-string}: ${file-number}/${count-files-to-export} ${filepath} (duration: ${export-duration-in-seconds})\n")
-                                 nil
-                                 log-file-path)))
-             (progress-reporter-update progress-reporter
-                                       i
-                                       (concat "Remaining time (estimate): "
-                                               (org-duration-from-minutes
-                                                (funcall calc-remaining-minutes
-                                                         i))))
-             (setq i (1+ i)))
+  (let* ((directory
+          (or directory
+              cashpw/path--notes-dir))
+         (org-roam-directory
+          directory)
+         (files-to-export
+          (seq-difference
+           (directory-files
+            directory
+            ;; full
+            t
+            ;; match
+            ".org$")
+           files-to-ignore))
+         (org-id-extra-files
+          (org-roam-list-files))
+         (file-index
+          0)
+         (log-file-path
+          "/tmp/hugo-export.log")
+         (count-files-to-export
+          (length
            files-to-export))
-        (progress-reporter-done progress-reporter)
-        ;; Remove speed-up changes
+         ;; Last updated: 2023-12-05
+         (recent-run-file-count
+          1467)
+         ;; Last updated: 2023-12-05
+         (recent-run-seconds
+          7791)
+         (seconds-per-file
+          (/ recent-run-seconds
+             recent-run-file-count)))
+    (flet ((remaining-minutes
+            (file-number)
+            (let ((files-left
+                   (- count-files-to-export
+                      current-file-number)))
+              (/ (* seconds-per-file
+                    files-left)
+                 60)))
+           (node-private-p
+            (buffer)
+            (-contains-p
+             (org-extras-filetags-in-buffer
+              buffer)
+             "private")))
+      (let* ((run-time-estimate
+              (org-duration-from-minutes
+               (remaining-minutes
+                0)))
+             (should-run
+              (y-or-n-p
+               (s-lex-format
+                "Found ${count-files-to-export} nodes in ${directory}. Export estimate: ${run-time-estimate}."))))
+        (when should-run
+          (let* ((progress-reporter
+                  (make-progress-reporter
+                   "Exporting roam notes"
+                   0
+                   count-files-to-export))
+                 (start-time
+                  (current-time)))
+            ;; Speed up the export
+            (cashpw/eglot-pause)
+            (memoize 'citeproc-hash-itemgetter-from-any)
+            (advice-add 'org-id-find :override 'org-roam-id-find)
+            (memoize 'org-roam-node-id)
+            (memoize 'org-roam-node-file)
+            ;; (global-flycheck-mode -1)
 
-        (advice-remove 'org-id-find 'org-roam-id-find)
-        (memoize-restore 'org-roam-node-id)
-        (memoize-restore 'org-roam-node-file)
-        (memoize-restore 'citeproc-hash-itemgetter-from-any)
-        (when prev-global-flycheck-mode
-          (global-flycheck-mode )
-          )
+            (-each
+                files-to-export
+              (lambda (file-path)
+                (let ((file-export-start-time
+                       (current-time))
+                      (roam-file-buffer
+                       (find-file-noselect
+                        file-path))
+                      (start-time
+                       (current-time)))
+                  (shut-up
+                    (when (= 0 (% file-index 10))
+                      ;; (message "[cashpw] fix cannot redirect stderr too many open files")
+                      ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
+                      (cashpw/kill-all-markdown-buffers)
+                      (file-notify-rm-all-watches))
+                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
+                    ;;          (1+ file-index)
+                    ;;          count-files-to-export
+                    ;;          file-path)
+                    (with-current-buffer
+                        roam-file-buffer
+                      (unless (node-private-p
+                               (current-buffer))
+                        (remove-hook
+                         'before-save-hook
+                         'org-encrypt-entries
+                         t)
+                        (org-hugo-export-to-md)))
+                    (kill-buffer roam-file-buffer)
+                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+                    ;;          (1+ file-index)
+                    ;;          count-files-to-export
+                    ;;          file-path
+                    ;;          (float-time
+                    ;;           (time-since
+                    ;;            file-export-start-time)))
+                    (let* ((file-number
+                            (1+ file-index))
+                           (time-string
+                            (format-time-string "%F %H:%M:%S"))
+                           (export-duration-in-seconds
+                            (time-since
+                             start-time)))
+                      (append-to-file
+                       (s-lex-format
+                        "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
+                       nil
+                       log-file-path))))
+                (progress-reporter-update
+                 progress-reporter
+                 file-index
+                 (concat
+                  "Remaining time (estimate): "
+                  (org-duration-from-minutes
+                   (remaining-minutes
+                    file-index))))
+                (setq
+                 file-index (1+ file-index))))
+            (progress-reporter-done
+             progress-reporter)
 
-        (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))
+            ;; Remove speed-up changes
+            (cashpw/eglot-unpause)
+            (advice-remove 'org-id-find 'org-roam-id-find)
+            (memoize-restore 'org-roam-node-id)
+            (memoize-restore 'org-roam-node-file)
+            (memoize-restore 'citeproc-hash-itemgetter-from-any)
 
-(defun cashpw/org-mode--split-tags-to-list (tags-as-string)
-  "Strip the wrapping ':' from TAG; if present."
-  (if tags-as-string
-      (if (string-match "^:\\(.*\\):$"
-                        tags-as-string)
-          (split-string (match-string 1
-                                      tags-as-string)
-                        ":")
-        nil)
-    nil))
+            (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))))
 
 (defun cashpw/org-hugo--tag-processing-fn-roam-tags (tag-list info)
   "Add tags from filetags to tag-list for org-roam to ox-hugo compatibility.
@@ -5547,22 +5583,12 @@ Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
 
 See `org-hugo-tag-processing-functions'."
   (if (org-roam-file-p)
-      (let* ((filetags
-              (car
-               (cdr
-                (assoc-string
-                 "FILETAGS"
-                 (org-collect-keywords
-                  '("FILETAGS"))))))
-             (filetag-list
-              (or
-               (cashpw/org-mode--split-tags-to-list
-                filetags)
-               '())))
-        (append tag-list
-                (mapcar
-                 #'downcase
-                 filetag-list)))
+      (append
+       tag-list
+       (-map
+        #'downcase
+        (org-extras-filetags-in-buffer
+         (current-buffer))))
     tag-list))
 
 (after! ox-hugo
@@ -5600,6 +5626,12 @@ are the arguments of the ORIG-FUN."
   ;; (memoize 'org-roam-node-id)
   ;; (memoize 'org-roam-node-file)
   )
+
+(defun cashpw/org-hugo-export-all ()
+  "Export all hugo notes files.."
+  (interactive)
+  (cashpw/org-hugo-export-directory
+   cashpw/path--notes-dir)
 
 (after! org
   (setq
