@@ -5,7 +5,8 @@
  ;; If there is more than one, they won't work right.
  '(magit-todos-insert-after '(bottom) nil nil "Changed by setter of obsolete option `magit-todos-insert-at'")
  '(safe-local-variable-values
-   '((eval progn
+   '((eval setq-local org-refile-use-outline-path nil)
+     (eval progn
       (defun cashpw/get-property
           (property)
         (save-excursion
@@ -24,21 +25,21 @@
                                       (replace-regexp-in-string " " "-" roam-alias))))
          (split-string roam-aliases "\" \"" nil)))
       (defun cashpw/get-aliases nil
-       (interactive)
-       (let*
-           ((roam-aliases
-             (cashpw/get-property "ROAM_ALIASES"))
-            (aliases
-             (if roam-aliases
-                 (cashpw/split-aliases-to-string roam-aliases)
-               'nil)))
-         (string-join
-          (mapcar
-           (lambda
-             (roam-alias)
-             (s-lex-format "/posts/${roam-alias}"))
-           aliases)
-          " ")))
+        (interactive)
+        (let*
+            ((roam-aliases
+              (cashpw/get-property "ROAM_ALIASES"))
+             (aliases
+              (if roam-aliases
+                  (cashpw/split-aliases-to-string roam-aliases)
+                'nil)))
+          (string-join
+           (mapcar
+            (lambda
+              (roam-alias)
+              (s-lex-format "/posts/${roam-alias}"))
+            aliases)
+           " ")))
       (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save)
       (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified))
      (eval setq-local org-roam-directory

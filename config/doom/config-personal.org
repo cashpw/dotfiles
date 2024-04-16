@@ -11,6 +11,14 @@ To start off, we'll define a [[https://www.gnu.org/software/emacs/manual/html_no
 (defgroup cashpw
   nil
   "Group for my customizations and configurations.")
+
+(defun cashpw/error (error-message &rest args)
+  (error
+   "[cashpw] %s"
+   (apply
+    #'format
+    error-message
+    args)))
 #+end_src
 
 * General
@@ -2364,6 +2372,8 @@ The [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] project
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(unless (executable-find "emacs-lsp-booster")
+  (cashpw/error "Cannot find 'emacs-lsp-booster' executable.")
 (use-package! eglot-booster
   :after eglot
   :config
@@ -2464,7 +2474,7 @@ Use =aggressive-indent= when editing =elisp=.
 
 ** Java
 ** TODO Org
-#+begin_src emacs-lisp :tangle packages-personal.el
+#+begin_src emacs-lisp
 ;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
 ;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
 (package! org
@@ -2502,7 +2512,6 @@ Use =aggressive-indent= when editing =elisp=.
   :recipe (:host github
            :repo "emacsmirror/org-contrib")
   :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
-
 #+end_src
 
 *** Packages
@@ -4766,11 +4775,11 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;(cashpw/org-agenda-files--update))
 #+end_src
 
-
 *** TODO
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
+ ;; org-return-follows-link t
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 #+end_src
 
@@ -5282,7 +5291,7 @@ This is an internal function."
   (string-join
    (mapcar
     (lambda (item)
-      (destructuring-bind (label . value) item
+      (cl-destructuring-bind (label . value) item
         (s-lex-format
          ":${label} \"${value}\"")))
     (cl-remove-if
@@ -7780,7 +7789,7 @@ Optionally skip FILES-TO-IGNORE."
          (seconds-per-file
           (/ recent-run-seconds
              recent-run-file-count)))
-    (flet ((remaining-minutes
+    (cl-flet ((remaining-minutes
             (file-number)
             (let ((files-left
                    (- count-files-to-export
@@ -7944,7 +7953,7 @@ are the arguments of the ORIG-FUN."
   "Export all hugo notes files.."
   (interactive)
   (cashpw/org-hugo-export-directory
-   cashpw/path--notes-dir)
+   cashpw/path--notes-dir))
 #+end_src
 
 **** Publish

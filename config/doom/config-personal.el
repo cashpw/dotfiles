@@ -2,6 +2,14 @@
   nil
   "Group for my customizations and configurations.")
 
+(defun cashpw/error (error-message &rest args)
+  (error
+   "[cashpw] %s"
+   (apply
+    #'format
+    error-message
+    args)))
+
 (setq search-invisible t)
 
 (defcustom
@@ -1303,6 +1311,7 @@ ${content}"))
   :after eglot
   :config
   (eglot-booster-mode))
+;; (cashpw/error "some error")
 
 (defun cashpw/eglot-pause ()
   "Pause eglot; see `cashpw/eglot-unpause'."
@@ -2851,6 +2860,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;(cashpw/org-agenda-files--update))
 
 (setq
+ ;; org-return-follows-link t
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 
 (after! org
@@ -3294,7 +3304,7 @@ This is an internal function."
   (string-join
    (mapcar
     (lambda (item)
-      (destructuring-bind (label . value) item
+      (cl-destructuring-bind (label . value) item
         (s-lex-format
          ":${label} \"${value}\"")))
     (cl-remove-if
@@ -5467,7 +5477,7 @@ Optionally skip FILES-TO-IGNORE."
          (seconds-per-file
           (/ recent-run-seconds
              recent-run-file-count)))
-    (flet ((remaining-minutes
+    (cl-flet ((remaining-minutes
             (file-number)
             (let ((files-left
                    (- count-files-to-export
@@ -5631,7 +5641,7 @@ are the arguments of the ORIG-FUN."
   "Export all hugo notes files.."
   (interactive)
   (cashpw/org-hugo-export-directory
-   cashpw/path--notes-dir)
+   cashpw/path--notes-dir))
 
 (after! org
   (setq
