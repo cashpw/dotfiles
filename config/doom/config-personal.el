@@ -1307,11 +1307,12 @@ ${content}"))
 
 ;; (eglot)
 
+(unless (executable-find "emacs-lsp-booster")
+  (cashpw/error "Cannot find 'emacs-lsp-booster' executable.")
 (use-package! eglot-booster
   :after eglot
   :config
   (eglot-booster-mode))
-;; (cashpw/error "some error")
 
 (defun cashpw/eglot-pause ()
   "Pause eglot; see `cashpw/eglot-unpause'."
