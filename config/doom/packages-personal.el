@@ -4,8 +4,6 @@
 
 (package! aggressive-indent)
 
-;; (package! auth-source-xoauth2)
-
 (package! centered-cursor-mode)
 
 (package! command-log-mode)
@@ -33,22 +31,6 @@
 (package! scheduled-alert
   :recipe (:host github
            :repo "cashpw/scheduled-alert"))
-
-(defmacro k-time (&rest body)
-  "Measure and return the time it takes evaluating BODY."
-  `(let ((time (current-time)))
-     ,@body
-     (float-time (time-since time))))
-
-;; Set garbage collection threshold to 1GB.
-(setq gc-cons-threshold #x40000000)
-
-;; When idle for 15sec run the GC no matter what.
-(defvar k-gc-timer
-  (run-with-idle-timer 15 t
-                       (lambda ()
-                         (message "Garbage Collector has run for %.06fsec"
-                                  (k-time (garbage-collect))))))
 
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages.el
@@ -105,7 +87,9 @@
 
 (package! nerd-icons)
 
-(package! w3m)
+;; (package! w3m)
+
+(package! casual)
 
 (package! ox-gfm)
 
@@ -124,6 +108,11 @@
            :repo "jdtsmith/eglot-booster"))
 
 ;; (package! flycheck-vale)
+
+(unpin! org)
+(unpin! org-contrib)
+
+;; (package! org-link-beautify)
 
 (package! org-extras
   :recipe (:host github
@@ -150,11 +139,6 @@
 (package! doct-org-roam
   :recipe (:host github
            :repo "cashpw/doct-org-roam"))
-
-(package! ol-doi
-  :recipe (:repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
-           :branch "main"
-           :files ("lisp/ol-doi.el")))
 
 (package! orgtbl-aggregate)
 
@@ -185,7 +169,7 @@
   :recipe (:host github
            :repo "alphapapa/org-protocol-capture-html"))
 
-(package! org-ql)
+;; (package! org-ql)
 
 (package! org-recipes
   :recipe (:host github
@@ -214,6 +198,10 @@
   (package! ox-hugo))
 
 (package! ox-pandoc)
+
+(package! quickroam
+  :recipe (:host github
+           :repo "meedstrom/quickroam"))
 
 (package! summarize-agenda-time
   :recipe (:host github

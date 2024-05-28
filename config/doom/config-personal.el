@@ -20,7 +20,7 @@
 (use-package! s)
 (use-package! dash)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
-(use-package! ess-site)
+;; (use-package! ess-site)
 
 (setq
  user-full-name "Cash Prokop-Weaver"
@@ -181,22 +181,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
      daylight-savings-time-p
      utc-offset)))
 
-(defun cashpw/grep (command-string)
-  "Return grep, with COMMAND-STRING, results as a list."
-  (split-string
-   (shell-command-to-string
-    (format
-     "grep %s"
-     command-string))))
-
-(defun cashpw/rgrep (command-string)
-  "Return rgrep, with COMMAND-STRING, results as a list."
-  (split-string
-   (shell-command-to-string
-    (format
-     "rgrep %s"
-     command-string))))
-
 (defcustom cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
   "Projects directory."
@@ -233,6 +217,41 @@ Reference: https://emacs.stackexchange.com/a/43985"
   :group 'cashpw
   :type 'string)
 
+(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
+  "Path to directory containing secret files."
+  :group 'cashpw
+  :type 'string)
+
+(defun cashpw/get-secret (name)
+  "Get content of NAME secret file."
+  (let ((secret-file-path
+         (s-lex-format
+          "${cashpw/secrets-dir-path}/${name}")))
+    (if (file-exists-p
+         secret-file-path)
+        (string-clean-whitespace
+         (with-temp-buffer
+           (insert-file-contents
+            secret-file-path)
+           (buffer-string)))
+      "")))
+
+(defun cashpw/grep (command-string)
+  "Return grep, with COMMAND-STRING, results as a list."
+  (split-string
+   (shell-command-to-string
+    (format
+     "grep %s"
+     command-string))))
+
+(defun cashpw/rgrep (command-string)
+  "Return rgrep, with COMMAND-STRING, results as a list."
+  (split-string
+   (shell-command-to-string
+    (format
+     "rgrep %s"
+     command-string))))
+
 (defun cashpw/delete-lines-below (line-number)
   "Delete all lines beneath LINE-NUMBER."
   (interactive "nLine number: ")
@@ -257,22 +276,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
 
-(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
-  "Path to directory containing secret files."
-  :group 'cashpw
-  :type 'string)
-
-(defun cashpw/get-secret (name)
-  "Get content of NAME secret file."
-  (let ((secret-file-path (s-lex-format "${cashpw/secrets-dir-path}/${name}")))
-    (if (file-exists-p secret-file-path)
-        (string-clean-whitespace
-         (with-temp-buffer
-           (insert-file-contents secret-file-path)
-           (buffer-string)))
-      "")))
-
-(defun cashpw/file--get-header-file-path (file-path)
+(defun cashpw/cpp--get-header-file-path (file-path)
   "Return the path to the header file for the provided FILE-PATH."
   (cond
    ((s-ends-with-p ".cc" file-path)
@@ -284,7 +288,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
    (t
     file-path)))
 
-(defun cashpw/file--get-test-file-path (cpp-file-path)
+(defun cashpw/cpp--get-test-file-path (cpp-file-path)
   "Return the path to the test file for the provided FILE-PATH."
   (cond
    ((or (s-ends-with-p ".cc" file-path)
@@ -361,11 +365,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
        nil
        t))))
 
-;; (use-package! auth-source-xoauth2
-;;   :config
-;;   ;; (auth-source-xoauth2-enable)
-;;   )
-
 (use-package! centered-cursor-mode)
 
 (use-package! command-log-mode
@@ -374,11 +373,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    command-log-mode-open-log-turns-on-mode t
    command-log-mode-window-size 80
    command-log-mode-is-global t))
-
-(after! evil
-  ;; Speed up org-mode table editing
-  ;; https://github.com/emacs-evil/evil/issues/1623#issuecomment-1414406022
-  (advice-remove 'set-window-buffer #'ad-Advice-set-window-buffer))
 
 (use-package! free-keys)
 
@@ -462,6 +456,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :n "r" #'whisper-run
   :n "R" #'cashpw/whisper-run-and-cue-gptel
   (:prefix ("d" . "agenDa")
+   :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
@@ -528,6 +523,23 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  auto-save-visited-interval 60)
 
 (auto-save-visited-mode)
+
+(defmacro k-time (&rest body)
+  "Measure and return the time it takes evaluating BODY."
+  `(let ((time (current-time)))
+     ,@body
+     (float-time (time-since time))))
+
+;; Set garbage collection threshold to 1GB.
+(setq gc-cons-threshold #x40000000)
+
+;; When idle for 15sec run the GC no matter what.
+(defvar k-gc-timer
+  (run-with-idle-timer 15 t
+                       (lambda ()
+                         (message "Garbage collection: Running...")
+                         (message "Garbage collection: Ran for %.06fsec"
+                                  (k-time (garbage-collect))))))
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
@@ -641,8 +653,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                             :map           "↦"
                             ;; Types
                             :null          "∅"
-                            ;; :true          "𝕋"
-                            :true          "⊤"
+                            :true          "𝕥"
+                            :false         "𝕗"
                             ;; :false         "𝔽"
                             :false         "⊥"
                             :int           "ℤ"
@@ -691,12 +703,43 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (add-hook! 'json-mode-hook
            #'cashpw/json-mode--set-indent)
 
-(use-package! w3m)
+(defcustom cashpw/url-patterns-to-open-in-external-browser
+  '(
+    ;; Reddit
+    ;; Why? Reddit blocks the EWW browser.
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?reddit\\.com"
+
+    ;; Google documents (Sheets, Slides, Docs, Forms)
+    ;; Why? Not usable in text browsers.
+    "^https?:\\/\\/docs\\.google\\.com"
+    )
+  "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
+
+(defun cashpw/browse-url (url &optional new-window)
+  "Select correct browser to open URL.
+
+Passes arguments, including NEW-WINDOW, along."
+  (if (--any
+       (string-match-p it url)
+       cashpw/url-patterns-to-open-in-external-browser)
+      (browse-url-firefox url new-window)
+    (eww-browse-url url new-window)))
+
+(setq
+ ;; browse-url-browser-function 'browse-url-default-browser
+ browse-url-browser-function 'cashpw/browse-url)
+
+;; (use-package! w3m
+;;   :config
+;;   (w3m-display-mode 'tabbed-dedicated-frames))
 
 (setq
  calendar-latitude 37.2
  calendar-longitude -121.8
  calendar-location-name "San Jose, CA")
+
+(use-package! casual
+  :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
 
 (setq
  ediff-split-window-function #'split-window-horizontally)
@@ -972,6 +1015,7 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-get-short-address (address)
   "Returns \"foo@\" for an ADDRESS of \"Foo <foo@bar.com>\"."
+  (message "address: %s")
   (cond
    ((not (string-match "<" address))
     address)
@@ -1308,7 +1352,7 @@ ${content}"))
 ;; (eglot)
 
 (unless (executable-find "emacs-lsp-booster")
-  (cashpw/error "Cannot find 'emacs-lsp-booster' executable.")
+  (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
 (use-package! eglot-booster
   :after eglot
   :config
@@ -1345,19 +1389,19 @@ ${content}"))
 ;;   :config
 ;;   (flycheck-vale-setup))
 
-(set-eglot-client!
- 'org-mode
- '("vale-ls"))
+;; (set-eglot-client!
+;; 'org-mode
+;; '("vale-ls"))
 
-(add-hook! 'org-mode-hook
-           #'eglot-ensure)
+;; (add-hook! 'org-mode-hook
+;; #'eglot-ensure)
 
 ;; Doom Emacs provides flycheck
-(after! flycheck
-  (setq
-   flycheck-idle-change-delay 3)
-  (add-hook 'after-init-hook
-            #'global-flycheck-mode))
+;; (after! flycheck
+;;   (setq
+;;    flycheck-idle-change-delay 3)
+;;   (add-hook 'after-init-hook
+;;             #'global-flycheck-mode))
 
 (setq
  flutter-sdk-path "/home/cashweaver/snap/flutter/common/flutter"
@@ -1367,6 +1411,25 @@ ${content}"))
 (use-package! aggressive-indent
   :config
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
+
+(setq
+ org-modules '(ol-doi
+               ol-w3m
+               ol-bibtex
+               ol-eww
+               ol-notmuch))
+
+(after! org-crypt
+  (advice-add
+   'org-encrypt-entries
+   :override #'ignore))
+
+;; (use-package! org-link-beautify
+;;   :after org
+;;   ;; :custom
+;;   ;; (org-link-beautify-async-preview t)
+;;   :config
+;;   (org-link-beautify-mode 1))
 
 (use-package! org-extras
   :after org)
@@ -1385,9 +1448,6 @@ ${content}"))
 
 (use-package! doct-org-roam
   :after doct)
-
-;; (use-package! ol-doi
-;;  :after org)
 
 (use-package! orgtbl-aggregate)
 
@@ -1418,7 +1478,7 @@ ${content}"))
 (defun cashpw/org-fc-review-pause ()
   (widen)
   (global-hide-mode-line-mode -1)
-  (global-flycheck-mode 1)
+  ;; (global-flycheck-mode 1)
   (ignore-errors
     (doom/reset-font-size)))
 
@@ -1435,8 +1495,8 @@ ${content}"))
     (doom/reset-font-size))
   (setq
    org-image-actual-width 1200)
-  (cashpw/eglot-pause)
-  (global-flycheck-mode -1)
+  ;; (cashpw/eglot-pause)
+  ;; (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
   (doom/increase-font-size 2))
 
@@ -1458,8 +1518,8 @@ ${content}"))
                               :html-scale 1.0
                               :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
-  (global-flycheck-mode)
-  (cashpw/eglot-unpause)
+  ;; (global-flycheck-mode)
+  ;; (cashpw/eglot-unpause)
   (global-hide-mode-line-mode -1)
   (ignore-errors
     (doom/reset-font-size)))
@@ -1562,8 +1622,8 @@ ${content}"))
              #'cashpw/org-fc--before-review)
   (add-hook! 'org-fc-after-review-hook
              #'cashpw/org-fc--after-review)
-  (setq
-   org-fc-review-position-filters '())
+  ;; (setq
+  ;;  org-fc-review-position-filters '())
   ;; (setq
   ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
   ;;                                   cashpw/org-fc--filter-limit-implement
@@ -1783,8 +1843,7 @@ Only parent headings of the current heading remain visible."
     ;; Find the first heading with a :narrow: tag or the top level
     ;; ancestor of the current heading and narrow to its region
     (save-excursion
-      (while (not (equal (org-up-heading-safe)
-                         1)))
+      (while (org-up-heading-safe))
       (org-narrow-to-subtree)
       (outline-hide-subtree))
     ;; Show only the ancestors of the current card
@@ -1862,12 +1921,25 @@ Reference: `org-gcal--update-entry'."
         (parse-iso8601-time-string end-datetime)
       (date-to-time end-date))))
 
+(defun cashpw/org-gcal--remove-gcal-timestamp ()
+  "Delete the timestamp `org-gcal' inserts."
+  (org-mark-subtree)
+  (replace-regexp
+   org-element--timestamp-regexp
+   ""
+   nil
+   (region-beginning)
+   (region-end))
+  (deactivate-mark))
+
 (defun cashpw/org-gcal--set-scheduled (_calendar-id event _update-mode)
   "See `org-gcal-after-update-entry-functions'."
-  (org-schedule
-   nil
-   (cashpw/org-gcal--timestamp-from-event
-    event)))
+  (shut-up
+    (cashpw/org-gcal--remove-gcal-timestamp)
+    (org-schedule
+     nil
+     (cashpw/org-gcal--timestamp-from-event
+      event))))
 
 (defun cashpw/org-gcal--set-effort (_calendar-id event _update-mode)
   "Set Effort property based on EVENT if not already set.
@@ -1896,8 +1968,7 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
             org-effort-property)))
       (unless
           effort
-        (org-entry-put
-         (point)
+        (org-set-property
          org-effort-property
          (apply
           #'format
@@ -1915,12 +1986,12 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 (defun cashpw/org-gcal--set-category (_calendar-id event _update-mode)
   "Set appropriate category for EVENT."
   (when-let ((summary (plist-get event :summary)))
-    (message "Setting category for %s" summary)
     (dolist (summary-category cashpw/org-gcal--summary-categories)
       (when (string-match-p (car summary-category) summary)
-        (org-set-property
-         "CATEGORY"
-         (cdr summary-category))))))
+        (shut-up
+          (org-set-property
+           "CATEGORY"
+           (cdr summary-category)))))))
 
 (defcustom cashpw/org-gcal--summaries-to-exclude
   '()
@@ -1931,7 +2002,6 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 (defun cashpw/org-gcal--filter-summaries (item)
   "Return nil to exclude the result."
   (let ((summary (plist-get item :summary)))
-    (message "Filtering summary: %s" summary)
     (if (--any (string-match it summary)
                cashpw/org-gcal--summaries-to-exclude)
         nil
@@ -2125,16 +2195,17 @@ Return nil if no attendee exists with that EMAIL."
   (insert
    (s-lex-format
     "Prepare: ${summary}"))
-  (org-priority
-   2)
-  (org-set-property
-   "Effort"
-   "5m")
-  (org-schedule
-   nil
-   (format-time-string
-    "%F"
-    time)))
+  (shut-up
+    (org-priority
+     2)
+    (org-set-property
+     "Effort"
+     "5m")
+    (org-schedule
+     nil
+     (format-time-string
+      "%F"
+      time))))
 
 (defun cashpw/org-gcal--maybe-create-prep-meeting (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
@@ -2176,9 +2247,10 @@ Return nil if no attendee exists with that EMAIL."
          (event-end-time (cashpw/org-gcal--end event)))
     (org-insert-todo-heading-respect-content)
     (insert (s-lex-format "Extract TODOs: ${event-summary}"))
-    (org-priority 2)
-    (org-set-property "Effort" "5m")
-    (org-schedule nil (format-time-string "%F %H:%M" event-end-time))))
+    (shut-up
+      (org-priority 2)
+      (org-set-property "Effort" "5m")
+      (org-schedule nil (format-time-string "%F %H:%M" event-end-time)))))
 
 (defun cashpw/org-gcal--maybe-create-todo-extract-reminder (_calendar-id event _update-mode)
   "Insert a 1-on-1 prep heading todo if EVENT is for a 1-on-1 event."
@@ -2273,7 +2345,8 @@ Return nil if no attendee exists with that EMAIL."
 
 (defcustom cashpw/org-gcal--profile-personal
   `(:fetch-file-alist (("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar)
-                       ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
+                       ;; ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar)
+                       )
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
     :client-secret ,(cashpw/get-secret
                      "org-gcal--personal")
@@ -2287,6 +2360,7 @@ Return nil if no attendee exists with that EMAIL."
                                        "Cardio"
                                        "Stretch"
                                        "Walk"))
+                         ("Pet" . ("Empty cat boxes"))
                          ("Hygeine" . ("Shower"
                                        "Brush teeth"
                                        "Teeth"
@@ -2317,7 +2391,9 @@ Return nil if no attendee exists with that EMAIL."
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
     :client-secret ,(cashpw/get-secret
                      "org-gcal--personal")
-    :summaries-to-exclude '())
+    :no-prep-reminder-summaries ()
+    :summary-categories (("Sleep" . ("Sleep")))
+    :summaries-to-exclude ())
   "Personal configuration for `org-gcal'."
   :group 'cashpw
   :type 'sexp)
@@ -2326,36 +2402,58 @@ Return nil if no attendee exists with that EMAIL."
   "Fetch the last N-DAYS of sleep calendar."
   (interactive "nDays to fetch: ")
   (org-gcal-sync-tokens-clear)
-  (let ((org-gcal-up-days
-         n-days)
-        (org-gcal-down-days
-         1))
-    (cl-letf (((symbol-function
-                'cashpw/org-gcal--filter-summaries)
-               (lambda (summary)
-                 (string=
-                  summary
-                  "Sleep"))))
-      (org-gcal-fetch))))
+  (let ((previous-profile cashpw/org-gcal--current-profile))
+    (cashpw/org-gcal-activate-profile
+     cashpw/org-gcal--profile-sleep)
+    (let ((org-gcal-up-days
+           n-days)
+          (org-gcal-down-days
+           1))
+      (cl-letf (((symbol-function
+                  'cashpw/org-gcal--filter-summaries)
+                 (lambda (summary)
+                   (string=
+                    summary
+                    "Sleep"))))
+        (org-gcal-fetch)))
+    (cashpw/org-gcal-activate-profile
+     previous-profile)))
 
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
+  
+  ;; Ignore these methods to improve performance. This is safe
+  ;; because I don't push any events to GCal
+  (advice-add 'org-generid-id-update-id-locations :override #'ignore)
+  (advice-add 'org-gcal-sync-buffer :override #'ignore)
+  (flyspell-mode 0)
+  
   (org-gcal-sync-tokens-clear)
-  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
-    (with-current-buffer (find-file-noselect calendar-path)
+  (let ((calendar-path
+         (cdr
+          (car
+           org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect
+                          calendar-path)
       (cashpw/delete-lines-below 9)
-      ;; Insert a heading; `org-gcal' throws an error if we cancel the first event
+      ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       (goto-char (point-max))
       (insert "* Flashcards"))
-    (let ((org-agenda-files `(,calendar-path)))
+    (let (
+          ;; Set limited agenda files to improve performance
+          (org-agenda-files `(,calendar-path)))
       (org-gcal-fetch))
     ;; I'd prefer a solution which involves `deferred'. However, I couldn't get that working.
     ;; (run-with-timer 10 nil #'cashpw/org-gcal--schedule-events)
     ;; (setq
     ;; cashpw/org-mode--done-noop-file-paths (remove calendar-file-path
     ;; cashpw/org-mode--done-noop-file-paths))
-    ))
+    )
+  
+  (flyspell-mode 1)
+  (advice-remove 'org-generid-id-update-id-locations #'ignore)
+  (advice-remove 'org-gcal-sync-buffer #'ignore))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (cashpw/org-gcal-activate-profile cashpw/org-gcal--profile-personal)
@@ -2363,7 +2461,7 @@ Return nil if no attendee exists with that EMAIL."
   :custom
   (plstore-cache-passphrase-for-symmetric-encryption t)
   (org-gcal-up-days 1)
-  (org-gcal-down-days 7)
+  (org-gcal-down-days 8)
   (org-gcal-remove-cancelled-events t)
   (org-gcal-remove-events-with-cancelled-todo t)
   ;; See https://github.com/kidd/org-gcal.el/issues/172
@@ -2374,7 +2472,8 @@ Return nil if no attendee exists with that EMAIL."
   (org-gcal-reload-client-id-secret)
   (add-hook!
    'org-gcal-after-update-entry-functions
-   #'cashpw/org-gcal--set-effort
+   ;; #'cashpw/org-gcal--set-effort
+   #'cashpw/org-gcal--set-scheduled
    #'cashpw/org-gcal--set-category
    #'cashpw/org-gcal--maybe-create-todo-extract-reminder
    #'cashpw/org-gcal--maybe-handle-sleep
@@ -2414,12 +2513,9 @@ Return nil if no attendee exists with that EMAIL."
   ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
-(use-package! org-ql)
+;; (use-package! org-ql)
 
 (use-package! org-recipes
-  :after org)
-
-(use-package! org-roam
   :after org)
 
 ;; (use-package! org-special-block-extras
@@ -2450,6 +2546,65 @@ Return nil if no attendee exists with that EMAIL."
 (when (not (cashpw/is-work-cloudtop-p))
   (use-package! ox-hugo
     :after ox))
+
+(use-package! quickroam
+  :after org-roam
+  :config
+  (defun cashpw/quickroam-insert ()
+    "Fast substitute for `org-roam-node-insert'."
+    (interactive nil org-mode)
+    (require 'org-roam)
+    (when (or (hash-table-empty-p quickroam-cache)
+              (not quickroam-mode))
+      (quickroam-reset))
+    (let* ((beg nil)
+           (end nil)
+           (region-text (when (region-active-p)
+                          (setq beg (region-beginning))
+                          (setq end (region-end))
+                          (org-link-display-format
+                           (buffer-substring-no-properties beg end))))
+           (title (completing-read "Node: " quickroam-cache nil nil nil 'org-roam-node-history))
+           (node (gethash title quickroam-cache))
+           (id (plist-get node :id))
+           (link-desc (or region-text title)))
+      (if node
+          (atomic-change-group
+            (when region-text
+              (delete-region beg end)
+              ;; Try to strip the todo keyword, whatever counts as todo syntax
+              ;; in the target file.  Fail silently because it matters not much.
+              ;; (ignore-errors
+              ;;   (org-roam-with-file
+              ;;       (expand-file-name (plist-get node :file) org-roam-directory)
+              ;;       nil
+              ;;     (widen)
+              ;;     (goto-char 1)
+              ;;     (forward-line (1- (plist-get node :line-number)))
+              ;;     (setq link-desc (nth 4 (org-heading-components)))))
+              )
+            (insert (org-link-make-string (concat "id:" id) link-desc))
+            (run-hook-with-args 'org-roam-post-node-insert-hook id link-desc))
+        (atomic-change-group
+          (org-roam-capture-
+           :node (org-roam-node-create :title title)
+           :props (append
+                   (when region-text
+                     (list :region (cons (set-marker (make-marker) beg)
+                                         (set-marker (make-marker) end))))
+                   (list :link-description link-desc
+                         :finalize 'insert-link)))))))
+
+
+  (advice-add
+   'org-roam-node-find
+   :override 'quickroam-find)
+  (advice-add
+   'org-roam-node-insert
+   :override 'cashpw/quickroam-insert)
+  (add-hook
+   'org-mode-hook
+   #'quickroam-enable-cache))
 
 (use-package! summarize-agenda-time
   :after org
@@ -2581,39 +2736,58 @@ The exporting happens only when Org Capture is not in progress."
         ;;     (save-buffer)))
         ))))
 
-(defun cashpw/org-roam-files-with-tag (tag &optional skip-sync)
-  "Return a list of note files containing 'hastodo tag."
+(defun cashpw/org-files-with-tag (tag directory)
+  "Return list of org files in DIRECTORY tagged (filetag) with TAG."
   (cashpw/rgrep
    (format
-   "-l '#.filetags.*:%s:' %s*.org"
-   tag
-   (cashpw/maybe-add-trailing-forward-slash
-    org-roam-directory))))
+    "-l '#.filetags.*:%s:' %s*.org"
+    tag
+    (cashpw/maybe-add-trailing-forward-slash
+     directory))))
 
-(defun cashpw/org-roam-files-with-tags (tag1 tag2 &rest tags)
-  "Return a list of note files tagged with all TAGS."
+(defun cashpw/org-roam-files-with-tag (tag &optional skip-sync)
+  "Return a list of note files containing 'hastodo tag."
+  (cashpw/org-files-with-tag
+   tag
+   org-roam-directory))
+
+(defun cashpw/org-files-with-tags (tags directory)
+  "Return a list of files in DIRECTORY tagged with all TAGS."
   (cashpw/grep
    (format
-    "-Pl '^(?=.*filetags:.*:%s:)(?=.*filetags.*:%s:)' %s*.org"
-    tag1
-    tag2
+    ;; "-Pl '^(?=.*filetags:.*:%s:)(?=.*filetags.*:%s:)' %s*.org"
+    "-Pl '^%s' %s*.org"
+    (s-join
+     ""
+     (--map
+      (format
+       "(?=.*filetags:.*:%s:)"
+       it)
+      tags))
     (cashpw/maybe-add-trailing-forward-slash
-     org-roam-directory))))
+     directory))))
+
+(defun cashpw/org-roam-files-with-tags (&rest tags)
+  "Return a list of note files tagged with all TAGS."
+  (cashpw/org-files-with-tags
+   tags
+   org-roam-directory))
 
 (defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
 
 TODO entries marked as done are ignored, meaning the this
 function returns nil if current buffer contains only completed
-tasks."
-  (when (string-equal mode-name "Org")
-    (seq-find (lambda (type)
-                (eq type 'todo))
-              (org-element-map
-                  (org-element-parse-buffer 'headline)
-                  'headline
-                (lambda (h)
-                  (org-element-property :todo-type h))))))
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     "^\\*+ TODO")))
+
 (defun cashpw/magit-buffer-p ()
   (and
    (derived-mode-p 'magit-mode)
@@ -2814,6 +2988,18 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (string-match-p yyyy it)
      (cashpw/org-roam-files-with-tag "journal"))))
 
+(defun cashpw/org-agenda-files--journal-this-year-with-todo ()
+  "Return list of journal agenda files.
+
+Don't call directly. Use `cashpw/org-agenda-files'."
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory))
+         (yyyy (format-time-string "%Y" (current-time))))
+    (--filter
+     (string-match-p yyyy it)
+     (cashpw/org-roam-files-with-tags "journal" "hastodo"))))
+
 (defun cashpw/org-agenda-files--people-private ()
   "Return list of personal contact agenda files.
 
@@ -2822,6 +3008,15 @@ Don't call directly. Use `cashpw/org-agenda-files'."
          (org-roam-db-location (expand-file-name "org-roam.db"
                                                  org-roam-directory)))
     (cashpw/org-roam-files-with-tags "person" "private")))
+
+(defun cashpw/org-agenda-files--people-private-with-todo ()
+  "Return list of personal contact agenda files.
+
+Don't call directly. Use `cashpw/org-agenda-files'."
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory)))
+    (cashpw/org-roam-files-with-tags "person" "private" "hastodo")))
 
 (defun cashpw/org-agenda-files (context &optional include-archive)
   "Return list of agenda files for CONTEXT. Include archived files when INCLUDE-ARCHIVE."
@@ -2839,6 +3034,10 @@ Don't call directly. Use `cashpw/org-agenda-files'."
            (cashpw/org-agenda-files--calendar))
           ((equal context 'journal-this-year)
            (cashpw/org-agenda-files--journal-this-year))
+          ((equal context 'journal-this-year-with-todo)
+           (cashpw/org-agenda-files--journal-this-year-with-todo))
+          ((equal context 'people-private-with-todo)
+           (cashpw/org-agenda-files--people-private-with-todo))
           ((equal context 'people-private)
            (cashpw/org-agenda-files--people-private)))))
     (if include-archive
@@ -2853,8 +3052,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-agenda-files (append
                      (cashpw/org-agenda-files 'personal)
                      (cashpw/org-agenda-files 'calendar)
-                     (cashpw/org-agenda-files 'journal-this-year)
-                     (cashpw/org-agenda-files 'people-private))))
+                     (cashpw/org-agenda-files 'journal-this-year-with-todo)
+                     (cashpw/org-agenda-files 'people-private-with-todo))))
 
 ;; DEBUGGING
 ;;(after! org-roam
@@ -2869,6 +3068,38 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-ellipsis " ▼"
    org-hide-leading-stars t))
 
+(after! org-roam
+  ;; Override to only replace if it's a roam link.
+  (defun org-roam-link-replace-all ()
+    "Replace all \"roam:\" links in buffer with \"id:\" links."
+    (interactive)
+    (org-with-point-at 1
+      (while (re-search-forward org-link-bracket-re nil t)
+        (when (s-starts-with-p
+               "roam:"
+               (match-string 1))
+          (org-roam-link-replace-at-point)))))
+  (setq
+   org-roam-db-update-on-save nil)
+  ;; (org-roam-db-autosync-disable)
+  ;; Sync when I'm away from keyoard.
+  (setq
+   cashpw/org-roam-sync-timer (run-with-idle-timer
+                               60
+                               t
+                               (lambda ()
+                                 (message "Roam sync: Running...")
+                                 (let* ((org-roam-directory
+                                         (if (cashpw/is-work-cloudtop-p)
+                                             cashpw/path--work-notes-dir
+                                           cashpw/path--notes-dir))
+                                        (org-roam-db-location
+                                         (expand-file-name
+                                          "org-roam.db"
+                                          org-roam-directory)))
+                                   (message "Roam sync: Ran for %.06fsec"
+                                            (k-time (org-roam-db-sync))))))))
+
 (after! doct-org-roam
   (setq
    ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
@@ -2879,46 +3110,55 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                                                 :template "%?"
                                                 :file "${slug}.org"
                                                 :unnarrowed t
-                                                :children (("Concept"
+                                                :children (
+                                                           ("Concept"
                                                             :keys "c"
-                                                            :head ("#+title: ${title}"
-                                                                   "#+author: Cash Prokop-Weaver"
-                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                   "#+filetags: :concept:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :concept:"))
+                                                           ("On X"
+                                                            :keys "o"
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :concept:
+
+An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
-                                                            :head ("#+title: ${title}"
-                                                                   "#+author: Cash Prokop-Weaver"
-                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                   "#+filetags: :person:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :person:"))
                                                            ("Verse"
                                                             :keys "v"
-                                                            :head ("#+title: ${title}"
-                                                                   "#+author: Cash Prokop-Weaver"
-                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                   "#+filetags: :verse:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :verse:"))
                                                            ("Quote"
                                                             :keys "u"
-                                                            :head ("#+title: ${title}"
-                                                                   "#+author: Cash Prokop-Weaver"
-                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                   "#+filetags: :quote:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :quote:"))
                                                            ("Recipe"
                                                             :keys "r"
-                                                            :head ("#+title: ${title}"
-                                                                   "#+author: Cash Prokop-Weaver"
-                                                                   "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                   "#+filetags: :recipe:"
-                                                                   ""
-                                                                   "* TODO [#2] Ingredients"
-                                                                   ""
-                                                                   "#+begin_ingredients"
-                                                                   "| Ingredients | Notes | Quantity |"
-                                                                   "|-------------+-------+----------|"
-                                                                   "|             |       |          |"
-                                                                   "#+end_ingredients"
-                                                                   ""
-                                                                   "* TODO [#2] Steps"))))))))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :recipe:
+
+* TODO [#2] Ingredients
+
+#+begin_ingredients
+| Ingredients | Notes | Quantity |
+|-------------+-------+----------|
+|             |       |          |
+#+end_ingredients
+
+* TODO [#2] Steps"))))))))
 
 (defun cashpw/org-roam-node-from-cite--inner (entry title)
   "Create a roam node based on bibliography citation.
@@ -3005,7 +3245,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
   (let ((roam-refs (org-entry-get
                     (point)
                     "ROAM_REFS")))
-    (message roam-refs)
     (if (s-starts-with-p "http"
                          roam-refs)
         (browse-url roam-refs)
@@ -3021,7 +3260,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
          (current-value
           (org-collect-keywords
            keyword)))
-      (message current-value)
       (org-roam-set-keyword
        (downcase keyword)
        (format "%s %s"
@@ -3187,33 +3425,33 @@ Optional:
         (when todo
           (org-todo todo))))))
 
-(defun cashpw/org-roam--current-buffer-not-archive-p ()
+(defun cashpw/org-roam--current-buffer-archive-p ()
   "TODO."
-  (not
-   (cashpw/org--archive-buffer-p
-    (current-buffer))))
+  (cashpw/org--archive-buffer-p
+   (current-buffer)))
 
 (defun cashpw/org-roam--current-file-path-no-flashcard-p ()
   "TODO."
-  (not
-   (member
-    (buffer-file-name)
-    cashpw/org-roam--file-path-exceptions-to-add-flashcards)))
+  (member
+   (buffer-file-name)
+   cashpw/org-roam--file-path-exceptions-to-add-flashcards))
 
 (defcustom cashpw/org-roam--skip-add-flashcard-fns
-  '(org-roam-file-p
-    cashpw/org-roam--current-buffer-not-archive-p
+  '(
+    (lambda ()
+      (not
+       (org-roam-file-p)))
+    cashpw/org-roam--current-buffer-archive-p
     cashpw/org-roam--current-file-path-no-flashcard-p)
-  "Add a flashcard only if all of these functions return nil."
+  "Skip adding flashcard heading if any of these functions return non-nil."
   :type 'hook)
 
 (defun cashpw/org-roam-add-flashcards (&optional todo priority tags)
   "Add flashcard heading to the current buffer."
   (interactive)
-  (when (--none-p
+  (unless (--any-p
          (funcall it)
          cashpw/org-roam--skip-add-flashcard-fns)
-    (message "Adding flashcard")
     (cashpw/org--add-heading-if-missing
      "Flashcards"
      todo
@@ -3239,7 +3477,7 @@ Optional:
 
 (defun cashpw/org-roam-before-save ()
   (cashpw/org-roam-rewrite-smart-to-ascii)
-  (cashpw/org-roam-mirror-roam-refs-to-front-matter)
+  ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
   (cashpw/org-roam-add-bibliography)
   (cashpw/org-roam-add-flashcards
    "TODO"
@@ -3368,6 +3606,27 @@ This is an internal function."
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
 
+(defun cashpw/revert-file (filename)
+  "Revert FILENAME."
+  (with-current-buffer
+      (find-file-noselect
+       filename)
+    (revert-buffer)))
+
+(defun cashpw/revert-common-files ()
+  (interactive)
+  (let* ((files
+          `(,cashpw/path--personal-todos
+            ,cashpw/path--personal-calendar))
+         (files-with-archive
+          (append
+           files
+           (org-extras-files-archive-files
+            files))))
+    (--each
+        files-with-archive
+      (cashpw/revert-file it))))
+
 (defun vulpea-agenda-files-update (&rest _)
   "Update the value of `org-agenda-files'."
   (setq
@@ -3390,11 +3649,7 @@ This is an internal function."
 
 (defun cashpw/org-roam--export-backlinks (backend)
   "Add backlinks to roam buffer for export; see `org-export-before-processing-hook'."
-  (message "]]]]]] cashpw/org-roam--export-backlinks")
-  (message "]]]]]] buffer-name: %s"
-           (buffer-name))
   (when (org-roam-file-p)
-    (message "]]]]] is roam file")
     (let* ((current-node (org-roam-node-at-point))
            (current-node-file (org-roam-node-file current-node))
            (backlinks (let ((-compare-fn (lambda (a b)
@@ -3632,7 +3887,6 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 If N is positive, take the first N items, otherwise take the last N items.
 Note: the ordering of entries is not guaranteed to be preserved, so this may
 not always show the expected results."
-    (message (format "%s" group))
     (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
             (take-fn (if (cl-minusp n) #'-take-last #'-take))
             (placement (if (cl-minusp n) "Last" "First"))
@@ -3721,7 +3975,8 @@ Intended for use with `org-super-agenda-groups'."
 (defun cashpw/org-agenda-custom-commands--update ()
   "Update `org-agenda-custom-commands'."
   (setq
-   org-agenda-custom-commands `((".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
+   org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
+                                (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
@@ -3782,9 +4037,19 @@ Intended for use with `org-super-agenda' `:transformer'. "
     line))
 
 (defun cashpw/org-agenda-category (max-length)
-  (let ((category (or (org-get-category)
-                      (org-get-title)
-                      "")))
+  (let* ((marker
+          (org-get-at-bol
+           'org-hd-marker))
+         (category
+          (or
+           ;; Skip when we're in the org-agenda buffer as there's no category to get
+           (when (not
+                  (string=
+                   (buffer-name)
+                   org-agenda-buffer-name))
+             (org-with-point-at marker
+               (org-get-category)))
+           (org-get-title))))
     (s-truncate
      max-length
      category)))
@@ -4203,7 +4468,8 @@ items if they have an hour specification like [h]h:mm."
            :deadline t))
          (:name "In Progress"
           :todo "INPROGRESS")
-         (:auto-map cashpw/org-super-agenda--get-priority)))))))
+         (:auto-map cashpw/org-super-agenda--get-priority)
+         ))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
@@ -4227,19 +4493,184 @@ items if they have an hour specification like [h]h:mm."
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
-(defun cashpw/org-agenda-view--no-effort ()
+(defun cashpw/org-agenda-view--inbox-get-scheduled-time-string ()
+  "Return scheduled string for inbox view."
+  (cond
+   ((org-entry-get
+     (point)
+     "SCHEDULED"
+     nil)
+    (progn
+      (search-forward "SCHEDULED: ")
+      (org-element-timestamp-parser)
+      (let* ((timestamp (org-element-timestamp-parser))
+             (start-time (org-timestamp-to-time timestamp))
+             (end-time (org-timestamp-to-time timestamp t)))
+        (if (and start-time
+                 end-time
+                 (not (time-equal-p start-time
+                                    end-time)))
+            "[X]"
+          ;; "📅⌛"
+          "[X]"
+          ;; "📅"
+          ))))
+   (t
+    "[ ]"
+    ;; "❌"
+    )))
+
+(defun cashpw/org-agenda-view--inbox-get-effort-string ()
+  "Return effort string for inbox view."
+  (let ((effort-minutes
+         (let ((effort (org-extras-get-property
+                        (point)
+                        "Effort")))
+           (when effort
+             (org-duration-to-minutes effort)))))
+    (cond
+     ((and effort-minutes
+           (> effort-minutes
+              (* 60 4)))
+      ">4h")
+     (effort-minutes
+      "[X]"
+      ;; "✅"
+      )
+     (t
+      "[ ]"
+      ;; "❌"
+      ))))
+
+(defun cashpw/org-agenda-view--inbox-get-category-string ()
+  "Return effort string for inbox view."
+  (let ((category (org-get-category)))
+    (cond
+     ((and category
+           (string= category "Inbox"))
+      "Inbox")
+     (category
+      "[X]"
+      ;; "✅"
+      )
+     (t
+      "[ ]"
+      ;; "❌"
+      ))))
+
+(defun cashpw/org-agenda-view--specified-p (item)
+  "Return non-nil if ITEM should be shown in the Inbox agenda view.
+
+Indended to be passed as a `:pred` in `org-super-agenda-groups'."
+  (let* ((marker
+          (or (get-text-property 0 'org-marker item)
+              (get-text-property 0 'org-hd-marker item)))
+         (category
+          (get-text-property 0 'org-category item))
+         (effort-minutes
+          (get-text-property 0 'effort-minutes item))
+         (scheduled
+          (org-super-agenda--when-with-marker-buffer marker
+            (org-narrow-to-element)
+            (when (org-entry-get marker "SCHEDULED" nil)
+
+              (search-forward "SCHEDULED: ")
+              ;; (buffer-substring-no-properties (point) (+ (point) 15))
+              (org-element-timestamp-parser)
+              (let* ((timestamp (org-element-timestamp-parser))
+                     (start-time (org-timestamp-to-time timestamp))
+                     (end-time (org-timestamp-to-time timestamp t)))
+                `(:start ,start-time
+                  :end ,end-time)))))
+         (duration-minutes
+          (when scheduled
+            (/ (time-subtract (plist-get scheduled :end)
+                              (plist-get scheduled :start))
+               60)))
+         (duration-or-effort-minutes
+          (or (if (and duration-minutes
+                       (= duration-minutes 0))
+                  nil
+                duration-minutes)
+              effort-minutes))
+         (explicit-category-p
+          ;; Must have an explicit category; default is "Inbox".
+          (and category
+               (not (string=
+                     category
+                     "Inbox")))))
+    ;; (message "[cashpw] %s
+    ;; explicit-category-p: %s
+    ;; duration-or-effort-minutes: %s
+    ;; scheduled: %s"
+    ;;              item
+    ;;              explicit-category-p
+    ;;              duration-or-effort-minutes
+    ;;              (prin1-to-string scheduled))
+    (and
+     explicit-category-p
+     scheduled
+     duration-or-effort-minutes
+     ;; Must have a time estimate of <4 hours
+     (< duration-or-effort-minutes
+        (1+ (* 60 4))))))
+
+(defun cashpw/org-agenda-view--inbox ()
   "Return custom agenda command."
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
+      (org-agenda-use-tag-inheritance nil)
+      (org-use-property-inheritance nil)
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-prefix-format '((todo . "%-8(cashpw/org-agenda-view--inbox-get-category-string)   %-9(cashpw/org-agenda-view--inbox-get-scheduled-time-string)   %-6(cashpw/org-agenda-view--inbox-get-effort-string) %(cashpw/org-agenda-buganizer-title)")))
       (org-super-agenda-groups
        '((;; Automatically named "Log"
           :log t)
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"))
-         (:name "Without effort"
-          :effort< "0:01")))))))
+         (:discard
+          (:tag ("someday"
+                 "reminder")))
+         (:name "Inbox
+
+To remove from Inbox:
+
+1. Tag with \"someday\"
+2. Tag with \"reminder\"
+3. Specify all of the following:
+   - SCHEDULE start time
+   - Set effort or SCHEDULE end time for <4 hours
+   - An explicit CATEGORY
+
+Category | Scheduled | Effort
+"
+          :not (:pred cashpw/org-agenda-view--specified-p))
+         (:discard
+          (:anything))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+
+(defun cashpw/org-agenda-view--no-effort ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-super-agenda-groups
+       '((;; Automatically named "Log"
+          :log t)
+         (:discard
+          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"))
+         (:discard
+          (:property "Effort"))
+         ;; (:name "Without effort"
+         ;;  :effort< "0:01")
+         ))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
 
 (defun cashpw/org-agenda-view--no-priority ()
   "Return custom agenda command."
@@ -4315,6 +4746,12 @@ items if they have an hour specification like [h]h:mm."
 (defun cashpw/org-agenda-buganizer-title ()
   "Overridden in my work config."
   "")
+
+(map! :after org-agenda
+      :map org-agenda-mode-map
+      :m "C-SPC" #'org-agenda-show-and-scroll-up
+      :localleader
+      "o" #'org-agenda-set-property)
 
 (defun cashpw/org-clock--agenda-with-archives ()
   "Return list of agenda files to use with clocktable."
@@ -4842,10 +5279,10 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
 
-(defcustom cashpw/org-mode-on-done--keep-file-paths (append
-                                                     `(,(s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")
-                                                       ,(s-lex-format "${cashpw/path--notes-dir}/retrospective-2024.org"))
-                                                     )
+(defcustom cashpw/org-mode-on-done--keep-file-paths
+  (append
+   `(,(s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")
+     ,(s-lex-format "${cashpw/path--notes-dir}/retrospective-2024.org")))
   "TODOs in these files will be keep by default."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
@@ -4878,19 +5315,20 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
           'cashpw/org-mode-on-done--delete-file-p)
 
 (defcustom cashpw/org-mode-on-done--noop-filetags
-  '()
+  '("noop_on_done")
   "Filetags for which we should noop on done."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
 
 (defcustom cashpw/org-mode-on-done--keep-filetags
-  '("journal")
+  '("keep_on_done"
+    "journal")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
 
 (defcustom cashpw/org-mode-on-done--delete-filetags
-  '()
+  '("delete_on_done")
   "Filetags for which we should delete on done."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
@@ -5509,7 +5947,7 @@ Optionally skip FILES-TO-IGNORE."
                  (start-time
                   (current-time)))
             ;; Speed up the export
-            (cashpw/eglot-pause)
+            ;; (cashpw/eglot-pause)
             (memoize 'citeproc-hash-itemgetter-from-any)
             (advice-add 'org-id-find :override 'org-roam-id-find)
             (memoize 'org-roam-node-id)
@@ -5579,7 +6017,7 @@ Optionally skip FILES-TO-IGNORE."
              progress-reporter)
 
             ;; Remove speed-up changes
-            (cashpw/eglot-unpause)
+            ;; (cashpw/eglot-unpause)
             (advice-remove 'org-id-find 'org-roam-id-find)
             (memoize-restore 'org-roam-node-id)
             (memoize-restore 'org-roam-node-file)
@@ -5957,6 +6395,15 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 ;; (add-hook!
 ;;  'java-mode-hook
 ;;  'electric-case-java-init)
+
+(defmacro measure-time (&rest body)
+  "Measure the time it takes to evaluate BODY.
+
+Reference:https://stackoverflow.com/q/23622296"
+  `(let ((start-time (current-time)))
+     ,@body
+     (message "%.06f"
+              (float-time (time-since start-time)))))
 
 ;; Reference: https://notes.alexkehayias.com/exporting-org-mode-documents-with-many-org-id-links-is-slow/
 (after! ox

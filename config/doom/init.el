@@ -20,6 +20,7 @@
 
 (doom!
  :input
+ ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
  ;;chinese
  ;;japanese
  ;;layout            ; auie,ctsrnm is the superior home row
@@ -27,6 +28,7 @@
  :completion
  (company           ; the ultimate code completion backend
   +childframe)
+ ;;(corfu +orderless)  ; complete with cap(f), cape and a flying feather!
  ;;helm              ; the *other* search engine for love and life
  ;;ido               ; the other *other* search engine...
  ;;ivy               ; a search engine for love and life
@@ -49,9 +51,6 @@
   +extra)
  ;;minimap           ; show a map of the code on the side
  modeline            ; snazzy, Atom-inspired modeline, plus API
- ;; (modeline           ; snazzy, Atom-inspired modeline, plus API
- ;;  ;; Regular modeline is slow
- ;;  +light)
  ;;nav-flash         ; blink cursor line after big motions
  ;;neotree           ; a project drawer, like NERDTree for vim
  ophints             ; highlight the region an operation acts on
