@@ -368,6 +368,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
        nil
        t))))
 
+(defun cashpw/maybe-add-trailing-forward-slash (str)
+  "Return STR with a trailing slash (added if it was missing)."
+  (if (s-ends-with? "/" str)
+      str
+    (format "%s/" str)))
+
 (when (not (cashpw/is-work-cloudtop-p))
   (use-package! centered-cursor-mode))
 
@@ -5305,7 +5311,8 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 (defcustom cashpw/org-mode-on-done--keep-filetags
   '("keep_on_done"
-    "journal")
+    "journal"
+    "project")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
@@ -6340,12 +6347,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 ;; (add-to-list
 ;;  'cashpw/project-paths
 ;;  cashpw/gdrive-notes-dir-path)
-
-(defun cashpw/maybe-add-trailing-forward-slash (str)
-  "Return STR with a trailing slash (added if it was missing)."
-  (if (s-ends-with? "/" str)
-      str
-    (format "%s/" str)))
 
 (defun cashpw/get-flattened-known-project-paths ()
   "Return a list of all known project paths"

@@ -10,3 +10,7 @@
 [submodule "config/i3blocks"]
 	path = config/i3blocks
 	url = git@github.com:vivien/i3blocks-contrib.git
+[submodule "dotbot"]
+	path = dotbot
+	url = https://github.com/anishathalye/dotbot
+	ignore = dirty

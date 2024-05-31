@@ -17,3 +17,5 @@ alias sba='source ~/.bash_aliases'
 alias sp='source ~/.profile'
 
 alias v='nvim'
+
+alias syncnotes='bash ~/.scripts/sync/sync_notes.sh'
