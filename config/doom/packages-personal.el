@@ -4,7 +4,8 @@
 
 (package! aggressive-indent)
 
-(package! centered-cursor-mode)
+(when (not (cashpw/is-work-cloudtop-p))
+  (package! centered-cursor-mode))
 
 (package! command-log-mode)
 
@@ -177,6 +178,10 @@
 
 (unpin! org-roam)
 
+(package! org-node
+  :recipe (:host github
+           :repo "meedstrom/org-node"))
+
 (package! org-roam-ui)
 
 ;; (package! org-special-block-extras)
@@ -198,10 +203,6 @@
   (package! ox-hugo))
 
 (package! ox-pandoc)
-
-(package! quickroam
-  :recipe (:host github
-           :repo "meedstrom/quickroam"))
 
 (package! summarize-agenda-time
   :recipe (:host github

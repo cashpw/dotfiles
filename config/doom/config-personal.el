@@ -10,6 +10,9 @@
     error-message
     args)))
 
+(setq
+ cashpw/personal-config-load-start-time (current-time))
+
 (setq search-invisible t)
 
 (defcustom
@@ -365,7 +368,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
        nil
        t))))
 
-(use-package! centered-cursor-mode)
+(when (not (cashpw/is-work-cloudtop-p))
+  (use-package! centered-cursor-mode))
 
 (use-package! command-log-mode
   :config
@@ -2360,6 +2364,7 @@ Return nil if no attendee exists with that EMAIL."
                                        "Cardio"
                                        "Stretch"
                                        "Walk"))
+                         ("Finance" . ("Finances and net worth"))
                          ("Pet" . ("Empty cat boxes"))
                          ("Hygeine" . ("Shower"
                                        "Brush teeth"
@@ -2518,6 +2523,26 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-recipes
   :after org)
 
+(use-package! org-node
+  :after org-roam
+
+  :hook (org-mode . org-node-cache-mode)
+
+  :config
+  (advice-add
+   'org-roam-node-find
+   :override 'org-node-find)
+  (advice-add
+   'org-roam-node-insert
+   :override 'org-node-insert-link)
+  (advice-add
+   'org-roam-node-insert
+   :override 'org-node-insert-link)
+  (setq
+   org-node-creation-fn #'org-node-new-by-roam-capture
+   org-node-slug-fn #'org-node-slugify-like-roam
+   org-node-extra-id-dirs `(,cashpw/path--notes-dir)))
+
 ;; (use-package! org-special-block-extras
 ;;   :after org
 ;;   :hook (org-mode . org-special-block-extras-mode)
@@ -2546,65 +2571,6 @@ Return nil if no attendee exists with that EMAIL."
 (when (not (cashpw/is-work-cloudtop-p))
   (use-package! ox-hugo
     :after ox))
-
-(use-package! quickroam
-  :after org-roam
-  :config
-  (defun cashpw/quickroam-insert ()
-    "Fast substitute for `org-roam-node-insert'."
-    (interactive nil org-mode)
-    (require 'org-roam)
-    (when (or (hash-table-empty-p quickroam-cache)
-              (not quickroam-mode))
-      (quickroam-reset))
-    (let* ((beg nil)
-           (end nil)
-           (region-text (when (region-active-p)
-                          (setq beg (region-beginning))
-                          (setq end (region-end))
-                          (org-link-display-format
-                           (buffer-substring-no-properties beg end))))
-           (title (completing-read "Node: " quickroam-cache nil nil nil 'org-roam-node-history))
-           (node (gethash title quickroam-cache))
-           (id (plist-get node :id))
-           (link-desc (or region-text title)))
-      (if node
-          (atomic-change-group
-            (when region-text
-              (delete-region beg end)
-              ;; Try to strip the todo keyword, whatever counts as todo syntax
-              ;; in the target file.  Fail silently because it matters not much.
-              ;; (ignore-errors
-              ;;   (org-roam-with-file
-              ;;       (expand-file-name (plist-get node :file) org-roam-directory)
-              ;;       nil
-              ;;     (widen)
-              ;;     (goto-char 1)
-              ;;     (forward-line (1- (plist-get node :line-number)))
-              ;;     (setq link-desc (nth 4 (org-heading-components)))))
-              )
-            (insert (org-link-make-string (concat "id:" id) link-desc))
-            (run-hook-with-args 'org-roam-post-node-insert-hook id link-desc))
-        (atomic-change-group
-          (org-roam-capture-
-           :node (org-roam-node-create :title title)
-           :props (append
-                   (when region-text
-                     (list :region (cons (set-marker (make-marker) beg)
-                                         (set-marker (make-marker) end))))
-                   (list :link-description link-desc
-                         :finalize 'insert-link)))))))
-
-
-  (advice-add
-   'org-roam-node-find
-   :override 'quickroam-find)
-  (advice-add
-   'org-roam-node-insert
-   :override 'cashpw/quickroam-insert)
-  (add-hook
-   'org-mode-hook
-   #'quickroam-enable-cache))
 
 (use-package! summarize-agenda-time
   :after org
@@ -3064,13 +3030,19 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 
 (after! org
+  ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
+  ;; Reference: https://stackoverflow.com/a/24540651
+  ;; (setcar org-emphasis-regexp-components " \t('\"{[:alpha:]")
+  ;; (setcar (nthcdr 1 org-emphasis-regexp-components) "[:alpha:]- \t.,:!?;'\")}\\")
+  ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
+
   (setq
    org-ellipsis " ▼"
    org-hide-leading-stars t))
 
 (after! org-roam
   ;; Override to only replace if it's a roam link.
-  (defun org-roam-link-replace-all ()
+  (defun cashpw/org-roam-link-replace-all ()
     "Replace all \"roam:\" links in buffer with \"id:\" links."
     (interactive)
     (org-with-point-at 1
@@ -3079,26 +3051,36 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                "roam:"
                (match-string 1))
           (org-roam-link-replace-at-point)))))
+  (advice-add 'org-roam-link-replace-all :override 'cashpw/org-roam-link-replace-all)
+
   (setq
    org-roam-db-update-on-save nil)
-  ;; (org-roam-db-autosync-disable)
+
+  ;; Deprecated in favor of =org-node='s cache.
   ;; Sync when I'm away from keyoard.
+  ;; (setq
+  ;;  cashpw/org-roam-sync-timer (run-with-idle-timer
+  ;;                              60
+  ;;                              t
+  ;;                              (lambda ()
+  ;;                                (message "Roam sync: Running...")
+  ;;                                (let* ((org-roam-directory
+  ;;                                        (if (cashpw/is-work-cloudtop-p)
+  ;;                                            cashpw/path--work-notes-dir
+  ;;                                          cashpw/path--notes-dir))
+  ;;                                       (org-roam-db-location
+  ;;                                        (expand-file-name
+  ;;                                         "org-roam.db"
+  ;;                                         org-roam-directory)))
+  ;;                                  (message "Roam sync: Ran for %.06fsec"
+  ;;                                           (k-time (org-roam-db-sync)))))))
+  )
+
+(after! org-roam
   (setq
-   cashpw/org-roam-sync-timer (run-with-idle-timer
-                               60
-                               t
-                               (lambda ()
-                                 (message "Roam sync: Running...")
-                                 (let* ((org-roam-directory
-                                         (if (cashpw/is-work-cloudtop-p)
-                                             cashpw/path--work-notes-dir
-                                           cashpw/path--notes-dir))
-                                        (org-roam-db-location
-                                         (expand-file-name
-                                          "org-roam.db"
+   org-roam-directory cashpw/path--notes-dir
+   org-roam-db-location (expand-file-name "org-roam.db"
                                           org-roam-directory)))
-                                   (message "Roam sync: Ran for %.06fsec"
-                                            (k-time (org-roam-db-sync))))))))
 
 (after! doct-org-roam
   (setq
@@ -3113,42 +3095,42 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                                                 :children (
                                                            ("Concept"
                                                             :keys "c"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :concept:"))
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :concept:"))
                                                            ("On X"
                                                             :keys "o"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :concept:
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :person:"))
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :person:"))
                                                            ("Verse"
                                                             :keys "v"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :verse:"))
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :verse:"))
                                                            ("Quote"
                                                             :keys "u"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :quote:"))
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :quote:"))
                                                            ("Recipe"
                                                             :keys "r"
-                                                            :head ("#+title: ${title}
-#+author: Cash Prokop-Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :recipe:
+                                                            :head ("#+TITLE: ${title}
+#+AUTHOR: Cash Prokop-Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :recipe:
 
 * TODO [#2] Ingredients
 
@@ -3171,10 +3153,10 @@ See: https://jethrokuan.github.io/org-roam-guide"
                                    ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
-#+title: ${title}
-#+author: Cash Weaver
-#+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :reference:
+#+TITLE: ${title}
+#+AUTHOR: Cash Weaver
+#+DATE: [%<%Y-%m-%d %a %H:%M>]
+#+FILETAGS: :reference:
 
 TODO_AUTHOR, [cite:@${citekey}]
 
@@ -3389,7 +3371,7 @@ Work in progress"
       (org-insert-heading nil t t)
       (insert "Bibliography")
       (newline)
-      (insert "#+print_bibliography:"))))
+      (insert "#+PRINT_BIBLIOGRAPHY:"))))
 
 (defcustom cashpw/org-roam--file-path-exceptions-to-add-flashcards
   '()
@@ -3721,7 +3703,7 @@ Only run when BACKEND is `'hugo'."
                        (attr (cdr (assoc "author" citar-entry)))
                        (attrlink (cdr (assoc "url" citar-entry)))
                        (attr-html (concat
-                                   "#+attr_html: "
+                                   "#+ATTR_HTML: "
                                    (cond
                                     ((and attr attrlink)
                                      (s-lex-format " :attr ${attr} :attrlink ${attrlink}"))
@@ -3742,10 +3724,10 @@ ${file}
              (newline)
              (delete-region (point) (point-max))
              (newline)
-             (insert "#+begin_hugogallery")
+             (insert "#+BEGIN_HUGOGALLERY")
              (newline)
              (insert (s-join "" (nreverse image-lines)))
-             (insert "#+end_hugogallery")
+             (insert "#+END_HUGOGALLERY")
              (newline)
              (widen)))
          gallery-tag)))))
@@ -3763,11 +3745,11 @@ ${file}
                                                         :unnarrowed t
                                                         :children (("Day"
                                                                     :keys "d"
-                                                                    :head ("#+title: %<%Y-%m-%d>"
-                                                                           "#+author: Cash Prokop-Weaver"
-                                                                           "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                           "#+category: Journal"
-                                                                           "#+filetags: :journal:private:hastodo:"
+                                                                    :head ("#+TITLE: %<%Y-%m-%d>"
+                                                                           "#+AUTHOR: Cash Prokop-Weaver"
+                                                                           "#+DATE: [%<%Y-%m-%d %a %H:%M>]"
+                                                                           "#+CATEGORY: Journal"
+                                                                           "#+FILETAGS: :journal:private:hastodo:"
                                                                            "
 * TODO [#2] Journal
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
@@ -3792,7 +3774,7 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 00:00:0
 :END:
 
 #+begin_src emacs-lisp :results none
-(cashpw/org-gcal-fetch-sleep 1)
+(cashpw/org-gcal-fetch-sleep 2)
 #+end_src
 
 #+begin_src emacs-lisp :results none
@@ -4049,7 +4031,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
                    org-agenda-buffer-name))
              (org-with-point-at marker
                (org-get-category)))
-           (org-get-title))))
+           (org-get-title)
+           "")))
     (s-truncate
      max-length
      category)))
@@ -6515,5 +6498,7 @@ Reference:https://stackoverflow.com/q/23622296"
   ;; :config
   ;; (org-window-habit-mode +1))
 
+(message "[cashpw] Loaded personal config in %.06d seconds."
+         (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
 (setq
  cashpw/config-is-loaded t)

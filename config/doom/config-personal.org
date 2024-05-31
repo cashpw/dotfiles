@@ -3,6 +3,8 @@
 #+EMAIL: cashbweaver@gmail.com
 #+STARTUP: showeverything
 
+[2024-05-30 Thu 16:18]
+
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1].
 
 * General
@@ -21,6 +23,9 @@ To start off, we'll define a [[https://www.gnu.org/software/emacs/manual/html_no
     #'format
     error-message
     args)))
+
+(setq
+ cashpw/personal-config-load-start-time (current-time))
 #+end_src
 
 Allow search and replace actions to affect hidden text.
@@ -512,13 +517,16 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! centered-cursor-mode)
+(when (not (cashpw/is-work-cloudtop-p))
+  (package! centered-cursor-mode))
+
 #+end_src
 
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! centered-cursor-mode)
+(when (not (cashpw/is-work-cloudtop-p))
+  (use-package! centered-cursor-mode))
 #+end_src
 
 *** =command-log-mode=
@@ -3854,6 +3862,7 @@ Return nil if no attendee exists with that EMAIL."
                                        "Cardio"
                                        "Stretch"
                                        "Walk"))
+                         ("Finance" . ("Finances and net worth"))
                          ("Pet" . ("Empty cat boxes"))
                          ("Hygeine" . ("Shower"
                                        "Brush teeth"
@@ -4182,7 +4191,7 @@ Org-roam is a plain-text knowledge management system. It brings some of Roam's m
 
 Org-roam borrows principles from the Zettelkasten method, providing a solution for non-hierarchical note-taking. It should also work as a plug-and-play solution for anyone already using Org-mode for their personal wiki.
 
-/[[github:org-roam/org-roam][org-roam/org-roam]]/
+[[github:org-roam/org-roam][org-roam/org-roam]]
 #+end_quote
 
 Doom Emacs provides =org-roam=.
@@ -4192,6 +4201,52 @@ Doom Emacs provides =org-roam=.
 #+end_src
 
 Configuration is done at [[id:3d0e8be1-6d0f-4f4b-9025-f1ca312192bc][Roam]].
+
+**** =org-node=
+:PROPERTIES:
+:ID:       075ad0c5-9390-40c8-8158-e5cf02198adf
+:END:
+
+#+begin_quote
+I found org-roam too slow, so I made [[github:meedstrom/quickroam][quickroam]]. And that idea spun off into this package, a standalone thing. I hope it’s also easier to learn.
+
+[[github:meedstrom/org-node][meedstrom/org-node]]
+#+end_quote
+
+I use =org-node= as a speed-up layer on top of =org-roam= because only complaint with =org-roam= is its [[github:meedstrom/org-node/blob/master/README.org?plain=1#L56][performance in directories with thousands of nodes]].
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-node
+  :recipe (:host github
+           :repo "meedstrom/org-node"))
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-node
+  :after org-roam
+
+  :hook (org-mode . org-node-cache-mode)
+
+  :config
+  (advice-add
+   'org-roam-node-find
+   :override 'org-node-find)
+  (advice-add
+   'org-roam-node-insert
+   :override 'org-node-insert-link)
+  (advice-add
+   'org-roam-node-insert
+   :override 'org-node-insert-link)
+  (setq
+   org-node-creation-fn #'org-node-new-by-roam-capture
+   org-node-slug-fn #'org-node-slugify-like-roam
+   org-node-extra-id-dirs `(,cashpw/path--notes-dir)))
+#+end_src
+
 
 **** =org-roam-ui=
 
@@ -4390,85 +4445,9 @@ ox-pandoc is an exporter for Org mode which converts Org-mode files to a wide va
 :ID:       e4497d7e-b015-4cb7-90af-69ad0e89a8fc
 :END:
 
-#+begin_quote
-If you're like me, you think [[https://github.com/org-roam/org-roam][org-roam]] has the right idea, but the current implementation is not reliable or fast enough for day-to-day work.
+Replaced with [[id:075ad0c5-9390-40c8-8158-e5cf02198adf][=org-node=]].
 
-[[https://github.com/meedstrom/quickroam][meedstrom/quickroam]]
-#+end_quote
-
-***** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! quickroam
-  :recipe (:host github
-           :repo "meedstrom/quickroam"))
-#+end_src
-
-***** Config
-
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! quickroam
-  :after org-roam
-  :config
-  (defun cashpw/quickroam-insert ()
-    "Fast substitute for `org-roam-node-insert'."
-    (interactive nil org-mode)
-    (require 'org-roam)
-    (when (or (hash-table-empty-p quickroam-cache)
-              (not quickroam-mode))
-      (quickroam-reset))
-    (let* ((beg nil)
-           (end nil)
-           (region-text (when (region-active-p)
-                          (setq beg (region-beginning))
-                          (setq end (region-end))
-                          (org-link-display-format
-                           (buffer-substring-no-properties beg end))))
-           (title (completing-read "Node: " quickroam-cache nil nil nil 'org-roam-node-history))
-           (node (gethash title quickroam-cache))
-           (id (plist-get node :id))
-           (link-desc (or region-text title)))
-      (if node
-          (atomic-change-group
-            (when region-text
-              (delete-region beg end)
-              ;; Try to strip the todo keyword, whatever counts as todo syntax
-              ;; in the target file.  Fail silently because it matters not much.
-              ;; (ignore-errors
-              ;;   (org-roam-with-file
-              ;;       (expand-file-name (plist-get node :file) org-roam-directory)
-              ;;       nil
-              ;;     (widen)
-              ;;     (goto-char 1)
-              ;;     (forward-line (1- (plist-get node :line-number)))
-              ;;     (setq link-desc (nth 4 (org-heading-components)))))
-              )
-            (insert (org-link-make-string (concat "id:" id) link-desc))
-            (run-hook-with-args 'org-roam-post-node-insert-hook id link-desc))
-        (atomic-change-group
-          (org-roam-capture-
-           :node (org-roam-node-create :title title)
-           :props (append
-                   (when region-text
-                     (list :region (cons (set-marker (make-marker) beg)
-                                         (set-marker (make-marker) end))))
-                   (list :link-description link-desc
-                         :finalize 'insert-link)))))))
-
-
-  (advice-add
-   'org-roam-node-find
-   :override 'quickroam-find)
-  (advice-add
-   'org-roam-node-insert
-   :override 'cashpw/quickroam-insert)
-  (add-hook
-   'org-mode-hook
-   #'quickroam-enable-cache))
-#+end_src
-
-**** =summarize-agenda-time=, summarize agenda efforts
+**** =summarize-agenda-time= (efforts)
 
 #+begin_quote
 Group clocktable entries by their first tag.
@@ -5022,6 +5001,12 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 *** Appearance
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org
+  ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
+  ;; Reference: https://stackoverflow.com/a/24540651
+  ;; (setcar org-emphasis-regexp-components " \t('\"{[:alpha:]")
+  ;; (setcar (nthcdr 1 org-emphasis-regexp-components) "[:alpha:]- \t.,:!?;'\")}\\")
+  ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
+
   (setq
    org-ellipsis " ▼"
    org-hide-leading-stars t))
@@ -5042,7 +5027,7 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org-roam
   ;; Override to only replace if it's a roam link.
-  (defun org-roam-link-replace-all ()
+  (defun cashpw/org-roam-link-replace-all ()
     "Replace all \"roam:\" links in buffer with \"id:\" links."
     (interactive)
     (org-with-point-at 1
@@ -5051,32 +5036,44 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
                "roam:"
                (match-string 1))
           (org-roam-link-replace-at-point)))))
+  (advice-add 'org-roam-link-replace-all :override 'cashpw/org-roam-link-replace-all)
+
   (setq
    org-roam-db-update-on-save nil)
-  ;; (org-roam-db-autosync-disable)
+
+  ;; Deprecated in favor of =org-node='s cache.
   ;; Sync when I'm away from keyoard.
-  (setq
-   cashpw/org-roam-sync-timer (run-with-idle-timer
-                               60
-                               t
-                               (lambda ()
-                                 (message "Roam sync: Running...")
-                                 (let* ((org-roam-directory
-                                         (if (cashpw/is-work-cloudtop-p)
-                                             cashpw/path--work-notes-dir
-                                           cashpw/path--notes-dir))
-                                        (org-roam-db-location
-                                         (expand-file-name
-                                          "org-roam.db"
-                                          org-roam-directory)))
-                                   (message "Roam sync: Ran for %.06fsec"
-                                            (k-time (org-roam-db-sync))))))))
+  ;; (setq
+  ;;  cashpw/org-roam-sync-timer (run-with-idle-timer
+  ;;                              60
+  ;;                              t
+  ;;                              (lambda ()
+  ;;                                (message "Roam sync: Running...")
+  ;;                                (let* ((org-roam-directory
+  ;;                                        (if (cashpw/is-work-cloudtop-p)
+  ;;                                            cashpw/path--work-notes-dir
+  ;;                                          cashpw/path--notes-dir))
+  ;;                                       (org-roam-db-location
+  ;;                                        (expand-file-name
+  ;;                                         "org-roam.db"
+  ;;                                         org-roam-directory)))
+  ;;                                  (message "Roam sync: Ran for %.06fsec"
+  ;;                                           (k-time (org-roam-db-sync)))))))
+  )
 #+end_src
 
 
 ***** Config
 
 Override =org-roam-db-sync= to insert a =message= call to aid in understanding why it's called so often in my Emacs start-up.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-roam
+  (setq
+   org-roam-directory cashpw/path--notes-dir
+   org-roam-db-location (expand-file-name "org-roam.db"
+                                          org-roam-directory)))
+#+end_src
 
 #+begin_src emacs-lisp
 (defun org-roam-db-sync (&optional force)
@@ -9371,6 +9368,8 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 * Final
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(message "[cashpw] Loaded personal config in %.06d seconds."
+         (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
 (setq
  cashpw/config-is-loaded t)
 #+end_src
