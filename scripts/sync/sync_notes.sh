@@ -9,4 +9,7 @@ if [[ ! -x $(command -v "unison") ]]; then
   echo "[Sync notes] Error: unison not installed. Please install unison (e.g. sudo apt install unison)."
 fi
 
+if [[ -x $(command -v "gcert") ]]; then
+  gcertstatus --quiet || gcert
+fi
 unison -auto /home/cashweaver/proj/notes ssh://cashweaver.c.googlers.com/proj/notes
