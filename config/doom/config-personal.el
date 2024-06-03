@@ -18,7 +18,9 @@
 (defcustom
   cashpw/config-is-loaded
   nil
-  "Non-nil if my config has finished loading.")
+  "Non-nil if my config has finished loading."
+  :group 'cashpw
+  :type 'boolean)
 
 (use-package! s)
 (use-package! dash)
@@ -6499,7 +6501,7 @@ Reference:https://stackoverflow.com/q/23622296"
   ;; :config
   ;; (org-window-habit-mode +1))
 
-(message "[cashpw] Loaded personal config in %.06d seconds."
+(message "[cashpw] Loaded personal config in %.06f seconds."
          (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
 (setq
  cashpw/config-is-loaded t)

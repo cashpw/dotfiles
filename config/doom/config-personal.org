@@ -3,8 +3,6 @@
 #+EMAIL: cashbweaver@gmail.com
 #+STARTUP: showeverything
 
-[2024-05-30 Thu 16:18]
-
 This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1].
 
 * General
@@ -40,7 +38,9 @@ Allow search and replace actions to affect hidden text.
 (defcustom
   cashpw/config-is-loaded
   nil
-  "Non-nil if my config has finished loading.")
+  "Non-nil if my config has finished loading."
+  :group 'cashpw
+  :type 'boolean)
 #+end_src
 
 ** Early packages
@@ -9373,7 +9373,7 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 * Final
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(message "[cashpw] Loaded personal config in %.06d seconds."
+(message "[cashpw] Loaded personal config in %.06f seconds."
          (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
 (setq
  cashpw/config-is-loaded t)
