@@ -12,4 +12,4 @@ fi
 if [[ -x $(command -v "gcert") ]]; then
   gcertstatus --quiet || gcert
 fi
-unison -auto /home/cashweaver/proj/notes ssh://cashweaver.c.googlers.com/proj/notes
+unison -auto -batch /home/cashweaver/proj/notes ssh://cashweaver.c.googlers.com/proj/notes
