@@ -17,6 +17,7 @@ gcertstatus --check_ssh=false > /dev/null || (echo "Renewing gcert:" && gcert)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 source "${SCRIPT_DIR}/config.sh"
+echo "[Sync] Setting up watches ..."
 
 if [[ $(nc -z localhost "${UNISON_NOTIFY_PORT}") ]]; then
   echo "[Sync] Error: Port ${UNISON_NOTIFY_PORT} is in use. Stopping."
@@ -27,18 +28,23 @@ if [[ $(nc -z localhost "${UNISON_SYNC_PORT}") ]]; then
   exit 1
 fi
 
-echo "[Sync] SSH-ing ..."
-ssh -R "${UNISON_NOTIFY_PORT}:localhost:${UNISON_NOTIFY_PORT}" -L "${UNISON_SYNC_PORT}:localhost:${UNISON_NOTIFY_PORT}" cashweaver.c.googlers.com &
-
-echo "[Sync] Setting up watches ..."
 while inotifywait -r -e modify,create,delete,move ~/proj/notes; do
+  echo "[Sync] Synchronizing due to local change ..."
   bash "${SCRIPT_DIR}/sync.sh"
+  echo "[Sync] Synchronizing DONE"
 done &
 
 echo "[Sync] Setting up TCP listener ..."
-while true; do
-  socat TCP-LISTEN:55320 -> /tmp/unison_with_cloudtop
+while true; do socat "TCP-LISTEN:${UNISON_NOTIFY_PORT}" -> /tmp/unison_with_cloudtop;
+  echo "[Sync] Synchronizing due to remote change ..."
   bash "${SCRIPT_DIR}/sync.sh"
-done &
+  echo "[Sync] Synchronizing DONE"
+done
 
-wait
+echo "[Sync] SSH-ing ..."
+ssh \
+  -R "${UNISON_NOTIFY_PORT}:localhost:${UNISON_NOTIFY_PORT}" \
+  -L "${UNISON_SYNC_PORT}:localhost:${UNISON_SYNC_PORT}" \
+  cashweaver.c.googlers.com &
+
+#wait
