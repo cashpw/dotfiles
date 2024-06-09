@@ -153,7 +153,7 @@ bar {
   font pango:Source Code Pro 8
 
   #status_command i3blocks
-  status_command SCRIPT_DIR=~/.config/i3blocks i3blocks
+  status_command SCRIPT_DIR=~/.config/i3blocks i3blocks -c ~/.config/i3blocks.config
 }
 hide_edge_borders both
 
