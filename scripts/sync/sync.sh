@@ -7,10 +7,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 source "${SCRIPT_DIR}/config.sh"
 
-if [[ ! -x $(command -v "unison") ]]; then
-  echo "[Sync notes] Error: unison not installed. Please install unison (e.g. sudo apt install unison)."
-fi
-
 unison \
   -auto \
   -batch \
