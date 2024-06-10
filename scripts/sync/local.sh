@@ -19,12 +19,12 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/config.sh"
 echo "[Sync] Setting up watches ..."
 
-if [[ $(nc -z localhost "${UNISON_NOTIFY_PORT}") ]]; then
-  echo "[Sync] Error: Port ${UNISON_NOTIFY_PORT} is in use. Stopping."
-  exit 1
-fi
-if [[ $(nc -z localhost "${UNISON_SYNC_PORT}") ]]; then
-  echo "[Sync] Error: Port ${UNISON_SYNC_PORT} is in use. Stopping."
+if ! nc -z localhost "${UNISON_SYNC_PORT}" >/dev/null 2>&1; then
+  cat <<EOF
+[Sync] Error: Sync port not in use. Please establish the link to remote:
+
+ssh -R ${UNISON_NOTIFY_PORT}:localhost:${UNISON_NOTIFY_PORT} -L ${UNISON_SYNC_PORT}:localhost:${UNISON_SYNC_PORT} cashweaver.c.googlers.com &
+EOF
   exit 1
 fi
 
@@ -41,10 +41,4 @@ while true; do socat "TCP-LISTEN:${UNISON_NOTIFY_PORT}" -> /tmp/unison_with_clou
   echo "[Sync] Synchronizing DONE"
 done
 
-echo "[Sync] SSH-ing ..."
-ssh \
-  -R "${UNISON_NOTIFY_PORT}:localhost:${UNISON_NOTIFY_PORT}" \
-  -L "${UNISON_SYNC_PORT}:localhost:${UNISON_SYNC_PORT}" \
-  cashweaver.c.googlers.com &
-
-#wait
+wait
