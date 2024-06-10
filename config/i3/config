@@ -183,13 +183,12 @@ bindsym $mod+r mode "resize"
 
 # i3lock; logout, shutdown, etc
 set $Locker i3lock --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
-set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
+set $mode_system System: (l) lock, (e) logout, (s) suspend, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
   bindsym l exec --no-startup-id $Locker, mode "default"
   bindsym e exec --no-startup-id i3-msg exit, mode "default"
   # Prefer hybrid-sleep to suspend. However, my desktop screen remains black after coming "out" of hybrid-sleep, so stick with suspend for now.
   bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
-  bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
   bindsym r exec --no-startup-id systemctl reboot, mode "default"
   bindsym Shift+s exec --no-startup-id  systemctl poweroff -i, mode "default"
 
