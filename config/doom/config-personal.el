@@ -2372,8 +2372,12 @@ Return nil if no attendee exists with that EMAIL."
                                        "Cardio"
                                        "Stretch"
                                        "Walk"))
+                         ("Car" . ("Tidy car"))
                          ("Finance" . ("Finances and net worth"))
-                         ("Pet" . ("Empty cat boxes"))
+                         ("Pet" . ("Empty cat boxes"
+                                   "Clean pet water and food dishes"))
+                         ("Family" . ("Call parents"))
+                         ("Home" . ("Take out the trash"))
                          ("Hygeine" . ("Shower"
                                        "Brush teeth"
                                        "Teeth"
@@ -3103,42 +3107,42 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                                                 :children (
                                                            ("Concept"
                                                             :keys "c"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :concept:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :concept:"))
                                                            ("On X"
                                                             :keys "o"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :concept:
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :person:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :person:"))
                                                            ("Verse"
                                                             :keys "v"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :verse:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :verse:"))
                                                            ("Quote"
                                                             :keys "u"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :quote:"))
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :quote:"))
                                                            ("Recipe"
                                                             :keys "r"
-                                                            :head ("#+TITLE: ${title}
-#+AUTHOR: Cash Prokop-Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :recipe:
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :recipe:
 
 * TODO [#2] Ingredients
 
@@ -3161,10 +3165,10 @@ See: https://jethrokuan.github.io/org-roam-guide"
                                    ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
-#+TITLE: ${title}
-#+AUTHOR: Cash Weaver
-#+DATE: [%<%Y-%m-%d %a %H:%M>]
-#+FILETAGS: :reference:
+#+title: ${title}
+#+author: Cash Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :reference:
 
 TODO_AUTHOR, [cite:@${citekey}]
 
@@ -3753,11 +3757,11 @@ ${file}
                                                         :unnarrowed t
                                                         :children (("Day"
                                                                     :keys "d"
-                                                                    :head ("#+TITLE: %<%Y-%m-%d>"
-                                                                           "#+AUTHOR: Cash Prokop-Weaver"
-                                                                           "#+DATE: [%<%Y-%m-%d %a %H:%M>]"
-                                                                           "#+CATEGORY: Journal"
-                                                                           "#+FILETAGS: :journal:private:hastodo:"
+                                                                    :head ("#+title: %<%Y-%m-%d>"
+                                                                           "#+author: Cash Prokop-Weaver"
+                                                                           "#+date: [%<%Y-%m-%d %a %H:%M>]"
+                                                                           "#+category: Journal"
+                                                                           "#+filetags: :journal:private:hastodo:"
                                                                            "
 * TODO [#2] Journal
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
