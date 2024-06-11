@@ -4481,6 +4481,15 @@ Group clocktable entries by their first tag.
 (use-package! summarize-agenda-time
   :after org
   :custom
+  (summarize-agenda-time--ignore-entry-fns
+   '((lambda (marker)
+       (member
+        (org-with-point-at marker
+          (org-entry-get
+           nil
+           "ITEM"))
+        '("Huel shake"
+          "Fall asleep")))))
   (summarize-agenda-time--max-duration-minutes (+
                                                 ;; 05:00-10:00
                                                 (* 60 5)
