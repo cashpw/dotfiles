@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/config.sh"
 unison \
   -auto \
   -batch \
-  -ignore "Name {org-roam.db}" \
+  -ignore "Name {org-roam.db,org-roam.db-journal}" \
   -ignore "Regex .unison.*" \
   /home/cashweaver/proj/notes \
   "socket://localhost:${UNISON_SYNC_PORT}//usr/local/google/home/cashweaver/proj/notes"
