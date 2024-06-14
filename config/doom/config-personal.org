@@ -4249,8 +4249,13 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-node
+  :demand t
   :after org-roam
   :hook ((org-mode . org-node-cache-mode))
+  :custom
+  (org-node-creation-fn #'org-node-new-by-roam-capture)
+  (org-node-slug-fn #'org-node-slugify-like-roam)
+  (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   :config
   (advice-add
    'org-roam-node-find
@@ -4260,11 +4265,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
    :override 'org-node-insert-link)
   (advice-add
    'org-roam-node-insert
-   :override 'org-node-insert-link)
-  (setq
-   org-node-creation-fn #'org-node-new-by-roam-capture
-   org-node-slug-fn #'org-node-slugify-like-roam
-   org-node-extra-id-dirs `(,cashpw/path--notes-dir)))
+   :override 'org-node-insert-link))
 #+end_src
 
 

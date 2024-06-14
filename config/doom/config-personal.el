@@ -2536,10 +2536,13 @@ Return nil if no attendee exists with that EMAIL."
   :after org)
 
 (use-package! org-node
+  :demand t
   :after org-roam
-
-  :hook (org-mode . org-node-cache-mode)
-
+  :hook ((org-mode . org-node-cache-mode))
+  :custom
+  (org-node-creation-fn #'org-node-new-by-roam-capture)
+  (org-node-slug-fn #'org-node-slugify-like-roam)
+  (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   :config
   (advice-add
    'org-roam-node-find
@@ -2549,11 +2552,7 @@ Return nil if no attendee exists with that EMAIL."
    :override 'org-node-insert-link)
   (advice-add
    'org-roam-node-insert
-   :override 'org-node-insert-link)
-  (setq
-   org-node-creation-fn #'org-node-new-by-roam-capture
-   org-node-slug-fn #'org-node-slugify-like-roam
-   org-node-extra-id-dirs `(,cashpw/path--notes-dir)))
+   :override 'org-node-insert-link))
 
 ;; (use-package! org-special-block-extras
 ;;   :after org
@@ -2587,6 +2586,15 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! summarize-agenda-time
   :after org
   :custom
+  (summarize-agenda-time--ignore-entry-fns
+   '((lambda (marker)
+       (member
+        (org-with-point-at marker
+          (org-entry-get
+           nil
+           "ITEM"))
+        '("Huel shake"
+          "Fall asleep")))))
   (summarize-agenda-time--max-duration-minutes (+
                                                 ;; 05:00-10:00
                                                 (* 60 5)
@@ -3383,7 +3391,7 @@ Work in progress"
       (org-insert-heading nil t t)
       (insert "Bibliography")
       (newline)
-      (insert "#+PRINT_BIBLIOGRAPHY:"))))
+      (insert "#+print_bibliography:"))))
 
 (defcustom cashpw/org-roam--file-path-exceptions-to-add-flashcards
   '()
