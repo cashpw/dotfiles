@@ -332,16 +332,24 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (defun cashpw/replace-selection ()
   (interactive)
-  (let* ((register ?\")
-         (to-replace (replace-regexp-in-string
-                      "/"
-                      "\\\\/"
-                      (progn
-                        (evil-yank (mark)
-                                   (point)
-                                   nil
-                                   register)
-                        (evil-get-register register)))))
+  (let* ((register
+          ?\")
+         (to-replace
+          (replace-regexp-in-string
+           "\\["
+           "\\\\["
+           (replace-regexp-in-string
+            "\\]"
+            "\\\\]"
+            (replace-regexp-in-string
+             "/"
+             "\\\\/"
+             (progn
+               (evil-yank (mark)
+                          (point)
+                          nil
+                          register)
+               (evil-get-register register)))))))
     (evil-ex (s-lex-format  "%s/${to-replace}/"))))
 
 (defun cashpw/reload-dir-locals-for-current-buffer ()
