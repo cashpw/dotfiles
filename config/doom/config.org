@@ -110,7 +110,7 @@ https://akrl.sdf.org/#orgc15a10d"
   t)
 #+end_src
 
-#+name: cashpw/message
+#+name: cashpw/error
 #+begin_src emacs-lisp
 (defun cashpw/error (error-message &rest args)
   (error

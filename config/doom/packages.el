@@ -2,6 +2,14 @@
   nil
   "Group for my customizations and configurations.")
 
+(defun cashpw/message (format-string &rest args)
+  "`message' with an identifier."
+  (apply
+   #'message
+   (concat
+    "[cashpw] "
+    format-string)
+   args))
 (defun cashpw/error (error-message &rest args)
   (error
    "[cashpw] %s"
@@ -9,7 +17,6 @@
     #'format
     error-message
     args)))
-
 (defun cashpw/load (path &optional)
   "Return non-nil after loading PATH."
   (cashpw/message
