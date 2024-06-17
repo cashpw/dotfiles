@@ -4,7 +4,8 @@
 
 (package! aggressive-indent)
 
-(package! centered-cursor-mode)
+(unless (cashpw/machine-p 'work-cloudtop)
+  (package! centered-cursor-mode))
 
 (package! command-log-mode)
 

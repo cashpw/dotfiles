@@ -362,7 +362,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       str
     (format "%s/" str)))
 
-(use-package! centered-cursor-mode)
+(unless (cashpw/machine-p 'work-cloudtop)
+  (use-package! centered-cursor-mode))
 
 (use-package! command-log-mode
   :config
