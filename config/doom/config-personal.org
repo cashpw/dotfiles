@@ -7,40 +7,10 @@ This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode
 
 * General
 
-To start off, we'll define a [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Group-Definitions.html][group]] I use for my customizations:
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defgroup cashpw
-  nil
-  "Group for my customizations and configurations.")
-
-(defun cashpw/error (error-message &rest args)
-  (error
-   "[cashpw] %s"
-   (apply
-    #'format
-    error-message
-    args)))
-
-(setq
- cashpw/personal-config-load-start-time (current-time))
-#+end_src
-
 Allow search and replace actions to affect hidden text.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq search-invisible t)
-#+end_src
-
-** Loaded?
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defcustom
-  cashpw/config-is-loaded
-  nil
-  "Non-nil if my config has finished loading."
-  :group 'cashpw
-  :type 'boolean)
 #+end_src
 
 ** Early packages
@@ -880,12 +850,6 @@ Doom Emacs provides =alert=.
 https://akrl.sdf.org/#orgc15a10d
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defmacro k-time (&rest body)
-  "Measure and return the time it takes evaluating BODY."
-  `(let ((time (current-time)))
-     ,@body
-     (float-time (time-since time))))
-
 ;; Set garbage collection threshold to 1GB.
 (setq gc-cons-threshold #x40000000)
 
@@ -4265,7 +4229,51 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
    :override 'org-node-insert-link)
   (advice-add
    'org-roam-node-insert
-   :override 'org-node-insert-link))
+   :override 'org-node-insert-link)
+  (defun cashpw/org-node-complete-at-point ()
+    "Complete symbol at point as an org ID"
+    (when (and (eq major-mode 'org-mode)
+               (thing-at-point 'word)
+               (not (org-in-src-block-p))
+               (not (save-match-data (org-in-regexp org-link-any-re))))
+      (let ((bounds (bounds-of-thing-at-point 'word))
+            (top-level-keys (seq-filter
+                             (lambda (key)
+                               (let ((node (gethash
+                                            key
+                                            org-node-collection)))
+                                 (and
+                                  (not (s-starts-with-p
+                                        "[cite:"
+                                        key))
+                                  (= 0
+                                     (org-node-get-level
+                                      node)))))
+                             (hash-table-keys org-node-collection))))
+        (list
+         (car bounds)
+         (cdr bounds)
+         top-level-keys
+         :exit-function
+         (lambda (str _status)
+           (let ((node
+                  (gethash
+                   str
+                   org-node-collection)))
+             (delete-char (- (length str)))
+             (insert
+              "[[id:"
+              (org-node-get-id node)
+              "]["
+              (org-node-get-title node)
+              "]]")))
+         ;; Proceed with the next completion function if the returned titles
+         ;; do not match. This allows the default Org capfs or custom capfs
+         ;; of lower priority to run.
+         :exclusive 'no))))
+  (add-hook
+   'completion-at-point-functions
+   #'cashpw/org-node-complete-at-point))
 #+end_src
 
 
@@ -5100,6 +5108,9 @@ Override =org-roam-db-sync= to insert a =message= call to aid in understanding w
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org-roam
   (setq
+   ;; Disable org-roam completion in favor of (faster) org-node.
+   org-roam-completion-everywhere nil
+
    org-roam-directory cashpw/path--notes-dir
    org-roam-db-location (expand-file-name "org-roam.db"
                                           org-roam-directory)))
@@ -6124,7 +6135,7 @@ Intended for use with `org-super-agenda-groups'."
 
 (defun cashpw/org-agenda-custom-commands--maybe-update ()
   "Update when all functions are defined."
-  (when cashpw/config-is-loaded
+  (when cashpw/personal-config-is-loaded
     (cashpw/org-agenda-custom-commands--update)))
 #+end_src
 ***** Transform
@@ -9390,14 +9401,6 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 :Effort:   4h
 :END:
 ** TODO [#2] Remove dependency on =dash= and prefer =cl-*=
-* Final
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(message "[cashpw] Loaded personal config in %.06f seconds."
-         (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
-(setq
- cashpw/config-is-loaded t)
-#+end_src
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]

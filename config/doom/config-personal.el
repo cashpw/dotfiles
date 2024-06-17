@@ -1,26 +1,4 @@
-(defgroup cashpw
-  nil
-  "Group for my customizations and configurations.")
-
-(defun cashpw/error (error-message &rest args)
-  (error
-   "[cashpw] %s"
-   (apply
-    #'format
-    error-message
-    args)))
-
-(setq
- cashpw/personal-config-load-start-time (current-time))
-
 (setq search-invisible t)
-
-(defcustom
-  cashpw/config-is-loaded
-  nil
-  "Non-nil if my config has finished loading."
-  :group 'cashpw
-  :type 'boolean)
 
 (use-package! s)
 (use-package! dash)
@@ -543,12 +521,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  auto-save-visited-interval 60)
 
 (auto-save-visited-mode)
-
-(defmacro k-time (&rest body)
-  "Measure and return the time it takes evaluating BODY."
-  `(let ((time (current-time)))
-     ,@body
-     (float-time (time-since time))))
 
 ;; Set garbage collection threshold to 1GB.
 (setq gc-cons-threshold #x40000000)
@@ -2560,7 +2532,51 @@ Return nil if no attendee exists with that EMAIL."
    :override 'org-node-insert-link)
   (advice-add
    'org-roam-node-insert
-   :override 'org-node-insert-link))
+   :override 'org-node-insert-link)
+  (defun cashpw/org-node-complete-at-point ()
+    "Complete symbol at point as an org ID"
+    (when (and (eq major-mode 'org-mode)
+               (thing-at-point 'word)
+               (not (org-in-src-block-p))
+               (not (save-match-data (org-in-regexp org-link-any-re))))
+      (let ((bounds (bounds-of-thing-at-point 'word))
+            (top-level-keys (seq-filter
+                             (lambda (key)
+                               (let ((node (gethash
+                                            key
+                                            org-node-collection)))
+                                 (and
+                                  (not (s-starts-with-p
+                                        "[cite:"
+                                        key))
+                                  (= 0
+                                     (org-node-get-level
+                                      node)))))
+                             (hash-table-keys org-node-collection))))
+        (list
+         (car bounds)
+         (cdr bounds)
+         top-level-keys
+         :exit-function
+         (lambda (str _status)
+           (let ((node
+                  (gethash
+                   str
+                   org-node-collection)))
+             (delete-char (- (length str)))
+             (insert
+              "[[id:"
+              (org-node-get-id node)
+              "]["
+              (org-node-get-title node)
+              "]]")))
+         ;; Proceed with the next completion function if the returned titles
+         ;; do not match. This allows the default Org capfs or custom capfs
+         ;; of lower priority to run.
+         :exclusive 'no))))
+  (add-hook
+   'completion-at-point-functions
+   #'cashpw/org-node-complete-at-point))
 
 ;; (use-package! org-special-block-extras
 ;;   :after org
@@ -3106,6 +3122,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 (after! org-roam
   (setq
+   ;; Disable org-roam completion in favor of (faster) org-node.
+   org-roam-completion-everywhere nil
+
    org-roam-directory cashpw/path--notes-dir
    org-roam-db-location (expand-file-name "org-roam.db"
                                           org-roam-directory)))
@@ -4001,7 +4020,7 @@ Intended for use with `org-super-agenda-groups'."
 
 (defun cashpw/org-agenda-custom-commands--maybe-update ()
   "Update when all functions are defined."
-  (when cashpw/config-is-loaded
+  (when cashpw/personal-config-is-loaded
     (cashpw/org-agenda-custom-commands--update)))
 
 (defun cashpw/org-agenda--simplify-line (line)
@@ -6520,8 +6539,3 @@ Reference:https://stackoverflow.com/q/23622296"
 ;; (use-package! org-window-habit
   ;; :config
   ;; (org-window-habit-mode +1))
-
-(message "[cashpw] Loaded personal config in %.06f seconds."
-         (float-time (time-subtract nil cashpw/personal-config-load-start-time)))
-(setq
- cashpw/config-is-loaded t)
