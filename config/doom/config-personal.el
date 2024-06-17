@@ -4020,7 +4020,7 @@ Intended for use with `org-super-agenda-groups'."
 
 (defun cashpw/org-agenda-custom-commands--maybe-update ()
   "Update when all functions are defined."
-  (when cashpw/personal-config-is-loaded
+  (when cashpw/personal-config-loaded-p
     (cashpw/org-agenda-custom-commands--update)))
 
 (defun cashpw/org-agenda--simplify-line (line)
