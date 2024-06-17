@@ -505,16 +505,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(when (not (cashpw/is-work-cloudtop-p))
-  (package! centered-cursor-mode))
-
+(package! centered-cursor-mode)
 #+end_src
 
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(when (not (cashpw/is-work-cloudtop-p))
-  (use-package! centered-cursor-mode))
+(use-package! centered-cursor-mode)
 #+end_src
 
 *** =command-log-mode=
@@ -1426,7 +1423,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/is-work-laptop-p)
+            :size (if (cashpw/machine-p 'work-laptop)
                       ;; Laptop has a different DPI
                       28
                     16)))
@@ -4446,12 +4443,12 @@ ox-hugo is an Org exporter backend that exports Org to Hugo-compatible Markdown 
 My corporate profile loads [[github:cashpw/ox-hugo-corp][cashpw/ox-hugo-corp]] -- a corporate-safe version of ox-hugo.
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(when (not (cashpw/is-work-cloudtop-p))
+(when (not (cashpw/machine-p 'work-cloudtop))
   (package! ox-hugo))
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(when (not (cashpw/is-work-cloudtop-p))
+(when (not (cashpw/machine-p 'work-cloudtop))
   (use-package! ox-hugo
     :after ox))
 #+end_src
@@ -5088,7 +5085,7 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
   ;;                              (lambda ()
   ;;                                (message "Roam sync: Running...")
   ;;                                (let* ((org-roam-directory
-  ;;                                        (if (cashpw/is-work-cloudtop-p)
+  ;;                                        (if (cashpw/machine-p 'work-cloudtop))
   ;;                                            cashpw/path--work-notes-dir
   ;;                                          cashpw/path--notes-dir))
   ;;                                       (org-roam-db-location
@@ -8156,7 +8153,7 @@ All args are passed to `org-roam-node-read'."
       org-pandoc-valid-options
       org-pandoc-colon-separated-options
       org-pandoc-file-options)))
-  (when (cashpw/is-work-p)
+  (when (cashpw/machine-p 'work)
     (setq
      org-pandoc-options-for-docx
      '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")

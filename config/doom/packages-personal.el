@@ -4,8 +4,7 @@
 
 (package! aggressive-indent)
 
-(when (not (cashpw/is-work-cloudtop-p))
-  (package! centered-cursor-mode))
+(package! centered-cursor-mode)
 
 (package! command-log-mode)
 
@@ -199,7 +198,7 @@
 
 (package! org-vcard)
 
-(when (not (cashpw/is-work-cloudtop-p))
+(when (not (cashpw/machine-p 'work-cloudtop))
   (package! ox-hugo))
 
 (package! ox-pandoc)

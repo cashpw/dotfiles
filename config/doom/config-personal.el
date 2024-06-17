@@ -362,8 +362,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       str
     (format "%s/" str)))
 
-(when (not (cashpw/is-work-cloudtop-p))
-  (use-package! centered-cursor-mode))
+(use-package! centered-cursor-mode)
 
 (use-package! command-log-mode
   :config
@@ -626,7 +625,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/is-work-laptop-p)
+            :size (if (cashpw/machine-p 'work-laptop)
                       ;; Laptop has a different DPI
                       28
                     16)))
@@ -2603,7 +2602,7 @@ Return nil if no attendee exists with that EMAIL."
 
 (use-package! org-vcard)
 
-(when (not (cashpw/is-work-cloudtop-p))
+(when (not (cashpw/machine-p 'work-cloudtop))
   (use-package! ox-hugo
     :after ox))
 
@@ -3109,7 +3108,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;                              (lambda ()
   ;;                                (message "Roam sync: Running...")
   ;;                                (let* ((org-roam-directory
-  ;;                                        (if (cashpw/is-work-cloudtop-p)
+  ;;                                        (if (cashpw/machine-p 'work-cloudtop))
   ;;                                            cashpw/path--work-notes-dir
   ;;                                          cashpw/path--notes-dir))
   ;;                                       (org-roam-db-location
@@ -5769,7 +5768,7 @@ All args are passed to `org-roam-node-read'."
       org-pandoc-valid-options
       org-pandoc-colon-separated-options
       org-pandoc-file-options)))
-  (when (cashpw/is-work-p)
+  (when (cashpw/machine-p 'work)
     (setq
      org-pandoc-options-for-docx
      '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
