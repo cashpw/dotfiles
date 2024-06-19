@@ -3846,6 +3846,7 @@ Return nil if no attendee exists with that EMAIL."
                          ("Car" . ("Tidy car"))
                          ("Finance" . ("Finances and net worth"))
                          ("Pet" . ("Empty cat boxes"
+                                   "Myth's inhaler"
                                    "Clean pet water and food dishes"))
                          ("Family" . ("Call parents"))
                          ("Home" . ("Take out the trash"))
