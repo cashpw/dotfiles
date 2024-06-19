@@ -3849,7 +3849,7 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 3. TODO
 
 * TODO [#2] Retrospective
-SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 00:00:00\") (days-to-time 1)))
+SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:00\") (days-to-time 1)))
 :PROPERTIES:
 :Effort:   1m
 :END:
