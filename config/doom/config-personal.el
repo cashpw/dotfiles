@@ -2523,6 +2523,37 @@ Return nil if no attendee exists with that EMAIL."
   (org-node-creation-fn #'org-node-new-by-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
+  (org-node-filter-fn (lambda (node)
+                        (and
+                         (not
+                          (assoc
+                           "ROAM_EXCLUDE"
+                           (org-node-get-properties
+                            node)))
+                         ;; Exclude archives
+                         (not
+                          (s-ends-with-p
+                           "archive"
+                           (org-node-get-file-path
+                            node)))
+                         ;; Exclude flashcards
+                         (not
+                          (member
+                           "fc"
+                           (org-node-get-tags
+                            node))))))
+  (org-node-format-candidate-fn
+   (lambda (node title)
+     (if (org-node-get-is-subtree node)
+         (let ((ancestors (cons (org-node-get-file-title-or-basename node)
+                                (org-node-get-olp node)))
+               (result nil))
+           (dolist (anc ancestors)
+             (push (propertize anc 'face 'shadow) result)
+             (push " > " result))
+           (push title result)
+           (string-join (nreverse result)))
+       title)))
   :config
   (advice-add
    'org-roam-node-find
@@ -2548,10 +2579,7 @@ Return nil if no attendee exists with that EMAIL."
                                  (and
                                   (not (s-starts-with-p
                                         "[cite:"
-                                        key))
-                                  (= 0
-                                     (org-node-get-level
-                                      node)))))
+                                        key)))))
                              (hash-table-keys org-node-collection))))
         (list
          (car bounds)
@@ -2568,7 +2596,13 @@ Return nil if no attendee exists with that EMAIL."
               "[[id:"
               (org-node-get-id node)
               "]["
-              (org-node-get-title node)
+              (or
+               (and node
+                    (let ((aliases (org-node-get-aliases node)))
+                      (--first (string-search it str) aliases)))
+               (and node
+                    (org-node-get-title node))
+               str)
               "]]")))
          ;; Proceed with the next completion function if the returned titles
          ;; do not match. This allows the default Org capfs or custom capfs
