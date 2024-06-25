@@ -3202,8 +3202,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                                                 :template "%?"
                                                 :file "${slug}.org"
                                                 :unnarrowed t
-                                                :children (
-                                                           ("Concept"
+                                                :children (("Concept"
                                                             :keys "c"
                                                             :head ("#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -3217,6 +3216,17 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 #+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
+                                                           ("Project"
+                                                            :keys "P"
+                                                            :file "proj--${slug}.org"
+                                                            :head ("#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :project:private:
+
+* Notes
+* Questions
+* PROJ ${title}"))
                                                            ("Person"
                                                             :keys "p"
                                                             :head ("#+title: ${title}
