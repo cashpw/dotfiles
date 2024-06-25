@@ -1924,14 +1924,21 @@ Reference: `org-gcal--update-entry'."
    (region-end))
   (deactivate-mark))
 
+(defun cashpw/org-gcal--set-processed (_calendar-id event _update-mode)
+  "TODO"
+  (org-set-tags '("processed")))
+
 (defun cashpw/org-gcal--set-scheduled (_calendar-id event _update-mode)
   "See `org-gcal-after-update-entry-functions'."
-  (shut-up
-    (cashpw/org-gcal--remove-gcal-timestamp)
-    (org-schedule
-     nil
-     (cashpw/org-gcal--timestamp-from-event
-      event))))
+  (unless (member
+           "processed"
+           (org-get-tags))
+    (shut-up
+      (cashpw/org-gcal--remove-gcal-timestamp)
+      (org-schedule
+       nil
+       (cashpw/org-gcal--timestamp-from-event
+        event)))))
 
 (defun cashpw/org-gcal--set-effort (_calendar-id event _update-mode)
   "Set Effort property based on EVENT if not already set.
@@ -1977,13 +1984,16 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
 
 (defun cashpw/org-gcal--set-category (_calendar-id event _update-mode)
   "Set appropriate category for EVENT."
-  (when-let ((summary (plist-get event :summary)))
-    (dolist (summary-category cashpw/org-gcal--summary-categories)
-      (when (string-match-p (car summary-category) summary)
-        (shut-up
-          (org-set-property
-           "CATEGORY"
-           (cdr summary-category)))))))
+  (unless (member
+           "processed"
+           (org-get-tags))
+    (when-let ((summary (plist-get event :summary)))
+      (dolist (summary-category cashpw/org-gcal--summary-categories)
+        (when (string-match-p (car summary-category) summary)
+          (shut-up
+            (org-set-property
+             "CATEGORY"
+             (cdr summary-category))))))))
 
 (defcustom cashpw/org-gcal--summaries-to-exclude
   '()
@@ -2202,6 +2212,10 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--maybe-create-prep-meeting (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
   (when (and
+         (not
+          (member
+           "processed"
+           (org-get-tags)))
          (sequencep event)
          (>= (length (plist-get event :attendees))
              2)
@@ -2246,17 +2260,26 @@ Return nil if no attendee exists with that EMAIL."
 
 (defun cashpw/org-gcal--maybe-create-todo-extract-reminder (_calendar-id event _update-mode)
   "Insert a 1-on-1 prep heading todo if EVENT is for a 1-on-1 event."
-  (when (and (sequencep event)
-             (>= (length (plist-get event :attendees))
-                 2)
-             (--none-p
-              (string-match-p it (plist-get event :summary))
-              cashpw/org-gcal--no-extract-todo-reminder-summaries))
+  (when (and
+         (not
+          (member
+           "processed"
+           (org-get-tags)))
+         (sequencep event)
+         (>= (length (plist-get event :attendees))
+             2)
+         (--none-p
+          (string-match-p it (plist-get event :summary))
+          cashpw/org-gcal--no-extract-todo-reminder-summaries))
     (cashpw/org-gcal--create-todo-extract-reminder _calendar-id event _update-mode)))
 
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
   (when (and
+         (not
+          (member
+           "processed"
+           (org-get-tags)))
          (sequencep event)
          (string-match-p
           "^Sleep$"
@@ -2417,17 +2440,34 @@ Return nil if no attendee exists with that EMAIL."
     (cashpw/org-gcal-activate-profile
      previous-profile)))
 
-(defun cashpw/org-gcal-clear-and-fetch ()
+(defun cashpw/org-gcal-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-  
+
   ;; Ignore these methods to improve performance. This is safe
   ;; because I don't push any events to GCal
   (advice-add 'org-generid-id-update-id-locations :override #'ignore)
   (advice-add 'org-gcal-sync-buffer :override #'ignore)
   (flyspell-mode 0)
-  
+
   (org-gcal-sync-tokens-clear)
+  (let ((calendar-path
+         (cdr
+          (car
+           org-gcal-fetch-file-alist))))
+    (let ((org-agenda-files
+           ;; Set limited agenda files to improve performance
+           `(,calendar-path)))
+      (org-gcal-fetch)))
+
+  (flyspell-mode 1)
+  (advice-remove 'org-generid-id-update-id-locations #'ignore)
+  (advice-remove 'org-gcal-sync-buffer #'ignore))
+
+(defun cashpw/org-gcal-clear-and-fetch ()
+  "Clear calendar buffer and fetch events."
+  (interactive)
+
   (let ((calendar-path
          (cdr
           (car
@@ -2436,22 +2476,10 @@ Return nil if no attendee exists with that EMAIL."
                           calendar-path)
       (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
-      (goto-char (point-max))
-      (insert "* Flashcards"))
-    (let (
-          ;; Set limited agenda files to improve performance
-          (org-agenda-files `(,calendar-path)))
-      (org-gcal-fetch))
-    ;; I'd prefer a solution which involves `deferred'. However, I couldn't get that working.
-    ;; (run-with-timer 10 nil #'cashpw/org-gcal--schedule-events)
-    ;; (setq
-    ;; cashpw/org-mode--done-noop-file-paths (remove calendar-file-path
-    ;; cashpw/org-mode--done-noop-file-paths))
-    )
-  
-  (flyspell-mode 1)
-  (advice-remove 'org-generid-id-update-id-locations #'ignore)
-  (advice-remove 'org-gcal-sync-buffer #'ignore))
+      ;;(goto-char (point-max))
+      ;(insert "* Flashcards")))
+      )
+  (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (cashpw/org-gcal-activate-profile cashpw/org-gcal--profile-personal)
@@ -2476,6 +2504,11 @@ Return nil if no attendee exists with that EMAIL."
    #'cashpw/org-gcal--maybe-create-todo-extract-reminder
    #'cashpw/org-gcal--maybe-handle-sleep
    #'cashpw/org-gcal--maybe-create-prep-meeting)
+  (add-hook
+   'org-gcal-after-update-entry-functions
+   #'cashpw/org-gcal--set-processed
+   ;; Add to end of list of functions
+   100)
   (add-hook!
    'org-gcal-fetch-event-filters
    #'cashpw/org-gcal--filter-summaries
@@ -2500,11 +2533,6 @@ Return nil if no attendee exists with that EMAIL."
    ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
    ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
    ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
-   cashpw/org-protocol--capture-template--web-site '("Website"
-                                                     :keys "w"
-                                                     :file ""
-                                                     :template "* %a :website:\n\n%U %?\n\n%:initial")
-   ;; '("w" "Web site" entry (file "") "* %a :website:\n\n%U %?\n\n%:initial")
    ))
 
 (use-package! org-protocol-capture-html
@@ -3850,7 +3878,7 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 3. TODO
 
 * TODO [#2] Retrospective
-SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:00\") (days-to-time 1)))
+SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:00\") (days-to-time 1)) t)
 :PROPERTIES:
 :Effort:   1m
 :END:
@@ -4833,6 +4861,17 @@ Category | Scheduled | Effort
    ;; See https://github.com/doomemacs/doomemacs/issues/5317
    org-clock-auto-clock-resolution nil))
 
+(defun cashpw/org-clock-add-entry (clock-in-time clock-out-time)
+  "Add single clock entry.
+
+Clock in at CLOCK-IN-TIME and clock out at CLOCK-OUT-TIME."
+  (interactive
+   (list
+    (org-read-date t t nil "Clock in")
+    (org-read-date t t nil "Clock out")))
+  (org-clock-in nil clock-in-time)
+  (org-clock-out nil nil clock-out-time))
+
 (defun cashpw/org-clock-duration-in-minutes (&optional arg)
   "Return total clocked minutes.
 
@@ -5501,156 +5540,123 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
      ("ss" . "src sh :results output")
      ("v" . "verse"))))
 
-(setq
- ;; org-roam
- cashpw/org-roam--capture-template--todo `("Roam"
-                                           :keys "r"
-                                           :file ,(lambda () (s-lex-format "${org-roam-directory}/todos-roam.org"))
-                                           :template ("* TODO [#2] %?"
-                                                      ":PROPERTIES:"
-                                                      ":CREATED: %U"
-                                                      ":END:"))
- ;; org-fc
- cashpw/org-fc--capture-template--normal `("Normal"
-                                           :keys "n"
-                                           :file ,(lambda () (buffer-name))
-                                           :olp ("Flashcards")
-                                           :template ("* %^{Name of card}"
-                                                      ":PROPERTIES:"
-                                                      ":CREATED: %U"
-                                                      ":END:"
-                                                      ""
-                                                      "%?"
-                                                      ""
-                                                      "** TODO Back"
-                                                      ""
-                                                      "TODO"
-                                                      ""
-                                                      "** TODO Source"
-                                                      )
-                                           :prepare-finalize ,(lambda ()
-                                                                (goto-char (point-min))
-                                                                (org-fc-type-normal-init)))
- cashpw/org-fc--capture-template--double `("Double"
-                                           :keys "d"
-                                           :file ,(lambda () (buffer-name))
-                                           :olp ("Flashcards")
-                                           :template ("* %^{Name of card}"
-                                                      ":PROPERTIES:"
-                                                      ":CREATED: %U"
-                                                      ":END:"
-                                                      ""
-                                                      "%?"
-                                                      ""
-                                                      "** TODO Back"
-                                                      ""
-                                                      "TODO"
-                                                      ""
-                                                      "** TODO Source"
-                                                      )
-                                           :prepare-finalize ,(lambda ()
-                                                                (goto-char (point-min))
-                                                                (org-fc-type-double-init)))
- cashpw/org-fc--capture-template--cloze `("Cloze"
-                                          :keys "c"
-                                          :file ,(lambda () (buffer-name))
-                                          :olp ("Flashcards")
-                                          :template ("* %^{Name of card}"
-                                                     ":PROPERTIES:"
-                                                     ":CREATED: %U"
-                                                     ":END:"
-                                                     ""
-                                                     "%?"
-                                                     ""
-                                                     "** TODO Source")
-                                          :prepare-finalize ,(lambda ()
-                                                               (goto-char (point-min))
-                                                               (org-fc-type-cloze-init 'deletion)))
-
- cashpw/org-fc--capture-template--text-input `("Text input"
-                                               :keys "t"
-                                               :file ,(lambda () (buffer-name))
-                                               :olp ("Flashcards")
-                                               :template ("* %^{Name of card}"
-                                                          ":PROPERTIES:"
-                                                          ":CREATED: %U"
-                                                          ":END:"
-                                                          ""
-                                                          "%?"
-                                                          ""
-                                                          "** TODO Back"
-                                                          ""
-                                                          "TODO"
-                                                          ""
-                                                          "** TODO Source")
-                                               :prepare-finalize ,(lambda ()
-                                                                    (goto-char (point-min))
-                                                                    (org-fc-type-text-input-init)))
-
-
- cashpw/org-fc--capture-template--vocab `("Vocab"
-                                          :keys "v"
-                                          :file ,(lambda () (buffer-name))
-                                          :olp ("Flashcards")
-                                          :template ("* %^{Term}"
-                                                     ":PROPERTIES:"
-                                                     ":CREATED: %U"
-                                                     ":END:"
-                                                     ""
-                                                     "%?"
-                                                     ""
-                                                     "** TODO Source")
-                                          :prepare-finalize ,(lambda ()
-                                                               (goto-char (point-min))
-                                                               (org-fc-type-vocab-init)))
-
- cashpw/org-capture-templates--todo--email `("Email"
-                                             :keys "e"
-                                             :file cashpw/path--personal-todos
-                                             :children (("Email"
-                                                         :keys "e"
-                                                         :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
-                                                         :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
-                                                         :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
-                                                                    "SCHEDULED: <%<%F %a>>"
-                                                                    ":PROPERTIES:"
-                                                                    ":Created: %U"
-                                                                    ":END:"))
-                                                        ("Follow up"
-                                                         :keys "f"
-                                                         :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
-                                                         :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
-                                                         :template ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject (%{from-short-address} ➤ %{to-short-address})]] :email:"
-                                                                    ":PROPERTIES:"
-                                                                    ":Created: %U"
-                                                                    ":END:"))))
-
- ;; General
- cashpw/org-capture-templates--todo--todo `("Todo"
-                                            :keys "t"
-                                            :file cashpw/path--personal-todos
-                                            :template ("* TODO %?"
-                                                       ":PROPERTIES:"
-                                                       ":Created: %U"
-                                                       ":END:")))
-
 (after! org
   (setq
-   org-capture-templates (doct `(,cashpw/org-protocol--capture-template--web-site
-                                 (:group "Todo"
-                                  :children (("Todo"
-                                              :keys "t"
-                                              :children (,cashpw/org-roam--capture-template--todo
-                                                         ,cashpw/org-capture-templates--todo--todo
-                                                         ,cashpw/org-capture-templates--todo--email))))
-                                 (:group "Flashcards"
-                                  :children (("Flashcards"
-                                              :keys "f"
-                                              :children (,cashpw/org-fc--capture-template--cloze
-                                                         ,cashpw/org-fc--capture-template--double
-                                                         ,cashpw/org-fc--capture-template--normal
-                                                         ,cashpw/org-fc--capture-template--vocab
-                                                         ,cashpw/org-fc--capture-template--text-input))))))))
+   org-capture-templates (doct
+                          `(("Website"
+                             :keys "w"
+                             :file ""
+                             :template "* %a :website:\n\n%U %?\n\n%:initial")
+                            (:group "Todo"
+                             :file cashpw/path--personal-todos
+                             :children (("Todo"
+                                         :keys "t"
+                                         :children (("Todo"
+                                                     :keys "t"
+                                                     :template ("* TODO %?"
+                                                                ":PROPERTIES:"
+                                                                ":Created: %U"
+                                                                ":END:"))
+                                                    ("Email"
+                                                     :keys "e"
+                                                     :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
+                                                     :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
+                                                     :children (("Email"
+                                                                 :keys "e"
+                                                                 :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%:fromaddress ➤ %:toaddress})]] :email:"
+                                                                            ":PROPERTIES:"
+                                                                            ":Created: %U"
+                                                                            ":END:"))
+                                                                ("Follow up"
+                                                                 :keys "f"
+                                                                 :template ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject (%:fromaddress} ➤ %:toaddress})]] :email:"
+                                                                            ":PROPERTIES:"
+                                                                            ":Created: %U"
+                                                                            ":END:"))))))))
+                            (:group "Flashcards"
+                             :file ,(lambda () (buffer-name))
+                             :olp ("Flashcards")
+                             :children (("Flashcards"
+                                         :keys "f"
+                                         :children (("Cloze"
+                                                     :keys "c"
+                                                     :template ("* %^{Name of card}"
+                                                                ":PROPERTIES:"
+                                                                ":CREATED: %U"
+                                                                ":END:"
+                                                                ""
+                                                                "%?"
+                                                                ""
+                                                                "** TODO Source")
+                                                     :prepare-finalize ,(lambda ()
+                                                                          (goto-char (point-min))
+                                                                          (org-fc-type-cloze-init 'deletion)))
+                                                    ("Double"
+                                                     :keys "d"
+                                                     :template ("* %^{Name of card}"
+                                                                ":PROPERTIES:"
+                                                                ":CREATED: %U"
+                                                                ":END:"
+                                                                ""
+                                                                "%?"
+                                                                ""
+                                                                "** TODO Back"
+                                                                ""
+                                                                "TODO"
+                                                                ""
+                                                                "** TODO Source"
+                                                                )
+                                                     :prepare-finalize ,(lambda ()
+                                                                          (goto-char (point-min))
+                                                                          (org-fc-type-double-init)))
+                                                    ("Normal"
+                                                     :keys "n"
+                                                     :template ("* %^{Name of card}"
+                                                                ":PROPERTIES:"
+                                                                ":CREATED: %U"
+                                                                ":END:"
+                                                                ""
+                                                                "%?"
+                                                                ""
+                                                                "** TODO Back"
+                                                                ""
+                                                                "TODO"
+                                                                ""
+                                                                "** TODO Source"
+                                                                )
+                                                     :prepare-finalize ,(lambda ()
+                                                                          (goto-char (point-min))
+                                                                          (org-fc-type-normal-init)))
+                                                    ("Vocab"
+                                                     :keys "v"
+                                                     :template ("* %^{Term}"
+                                                                ":PROPERTIES:"
+                                                                ":CREATED: %U"
+                                                                ":END:"
+                                                                ""
+                                                                "%?"
+                                                                ""
+                                                                "** TODO Source")
+                                                     :prepare-finalize ,(lambda ()
+                                                                          (goto-char (point-min))
+                                                                          (org-fc-type-vocab-init)))
+                                                    ("Text input"
+                                                     :keys "t"
+                                                     :template ("* %^{Name of card}"
+                                                                ":PROPERTIES:"
+                                                                ":CREATED: %U"
+                                                                ":END:"
+                                                                ""
+                                                                "%?"
+                                                                ""
+                                                                "** TODO Back"
+                                                                ""
+                                                                "TODO"
+                                                                ""
+                                                                "** TODO Source")
+                                                     :prepare-finalize ,(lambda ()
+                                                                          (goto-char (point-min))
+                                                                          (org-fc-type-text-input-init)))))))))))
 
 (after! org
   (setq
@@ -6263,6 +6269,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    (:prefix ("c")
     :n "E" #'org-clock-modify-effort-estimate
     :n "e" #'org-set-effort
+    :n "a" #'cashpw/org-clock-add-entry
     :n "p" #'omc-make-new-parallel-clock
     :n "s" #'omc-set-active-clock
     (:prefix ("R" . "Report")
