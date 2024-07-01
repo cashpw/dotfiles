@@ -2519,6 +2519,41 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 ;;             #'global-flycheck-mode))
 #+end_src
 
+*** Tree sitter
+
+**** =treesit-auto= :disabled:
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! treesit-auto)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! treesit-auto
+;;   :custom
+;;   (treesit-auto-install 'prompt)
+;;   (treesit-auto-langs '(cpp))
+;;   :config
+;;   (setq
+;;    cashpw/treesit-recipe-c (make-treesit-auto-recipe
+;;                             :lang 'c
+;;                             :ts-mode 'c-ts-mode
+;;                             :remap 'c-mode
+;;                             :url "https://github.com/tree-sitter/tree-sitter-c"
+;;                             :revision "v0.21.4"
+;;                             :ext "\\.c\\'")
+;;    cashpw/treesit-recipe-c++ (make-treesit-auto-recipe
+;;                               :lang 'cpp
+;;                               :ts-mode 'c++-ts-mode
+;;                               :remap 'c++-mode
+;;                               :url "https://github.com/tree-sitter/tree-sitter-cpp"
+;;                               :revision "v0.22.0"
+;;                               :ext "\\.cc\\'")
+;;    treesit-auto-recipe-list `(,cashpw/treesit-recipe-c
+;;                               ,cashpw/treesit-recipe-c++))
+;;   (treesit-auto-add-to-auto-mode-alist 'all)
+;;   (global-treesit-auto-mode))
+#+end_src
+
 ** Dart
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none

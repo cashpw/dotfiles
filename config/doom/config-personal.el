@@ -1416,6 +1416,31 @@ ${content}"))
 ;;   (add-hook 'after-init-hook
 ;;             #'global-flycheck-mode))
 
+;; (use-package! treesit-auto
+;;   :custom
+;;   (treesit-auto-install 'prompt)
+;;   (treesit-auto-langs '(cpp))
+;;   :config
+;;   (setq
+;;    cashpw/treesit-recipe-c (make-treesit-auto-recipe
+;;                             :lang 'c
+;;                             :ts-mode 'c-ts-mode
+;;                             :remap 'c-mode
+;;                             :url "https://github.com/tree-sitter/tree-sitter-c"
+;;                             :revision "v0.21.4"
+;;                             :ext "\\.c\\'")
+;;    cashpw/treesit-recipe-c++ (make-treesit-auto-recipe
+;;                               :lang 'cpp
+;;                               :ts-mode 'c++-ts-mode
+;;                               :remap 'c++-mode
+;;                               :url "https://github.com/tree-sitter/tree-sitter-cpp"
+;;                               :revision "v0.22.0"
+;;                               :ext "\\.cc\\'")
+;;    treesit-auto-recipe-list `(,cashpw/treesit-recipe-c
+;;                               ,cashpw/treesit-recipe-c++))
+;;   (treesit-auto-add-to-auto-mode-alist 'all)
+;;   (global-treesit-auto-mode))
+
 (setq
  flutter-sdk-path "/home/cashweaver/snap/flutter/common/flutter"
  lsp-dart-flutter-sdk flutter-sdk-path

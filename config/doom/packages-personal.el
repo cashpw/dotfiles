@@ -118,6 +118,8 @@
 
 ;; (package! flycheck-vale)
 
+;; (package! treesit-auto)
+
 (package! elisp-autofmt)
 
 (unpin! org)
