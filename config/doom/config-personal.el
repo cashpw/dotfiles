@@ -365,6 +365,18 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (unless (cashpw/machine-p 'work-cloudtop)
   (use-package! centered-cursor-mode))
 
+;; (use-package! electric-case
+;;   :config
+;;   (add-hook!
+;;    'c++-mode-hook
+;;    'electric-case-c-init)
+;;   (add-hook!
+;;    'c-mode-hook
+;;    'electric-case-c-init)
+;;   (add-hook!
+;;    'java-mode-hook
+;;    'electric-case-java-init))
+
 (use-package! command-log-mode
   :config
   (setq

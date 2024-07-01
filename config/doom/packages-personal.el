@@ -7,6 +7,10 @@
 (unless (cashpw/machine-p 'work-cloudtop)
   (package! centered-cursor-mode))
 
+;; (package! electric-case
+;;   :recipe (:host github
+;;            :repo "zk-phi/electric-case"))
+
 (package! command-log-mode)
 
 (package! free-keys
@@ -235,10 +239,6 @@
 (package! toml
   :recipe (:host github
            :repo "gongo/emacs-toml"))
-
-(package! electric-case
-  :recipe (:host github
-           :repo "zk-phi/electric-case"))
 
 ;; (package! org-window-habit
 ;;   :recipe (:host github
