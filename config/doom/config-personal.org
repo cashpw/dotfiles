@@ -610,7 +610,14 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! increment-ordinal)
+(use-package! increment-ordinal
+  :config
+  (defun increment-ordinals-in-todo ()
+    "Increment ordinal nubmers in TODO headline."
+    (let ((headline
+          (org-entry-get nil "ITEM")))
+      (org-edit-headline
+       (cashpw/increment-ordinals-in-string headline)))))
 #+end_src
 
 *** =titlecase=

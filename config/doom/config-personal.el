@@ -378,7 +378,14 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (use-package! operate-on-number)
 
-(use-package! increment-ordinal)
+(use-package! increment-ordinal
+  :config
+  (defun increment-ordinals-in-todo ()
+    "Increment ordinal nubmers in TODO headline."
+    (let ((headline
+          (org-entry-get nil "ITEM")))
+      (org-edit-headline
+       (cashpw/increment-ordinals-in-string headline)))))
 
 (use-package! titlecase)
 
