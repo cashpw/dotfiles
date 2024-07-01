@@ -1411,7 +1411,13 @@ ${content}"))
 
 (use-package! aggressive-indent
   :config
-  (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
+  (add-hook
+   'emacs-lisp-mode-hook
+   #'aggressive-indent-mode))
+
+(use-package elisp-autofmt
+  :commands (elisp-autofmt-mode elisp-autofmt-buffer)
+  :hook (emacs-lisp-mode . elisp-autofmt-mode))
 
 (setq
  org-modules '(ol-doi

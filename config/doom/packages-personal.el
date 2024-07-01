@@ -114,6 +114,8 @@
 
 ;; (package! flycheck-vale)
 
+(package! elisp-autofmt)
+
 (unpin! org)
 (unpin! org-contrib)
 

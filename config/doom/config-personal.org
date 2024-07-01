@@ -2507,15 +2507,39 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 
 ** Emacs Lisp (elisp)
 
-Use =aggressive-indent= when editing =elisp=.
+*** Packages
+
+**** =aggressive-indent=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! aggressive-indent
   :config
-  (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode))
+  (add-hook
+   'emacs-lisp-mode-hook
+   #'aggressive-indent-mode))
 #+end_src
 
-*** Packages
+**** =elisp-autofmt=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! elisp-autofmt)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package elisp-autofmt
+  :commands (elisp-autofmt-mode elisp-autofmt-buffer)
+  :hook (emacs-lisp-mode . elisp-autofmt-mode))
+#+end_src
+
+***** Package
+
+<
+
+***** Config
 
 ** Java
 ** TODO Org
