@@ -170,6 +170,10 @@
 
 (package! ol-notmuch)
 
+(package! run-on-todo-state-change
+  :recipe (:host github
+           :repo "cashpw/run-on-todo-state-change"))
+
 (package! org-protocol-capture-html
   :recipe (:host github
            :repo "alphapapa/org-protocol-capture-html"))

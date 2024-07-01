@@ -2534,6 +2534,9 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! ol-notmuch
   :after org)
 
+(use-package! run-on-todo-state-change
+  :after org)
+
 (use-package! org-protocol
   :config
   (setq

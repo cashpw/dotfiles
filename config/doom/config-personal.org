@@ -4133,6 +4133,22 @@ One of the more popular Notmuch [[[https://notmuchmail.org/][Notmuch]]] message 
 (use-package! ol-notmuch
   :after org)
 #+end_src
+**** =run-on-todo-state-change=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! run-on-todo-state-change
+  :recipe (:host github
+           :repo "cashpw/run-on-todo-state-change"))
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! run-on-todo-state-change
+  :after org)
+#+end_src
 **** =org-protocol=
 
 #+begin_quote
