@@ -21,6 +21,10 @@
   :recipe (:host github
            :repo "knu/operate-on-number.el"))
 
+(package! increment-ordinal
+  :recipe (:host github
+           :repo "cashpw/increment-ordinal"))
+
 (package! titlecase)
 
 (package! whisper

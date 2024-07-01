@@ -597,6 +597,22 @@ invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
 (use-package! operate-on-number)
 #+end_src
 
+*** =increment-ordinal=
+
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! increment-ordinal
+  :recipe (:host github
+           :repo "cashpw/increment-ordinal"))
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! increment-ordinal)
+#+end_src
+
 *** =titlecase=
 
 Convert English text to Title Case.

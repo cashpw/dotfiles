@@ -378,6 +378,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (use-package! operate-on-number)
 
+(use-package! increment-ordinal)
+
 (use-package! titlecase)
 
 (use-package! whisper
