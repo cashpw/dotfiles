@@ -739,8 +739,8 @@ Passes arguments, including NEW-WINDOW, along."
  calendar-longitude -121.8
  calendar-location-name "San Jose, CA")
 
-(use-package! casual
-  :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+;; (use-package! casual
+;;   :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
 
 (setq
  ediff-split-window-function #'split-window-horizontally)

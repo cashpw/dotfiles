@@ -94,7 +94,7 @@
 
 ;; (package! w3m)
 
-(package! casual)
+;; (package! casual)
 
 (package! ox-gfm)
 
