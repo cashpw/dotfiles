@@ -2593,12 +2593,6 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
   :hook (emacs-lisp-mode . elisp-autofmt-mode))
 #+end_src
 
-***** Package
-
-<
-
-***** Config
-
 ** Java
 ** TODO Org
 
@@ -9093,7 +9087,7 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 Bits that I haven't yet filed into a larger heading
 
-** INPROGRESS Rewrite "raw" links in buffer into org-mode links
+** Rewrite "raw" links in buffer into org-mode links
 
 #+begin_src emacs-lisp
 ;; https ://docs.google.com/document/d/1OqMKeO-XnvD8qK6qH0u_TplZrofVYqG_R4VGeLbAklM/edit #heading=h.hy2rqfrcolct
@@ -9141,24 +9135,6 @@ Bits that I haven't yet filed into a larger heading
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! toml)
-#+end_src
-
-** =electric-case=
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! electric-case
-  :recipe (:host github
-           :repo "zk-phi/electric-case"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! electric-case)
-#+end_src
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (add-hook!
-;;  'java-mode-hook
-;;  'electric-case-java-init)
 #+end_src
 
 ** Roam: export all
@@ -9564,21 +9540,12 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 :ID:       c7bb88c8-96bc-4269-bc3a-4fa820030a58
 :END:
 ** TODO [#4] Create roam node from link at point
-:PROPERTIES:
-:Effort:   2h
-:END:
 Create a new roam node using the link at point. Pull the title used at the URL under the link; let the user override if they want to. Include the link in the node's refs.
-
 ** TODO [#2] See if I can extract anything else from =config-work.org=
 ** TODO [#4] =s/cashpw//cashweaver\//= for my methods
-:PROPERTIES:
-:Effort:   1h
-:END:
 ** TODO [#2] Write about my use of =org-roam=, =hugo=, etc
-:PROPERTIES:
-:Effort:   4h
-:END:
 ** TODO [#2] Remove dependency on =dash= and prefer =cl-*=
+
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]]

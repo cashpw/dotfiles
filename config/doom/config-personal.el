@@ -6522,12 +6522,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (use-package! toml)
 
-(use-package! electric-case)
-
-;; (add-hook!
-;;  'java-mode-hook
-;;  'electric-case-java-init)
-
 (defmacro measure-time (&rest body)
   "Measure the time it takes to evaluate BODY.
 
