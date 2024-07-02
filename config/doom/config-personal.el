@@ -1,7 +1,9 @@
 (setq search-invisible t)
 
-(use-package! s)
-(use-package! dash)
+(use-package! s
+  :ensure t)
+(use-package! dash
+  :ensure t)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 
@@ -164,60 +166,34 @@ Reference: https://emacs.stackexchange.com/a/43985"
      daylight-savings-time-p
      utc-offset)))
 
-(defcustom cashpw/path--proj-dir
+(defvar cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
-  "Projects directory."
-  :group 'cashpw
-  :type 'string)
+  "Projects directory.")
 
-(defcustom cashpw/path--notes-dir
+(defvar cashpw/path--notes-dir
   (s-lex-format "${cashpw/path--proj-dir}/notes")
-  "Personal org-roam notes directory."
-  :group 'cashpw
-  :type 'string)
+  "Personal org-roam notes directory.")
 
-(defcustom cashpw/path--personal-todos
+(defvar cashpw/path--personal-todos
   (s-lex-format "${cashpw/path--notes-dir}/todos.org")
-  "Personal TODOs file."
-  :group 'cashpw
-  :type 'string)
+  "Personal TODOs file.")
 
-(defcustom cashpw/path--personal-calendar
+(defvar cashpw/path--personal-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")
-  "Personal calendar file."
-  :group 'cashpw
-  :type 'string)
+  "Personal calendar file.")
 
-(defcustom cashpw/path--sleep-calendar
+(defvar cashpw/path--sleep-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")
-  "Sleep calendar file."
-  :group 'cashpw
-  :type 'string)
+  "Sleep calendar file.")
 
-(defcustom cashpw/path--reading-list
+(defvar cashpw/path--reading-list
   (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
-  "Reading list."
-  :group 'cashpw
-  :type 'string)
+  "Reading list.")
 
-(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
-  "Path to directory containing secret files."
-  :group 'cashpw
-  :type 'string)
-
-(defun cashpw/get-secret (name)
-  "Get content of NAME secret file."
-  (let ((secret-file-path
-         (s-lex-format
-          "${cashpw/secrets-dir-path}/${name}")))
-    (if (file-exists-p
-         secret-file-path)
-        (string-clean-whitespace
-         (with-temp-buffer
-           (insert-file-contents
-            secret-file-path)
-           (buffer-string)))
-      "")))
+(use-package!
+ get-secret
+ :custom
+ (get-secret--dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 
 (defun cashpw/grep (command-string)
   "Return grep, with COMMAND-STRING, results as a list."
@@ -697,7 +673,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (setq
  cashpw/indent-level 2)
-
 (setq-default
  standard-indent cashpw/indent-level
  tab-width cashpw/indent-level
@@ -739,7 +714,6 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- ;; browse-url-browser-function 'browse-url-default-browser
  browse-url-browser-function 'cashpw/browse-url)
 
 ;; (use-package! w3m
@@ -1280,7 +1254,7 @@ ${content}"))
   (setq-default
    gptel-model "gemini-1.5-pro-latest"
    gptel-backend (gptel-make-gemini "Gemini"
-                   :key (cashpw/get-secret "personal-gemini")
+                   :key (get-secret "personal-gemini")
                    :stream t))
 
   (defun cashpw/gptel-send (prompt)
@@ -2415,7 +2389,7 @@ Return nil if no attendee exists with that EMAIL."
                        ;; ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar)
                        )
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(cashpw/get-secret
+    :client-secret ,(get-secret
                      "org-gcal--personal")
     :no-prep-reminder-summaries ("Walk"
                                  "Clean house")
@@ -2462,7 +2436,7 @@ Return nil if no attendee exists with that EMAIL."
   `(:fetch-file-alist
     (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(cashpw/get-secret
+    :client-secret ,(get-secret
                      "org-gcal--personal")
     :no-prep-reminder-summaries ()
     :summary-categories (("Sleep" . ("Sleep")))

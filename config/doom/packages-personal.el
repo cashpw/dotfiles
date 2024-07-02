@@ -2,6 +2,9 @@
   :recipe (:host github
            :repo "cashpw/day-of-week"))
 
+(package! get-secret
+  :recipe (:host github :repo "cashpw/get-secret"))
+
 (package! aggressive-indent)
 
 (unless (cashpw/machine-p 'work-cloudtop)

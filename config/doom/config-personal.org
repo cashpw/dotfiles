@@ -18,13 +18,15 @@ Allow search and replace actions to affect hidden text.
 Activate some packages early to prevent errors.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! s)
-(use-package! dash)
+(use-package! s
+  :ensure t)
+(use-package! dash
+  :ensure t)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 #+end_src
 
-** User Information
+** User information
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
@@ -32,7 +34,7 @@ Activate some packages early to prevent errors.
  user-mail-address "cashbweaver@gmail.com")
 #+end_src
 
-** Date and Time
+** Date and time
 
 Use YEAR-MONTH-DAY style dates.
 
@@ -245,64 +247,49 @@ Reference: https://emacs.stackexchange.com/a/43985"
 ** Paths
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defcustom cashpw/path--proj-dir
+(defvar cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
-  "Projects directory."
-  :group 'cashpw
-  :type 'string)
+  "Projects directory.")
 
-(defcustom cashpw/path--notes-dir
+(defvar cashpw/path--notes-dir
   (s-lex-format "${cashpw/path--proj-dir}/notes")
-  "Personal org-roam notes directory."
-  :group 'cashpw
-  :type 'string)
+  "Personal org-roam notes directory.")
 
-(defcustom cashpw/path--personal-todos
+(defvar cashpw/path--personal-todos
   (s-lex-format "${cashpw/path--notes-dir}/todos.org")
-  "Personal TODOs file."
-  :group 'cashpw
-  :type 'string)
+  "Personal TODOs file.")
 
-(defcustom cashpw/path--personal-calendar
+(defvar cashpw/path--personal-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")
-  "Personal calendar file."
-  :group 'cashpw
-  :type 'string)
+  "Personal calendar file.")
 
-(defcustom cashpw/path--sleep-calendar
+(defvar cashpw/path--sleep-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")
-  "Sleep calendar file."
-  :group 'cashpw
-  :type 'string)
+  "Sleep calendar file.")
 
-(defcustom cashpw/path--reading-list
+(defvar cashpw/path--reading-list
   (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
-  "Reading list."
-  :group 'cashpw
-  :type 'string)
+  "Reading list.")
 #+end_src
 
 ** Secrets
 
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defcustom cashpw/secrets-dir-path (s-lex-format "${cashpw/path--home-dir}/.config/secrets")
-  "Path to directory containing secret files."
-  :group 'cashpw
-  :type 'string)
+*** =get-secret=
 
-(defun cashpw/get-secret (name)
-  "Get content of NAME secret file."
-  (let ((secret-file-path
-         (s-lex-format
-          "${cashpw/secrets-dir-path}/${name}")))
-    (if (file-exists-p
-         secret-file-path)
-        (string-clean-whitespace
-         (with-temp-buffer
-           (insert-file-contents
-            secret-file-path)
-           (buffer-string)))
-      "")))
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! get-secret
+  :recipe (:host github :repo "cashpw/get-secret"))
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+ get-secret
+ :custom
+ (get-secret--dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 #+end_src
 
 ** Helper functions
@@ -1116,6 +1103,9 @@ The [[github:doomemacs/doomemacs/tree/master/templates][default configuration fi
 #+end_src
 
 *** Input
+:PROPERTIES:
+:ID:       135db3bb-1e3d-4137-b2c9-8dfb2c4f5f6c
+:END:
 
 #+name: doom-input
 #+begin_src emacs-lisp
@@ -1127,6 +1117,9 @@ The [[github:doomemacs/doomemacs/tree/master/templates][default configuration fi
 #+end_src
 
 *** Completion
+:PROPERTIES:
+:ID:       3e76f9ee-fc49-43a8-962d-60c94260ed8e
+:END:
 
 #+name: doom-completion
 #+begin_src emacs-lisp
@@ -1142,6 +1135,9 @@ The [[github:doomemacs/doomemacs/tree/master/templates][default configuration fi
 #+end_src
 
 *** User interface (UI)
+:PROPERTIES:
+:ID:       10761f2c-8a11-4389-9f4c-d78600245d56
+:END:
 
 #+name: doom-ui
 #+begin_src emacs-lisp
@@ -1178,6 +1174,9 @@ zen               ; distraction-free coding or writing
 #+end_src
 
 *** Editor
+:PROPERTIES:
+:ID:       33094389-dfb6-4edf-9aa2-bb4d2834924a
+:END:
 
 #+name: doom-editor
 #+begin_src emacs-lisp
@@ -1199,6 +1198,9 @@ word-wrap           ; soft wrapping with language-aware indent
 #+end_src
 
 *** Emacs
+:PROPERTIES:
+:ID:       c5efa0af-faa4-4a3b-a623-4c07003926a6
+:END:
 
 #+name: doom-emacs
 #+begin_src emacs-lisp
@@ -1212,6 +1214,9 @@ vc                  ; version-control and Emacs, sitting in a tree
 #+end_src
 
 *** Lisp
+:PROPERTIES:
+:ID:       746ab23b-49f6-4334-9281-55c8586150fe
+:END:
 
 #+name: doom-term
 #+begin_src emacs-lisp
@@ -1223,6 +1228,9 @@ vterm               ; the best terminal emulation in Emacs
 #+end_src
 
 *** Checkers
+:PROPERTIES:
+:ID:       d50a8f01-4895-4ade-bd6f-82922d135824
+:END:
 
 #+name: doom-checkers
 #+begin_src emacs-lisp
@@ -1236,6 +1244,9 @@ vterm               ; the best terminal emulation in Emacs
 #+end_src
 
 *** Tools
+:PROPERTIES:
+:ID:       d78d8b13-7ed7-470d-b4c4-9c44880fa29d
+:END:
 
 #+name: doom-tools
 #+begin_src emacs-lisp
@@ -1265,6 +1276,9 @@ tree-sitter       ; syntax and parsing, sitting in a tree...
 #+end_src
 
 *** Operating system (OS)
+:PROPERTIES:
+:ID:       95508927-db26-4f1e-8c6d-ee4d894ff9f6
+:END:
 
 #+name: doom-os
 #+begin_src emacs-lisp
@@ -1274,6 +1288,9 @@ tree-sitter       ; syntax and parsing, sitting in a tree...
 #+end_src
 
 *** Languages
+:PROPERTIES:
+:ID:       993ce95a-3771-4831-983a-d526b06fe00c
+:END:
 
 #+name: doom-lang
 #+begin_src emacs-lisp
@@ -1361,6 +1378,9 @@ ess               ; emacs speaks statistics
 #+end_src
 
 *** Email
+:PROPERTIES:
+:ID:       a5fe6324-62bb-40e5-ae62-0c3ead080fe8
+:END:
 
 #+name: doom-email
 #+begin_src emacs-lisp
@@ -1383,23 +1403,25 @@ calendar
 everywhere
 ;;irc               ; how neckbeards socialize
 ;;(rss +org)        ; emacs as an RSS reader
-;;twitter           ; twitter client https://twitter.com/vnought
 #+end_src
 
 *** Configuration
+:PROPERTIES:
+:ID:       12e35ea1-2bf6-4ce3-9584-23cb4d8b8130
+:END:
 
 #+name: doom-config
 #+begin_src emacs-lisp
 :config
 ;;literate
-(default +bindings +smartparens)
+(default
+ +bindings
+ +smartparens)
 #+end_src
 
 * Appearance
-
 ** Packages
-
-*** =svg-tag-mode=
+*** =svg-tag-mode= :disabled:
 
 Disabled because it was slow.
 
@@ -1432,7 +1454,7 @@ Disabled because it was slow.
 (use-package! nerd-icons)
 #+end_src
 
-** General, miscellaneous
+** General
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
@@ -1529,7 +1551,6 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
  cashpw/indent-level 2)
-
 (setq-default
  standard-indent cashpw/indent-level
  tab-width cashpw/indent-level
@@ -1576,15 +1597,11 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- ;; browse-url-browser-function 'browse-url-default-browser
  browse-url-browser-function 'cashpw/browse-url)
 #+end_src
 
-#+RESULTS:
-: eww-browse-url
-
 *** EmacsWebWowser (eww)
-*** WWWを見る (w3m)
+*** WWWを見る (w3m) :disabled:
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; (package! w3m)
@@ -1596,6 +1613,7 @@ Passes arguments, including NEW-WINDOW, along."
 ;;   (w3m-display-mode 'tabbed-dedicated-frames))
 #+end_src
 ** Calendar
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
  calendar-latitude 37.2
@@ -1605,7 +1623,6 @@ Passes arguments, including NEW-WINDOW, along."
 
 *** Packages
 **** =calfw=
-
 Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =calfw= through =app/calendar=.
 ** Calculator (=calc=)
 *** Packages
@@ -2319,7 +2336,7 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
   (setq-default
    gptel-model "gemini-1.5-pro-latest"
    gptel-backend (gptel-make-gemini "Gemini"
-                   :key (cashpw/get-secret "personal-gemini")
+                   :key (get-secret "personal-gemini")
                    :stream t))
 
   (defun cashpw/gptel-send (prompt)
@@ -3953,7 +3970,7 @@ Return nil if no attendee exists with that EMAIL."
                        ;; ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar)
                        )
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(cashpw/get-secret
+    :client-secret ,(get-secret
                      "org-gcal--personal")
     :no-prep-reminder-summaries ("Walk"
                                  "Clean house")
@@ -4004,7 +4021,7 @@ Return nil if no attendee exists with that EMAIL."
   `(:fetch-file-alist
     (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(cashpw/get-secret
+    :client-secret ,(get-secret
                      "org-gcal--personal")
     :no-prep-reminder-summaries ()
     :summary-categories (("Sleep" . ("Sleep")))
