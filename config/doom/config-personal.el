@@ -322,15 +322,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (defun cashpw/buffer-contains-regexp-p (regexp &optional buffer-or-name)
   "Return non-nil if BUFFER-OR-NAME contains REGEXP."
-  (with-current-buffer (or buffer-or-name
-                           (buffer-name))
+  (with-current-buffer (or buffer-or-name (buffer-name))
     (save-excursion
-      (goto-char
-       (point-min))
-      (re-search-forward
-       regexp
-       nil
-       t))))
+      (goto-char (point-min))
+      (re-search-forward regexp nil t))))
 
 (defun cashpw/maybe-add-trailing-forward-slash (str)
   "Return STR with a trailing slash (added if it was missing)."

@@ -458,15 +458,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/buffer-contains-regexp-p (regexp &optional buffer-or-name)
   "Return non-nil if BUFFER-OR-NAME contains REGEXP."
-  (with-current-buffer (or buffer-or-name
-                           (buffer-name))
+  (with-current-buffer (or buffer-or-name (buffer-name))
     (save-excursion
-      (goto-char
-       (point-min))
-      (re-search-forward
-       regexp
-       nil
-       t))))
+      (goto-char (point-min))
+      (re-search-forward regexp nil t))))
 #+end_src
 
 *** =cashpw/maybe-add-trailing-forward-slash=
@@ -488,7 +483,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 #+end_src
 
 *** =centered-cursor-mode=
-
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -589,8 +583,7 @@ Show free bindings in current buffer.
 *** =operate-on-number=
 
 #+begin_quote
-Suppose the point is on some number.  If you want to double it,
-invoke `operate-on-number-at-point' followed by some keys: * 2 RET.
+Suppose the point is on some number.  If you want to double it, invoke `operate-on-number-at-point' followed by some keys: =* 2 RET=.
 
 /[[github:knu/operate-on-number.el/blob/master/operate-on-number.el][operate-on-number.el]]/
 #+end_quote
