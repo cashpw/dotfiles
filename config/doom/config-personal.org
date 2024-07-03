@@ -622,7 +622,7 @@ Suppose the point is on some number.  If you want to double it, invoke `operate-
     (let ((headline
           (org-entry-get nil "ITEM")))
       (org-edit-headline
-       (cashpw/increment-ordinals-in-string headline)))))
+       (increment-ordinals-in-string headline)))))
 #+end_src
 
 *** =titlecase=

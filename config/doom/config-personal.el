@@ -368,7 +368,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (let ((headline
           (org-entry-get nil "ITEM")))
       (org-edit-headline
-       (cashpw/increment-ordinals-in-string headline)))))
+       (increment-ordinals-in-string headline)))))
 
 (use-package! titlecase)
 
