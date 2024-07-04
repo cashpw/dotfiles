@@ -8473,10 +8473,9 @@ Private files are designated with the =private= =filetag=.
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/kill-all-markdown-buffers ()
   "Kill all other org-roam buffers except current."
-  (let ((buffers-to-kill (--filter (s-ends-with-p ".md" (buffer-name it))
-                                   (buffer-list))))
-    (mapc 'kill-buffer
-          buffers-to-kill)))
+  (let ((buffers-to-kill
+         (--filter (s-ends-with-p ".md" (buffer-name it)) (buffer-list))))
+    (mapc 'kill-buffer buffers-to-kill)))
 ;; (cashpw/kill-all-markdown-buffers)
 ;; (buffer-list)
 
@@ -8484,95 +8483,60 @@ Private files are designated with the =private= =filetag=.
   "Remove all existing file notification watches from Emacs."
   (interactive)
   (maphash
-   (lambda (key _value)
-     (file-notify-rm-watch key))
-   file-notify-descriptors))
+   (lambda (key _value) (file-notify-rm-watch key)) file-notify-descriptors))
 
 (defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
   "Export all hugo files in DIRECTORY.
 
 Optionally skip FILES-TO-IGNORE."
   (interactive)
-  (let* ((directory
-          (or directory
-              cashpw/path--notes-dir))
-         (org-roam-directory
-          directory)
+  (let* ((org-roam-directory directory)
          (files-to-export
           (seq-difference
-           (directory-files
-            directory
-            ;; full
-            t
-            ;; match
-            ".org$")
+           (cashpw/org-files-with-tag
+            "public" org-roam-directory)
            files-to-ignore))
-         (org-id-extra-files
-          (org-roam-list-files))
-         (file-index
-          0)
-         (log-file-path
-          "/tmp/hugo-export.log")
-         (count-files-to-export
-          (length
-           files-to-export))
+         (org-id-extra-files (org-roam-list-files))
+         (file-index 0)
+         (log-file-path "/tmp/hugo-export.log")
+         (count-files-to-export (length files-to-export))
          ;; Last updated: 2023-12-05
-         (recent-run-file-count
-          1467)
+         (recent-run-file-count 1467)
          ;; Last updated: 2023-12-05
-         (recent-run-seconds
-          7791)
-         (seconds-per-file
-          (/ recent-run-seconds
-             recent-run-file-count)))
+         (recent-run-seconds 7791)
+         (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
     (cl-flet ((remaining-minutes
-            (file-number)
-            (let ((files-left
-                   (- count-files-to-export
-                      current-file-number)))
-              (/ (* seconds-per-file
-                    files-left)
-                 60)))
-           (node-private-p
-            (buffer)
-            (-contains-p
-             (org-extras-filetags-in-buffer
-              buffer)
-             "private")))
-      (let* ((run-time-estimate
-              (org-duration-from-minutes
-               (remaining-minutes
-                0)))
-             (should-run
-              (y-or-n-p
-               (s-lex-format
-                "Found ${count-files-to-export} nodes in ${directory}. Export estimate: ${run-time-estimate}."))))
+                (file-number)
+                (let ((files-left (- count-files-to-export file-number)))
+                  (/ (* seconds-per-file files-left) 60))))
+      (let*
+          ((run-time-estimate
+            (org-duration-from-minutes (remaining-minutes 0)))
+           (should-run
+            (y-or-n-p
+             (s-lex-format
+              "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
         (when should-run
           (let* ((progress-reporter
-                  (make-progress-reporter
-                   "Exporting roam notes"
-                   0
-                   count-files-to-export))
-                 (start-time
-                  (current-time)))
+                  (make-progress-reporter "Exporting roam notes"
+                                          0 count-files-to-export))
+                 (start-time (current-time)))
+            (org-roam-db-sync)
             ;; Speed up the export
             ;; (cashpw/eglot-pause)
             (memoize 'citeproc-hash-itemgetter-from-any)
             (advice-add 'org-id-find :override 'org-roam-id-find)
-            (memoize 'org-roam-node-id)
-            (memoize 'org-roam-node-file)
+            (memoize 'org-roam-id-find)
+            ;; (memoize 'org-roam-node-id)
+            ;; (memoize 'org-roam-node-file)
             ;; (global-flycheck-mode -1)
 
             (-each
                 files-to-export
               (lambda (file-path)
-                (let ((file-export-start-time
-                       (current-time))
-                      (roam-file-buffer
-                       (find-file-noselect
-                        file-path))
-                      (start-time
-                       (current-time)))
+                (let ((file-export-start-time (current-time))
+                      (roam-file-buffer (find-file-noselect file-path))
+                      (start-time (current-time)))
                   (shut-up
                     (when (= 0 (% file-index 10))
                       ;; (message "[cashpw] fix cannot redirect stderr too many open files")
@@ -8583,15 +8547,9 @@ Optionally skip FILES-TO-IGNORE."
                     ;;          (1+ file-index)
                     ;;          count-files-to-export
                     ;;          file-path)
-                    (with-current-buffer
-                        roam-file-buffer
-                      (unless (node-private-p
-                               (current-buffer))
-                        (remove-hook
-                         'before-save-hook
-                         'org-encrypt-entries
-                         t)
-                        (org-hugo-export-to-md)))
+                    (with-current-buffer roam-file-buffer
+                      (remove-hook 'before-save-hook 'org-encrypt-entries t)
+                      (org-hugo-export-to-md))
                     (kill-buffer roam-file-buffer)
                     ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
                     ;;          (1+ file-index)
@@ -8600,39 +8558,32 @@ Optionally skip FILES-TO-IGNORE."
                     ;;          (float-time
                     ;;           (time-since
                     ;;            file-export-start-time)))
-                    (let* ((file-number
-                            (1+ file-index))
-                           (time-string
-                            (format-time-string "%F %H:%M:%S"))
-                           (export-duration-in-seconds
-                            (time-since
-                             start-time)))
+                    (let* ((file-number (1+ file-index))
+                           (time-string (format-time-string "%F %H:%M:%S"))
+                           (export-duration-in-seconds (time-since start-time)))
                       (append-to-file
                        (s-lex-format
                         "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
-                       nil
-                       log-file-path))))
-                (progress-reporter-update
-                 progress-reporter
-                 file-index
-                 (concat
-                  "Remaining time (estimate): "
-                  (org-duration-from-minutes
-                   (remaining-minutes
-                    file-index))))
-                (setq
-                 file-index (1+ file-index))))
-            (progress-reporter-done
-             progress-reporter)
+                       nil log-file-path))))
+                (progress-reporter-update progress-reporter
+                                          file-index
+                                          (concat
+                                           "Remaining time (estimate): "
+                                           (org-duration-from-minutes
+                                            (remaining-minutes file-index))))
+                (setq file-index (1+ file-index))))
+            (progress-reporter-done progress-reporter)
 
             ;; Remove speed-up changes
             ;; (cashpw/eglot-unpause)
             (advice-remove 'org-id-find 'org-roam-id-find)
-            (memoize-restore 'org-roam-node-id)
-            (memoize-restore 'org-roam-node-file)
+            (memoize-restore 'org-roam-id-find)
+            ;; (memoize-restore 'org-roam-node-id)
+            ;; (memoize-restore 'org-roam-node-file)
             (memoize-restore 'citeproc-hash-itemgetter-from-any)
 
-            (message "cashpw/org-hugo-export-all %.06f" (float-time (time-since start-time)))))))))
+            (message "cashpw/org-hugo-export-all %.06f"
+                     (float-time (time-since start-time)))))))))
 
 (defun cashpw/org-hugo--tag-processing-fn-roam-tags (tag-list info)
   "Add tags from filetags to tag-list for org-roam to ox-hugo compatibility.
@@ -8643,13 +8594,11 @@ See `org-hugo-tag-processing-functions'."
   (if (org-roam-file-p)
       (append
        tag-list
-       (-map
-        #'downcase
-        (org-extras-filetags-in-buffer
-         (current-buffer))))
+       (-map #'downcase (org-extras-filetags-in-buffer (current-buffer))))
     tag-list))
 
-(after! ox-hugo
+(after!
+  ox-hugo
   (setq
    org-hugo-citations-plist '(:bibliography-section-heading "")
    org-hugo-allow-spaces-in-tags nil)
@@ -8668,12 +8617,20 @@ are the arguments of the ORIG-FUN."
       (when (org-string-nw-p bib)
         ;; Auto-inject Bibliography heading.
         (let ((info (nth 2 args)) ;(org-cite-export-bibliography KEYWORD _ INFO)
-              (bib-heading (org-string-nw-p (plist-get org-hugo-citations-plist :bibliography-section-heading))))
+              (bib-heading
+               (org-string-nw-p
+                (plist-get
+                 org-hugo-citations-plist
+                 :bibliography-section-heading))))
           (if bib-heading
-              (let* ((bib-heading (org-blackfriday--translate nil info bib-heading))
-                     (loffset (string-to-number
-                               (or (org-entry-get nil "EXPORT_HUGO_LEVEL_OFFSET" :inherit)
-                                   (plist-get info :hugo-level-offset))))
+              (let* ((bib-heading
+                      (org-blackfriday--translate nil info bib-heading))
+                     (loffset
+                      (string-to-number
+                       (or (org-entry-get
+                            nil "EXPORT_HUGO_LEVEL_OFFSET"
+                            :inherit)
+                           (plist-get info :hugo-level-offset))))
                      (level-mark (make-string (+ loffset 1) ?#)))
                 (format "%s %s\n\n%s" level-mark bib-heading bib))
             (format "%s" bib))))))
@@ -8688,36 +8645,30 @@ are the arguments of the ORIG-FUN."
 (defun cashpw/org-hugo-export-all ()
   "Export all hugo notes files.."
   (interactive)
-  (cashpw/org-hugo-export-directory
-   cashpw/path--notes-dir))
+  (cashpw/org-hugo-export-directory cashpw/path--notes-dir))
 #+end_src
 
 **** Publish
 
+Prefer =cashpw/org-roam-export-all= to publish notes because =org-publish= gets hung up with errors (=org-back-to-heading: Before first headline at position ... in buffer ...=).jzz
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(after! org
-  (setq
-   org-publish-project-alist
-   '(("notes.cashpw.com"
-      :base-directory "~/proj/notes"
-      :base-extension "org"
-      :publishing-directory "~/proj/notes.cashpw.com/content/posts/"
-      ;;:publishing-function org-pandoc-publish-to-md
-      :publishing-function org-hugo-export-to-md
-      :section-numbers t
-      :with-toc nil))))
+;; (defun cashpw/org-hugo-export-to-md--maybe
+;;     (&optional async subtreep visible-only)
+;;   "Conditional export."
+;;   (when (seq-contains (org-extras-filetags-in-buffer (current-buffer)) "public")
+;;     (org-hugo-export-to-md async subtreep visible-only)))
 
-;; Publish org-roam files without using org-publish because org-publish requires a top-level headline.
-;; ("roam"
-;; :base-directory "~/proj/notes/"
-;; :base-extension "org"
-;; :publishing-directory "~/proj/cashweaver.com/content/posts/"
-;; :publishing-function org-hugo-export-to-md
-;; :table-of-contents nil
-;; :section-numbers t
-;; :with-toc nil))))
-
-
+;; (after!
+;;   org
+;;   (setq org-publish-project-alist
+;;         '(("notes.cashpw.com"
+;;            :base-directory "~/proj/notes"
+;;            :base-extension "org"
+;;            :publishing-directory "~/proj/notes.cashpw.com/content/posts/"
+;;            :publishing-function cashpw/org-hugo-export-to-md--maybe
+;;            ;; :section-numbers t
+;;            :with-toc nil))))
 #+end_src
 
 **** Helper Functions
