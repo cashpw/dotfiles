@@ -5257,13 +5257,14 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
   )
 #+end_src
 
-
 ***** Config
 
 Override =org-roam-db-sync= to insert a =message= call to aid in understanding why it's called so often in my Emacs start-up.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org-roam
+  ;; Disable to improve performance
+  (org-roam-db-autosync-mode -1)
   (setq
    ;; Disable org-roam completion in favor of (faster) org-node.
    org-roam-completion-everywhere nil

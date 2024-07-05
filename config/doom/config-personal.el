@@ -3177,6 +3177,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   )
 
 (after! org-roam
+  ;; Disable to improve performance
+  (org-roam-db-autosync-mode -1)
   (setq
    ;; Disable org-roam completion in favor of (faster) org-node.
    org-roam-completion-everywhere nil
