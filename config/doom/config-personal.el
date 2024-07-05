@@ -1567,7 +1567,7 @@ ${content}"))
   :after org
   :custom
   (org-fc-directories `(,cashpw/path--notes-dir))
-  (org-fc-review-history-file (s-lex-format "${cashpw/path--home-dir}/.config/org-fc/org-fc-reviews.tsv"))
+  (org-fc-review-history-file (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
   (org-fc-bury-siblings t)
   (org-fc-bury-siblings t)
   (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
