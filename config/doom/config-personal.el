@@ -2568,7 +2568,8 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-recipes
   :after org)
 
-(use-package! org-node
+(use-package!
+    org-node
   :demand t
   :after org-roam
   :hook ((org-mode . org-node-cache-mode))
@@ -2576,30 +2577,20 @@ Return nil if no attendee exists with that EMAIL."
   (org-node-creation-fn #'org-node-new-by-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
-  (org-node-filter-fn (lambda (node)
-                        (and
-                         (not
-                          (assoc
-                           "ROAM_EXCLUDE"
-                           (org-node-get-properties
-                            node)))
-                         ;; Exclude archives
-                         (not
-                          (s-ends-with-p
-                           "archive"
-                           (org-node-get-file-path
-                            node)))
-                         ;; Exclude flashcards
-                         (not
-                          (member
-                           "fc"
-                           (org-node-get-tags
-                            node))))))
+  (org-node-filter-fn
+   (lambda (node)
+     (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
+          ;; Exclude archives
+          (not (s-ends-with-p "archive" (org-node-get-file-path node)))
+          ;; Exclude flashcards
+          (not (member "fc" (org-node-get-tags node))))))
   (org-node-format-candidate-fn
    (lambda (node title)
      (if (org-node-get-is-subtree node)
-         (let ((ancestors (cons (org-node-get-file-title-or-basename node)
-                                (org-node-get-olp node)))
+         (let ((ancestors
+                (cons
+                 (org-node-get-file-title-or-basename node)
+                 (org-node-get-olp node)))
                (result nil))
            (dolist (anc ancestors)
              (push (propertize anc 'face 'shadow) result)
@@ -2608,15 +2599,9 @@ Return nil if no attendee exists with that EMAIL."
            (string-join (nreverse result)))
        title)))
   :config
-  (advice-add
-   'org-roam-node-find
-   :override 'org-node-find)
-  (advice-add
-   'org-roam-node-insert
-   :override 'org-node-insert-link)
-  (advice-add
-   'org-roam-node-insert
-   :override 'org-node-insert-link)
+  (advice-add 'org-roam-node-find :override 'org-node-find)
+  (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
+  (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
   (defun cashpw/org-node-complete-at-point ()
     "Complete symbol at point as an org ID"
     (when (and (eq major-mode 'org-mode)
@@ -2624,46 +2609,30 @@ Return nil if no attendee exists with that EMAIL."
                (not (org-in-src-block-p))
                (not (save-match-data (org-in-regexp org-link-any-re))))
       (let ((bounds (bounds-of-thing-at-point 'word))
-            (top-level-keys (seq-filter
-                             (lambda (key)
-                               (let ((node (gethash
-                                            key
-                                            org-node-collection)))
-                                 (and
-                                  (not (s-starts-with-p
-                                        "[cite:"
-                                        key)))))
-                             (hash-table-keys org-node-collection))))
+            (top-level-keys
+             (seq-filter
+              (lambda (key)
+                (let ((node (gethash key org-node-collection)))
+                  (and (not (s-starts-with-p "[cite:" key)))))
+              (hash-table-keys org-node-collection))))
         (list
-         (car bounds)
-         (cdr bounds)
-         top-level-keys
+         (car bounds) (cdr bounds) top-level-keys
          :exit-function
          (lambda (str _status)
-           (let ((node
-                  (gethash
-                   str
-                   org-node-collection)))
+           (let ((node (gethash str org-node-collection)))
              (delete-char (- (length str)))
              (insert
-              "[[id:"
-              (org-node-get-id node)
-              "]["
-              (or
-               (and node
-                    (let ((aliases (org-node-get-aliases node)))
-                      (--first (string-search it str) aliases)))
-               (and node
-                    (org-node-get-title node))
-               str)
+              "[[id:" (org-node-get-id node) "]["
+              (or (and node
+                       (let ((aliases (org-node-get-aliases node)))
+                         (--first (string-search it str) aliases)))
+                  (and node (org-node-get-title node)) str)
               "]]")))
          ;; Proceed with the next completion function if the returned titles
          ;; do not match. This allows the default Org capfs or custom capfs
          ;; of lower priority to run.
          :exclusive 'no))))
-  (add-hook
-   'completion-at-point-functions
-   #'cashpw/org-node-complete-at-point))
+  (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
 
 ;; (use-package! org-special-block-extras
 ;;   :after org
