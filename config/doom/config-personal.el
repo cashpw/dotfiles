@@ -2625,6 +2625,7 @@ Return nil if no attendee exists with that EMAIL."
               "[[id:" (org-node-get-id node) "]["
               (or (and node
                        (let ((aliases (org-node-get-aliases node)))
+                         (message "aliases: %s; str: %s" aliases str)
                          (--first (string-search it str) aliases)))
                   (and node (org-node-get-title node)) str)
               "]]")))
@@ -4559,6 +4560,7 @@ items if they have an hour specification like [h]h:mm."
       (org-agenda-ignore-properties '(effort appt category stats))
       (org-agenda-files (seq-difference (cashpw/org-agenda-files 'notes-with-todo)
                                         `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
+                                          ,cashpw/path--personal-calendar
                                           ,cashpw/path--personal-todos)))
       (org-super-agenda-groups
        `((:discard
@@ -5733,7 +5735,8 @@ All args are passed to `org-roam-node-read'."
 ;;   ;; Re-load extensions to activate `org-transclusion-indent-mode'.
 ;;   (org-transclusion-load-extensions-maybe t))
 
-(setq org-format-latex-header "\\documentclass{article}
+(setq
+ org-format-latex-header "\\documentclass{article}
 \\usepackage[usenames]{color}
 \[DEFAULT-PACKAGES]
 \[PACKAGES]
@@ -5755,8 +5758,29 @@ All args are passed to `org-roam-node-read'."
 \\newcommand{\\littleo}[1]{o(#1)}
 \\newcommand{\\bigomega}[1]{\\Omega(#1)}
 \\newcommand{\\bigtheta}[1]{\\Theta(#1)}
-\\newcommand{\\determinant}[1]{\\operatorname{det}(#1)}
-")
+\\newcommand{\\determinant}[1]{\\operatorname{det}(#1)}"
+ org-latex-default-packages-alist '(("" "amsmath" t
+                                     ("lualatex" "xetex"))
+                                    ("" "fontspec" t
+                                     ("lualatex" "xetex"))
+                                    ("AUTO" "inputenc" t
+                                     ("pdflatex"))
+                                    ("T1" "fontenc" t
+                                     ("pdflatex"))
+                                    ("" "graphicx" t)
+                                    ("" "longtable" nil)
+                                    ("" "wrapfig" nil)
+                                    ("" "rotating" t)
+                                    ("" "multirow" t)
+                                    ("normalem" "ulem" t)
+                                    ("" "amsmath" t
+                                     ("pdflatex"))
+                                    ("" "amssymb" t
+                                     ("pdflatex"))
+                                    ("" "capt-of" nil)
+                                    ("" "hyperref" nil)))
+
+
 
 (defcustom cashpw/latex-toggle-preview--buffers-with-preview-displayed-p
   '("a")
@@ -5952,6 +5976,26 @@ All args are passed to `org-roam-node-read'."
   (interactive)
   (maphash
    (lambda (key _value) (file-notify-rm-watch key)) file-notify-descriptors))
+
+(defun cashpw/org-hugo--remove-missing-relrefs (directory)
+  "Remove missing relref links from hugo DIRECTORY."
+  (let ((post-paths (directory-files (format "%s/content/posts" directory) t "\\.md$"))
+        (missing-relrefs
+         (mapcar
+          (lambda (result)
+            (replace-regexp-in-string
+             ".*REF_NOT_FOUND: Ref \"\\([^\"]*\\).*" "\\1" result))
+          (split-string (shell-command-to-string
+                         (format "cd %s; hugo | grep REF_NOT_FOUND" directory))
+                        "\n" t))))
+    (dolist (post-path post-paths)
+      (message "removing missing relrefs from %s" post-path)
+      (with-current-buffer (find-file-noselect post-path)
+        (dolist (missing-relref missing-relrefs)
+          (cashpw/replace-regexp-in-buffer
+            (format "relref \"%s\"" missing-relref)
+           "REPLACED"))
+        (save-buffer)))))
 
 (defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
   "Export all hugo files in DIRECTORY.

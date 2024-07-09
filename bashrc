@@ -120,6 +120,8 @@ export PATH="$PATH:$HOME/bin"
 export DENO_INSTALL="/home/cashweaver/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
+export PATH="$HOME/.local/bin:$PATH"
+
 # go
 if [[ -d "/usr/local/go/bin" ]]; then
   export PATH="$PATH:/usr/local/go/bin"

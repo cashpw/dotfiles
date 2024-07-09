@@ -1,0 +1,12 @@
+#+title: Dotfiles
+
+My personal dotfiles, configurations, etc.
+
+* Install
+
+#+begin_src sh :results output
+git clone ...
+cd dotfiles
+git submodule update --init --recursive
+bash check_programs.sh
+#+end_src
