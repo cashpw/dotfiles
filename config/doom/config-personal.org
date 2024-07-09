@@ -3,7 +3,7 @@
 #+EMAIL: cashbweaver@gmail.com
 #+STARTUP: showeverything
 
-This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1].
+This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1]. I build on top of [[github:doomemacs/doomemacs][doomemacs]]. There are others (for example: [[github:SystemCrafters/crafted-emacs][crafted-emacs]], [[github:rougier/nano-emacs][nano]], [[github:bbatsov/prelude][prelude]], [[https://sr.ht/~ashton314/emacs-bedrock/][bedrock]], and [[github:syl20bnr/spacemacs][spacemacs]]). I expect I'll migrate to a more minimal configuration over time. For now, however, =doomemacs= (1) handles all the details I don't want to worry about and (2) has a community that'll find and and fix bugs that I would otherwise have to fix on my own.
 
 * General
 
@@ -1706,8 +1706,19 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
                                 nil
                                 ;; Body
                                 nil
+                                "~/.config/email-signature-personal")
+                               ("cash@cashpw"
+                                ;; Refers to
+                                nil
+                                "Cash Prokop-Weaver <cash@cashpw.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil
                                 "~/.config/email-signature-personal"))
-   gnus-alias-default-identity "cashbweaver@gmail"))
+   gnus-alias-default-identity "cash@cashpw"))
 #+end_src
 
 **** =notmuch=
@@ -1950,29 +1961,6 @@ TAGS which start with \"-\" are excluded."
 ;;   (org-msg-mode))
 #+end_src
 
-**** =smtpmail=
-***** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! smtpmail)
-#+end_src
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! smtpmail
-  :config
-  (setq
-   smtpmail-smtp-server "smtp.gmail.com"
-   smtpmail-smtp-service 587
-   smtpmail-smtp-user "cashbweaver@gmail.com"))
-
-(after! (:and smtpmail
-              auth-source-xoauth2)
-  ;; (add-to-list 'smtpmail-auth-supported 'xoauth2)
-  )
-#+end_src
-
 *** Composing email
 **** In =org-mode=
 
@@ -2043,14 +2031,42 @@ TAGS which start with \"-\" are excluded."
 #+end_src
 
 *** Sending email
-**** SMTP / Gmail
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
+ sendmail-program "gmi"
+ ;; Don't save outgoing mail locally as it's already stored by GMail
+ notmuch-fcc-dirs nil
+ cashpw/email-address--gmail "cashbweaver@gmail.com"
+ cashpw/email-address--personal "cash@cashpw.com")
 
+(defun cashpw/configure-sendmail ()
+  "Set appropriate sendmail arguments."
+  (let ((from
+         (replace-regexp-in-string
+          "[^<]*<\\(.*\\)>" "\\1" (message-fetch-field "from" t))))
+    (setq message-sendmail-extra-arguments
+          (cond
+           ((string= from cashpw/email-address--gmail)
+            (cashpw/configure-sendmail--gmail))
+           ((string= from cashpw/email-address--personal)
+            (cashpw/configure-sendmail--personal))))))
 
+(defun cashpw/configure-sendmail--gmail ()
+  "Configure sendmail for my personal Gmail account."
+  (message "Configuring sendmail: Gmail")
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cashbweaver.gmail")))
 
- )
+(defun cashpw/configure-sendmail--personal ()
+  "Configure sendmail for my personal email account."
+  (message "Configuring sendmail: Personal")
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cash.cashpw")))
+
+(add-hook 'message-send-hook 'cashpw/configure-sendmail)
 #+end_src
 
 **** Custom =send-mail-function=
@@ -2071,66 +2087,80 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 (setq
  send-mail-function #'cashpw/send-mail-function
  message-send-mail-function #'cashpw/message-send-mail-function)
+
 #+end_src
 *** Keybindings
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(map!
- :map message-mode-map
- "C-c C-c" #'cashpw/message-send-and-exit)
-(map!
- :map message-mode-map
- "C-c C-c" #'cashpw/message-send-and-exit)
+(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
+(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
-(map!
- :map message-mode-map
- :localleader
- "e" #'org-mime-edit-mail-in-org-mode)
+(map! :map message-mode-map :localleader "e" #'org-mime-edit-mail-in-org-mode)
 
-(after! notmuch
+(after!
+  notmuch
   ;; Keep in alphabetical order.
-  (map!
-   :map notmuch-message-mode-map
-   "C-c C-c" #'cashpw/message-send-and-exit)
+  (map! :map notmuch-message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
   (map!
    :map notmuch-message-mode-map
    :localleader
-   "e" #'org-mime-edit-mail-in-org-mode)
+   "e"
+   #'org-mime-edit-mail-in-org-mode)
 
   (map!
-   :map notmuch-show-mode-map
-   "M-RET" #'cashpw/notmuch-show-open-or-close-all)
+   :map notmuch-show-mode-map "M-RET" #'cashpw/notmuch-show-open-or-close-all)
 
   ;; Reply-all should be the default.
-  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
-  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+  (evil-define-key
+    'normal
+    notmuch-show-mode-map
+    "r"
+    (cmd! (notmuch-show-reply) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-show-mode-map "R"
+    (cmd! (notmuch-show-reply-sender) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-search-mode-map "r"
+    (cmd! (notmuch-search-reply-to-thread) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-search-mode-map "R"
+    (cmd! (notmuch-search-reply-to-thread-sender) (gnus-alias-select-identity)))
 
   ;; Easy archive for my most-used tags.
-  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+  (evil-define-key
+    'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key
+    'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+  (evil-define-key
+    'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
 
   ;; Create todos
-  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
+  (evil-define-key
+    'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
-  (evil-define-key 'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
+  (evil-define-key
+    'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "T0" '(lambda ()
-                                                           "Toggle p0"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tr" '(lambda ()
-                                                           "Toggle Read!"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tw" '(lambda ()
-                                                           "Toggle waiting"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "waiting"))))
-
-
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "T0"
+   '(lambda ()
+      "Toggle p0"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "p0")))
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "Tr"
+   '(lambda ()
+      "Toggle Read!"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "Read!")))
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "Tw"
+   '(lambda ()
+      "Toggle waiting"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "waiting"))))
 #+end_src
 
 ** =pandoc=
