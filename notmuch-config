@@ -30,6 +30,7 @@ path=/home/cashweaver/mail
 #
 [user]
 primary_email=cashweaver@gmail.com
+other_email=cash@cashpw.com
 
 # Configuration for "notmuch new"
 #
