@@ -190,6 +190,8 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
   "Reading list.")
 
+(setenv "GPG_AGENT_INFO")
+
 (use-package!
  get-secret
  :custom
@@ -305,6 +307,16 @@ Reference: https://emacs.stackexchange.com/a/43985"
                           register)
                (evil-get-register register)))))))
     (evil-ex (s-lex-format  "%s/${to-replace}/"))))
+
+(defun cashpw/search-selection ()
+  (interactive)
+  (let* ((register ?\")
+         (target
+          (progn
+            (evil-yank (mark) (point) nil register)
+            (evil-get-register register))))
+    (setq evil-ex-search-pattern `(,target t t))
+    (evil-ex-search)))
 
 (defun cashpw/reload-dir-locals-for-current-buffer ()
   "Reload dir locals for the current buffer"
@@ -709,7 +721,7 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- browse-url-browser-function 'cashpw/browse-url)
+ browse-url-browser-function 'browse-url-firefox)
 
 ;; (use-package! w3m
 ;;   :config
@@ -757,8 +769,19 @@ Passes arguments, including NEW-WINDOW, along."
                                 nil
                                 ;; Body
                                 nil
+                                "~/.config/email-signature-personal")
+                               ("cash@cashpw"
+                                ;; Refers to
+                                nil
+                                "Cash Prokop-Weaver <cash@cashpw.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil
                                 "~/.config/email-signature-personal"))
-   gnus-alias-default-identity "cashbweaver@gmail"))
+   gnus-alias-default-identity "cash@cashpw"))
 
 (defun cashpw/notmuch--toggle-all-open ()
   "Toggle `cashpw/notmuch-all-open' between nil and t."
@@ -963,18 +986,6 @@ TAGS which start with \"-\" are excluded."
 ;;    )
 ;;   (org-msg-mode))
 
-(use-package! smtpmail
-  :config
-  (setq
-   smtpmail-smtp-server "smtp.gmail.com"
-   smtpmail-smtp-service 587
-   smtpmail-smtp-user "cashbweaver@gmail.com"))
-
-(after! (:and smtpmail
-              auth-source-xoauth2)
-  ;; (add-to-list 'smtpmail-auth-supported 'xoauth2)
-  )
-
 (defun cashpw/compose-mail-org ()
   (interactive)
   (compose-mail)
@@ -1002,26 +1013,33 @@ TAGS which start with \"-\" are excluded."
    ((not (string-match "<" address))
     address)
    (t
-    (replace-regexp-in-string
-     ".*<\\(.*\\)@.*>"
-     "\\1@"
-     address))))
+    (replace-regexp-in-string ".*<\\(.*\\)@.*>" "\\1@" address))))
 
 (defun cashpw/mail-create-follow-up-todo ()
   (interactive)
-  (let* ((file cashpw/path--personal-todos)
-         (to-short (cashpw/mail-get-short-address
-                    (message-field-value "To")))
-         (from-short (cashpw/mail-get-short-address
-                      (message-field-value "From")))
-         (subject (message-field-value "Subject"))
-         (message-id (replace-regexp-in-string
-                      "<\\(.*\\)>"
-                      "\\1"
-                      (message-field-value "Message-ID")))
-         (headline-text
-          (s-lex-format
-           "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:")))
+  (let*
+      ((file cashpw/path--personal-todos)
+       (to-short
+        (let ((to-short
+               (cashpw/mail-get-short-address (message-field-value "To"))))
+          (if (or (string= to-short cashpw/email-address--personal)
+                  (string= to-short cashpw/email-address--gmail))
+              "me"
+            to-short)))
+       (from-short
+        (let ((from-short
+               (cashpw/mail-get-short-address (message-field-value "From"))))
+          (if (or (string= from-short cashpw/email-address--personal)
+                  (string= from-short cashpw/email-address--gmail))
+              "me"
+            from-short)))
+       (subject (message-field-value "Subject"))
+       (message-id
+        (replace-regexp-in-string
+         "<\\(.*\\)>" "\\1" (message-field-value "Message-ID")))
+       (headline-text
+        (s-lex-format
+         "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:")))
     (with-current-buffer (get-file-buffer file)
       (goto-char (point-max))
       (org-insert-heading-respect-content)
@@ -1036,14 +1054,42 @@ TAGS which start with \"-\" are excluded."
   (notmuch-mua-send)
   (if (y-or-n-p "Create follow-up TODO?")
       (cashpw/mail-create-follow-up-todo))
-  (kill-buffer
-   (current-buffer)))
+  (kill-buffer (current-buffer)))
 
 (setq
+ sendmail-program "gmi"
+ ;; Don't save outgoing mail locally as it's already stored by GMail
+ notmuch-fcc-dirs nil
+ cashpw/email-address--gmail "cashbweaver@gmail.com"
+ cashpw/email-address--personal "cash@cashpw.com")
 
+(defun cashpw/configure-sendmail ()
+  "Set appropriate sendmail arguments."
+  (let ((from
+         (replace-regexp-in-string
+          "[^<]*<\\(.*\\)>" "\\1" (message-fetch-field "from" t))))
+    (setq message-sendmail-extra-arguments
+          (cond
+           ((string= from cashpw/email-address--gmail)
+            (cashpw/configure-sendmail--gmail))
+           ((string= from cashpw/email-address--personal)
+            (cashpw/configure-sendmail--personal))))))
 
+(defun cashpw/configure-sendmail--gmail ()
+  "Configure sendmail for my personal Gmail account."
+  (message "Configuring sendmail: Gmail")
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cashbweaver.gmail")))
 
- )
+(defun cashpw/configure-sendmail--personal ()
+  "Configure sendmail for my personal email account."
+  (message "Configuring sendmail: Personal")
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cash.cashpw")))
+
+(add-hook 'message-send-hook 'cashpw/configure-sendmail)
 
 (defun cashpw/send-mail-function (&rest args)
   "Wrapper method for `send-mail-function' for easy overriding in work environment."
@@ -1059,60 +1105,75 @@ TAGS which start with \"-\" are excluded."
  send-mail-function #'cashpw/send-mail-function
  message-send-mail-function #'cashpw/message-send-mail-function)
 
-(map!
- :map message-mode-map
- "C-c C-c" #'cashpw/message-send-and-exit)
-(map!
- :map message-mode-map
- "C-c C-c" #'cashpw/message-send-and-exit)
+(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
+(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
-(map!
- :map message-mode-map
- :localleader
- "e" #'org-mime-edit-mail-in-org-mode)
+(map! :map message-mode-map :localleader "e" #'org-mime-edit-mail-in-org-mode)
 
-(after! notmuch
+(after!
+  notmuch
   ;; Keep in alphabetical order.
-  (map!
-   :map notmuch-message-mode-map
-   "C-c C-c" #'cashpw/message-send-and-exit)
+  (map! :map notmuch-message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
   (map!
    :map notmuch-message-mode-map
    :localleader
-   "e" #'org-mime-edit-mail-in-org-mode)
+   "e"
+   #'org-mime-edit-mail-in-org-mode)
 
   (map!
-   :map notmuch-show-mode-map
-   "M-RET" #'cashpw/notmuch-show-open-or-close-all)
+   :map notmuch-show-mode-map "M-RET" #'cashpw/notmuch-show-open-or-close-all)
 
   ;; Reply-all should be the default.
-  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
-  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+  (evil-define-key
+    'normal
+    notmuch-show-mode-map
+    "r"
+    (cmd! (notmuch-show-reply) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-show-mode-map "R"
+    (cmd! (notmuch-show-reply-sender) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-search-mode-map "r"
+    (cmd! (notmuch-search-reply-to-thread) (gnus-alias-select-identity)))
+  (evil-define-key
+    'normal notmuch-search-mode-map "R"
+    (cmd! (notmuch-search-reply-to-thread-sender) (gnus-alias-select-identity)))
 
   ;; Easy archive for my most-used tags.
-  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
-  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
-  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+  (evil-define-key
+    'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key
+    'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+  (evil-define-key
+    'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
 
   ;; Create todos
-  (evil-define-key 'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
+  (evil-define-key
+    'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
-  (evil-define-key 'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
+  (evil-define-key
+    'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "T0" '(lambda ()
-                                                           "Toggle p0"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tr" '(lambda ()
-                                                           "Toggle Read!"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key 'normal notmuch-search-mode-map "Tw" '(lambda ()
-                                                           "Toggle waiting"
-                                                           (interactive)
-                                                           (cashpw/notmuch-search-toggle-tag "waiting"))))
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "T0"
+   '(lambda ()
+      "Toggle p0"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "p0")))
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "Tr"
+   '(lambda ()
+      "Toggle Read!"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "Read!")))
+  (cashpw/evil-lambda-key
+   'normal notmuch-search-mode-map "Tw"
+   '(lambda ()
+      "Toggle waiting"
+      (interactive)
+      (cashpw/notmuch-search-toggle-tag "waiting"))))
 
 (defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
   "Converts the current buffer to org-mode in place."
@@ -5547,123 +5608,170 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
      ("ss" . "src sh :results output")
      ("v" . "verse"))))
 
-(after! org
+(defun cashpw/org--prompt-for-priority-when-missing ()
+  "Prompt for Effort if it's missing."
+  (unless (org-extras-get-priority (point))
+    (org-priority)))
+
+(defun cashpw/org--prompt-for-category-when-missing ()
+  "Prompt for Effort if it's missing."
+  (let ((buffer-category
+         (save-excursion
+           (widen)
+           (goto-char (point-min))
+           (when (search-forward "#+category:")
+             (replace-regexp-in-string
+              "#\\+category: " "" (org-current-line-string)))))
+        (category (org-extras-get-property (point) "CATEGORY")))
+    (message "%s : %s" buffer-category category)
+    (when (or (not category)
+              (and buffer-category (string= buffer-category category)))
+      (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
+
+
+(after!
+  org
   (setq
-   org-capture-templates (doct
-                          `(("Website"
-                             :keys "w"
-                             :file ""
-                             :template "* %a :website:\n\n%U %?\n\n%:initial")
-                            (:group "Todo"
-                             :file cashpw/path--personal-todos
-                             :children (("Todo"
-                                         :keys "t"
-                                         :children (("Todo"
-                                                     :keys "t"
-                                                     :template ("* TODO %?"
-                                                                ":PROPERTIES:"
-                                                                ":Created: %U"
-                                                                ":END:"))
-                                                    ("Email"
-                                                     :keys "e"
-                                                     :to-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:to\")"
-                                                     :from-short-address "%(replace-regexp-in-string \"@google.com\" \"@\" \"%:from\")"
-                                                     :children (("Email"
-                                                                 :keys "e"
-                                                                 :template ("* TODO [#2] [[notmuch:id:%:message-id][%:subject (%:fromaddress ➤ %:toaddress})]] :email:"
-                                                                            ":PROPERTIES:"
-                                                                            ":Created: %U"
-                                                                            ":END:"))
-                                                                ("Follow up"
-                                                                 :keys "f"
-                                                                 :template ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject (%:fromaddress} ➤ %:toaddress})]] :email:"
-                                                                            ":PROPERTIES:"
-                                                                            ":Created: %U"
-                                                                            ":END:"))))))))
-                            (:group "Flashcards"
-                             :file ,(lambda () (buffer-name))
-                             :olp ("Flashcards")
-                             :children (("Flashcards"
-                                         :keys "f"
-                                         :children (("Cloze"
-                                                     :keys "c"
-                                                     :template ("* %^{Name of card}"
-                                                                ":PROPERTIES:"
-                                                                ":CREATED: %U"
-                                                                ":END:"
-                                                                ""
-                                                                "%?"
-                                                                ""
-                                                                "** TODO Source")
-                                                     :prepare-finalize ,(lambda ()
-                                                                          (goto-char (point-min))
-                                                                          (org-fc-type-cloze-init 'deletion)))
-                                                    ("Double"
-                                                     :keys "d"
-                                                     :template ("* %^{Name of card}"
-                                                                ":PROPERTIES:"
-                                                                ":CREATED: %U"
-                                                                ":END:"
-                                                                ""
-                                                                "%?"
-                                                                ""
-                                                                "** TODO Back"
-                                                                ""
-                                                                "TODO"
-                                                                ""
-                                                                "** TODO Source"
-                                                                )
-                                                     :prepare-finalize ,(lambda ()
-                                                                          (goto-char (point-min))
-                                                                          (org-fc-type-double-init)))
-                                                    ("Normal"
-                                                     :keys "n"
-                                                     :template ("* %^{Name of card}"
-                                                                ":PROPERTIES:"
-                                                                ":CREATED: %U"
-                                                                ":END:"
-                                                                ""
-                                                                "%?"
-                                                                ""
-                                                                "** TODO Back"
-                                                                ""
-                                                                "TODO"
-                                                                ""
-                                                                "** TODO Source"
-                                                                )
-                                                     :prepare-finalize ,(lambda ()
-                                                                          (goto-char (point-min))
-                                                                          (org-fc-type-normal-init)))
-                                                    ("Vocab"
-                                                     :keys "v"
-                                                     :template ("* %^{Term}"
-                                                                ":PROPERTIES:"
-                                                                ":CREATED: %U"
-                                                                ":END:"
-                                                                ""
-                                                                "%?"
-                                                                ""
-                                                                "** TODO Source")
-                                                     :prepare-finalize ,(lambda ()
-                                                                          (goto-char (point-min))
-                                                                          (org-fc-type-vocab-init)))
-                                                    ("Text input"
-                                                     :keys "t"
-                                                     :template ("* %^{Name of card}"
-                                                                ":PROPERTIES:"
-                                                                ":CREATED: %U"
-                                                                ":END:"
-                                                                ""
-                                                                "%?"
-                                                                ""
-                                                                "** TODO Back"
-                                                                ""
-                                                                "TODO"
-                                                                ""
-                                                                "** TODO Source")
-                                                     :prepare-finalize ,(lambda ()
-                                                                          (goto-char (point-min))
-                                                                          (org-fc-type-text-input-init)))))))))))
+   org-capture-templates
+   (doct
+    `(("Website"
+       :keys "w"
+       :file ""
+       :template "* %a :website:\n\n%U %?\n\n%:initial")
+      (:group
+       "Todo"
+       :file cashpw/path--personal-todos
+       :children
+       (("Todo"
+         :keys "t"
+         :children
+         (("Todo"
+           :keys "t"
+           :before-finalize
+           (lambda ()
+             (cashpw/org--prompt-for-priority-when-missing)
+             ;; Demand an effort
+             (while
+                 (or
+                  (not (org-extras-get-property (point) "Effort"))
+                  ;; The default case (clicking <enter> without typing an effort) sets :EFFORT: to an empty string.
+                  (string= (org-extras-get-property (point) "Effort") ""))
+               (org-set-effort))
+             (cashpw/org--prompt-for-category-when-missing))
+           :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+          ("Email"
+           :keys "e"
+           :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
+           :children
+           (("Email"
+             :keys "e"
+             :template
+             ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+              ":PROPERTIES:"
+              ":Created: %U"
+              ":END:"))
+            ("Follow up"
+             :keys "f"
+             :template
+             ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+              ":PROPERTIES:"
+              ":Created: %U"
+              ":END:"))))))))
+      (:group
+       "Flashcards"
+       :file ,(lambda () (buffer-name))
+       :olp ("Flashcards")
+       :children
+       (("Flashcards"
+         :keys "f"
+         :children
+         (("Cloze"
+           :keys "c"
+           :template
+           ("* %^{Name of card}"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Source")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-cloze-init 'deletion)))
+          ("Double"
+           :keys "d"
+           :template
+           ("* %^{Name of card}"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Back"
+            ""
+            "TODO"
+            ""
+            "** TODO Source")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-double-init)))
+          ("Normal"
+           :keys "n"
+           :template
+           ("* %^{Name of card}"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Back"
+            ""
+            "TODO"
+            ""
+            "** TODO Source")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-normal-init)))
+          ("Vocab"
+           :keys "v"
+           :template
+           ("* %^{Term}"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Source")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-vocab-init)))
+          ("Text input"
+           :keys "t"
+           :template
+           ("* %^{Name of card}"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Back"
+            ""
+            "TODO"
+            ""
+            "** TODO Source")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-text-input-init)))))))))))
 
 (after! org
   (setq

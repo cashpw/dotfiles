@@ -109,8 +109,6 @@
 
 (package! org-msg)
 
-(package! smtpmail)
-
 (package! gnuplot)
 
 (package! gptel)
