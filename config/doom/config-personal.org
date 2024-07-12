@@ -5409,9 +5409,18 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
                                                             :head ("#+title: ${title}
+,#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
-,#+filetags: :person:"))
+,#+filetags: :person:
+
+,* Photo
+,* Relationships
+,* Gifts
+,* Events
+,* Reminders
+,* Notes
+"))
                                                            ("Verse"
                                                             :keys "v"
                                                             :head ("#+title: ${title}
@@ -7879,6 +7888,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 (defcustom cashpw/org-mode-on-done--keep-filetags
   '("keep_on_done"
     "journal"
+    "person"
     "project")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done
