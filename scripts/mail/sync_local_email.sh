@@ -7,6 +7,7 @@ set -e
 MAIL_DIR_NAME="${1}"
 SECONDS=0
 MAIL_DIR_PATH="/home/cashweaver/mail/${MAIL_DIR_NAME}"
+LAST_UPDATE_PATH="${MAIL_DIR_PATH}/last-update.txt"
 LOG_FILE="/tmp/gmi-sync-log-${MAIL_DIR_NAME}.txt"
 LOCK_FILE="/tmp/gmi-sync-${MAIL_DIR_NAME}.lock"
 
@@ -15,16 +16,30 @@ function cleanup() {
 }
 trap cleanup EXIT
 
+if [ ! -f "${LAST_UPDATE_PATH}" ]; then
+  echo "Last update path ($LAST_UPDATE_PATH) missing. Creating it." >> $LOG_FILE
+  echo "$(date +%s)" > $LAST_UPDATE_PATH
+fi
+
 if [ -f "${LOCK_FILE}" ]; then
-  echo "Another sync is already in progress."
+echo "Another sync is already in progress." >> $LOG_FILE
   exit 0
 fi
 touch "${LOCK_FILE}"
 
+LAST_UPDATE=$(cat "${LAST_UPDATE_PATH}")
+NOW=$(date +%s)
 echo "[$(date) Sync started]" >> $LOG_FILE
 
+SECONDS_SINCE_LAST_UPDATE="$(($NOW - $LAST_UPDATE))"
 cd "${MAIL_DIR_PATH}"
-gmi sync >> $LOG_FILE
+if [[ $SECONDS_SINCE_LAST_UPDATE < 600 ]]; then
+  echo "More than 10 minutes since last update. Pulling; no push." >> $LOG_FILE
+  gmi pull >> $LOG_FILE
+else
+  gmi sync >> $LOG_FILE
+fi
+echo "$(date +%s)" > $LAST_UPDATE_PATH
 
 duration=$SECONDS
 echo "[$(date) Sync ended ($(($duration / 60))min $(($duration % 60))sec)]" >> $LOG_FILE
