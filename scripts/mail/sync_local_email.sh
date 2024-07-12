@@ -7,6 +7,7 @@ set -e
 MAIL_DIR_NAME="${1}"
 SECONDS=0
 MAIL_DIR_PATH="/home/cashweaver/mail/${MAIL_DIR_NAME}"
+# Store the last time we updated local mail within the mail directory
 LAST_UPDATE_PATH="${MAIL_DIR_PATH}/last-update.txt"
 LOG_FILE="/tmp/gmi-sync-log-${MAIL_DIR_NAME}.txt"
 LOCK_FILE="/tmp/gmi-sync-${MAIL_DIR_NAME}.lock"
@@ -31,6 +32,11 @@ LAST_UPDATE=$(cat "${LAST_UPDATE_PATH}")
 NOW=$(date +%s)
 echo "[$(date) Sync started]" >> $LOG_FILE
 
+# Avoid pushing out-of-date email data.
+#
+# `gmi sync` runs `gmi push` then `gmi pull`. If we're out of date, we may push
+# out-of-date data (for example: Move archived emails back into the inbox).
+# `gmi push` is supposed to avoid this, but I've had it happen once or twice.
 SECONDS_SINCE_LAST_UPDATE="$(($NOW - $LAST_UPDATE))"
 cd "${MAIL_DIR_PATH}"
 if [[ $SECONDS_SINCE_LAST_UPDATE < 600 ]]; then
