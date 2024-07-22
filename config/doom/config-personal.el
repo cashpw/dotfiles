@@ -727,6 +727,10 @@ Passes arguments, including NEW-WINDOW, along."
 ;;   :config
 ;;   (w3m-display-mode 'tabbed-dedicated-frames))
 
+(use-package! nov
+  :custom
+  (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode)))
+
 (setq
  calendar-latitude 37.2
  calendar-longitude -121.8
@@ -2660,41 +2664,43 @@ Return nil if no attendee exists with that EMAIL."
            (string-join (nreverse result)))
        title)))
   :config
+  (org-node-complete-at-point-mode)
   (advice-add 'org-roam-node-find :override 'org-node-find)
   (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
   (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  (defun cashpw/org-node-complete-at-point ()
-    "Complete symbol at point as an org ID"
-    (when (and (eq major-mode 'org-mode)
-               (thing-at-point 'word)
-               (not (org-in-src-block-p))
-               (not (save-match-data (org-in-regexp org-link-any-re))))
-      (let ((bounds (bounds-of-thing-at-point 'word))
-            (top-level-keys
-             (seq-filter
-              (lambda (key)
-                (let ((node (gethash key org-node-collection)))
-                  (and (not (s-starts-with-p "[cite:" key)))))
-              (hash-table-keys org-node-collection))))
-        (list
-         (car bounds) (cdr bounds) top-level-keys
-         :exit-function
-         (lambda (str _status)
-           (let ((node (gethash str org-node-collection)))
-             (delete-char (- (length str)))
-             (insert
-              "[[id:" (org-node-get-id node) "]["
-              (or (and node
-                       (let ((aliases (org-node-get-aliases node)))
-                         (message "aliases: %s; str: %s" aliases str)
-                         (--first (string-search it str) aliases)))
-                  (and node (org-node-get-title node)) str)
-              "]]")))
-         ;; Proceed with the next completion function if the returned titles
-         ;; do not match. This allows the default Org capfs or custom capfs
-         ;; of lower priority to run.
-         :exclusive 'no))))
-  (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
+  ;; (defun cashpw/org-node-complete-at-point ()
+  ;;   "Complete symbol at point as an org ID"
+  ;;   (when (and (eq major-mode 'org-mode)
+  ;;              (thing-at-point 'word)
+  ;;              (not (org-in-src-block-p))
+  ;;              (not (save-match-data (org-in-regexp org-link-any-re))))
+  ;;     (let ((bounds (bounds-of-thing-at-point 'word))
+  ;;           (top-level-keys
+  ;;            (seq-filter
+  ;;             (lambda (key)
+  ;;               (let ((node (gethash key org-node-collection)))
+  ;;                 (and (not (s-starts-with-p "[cite:" key)))))
+  ;;             (hash-table-keys org-node-collection))))
+  ;;       (list
+  ;;        (car bounds) (cdr bounds) top-level-keys
+  ;;        :exit-function
+  ;;        (lambda (str _status)
+  ;;          (let ((node (gethash str org-node-collection)))
+  ;;            (delete-char (- (length str)))
+  ;;            (insert
+  ;;             "[[id:" (org-node-get-id node) "]["
+  ;;             (or (and node
+  ;;                      (let ((aliases (org-node-get-aliases node)))
+  ;;                        (message "aliases: %s; str: %s" aliases str)
+  ;;                        (--first (string-search it str) aliases)))
+  ;;                 (and node (org-node-get-title node)) str)
+  ;;             "]]")))
+  ;;        ;; Proceed with the next completion function if the returned titles
+  ;;        ;; do not match. This allows the default Org capfs or custom capfs
+  ;;        ;; of lower priority to run.
+  ;;        :exclusive 'no))))
+  ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
+  )
 
 ;; (use-package! org-special-block-extras
 ;;   :after org
@@ -3337,9 +3343,9 @@ See: https://jethrokuan.github.io/org-roam-guide"
 
 TODO_AUTHOR, [cite:@${citekey}]
 
-* TODO Summary
-* TODO Thoughts
-* TODO Notes")
+* TODO [#2] Summary
+* TODO [#2] Thoughts
+* TODO [#2] Notes")
                         :immediate-finish t
                         :unnarrowed t))
                      :info (list
@@ -3382,7 +3388,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
                          (t
                           (s-lex-format
                            "${author} | ${citation-title}"))))
-         (title (read-string "Title:"
+         (title (read-string "Title: "
                              default-title)))
     (cashpw/org-roam-node-from-cite--inner entry title)))
 
@@ -6460,6 +6466,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     (:prefix ("l" . "link")
      :n "q" #'cashpw/org-roam-insert-tag-link)
     :desc "Publish all" :n "p" #'cashpw/org-hugo-export-all)
+   :n "p" #'org-priority
    (:prefix ("S" . "Structure")
     :n "i" #'org-insert-structure-template)))
 
@@ -6683,3 +6690,40 @@ Reference:https://stackoverflow.com/q/23622296"
 ;; (use-package! org-window-habit
   ;; :config
   ;; (org-window-habit-mode +1))
+
+(defun cashpw/narrow-between-text (start-text end-text)
+  (let ((start (save-excursion (search-backward start-text)))
+        (end (save-excursion (search-forward end-text))))
+    (narrow-to-region start end)))
+
+(defun cashpw/org-join-quote-lines ()
+  "Join lines in current quote block which are not separated by an empty line."
+  (interactive)
+  (save-restriction
+    (cashpw/narrow-between-text "#+begin_quote" "#+end_quote")
+    (save-excursion
+      ;; Go to #+begin_quote
+      (goto-char 0)
+      ;; Go to first line of quote
+      (evil-next-line)
+      ;; Go to second line of quote
+      (evil-next-line)
+      ;; Join each empty-line-delineated paragraph
+      (while (not
+              (string-equal-ignore-case
+               (org-current-line-string) "#+end_quote"))
+        (message "1")
+        ;; 2. While 'next line isn't empty': (evil-join)
+        (while (and (not
+                     (string-equal-ignore-case
+                      (org-current-line-string) "#+end_quote"))
+                    (not (string-empty-p (org-current-line-string))))
+          (message "2")
+          (join-line)
+          (evil-next-line))
+        (evil-next-line)
+        (evil-next-line)))))
+
+(defun cashpw/foo ()
+  (interactive)
+  (cashpw/narrow-between-text "#+begin_quote" "end_quote"))

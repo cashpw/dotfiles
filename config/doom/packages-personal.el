@@ -101,6 +101,8 @@
 
 ;; (package! w3m)
 
+(package! nov)
+
 ;; (package! casual)
 
 (package! ox-gfm)
