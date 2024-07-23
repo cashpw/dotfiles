@@ -6741,3 +6741,77 @@ Reference:https://stackoverflow.com/q/23622296"
 (defun cashpw/foo ()
   (interactive)
   (cashpw/narrow-between-text "#+begin_quote" "end_quote"))
+
+(defun cashpw/org-headings-scheduled-for-day-in-buffer (buffer day-time)
+  "Return headings in BUFFER which are scheduled for DAY-TIME's day."
+  (with-current-buffer buffer
+    (remove
+     nil
+     (org-map-entries
+      (lambda ()
+        (let* ((scheduled
+                (org-element-property :scheduled (org-element-at-point)))
+               (scheduled-time (org-get-scheduled-time (point))))
+          (when (and scheduled-time
+                     (cashpw/time-same-day-p scheduled-time day-time))
+            `(,(format "%s%s"
+                       (let ((hour-start
+                              (org-element-property :hour-start scheduled))
+                             (minute-start
+                              (org-element-property :minute-start scheduled))
+                             (hour-end
+                              (org-element-property :hour-end scheduled))
+                             (minute-end
+                              (org-element-property :minute-end scheduled)))
+                         (cond
+                          ((and hour-start minute-start hour-end minute-end)
+                           (format "%02d:%02d-%02d:%02d "
+                                   hour-start
+                                   minute-start
+                                   hour-end
+                                   minute-end))
+                          ((and hour-start minute-start)
+                           (format "%02d:%02d " hour-start minute-start))
+                          (t
+                           "")))
+                       (org-entry-get nil "ITEM"))
+              . ,(point-marker)))))))))
+
+(defcustom cashpw/scheduled-for-today-buffers
+  (mapcar
+   #'find-file-noselect
+   (cashpw/org-agenda-files--update))
+           "TODO.")
+
+(defun cashpw/org-headings-scheduled-for-day-in-buffers (buffers day-time)
+  "Return headings in BUFFERS which are scheduled for DAY-TIME's day."
+  (-flatten-n
+   1
+   (mapcar
+    (lambda (buffer)
+      (cashpw/org-headings-scheduled-for-day-in-buffer buffer day-time))
+    buffers)))
+
+(defun cashpw/select-from-scheduled-for-today ()
+  "Return marker at selected heading."
+  (let* ((headline-to-marker-alist
+          (cashpw/org-headings-scheduled-for-day-in-buffers
+           cashpw/scheduled-for-today-buffers
+           (current-time)))
+         (vertico-sort-function #'vertico-sort-alpha)
+         (headline (completing-read "Heading: " headline-to-marker-alist nil t))
+         (marker
+          (alist-get headline headline-to-marker-alist nil nil #'string=)))
+    marker))
+
+(defun cashpw/select-from-scheduled-for-today-and-clock-in ()
+  "Prompt user to select a headline (scheduled for today) and clock in."
+  (interactive)
+  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-clock-in)))
+
+(defun cashpw/select-from-scheduled-for-today-and-go-to ()
+  "Prompt user to select a headline (scheduled for today) and go to it."
+  (interactive)
+  (let ((marker (cashpw/select-from-scheduled-for-today)))
+    (switch-to-buffer (marker-buffer marker))
+    (goto-char marker)))

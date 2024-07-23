@@ -9703,7 +9703,7 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 
 ** =completing-read= for today's agenda
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-headings-scheduled-for-day-in-buffer (buffer day-time)
   "Return headings in BUFFER which are scheduled for DAY-TIME's day."
   (with-current-buffer buffer
@@ -9740,8 +9740,9 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
               . ,(point-marker)))))))))
 
 (defcustom cashpw/scheduled-for-today-buffers
-           `(,(find-file-noselect cashpw/path--personal-todos)
-             ,(find-file-noselect cashpw/path--personal-calendar))
+  (mapcar
+   #'find-file-noselect
+   (cashpw/org-agenda-files--update))
            "TODO.")
 
 (defun cashpw/org-headings-scheduled-for-day-in-buffers (buffers day-time)
