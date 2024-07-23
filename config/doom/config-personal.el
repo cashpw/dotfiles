@@ -135,12 +135,13 @@ Reference: https://emacs.stackexchange.com/a/43985"
         time)
        tomorrow)))
 
+(defun cashpw/time-same-day-p (time day-time)
+  "Return non-nil if TIME occurs on DAY-TIME's day."
+  (= (time-to-days time) (time-to-days day-time)))
+
 (defun cashpw/time-today-p (time)
   "Return non-nil if TIME occurs today."
-  (= (time-to-days
-      time)
-     (time-to-days
-      (current-time))))
+  (cashpw/time-same-day-p time (current-time)))
 
 (defun cashpw/time--zero-out-hh-mm-ss (time)
   "Return TIME with hours, minutes, and seconds set to 0."
@@ -475,7 +476,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
-    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week"))))
+    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
+   (:prefix ("." . "Today")
+    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-clock-in
+    :desc "Go to" :n "g" #'cashpw/select-from-scheduled-for-today-and-go-to))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
@@ -3293,9 +3297,18 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
                                                             :head ("#+title: ${title}
+#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :person:"))
+#+filetags: :person:
+
+* Photo
+* Relationships
+* Gifts
+* Events
+* Reminders
+* Notes
+"))
                                                            ("Verse"
                                                             :keys "v"
                                                             :head ("#+title: ${title}
@@ -5501,6 +5514,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 (defcustom cashpw/org-mode-on-done--keep-filetags
   '("keep_on_done"
     "journal"
+    "person"
     "project")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done
