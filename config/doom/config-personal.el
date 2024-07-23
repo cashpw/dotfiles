@@ -2617,12 +2617,7 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-protocol
   :config
   (setq
-   org-protocol-default-template-key "p"
-   ;; cashpw/org-protocol--capture-template--protocol '("p" "Protocol" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
-   ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
-   ))
+   org-protocol-default-template-key "w"))
 
 (use-package! org-protocol-capture-html
   ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
@@ -3293,9 +3288,18 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                                                            ("Person"
                                                             :keys "p"
                                                             :head ("#+title: ${title}
+#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :person:"))
+#+filetags: :person:
+
+* Photo
+* Relationships
+* Gifts
+* Events
+* Reminders
+* Notes
+"))
                                                            ("Verse"
                                                             :keys "v"
                                                             :head ("#+title: ${title}
@@ -5501,6 +5505,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 (defcustom cashpw/org-mode-on-done--keep-filetags
   '("keep_on_done"
     "journal"
+    "person"
     "project")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done

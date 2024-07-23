@@ -4325,23 +4325,19 @@ Doom provides =org-protocol=
 
 ***** Config
 
+Also see [[id:9197f81d-a33c-4944-a83e-d81b33b64fd0][=org-protocol-capture-html=]].
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-protocol
   :config
   (setq
-   org-protocol-default-template-key "p"
-   ;; cashpw/org-protocol--capture-template--protocol '("p" "Protocol" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
-   ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
-   ))
-
-(use-package! org-protocol-capture-html
-  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
-  :after org-protocol)
+   org-protocol-default-template-key "w"))
 #+end_src
 
 **** =org-protocol-capture-html=
+:PROPERTIES:
+:ID:       9197f81d-a33c-4944-a83e-d81b33b64fd0
+:END:
 
 #+begin_quote
 org-protocol is awesome, but browsers do a pretty poor job of turning a page’s HTML content into plain-text. However, Pandoc supports converting from HTML to org-mode, so we can use it to turn HTML into Org-mode content! It can even turn HTML tables into Org tables!
@@ -4355,6 +4351,13 @@ https://github.com/alphapapa/org-protocol-capture-html
 (package! org-protocol-capture-html
   :recipe (:host github
            :repo "alphapapa/org-protocol-capture-html"))
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-protocol-capture-html
+  :after org-protocol)
 #+end_src
 
 **** =org-ql=
