@@ -39,8 +39,9 @@ echo "[$(date) Sync started]" >> $LOG_FILE
 # `gmi push` is supposed to avoid this, but I've had it happen once or twice.
 SECONDS_SINCE_LAST_UPDATE="$(($NOW - $LAST_UPDATE))"
 cd "${MAIL_DIR_PATH}"
-if [[ $SECONDS_SINCE_LAST_UPDATE < 600 ]]; then
-  echo "More than 10 minutes since last update. Pulling; no push." >> $LOG_FILE
+echo "seconds since last update: $SECONDS_SINCE_LAST_UPDATE"
+if [[ $SECONDS_SINCE_LAST_UPDATE > 600 ]]; then
+  echo "More than 10 minutes since last update ($SECONDS_SINCE_LAST_UPDATE). Pulling; no push." >> $LOG_FILE
   gmi pull >> $LOG_FILE
 else
   gmi sync >> $LOG_FILE
