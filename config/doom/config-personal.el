@@ -725,7 +725,7 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- browse-url-browser-function 'browse-url-firefox)
+ browse-url-browser-function 'cashpw/browse-url)
 
 ;; (use-package! w3m
 ;;   :config
@@ -2624,7 +2624,6 @@ Return nil if no attendee exists with that EMAIL."
    org-protocol-default-template-key "w"))
 
 (use-package! org-protocol-capture-html
-  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
 ;; (use-package! org-ql)

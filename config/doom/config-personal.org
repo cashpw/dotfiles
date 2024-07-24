@@ -1615,7 +1615,7 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- browse-url-browser-function 'browse-url-firefox)
+ browse-url-browser-function 'cashpw/browse-url)
 #+end_src
 
 *** EmacsWebWowser (eww)
