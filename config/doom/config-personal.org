@@ -9237,26 +9237,22 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (defun cashpw/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
   (let* ((nested-paths
-          (cl-loop for fn in cashpw/project-path-fns
-                collect (funcall fn)))
+          (cl-loop for fn in cashpw/project-path-fns collect (funcall fn)))
          (paths
           (mapcar
            (lambda (path)
              (cashpw/maybe-add-trailing-forward-slash path))
-           (flatten-tree
-            nested-paths))
-          ))
+           (flatten-tree nested-paths))))
     paths))
 
 (defun cashpw/projectile-refresh-known-paths ()
   "Refresh the paths which projectile knows about."
   (interactive)
   (projectile-clear-known-projects)
-  (setq projectile-known-projects
-        (cashpw/get-flattened-known-project-paths)))
+  (setq projectile-known-projects (cashpw/get-flattened-known-project-paths)))
 
-(after! projectile
-  (cashpw/projectile-refresh-known-paths))
+(unless (cashpw/machine-p 'work-cloudtop)
+  (after! projectile (cashpw/projectile-refresh-known-paths)))
 #+end_src
 
 * Key bindings

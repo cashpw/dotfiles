@@ -478,7 +478,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
    (:prefix ("." . "Today")
-    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-clock-in
+    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-mark-inprogress
     :desc "Go to" :n "g" #'cashpw/select-from-scheduled-for-today-and-go-to))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
@@ -791,6 +791,13 @@ Passes arguments, including NEW-WINDOW, along."
                                 "~/.config/email-signature-personal"))
    gnus-alias-default-identity "cash@cashpw"))
 
+(use-package! org-mime
+  :custom
+  org-mime-export-options '(:with-latex dvipng
+                                  :section-numbers nil
+                                  :with-author nil
+                                  :with-toc nil))
+
 (defun cashpw/notmuch--toggle-all-open ()
   "Toggle `cashpw/notmuch-all-open' between nil and t."
   (condition-case nil
@@ -1085,14 +1092,12 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/configure-sendmail--gmail ()
   "Configure sendmail for my personal Gmail account."
-  (message "Configuring sendmail: Gmail")
   (setq
    sendmail-program "gmi"
    message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cashbweaver.gmail")))
 
 (defun cashpw/configure-sendmail--personal ()
   "Configure sendmail for my personal email account."
-  (message "Configuring sendmail: Personal")
   (setq
    sendmail-program "gmi"
    message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cash.cashpw")))
@@ -1137,7 +1142,7 @@ TAGS which start with \"-\" are excluded."
     'normal
     notmuch-show-mode-map
     "r"
-    (cmd! (notmuch-show-reply) (gnus-alias-select-identity)))
+    (cmd! (notmuch-show-reply))) ;;(gnus-alias-select-identity)))
   (evil-define-key
     'normal notmuch-show-mode-map "R"
     (cmd! (notmuch-show-reply-sender) (gnus-alias-select-identity)))
@@ -1932,6 +1937,35 @@ Only parent headings of the current heading remain visible."
     (org-show-set-visibility org-fc-narrow-visibility)
     (if (member "noheading" tags) (org-fc-hide-heading))))
 
+(after!
+  org-gcal
+
+  (defun cashpw/org-gcal--get-access-token (&rest r)
+    "TODO."
+    (message "cashpw/org-gcal--get-access-token START")
+    (org-gcal--get-access-token (car (car org-gcal-file-alist)))
+    (message "cashpw/org-gcal--get-access-token DONE")
+    )
+
+  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
+
+  (defvar org-gcal--access-token nil
+    "Set if a sync function is running.")
+
+  (defun org-gcal--sync-unlock ()
+    "Deactivate sync lock in case of failed sync."
+    (interactive)
+    (setq
+     org-gcal--sync-lock nil
+     org-gcal--access-token nil))
+
+  (defun org-gcal--get-access-token (calendar-id)
+    "Return the access token for CALENDAR-ID."
+    (if org-gcal--access-token
+        org-gcal--access-token
+      (setq org-gcal--access-token
+      (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
+
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
                                 :dateTime))
@@ -2557,14 +2591,17 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-
   (let ((calendar-path
          (cdr
           (car
            org-gcal-fetch-file-alist))))
     (with-current-buffer (find-file-noselect
                           calendar-path)
-      (cashpw/delete-lines-below 9)
+      (org-map-entries
+       (lambda ()
+         (when (cashpw/time-past-p (org-get-scheduled-time))
+           (org-cut-subtree))))
+      ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
       ;(insert "* Flashcards")))
@@ -2607,8 +2644,6 @@ Return nil if no attendee exists with that EMAIL."
 (after! org-habit
   (setq
     org-habit-show-done-always-green t))
-
-(use-package! org-mime)
 
 (use-package! org-multi-clock)
 
@@ -6557,26 +6592,22 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (defun cashpw/get-flattened-known-project-paths ()
   "Return a list of all known project paths"
   (let* ((nested-paths
-          (cl-loop for fn in cashpw/project-path-fns
-                collect (funcall fn)))
+          (cl-loop for fn in cashpw/project-path-fns collect (funcall fn)))
          (paths
           (mapcar
            (lambda (path)
              (cashpw/maybe-add-trailing-forward-slash path))
-           (flatten-tree
-            nested-paths))
-          ))
+           (flatten-tree nested-paths))))
     paths))
 
 (defun cashpw/projectile-refresh-known-paths ()
   "Refresh the paths which projectile knows about."
   (interactive)
   (projectile-clear-known-projects)
-  (setq projectile-known-projects
-        (cashpw/get-flattened-known-project-paths)))
+  (setq projectile-known-projects (cashpw/get-flattened-known-project-paths)))
 
-(after! projectile
-  (cashpw/projectile-refresh-known-paths))
+(unless (cashpw/machine-p 'work-cloudtop)
+  (after! projectile (cashpw/projectile-refresh-known-paths)))
 
 (use-package! toml)
 
@@ -6736,9 +6767,9 @@ Reference:https://stackoverflow.com/q/23622296"
   (interactive)
   (cashpw/narrow-between-text "#+begin_quote" "end_quote"))
 
-(defun cashpw/org-headings-scheduled-for-day-in-buffer (buffer day-time)
+(defun cashpw/org-headings-scheduled-for-day-in-path (path day-time)
   "Return headings in BUFFER which are scheduled for DAY-TIME's day."
-  (with-current-buffer buffer
+  (with-current-buffer (find-file-noselect path)
     (remove
      nil
      (org-map-entries
@@ -6771,26 +6802,24 @@ Reference:https://stackoverflow.com/q/23622296"
                        (org-entry-get nil "ITEM"))
               . ,(point-marker)))))))))
 
-(defcustom cashpw/scheduled-for-today-buffers
-  (mapcar
-   #'find-file-noselect
-   (cashpw/org-agenda-files--update))
+(defcustom cashpw/scheduled-for-today-paths
+   (cashpw/org-agenda-files--update)
            "TODO.")
 
-(defun cashpw/org-headings-scheduled-for-day-in-buffers (buffers day-time)
+(defun cashpw/org-headings-scheduled-for-day-in-paths (paths day-time)
   "Return headings in BUFFERS which are scheduled for DAY-TIME's day."
   (-flatten-n
    1
    (mapcar
-    (lambda (buffer)
-      (cashpw/org-headings-scheduled-for-day-in-buffer buffer day-time))
-    buffers)))
+    (lambda (path)
+      (cashpw/org-headings-scheduled-for-day-in-path path day-time))
+    paths)))
 
 (defun cashpw/select-from-scheduled-for-today ()
   "Return marker at selected heading."
   (let* ((headline-to-marker-alist
-          (cashpw/org-headings-scheduled-for-day-in-buffers
-           cashpw/scheduled-for-today-buffers
+          (cashpw/org-headings-scheduled-for-day-in-paths
+           cashpw/scheduled-for-today-paths
            (current-time)))
          (vertico-sort-function #'vertico-sort-alpha)
          (headline (completing-read "Heading: " headline-to-marker-alist nil t))
@@ -6798,10 +6827,10 @@ Reference:https://stackoverflow.com/q/23622296"
           (alist-get headline headline-to-marker-alist nil nil #'string=)))
     marker))
 
-(defun cashpw/select-from-scheduled-for-today-and-clock-in ()
+(defun cashpw/select-from-scheduled-for-today-and-mark-inprogress ()
   "Prompt user to select a headline (scheduled for today) and clock in."
   (interactive)
-  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-clock-in)))
+  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-todo "INPROGRESS")))
 
 (defun cashpw/select-from-scheduled-for-today-and-go-to ()
   "Prompt user to select a headline (scheduled for today) and go to it."

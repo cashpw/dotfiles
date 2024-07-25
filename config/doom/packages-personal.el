@@ -109,6 +109,8 @@
 
 (package! gnus-alias)
 
+(package! org-mime)
+
 (package! org-msg)
 
 (package! gnuplot)
@@ -168,8 +170,6 @@
            :files (:defaults "awk" "demo.org")))
 
 (unpin! org-gcal)
-
-(package! org-mime)
 
 (package! org-multi-clock
   :recipe (:host gitlab
