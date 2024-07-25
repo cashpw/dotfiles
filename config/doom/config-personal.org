@@ -3506,11 +3506,8 @@ Solutions:
   org-gcal
 
   (defun cashpw/org-gcal--get-access-token (&rest r)
-    "TODO."
-    (message "cashpw/org-gcal--get-access-token START")
-    (org-gcal--get-access-token (car (car org-gcal-file-alist)))
-    (message "cashpw/org-gcal--get-access-token DONE")
-    )
+    "Call `org-gcal--get-access-token' for the first calendar in the list."
+    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
 
@@ -3529,7 +3526,7 @@ Solutions:
     (if org-gcal--access-token
         org-gcal--access-token
       (setq org-gcal--access-token
-      (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
+            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
 #+end_src
 
 #+RESULTS:
