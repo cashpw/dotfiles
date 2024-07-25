@@ -841,7 +841,7 @@ Doom Emacs provides =alert=.
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
    (:prefix ("." . "Today")
-    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-clock-in
+    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-mark-inprogress
     :desc "Go to" :n "g" #'cashpw/select-from-scheduled-for-today-and-go-to))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
@@ -1771,6 +1771,33 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
    gnus-alias-default-identity "cash@cashpw"))
 #+end_src
 
+**** =org-mime=
+
+#+begin_quote
+This program sends HTML email using Org-mode HTML export.
+
+This approximates a WYSiWYG HTML mail editor from within Emacs, and can be useful for sending tables, fontified source code, and inline images in email.
+
+/[[github:org-mime/org-mime][org-mime/org-mime]]/
+#+end_quote
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-mime)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-mime
+  :custom
+  org-mime-export-options '(:with-latex dvipng
+                                  :section-numbers nil
+                                  :with-author nil
+                                  :with-toc nil))
+#+end_src
+
 **** =notmuch=
 ***** Package
 
@@ -2110,14 +2137,12 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/configure-sendmail--gmail ()
   "Configure sendmail for my personal Gmail account."
-  (message "Configuring sendmail: Gmail")
   (setq
    sendmail-program "gmi"
    message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cashbweaver.gmail")))
 
 (defun cashpw/configure-sendmail--personal ()
   "Configure sendmail for my personal email account."
-  (message "Configuring sendmail: Personal")
   (setq
    sendmail-program "gmi"
    message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cash.cashpw")))
@@ -2172,7 +2197,7 @@ I need to use a different =send-mail-function= when sending email at work. I ove
     'normal
     notmuch-show-mode-map
     "r"
-    (cmd! (notmuch-show-reply) (gnus-alias-select-identity)))
+    (cmd! (notmuch-show-reply))) ;;(gnus-alias-select-identity)))
   (evil-define-key
     'normal notmuch-show-mode-map "R"
     (cmd! (notmuch-show-reply-sender) (gnus-alias-select-identity)))
@@ -3464,6 +3489,52 @@ Doom emacs provides =org-gcal=.
 
 ***** Config
 
+****** Overrides
+
+Issue: Decrypt prompt disappears before I can type in the password.
+
+Solutions:
+
+1. +Figure out why it's disappearing and fix the root issue+
+
+   I've tried for ~3 hours and don't want to put more time into it.
+
+2. Get and cache the access token outside of the =deferred= block!
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  org-gcal
+
+  (defun cashpw/org-gcal--get-access-token (&rest r)
+    "TODO."
+    (message "cashpw/org-gcal--get-access-token START")
+    (org-gcal--get-access-token (car (car org-gcal-file-alist)))
+    (message "cashpw/org-gcal--get-access-token DONE")
+    )
+
+  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
+
+  (defvar org-gcal--access-token nil
+    "Set if a sync function is running.")
+
+  (defun org-gcal--sync-unlock ()
+    "Deactivate sync lock in case of failed sync."
+    (interactive)
+    (setq
+     org-gcal--sync-lock nil
+     org-gcal--access-token nil))
+
+  (defun org-gcal--get-access-token (calendar-id)
+    "Return the access token for CALENDAR-ID."
+    (if org-gcal--access-token
+        org-gcal--access-token
+      (setq org-gcal--access-token
+      (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
+#+end_src
+
+#+RESULTS:
+: org-gcal--get-access-token
+
 ****** Time
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -4159,14 +4230,17 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-
   (let ((calendar-path
          (cdr
           (car
            org-gcal-fetch-file-alist))))
     (with-current-buffer (find-file-noselect
                           calendar-path)
-      (cashpw/delete-lines-below 9)
+      (org-map-entries
+       (lambda ()
+         (when (cashpw/time-past-p (org-get-scheduled-time))
+           (org-cut-subtree))))
+      ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
       ;(insert "* Flashcards")))
@@ -4217,28 +4291,6 @@ Return nil if no attendee exists with that EMAIL."
 (after! org-habit
   (setq
     org-habit-show-done-always-green t))
-#+end_src
-
-**** =org-mime=
-
-#+begin_quote
-This program sends HTML email using Org-mode HTML export.
-
-This approximates a WYSiWYG HTML mail editor from within Emacs, and can be useful for sending tables, fontified source code, and inline images in email.
-
-/[[github:org-mime/org-mime][org-mime/org-mime]]/
-#+end_quote
-
-***** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-mime)
-#+end_src
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! org-mime)
 #+end_src
 
 **** =org-multi-clock=
@@ -9704,9 +9756,9 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 ** =completing-read= for today's agenda
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/org-headings-scheduled-for-day-in-buffer (buffer day-time)
+(defun cashpw/org-headings-scheduled-for-day-in-path (path day-time)
   "Return headings in BUFFER which are scheduled for DAY-TIME's day."
-  (with-current-buffer buffer
+  (with-current-buffer (find-file-noselect path)
     (remove
      nil
      (org-map-entries
@@ -9739,26 +9791,24 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
                        (org-entry-get nil "ITEM"))
               . ,(point-marker)))))))))
 
-(defcustom cashpw/scheduled-for-today-buffers
-  (mapcar
-   #'find-file-noselect
-   (cashpw/org-agenda-files--update))
+(defcustom cashpw/scheduled-for-today-paths
+   (cashpw/org-agenda-files--update)
            "TODO.")
 
-(defun cashpw/org-headings-scheduled-for-day-in-buffers (buffers day-time)
+(defun cashpw/org-headings-scheduled-for-day-in-paths (paths day-time)
   "Return headings in BUFFERS which are scheduled for DAY-TIME's day."
   (-flatten-n
    1
    (mapcar
-    (lambda (buffer)
-      (cashpw/org-headings-scheduled-for-day-in-buffer buffer day-time))
-    buffers)))
+    (lambda (path)
+      (cashpw/org-headings-scheduled-for-day-in-path path day-time))
+    paths)))
 
 (defun cashpw/select-from-scheduled-for-today ()
   "Return marker at selected heading."
   (let* ((headline-to-marker-alist
-          (cashpw/org-headings-scheduled-for-day-in-buffers
-           cashpw/scheduled-for-today-buffers
+          (cashpw/org-headings-scheduled-for-day-in-paths
+           cashpw/scheduled-for-today-paths
            (current-time)))
          (vertico-sort-function #'vertico-sort-alpha)
          (headline (completing-read "Heading: " headline-to-marker-alist nil t))
@@ -9766,10 +9816,10 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
           (alist-get headline headline-to-marker-alist nil nil #'string=)))
     marker))
 
-(defun cashpw/select-from-scheduled-for-today-and-clock-in ()
+(defun cashpw/select-from-scheduled-for-today-and-mark-inprogress ()
   "Prompt user to select a headline (scheduled for today) and clock in."
   (interactive)
-  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-clock-in)))
+  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-todo "INPROGRESS")))
 
 (defun cashpw/select-from-scheduled-for-today-and-go-to ()
   "Prompt user to select a headline (scheduled for today) and go to it."
