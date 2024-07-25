@@ -725,7 +725,7 @@ Passes arguments, including NEW-WINDOW, along."
     (eww-browse-url url new-window)))
 
 (setq
- browse-url-browser-function 'browse-url-firefox)
+ browse-url-browser-function 'cashpw/browse-url)
 
 ;; (use-package! w3m
 ;;   :config
@@ -2621,15 +2621,9 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-protocol
   :config
   (setq
-   org-protocol-default-template-key "p"
-   ;; cashpw/org-protocol--capture-template--protocol '("p" "Protocol" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                   "* %^{Title}\nSource: %u, %c\n #+BEGIN_QUOTE\n%i\n#+END_QUOTE\n\n\n%?")
-   ;; cashpw/org-protocol--capture-template--protocol-link '("L" "Protocol Link" entry (file+headline "/tmp/notes.org" "Inbox")
-   ;;                                                        "* %? [[%:link][%:description]] \nCaptured On: %U")
-   ))
+   org-protocol-default-template-key "w"))
 
 (use-package! org-protocol-capture-html
-  ;; see https://github.com/alphapapa/org-protocol-capture-html for usage
   :after org-protocol)
 
 ;; (use-package! org-ql)
