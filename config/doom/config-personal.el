@@ -1942,7 +1942,12 @@ Only parent headings of the current heading remain visible."
     "Call `org-gcal--get-access-token' for the first calendar in the list."
     (org-gcal--get-access-token (car (car org-gcal-file-alist))))
 
+  (defun cashpw/org-gcal--reset-access-token (&rest r)
+    "Call `org-gcal--get-access-token' for the first calendar in the list."
+    (setq org-gcal--access-token nil))
+
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token)
 
   (defvar org-gcal--access-token nil
     "Set if a sync function is running.")
@@ -1950,16 +1955,16 @@ Only parent headings of the current heading remain visible."
   (defun org-gcal--sync-unlock ()
     "Deactivate sync lock in case of failed sync."
     (interactive)
-    (setq
-     org-gcal--sync-lock nil
-     org-gcal--access-token nil))
+    (setq org-gcal--sync-lock nil))
 
   (defun org-gcal--get-access-token (calendar-id)
     "Return the access token for CALENDAR-ID."
-    (if org-gcal--access-token
-        org-gcal--access-token
+    (message "org-gcal--get-access-token")
+    (unless org-gcal--access-token
       (setq org-gcal--access-token
-            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
+            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
+    (message "org-gcal--get-access-token: %s" org-gcal--access-token)
+    org-gcal--access-token))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
@@ -2035,12 +2040,10 @@ Reference: `org-gcal--update-entry'."
 (defun cashpw/org-gcal--remove-gcal-timestamp ()
   "Delete the timestamp `org-gcal' inserts."
   (org-mark-subtree)
-  (replace-regexp
-   org-element--timestamp-regexp
-   ""
-   nil
-   (region-beginning)
-   (region-end))
+  (replace-regexp org-element--timestamp-regexp ""
+                  nil
+                  (region-beginning)
+                  (region-end))
   (deactivate-mark))
 
 (defun cashpw/org-gcal--set-processed (_calendar-id event _update-mode)
@@ -2049,15 +2052,10 @@ Reference: `org-gcal--update-entry'."
 
 (defun cashpw/org-gcal--set-scheduled (_calendar-id event _update-mode)
   "See `org-gcal-after-update-entry-functions'."
-  (unless (member
-           "processed"
-           (org-get-tags))
+  (unless (member "processed" (org-get-tags))
     (shut-up
       (cashpw/org-gcal--remove-gcal-timestamp)
-      (org-schedule
-       nil
-       (cashpw/org-gcal--timestamp-from-event
-        event)))))
+      (org-schedule nil (cashpw/org-gcal--timestamp-from-event event)))))
 
 (defun cashpw/org-gcal--set-effort (_calendar-id event _update-mode)
   "Set Effort property based on EVENT if not already set.
@@ -2595,7 +2593,7 @@ Return nil if no attendee exists with that EMAIL."
                           calendar-path)
       (org-map-entries
        (lambda ()
-         (when (cashpw/time-past-p (org-get-scheduled-time))
+         (when (cashpw/time-past-p (org-get-scheduled-time (point)))
            (org-cut-subtree))))
       ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
