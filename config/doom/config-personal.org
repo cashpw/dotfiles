@@ -1,3 +1,6 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2024-07-26 Fri 11:05]
+:END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
 #+EMAIL: cashbweaver@gmail.com
@@ -4746,8 +4749,14 @@ My corporate profile loads [[github:cashpw/ox-hugo-corp][cashpw/ox-hugo-corp]] -
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (when (not (cashpw/machine-p 'work-cloudtop))
-  (use-package! ox-hugo
-    :after ox))
+  (use-package!
+      ox-hugo
+    :after ox
+    :custom
+    (org-hugo-base-dir "~/proj/notes.cashpw.com")
+    (org-hugo-section "posts")
+    :config
+    (add-hook 'cashpw/org-mode-done-cut-hook 'org-roam-file-p)))
 #+end_src
 
 **** =ox-pandoc=
@@ -5111,19 +5120,17 @@ because it's slow."
 (defun cashpw/org-set-last-modified ()
   "Update the LAST_MODIFIED property on the file."
   (interactive)
-  (when (and
-         (not
-          (cashpw/org--archive-buffer-p
-           (current-buffer)))
-         (derived-mode-p
-          'org-mode))
+  (when (and (not (cashpw/org--archive-buffer-p (current-buffer)))
+             (derived-mode-p 'org-mode))
     (save-excursion
-      (goto-char
-       (point-min))
+      (goto-char (point-min))
       (org-set-property
-       "LAST_MODIFIED"
-       (format-time-string
-        "[%Y-%m-%d %a %H:%M]")))))
+       "LAST_MODIFIED" (format-time-string "[%Y-%m-%d %a %H:%M]")))))
+
+(add-hook
+ 'org-mode-hook
+ (lambda ()
+   (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified)))
 #+end_src
 
 **** Insert holiday reminders
@@ -5327,6 +5334,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
  ;; org-return-follows-link t
+ org-default-properties (append org-default-properties org-recipes--properties)
+ org-attach-directory (file-truename (format "%s/attachments/" org-roam-directory))
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 #+end_src
 
@@ -5400,7 +5409,8 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
 Override =org-roam-db-sync= to insert a =message= call to aid in understanding why it's called so often in my Emacs start-up.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(after! org-roam
+(after!
+  org-roam
   ;; Disable to improve performance
   (org-roam-db-autosync-mode -1)
   (setq
@@ -5408,8 +5418,13 @@ Override =org-roam-db-sync= to insert a =message= call to aid in understanding w
    org-roam-completion-everywhere nil
 
    org-roam-directory cashpw/path--notes-dir
-   org-roam-db-location (expand-file-name "org-roam.db"
-                                          org-roam-directory)))
+   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory)
+   org-directory org-roam-directory
+   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+  (add-hook
+   'org-mode-hook
+   (lambda ()
+     (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
 #+end_src
 
 #+begin_src emacs-lisp
@@ -5858,6 +5873,7 @@ Optional:
              tag))))
 
 (defun cashpw/org-roam-before-save ()
+  (when (vulpea-buffer-p)
   (cashpw/org-roam-rewrite-smart-to-ascii)
   ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
   (cashpw/org-roam-add-bibliography)
@@ -5867,7 +5883,7 @@ Optional:
    ":noexport:")
   (cashpw/org-roam-update-hastodo-tag)
   ;; (cashpw/org-hugo-export-wim-to-md)
-  )
+    ))
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
   (cl-loop for (target . post-id) in mathjax-post-map
@@ -8492,10 +8508,13 @@ All args are passed to `org-roam-node-read'."
 
 *** TODO Export and Publish
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(after! org
+(after!
+  org
   :config
   (setq
-   org-export-with-tags nil))
+   org-export-with-tags nil
+   org-export-with-priority nil
+   org-export-with-todo-keywords nil))
 #+end_src
 **** TODO Config
 
@@ -8658,8 +8677,11 @@ All args are passed to `org-roam-node-read'."
 Private files are designated with the =private= =filetag=.
 
 ***** Config
-
-- [Effective communication]({{< relref "effective_communication.md" >}})
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! ox-hugo
+  (set)
+  )
+#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/kill-all-markdown-buffers ()

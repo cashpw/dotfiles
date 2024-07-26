@@ -477,8 +477,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO (cached)" :n "." #'cashpw/select-from-todos-and-go-to
-   :desc "Go to TODO" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
@@ -2758,8 +2757,14 @@ Return nil if no attendee exists with that EMAIL."
 (use-package! org-vcard)
 
 (when (not (cashpw/machine-p 'work-cloudtop))
-  (use-package! ox-hugo
-    :after ox))
+  (use-package!
+      ox-hugo
+    :after ox
+    :custom
+    (org-hugo-base-dir "~/proj/notes.cashpw.com")
+    (org-hugo-section "posts")
+    :config
+    (add-hook 'cashpw/org-mode-done-cut-hook 'org-roam-file-p)))
 
 (use-package! summarize-agenda-time
   :after org
@@ -3021,19 +3026,17 @@ because it's slow."
 (defun cashpw/org-set-last-modified ()
   "Update the LAST_MODIFIED property on the file."
   (interactive)
-  (when (and
-         (not
-          (cashpw/org--archive-buffer-p
-           (current-buffer)))
-         (derived-mode-p
-          'org-mode))
+  (when (and (not (cashpw/org--archive-buffer-p (current-buffer)))
+             (derived-mode-p 'org-mode))
     (save-excursion
-      (goto-char
-       (point-min))
+      (goto-char (point-min))
       (org-set-property
-       "LAST_MODIFIED"
-       (format-time-string
-        "[%Y-%m-%d %a %H:%M]")))))
+       "LAST_MODIFIED" (format-time-string "[%Y-%m-%d %a %H:%M]")))))
+
+(add-hook
+ 'org-mode-hook
+ (lambda ()
+   (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified)))
 
 (defun cashpw/org--insert-holiday-reminders (year)
   "Insert TODO reminders for holidays."
@@ -3225,6 +3228,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 (setq
  ;; org-return-follows-link t
+ org-default-properties (append org-default-properties org-recipes--properties)
+ org-attach-directory (file-truename (format "%s/attachments/" org-roam-directory))
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 
 (after! org
@@ -3274,7 +3279,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;                                           (k-time (org-roam-db-sync)))))))
   )
 
-(after! org-roam
+(after!
+  org-roam
   ;; Disable to improve performance
   (org-roam-db-autosync-mode -1)
   (setq
@@ -3282,8 +3288,13 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-roam-completion-everywhere nil
 
    org-roam-directory cashpw/path--notes-dir
-   org-roam-db-location (expand-file-name "org-roam.db"
-                                          org-roam-directory)))
+   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory)
+   org-directory org-roam-directory
+   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+  (add-hook
+   'org-mode-hook
+   (lambda ()
+     (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
 
 (after! doct-org-roam
   (setq
@@ -3680,6 +3691,7 @@ Optional:
              tag))))
 
 (defun cashpw/org-roam-before-save ()
+  (when (vulpea-buffer-p)
   (cashpw/org-roam-rewrite-smart-to-ascii)
   ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
   (cashpw/org-roam-add-bibliography)
@@ -3689,7 +3701,7 @@ Optional:
    ":noexport:")
   (cashpw/org-roam-update-hastodo-tag)
   ;; (cashpw/org-hugo-export-wim-to-md)
-  )
+    ))
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
   (cl-loop for (target . post-id) in mathjax-post-map
@@ -5964,10 +5976,13 @@ All args are passed to `org-roam-node-read'."
       (cashpw/latex-toggle-preview--hide)
     (cashpw/latex-toggle-preview--show)))
 
-(after! org
+(after!
+  org
   :config
   (setq
-   org-export-with-tags nil))
+   org-export-with-tags nil
+   org-export-with-priority nil
+   org-export-with-todo-keywords nil))
 
 (setq
  org-html-checkbox-type 'html)
@@ -6116,6 +6131,10 @@ All args are passed to `org-roam-node-read'."
 (defun org-pandoc-publish-to-plain (plist filename pub-dir)
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
+
+(after! ox-hugo
+  (set)
+  )
 
 (defun cashpw/kill-all-markdown-buffers ()
   "Kill all other org-roam buffers except current."
@@ -6771,33 +6790,34 @@ Reference:https://stackoverflow.com/q/23622296"
      nil
      (org-map-entries
       (lambda ()
-        (let* ((scheduled
-                (org-element-property :scheduled (org-element-at-point)))
-               (scheduled-time (org-get-scheduled-time (point))))
-          (when (and scheduled-time
-                     (cashpw/time-same-day-p scheduled-time day-time))
-            `(,(format "%s%s"
-                       (let ((hour-start
-                              (org-element-property :hour-start scheduled))
-                             (minute-start
-                              (org-element-property :minute-start scheduled))
-                             (hour-end
-                              (org-element-property :hour-end scheduled))
-                             (minute-end
-                              (org-element-property :minute-end scheduled)))
-                         (cond
-                          ((and hour-start minute-start hour-end minute-end)
-                           (format "%02d:%02d-%02d:%02d "
-                                   hour-start
-                                   minute-start
-                                   hour-end
-                                   minute-end))
-                          ((and hour-start minute-start)
-                           (format "%02d:%02d " hour-start minute-start))
-                          (t
-                           "")))
-                       (org-entry-get nil "ITEM"))
-              . ,(point-marker)))))))))
+        (when (not (org-entry-is-done-p))
+          (let* ((scheduled
+                  (org-element-property :scheduled (org-element-at-point)))
+                 (scheduled-time (org-get-scheduled-time (point))))
+            (when (and scheduled-time
+                       (cashpw/time-same-day-p scheduled-time day-time))
+              `(,(format "%s%s"
+                         (let ((hour-start
+                                (org-element-property :hour-start scheduled))
+                               (minute-start
+                                (org-element-property :minute-start scheduled))
+                               (hour-end
+                                (org-element-property :hour-end scheduled))
+                               (minute-end
+                                (org-element-property :minute-end scheduled)))
+                           (cond
+                            ((and hour-start minute-start hour-end minute-end)
+                             (format "%02d:%02d-%02d:%02d "
+                                     hour-start
+                                     minute-start
+                                     hour-end
+                                     minute-end))
+                            ((and hour-start minute-start)
+                             (format "%02d:%02d " hour-start minute-start))
+                            (t
+                             "")))
+                         (org-entry-get nil "ITEM"))
+                . ,(point-marker))))))))))
 
 (defun cashpw/org-headings-with-tag-in-path (path tag)
   "Return alist of headings and markers in PATH which have TAG."
