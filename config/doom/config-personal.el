@@ -477,9 +477,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   (:prefix ("." . "Today")
-    :desc "Clock in" :n "c" #'cashpw/select-from-scheduled-for-today-and-mark-inprogress
-    :desc "Go to" :n "g" #'cashpw/select-from-scheduled-for-today-and-go-to))
+   :desc "Go to TODO (cached)" :n "." #'cashpw/select-from-todos-and-go-to
+   :desc "Go to TODO" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
@@ -1941,11 +1940,8 @@ Only parent headings of the current heading remain visible."
   org-gcal
 
   (defun cashpw/org-gcal--get-access-token (&rest r)
-    "TODO."
-    (message "cashpw/org-gcal--get-access-token START")
-    (org-gcal--get-access-token (car (car org-gcal-file-alist)))
-    (message "cashpw/org-gcal--get-access-token DONE")
-    )
+    "Call `org-gcal--get-access-token' for the first calendar in the list."
+    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
 
@@ -1964,7 +1960,7 @@ Only parent headings of the current heading remain visible."
     (if org-gcal--access-token
         org-gcal--access-token
       (setq org-gcal--access-token
-      (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
+            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
@@ -2498,7 +2494,8 @@ Return nil if no attendee exists with that EMAIL."
                                        "Mobility, Grip, Neck"
                                        "Cardio"
                                        "Stretch"
-                                       "Walk"))
+                                       "Walk"
+                                       "Total Body Strength with Brianna Mariotti"))
                          ("Car" . ("Tidy car"))
                          ("Finance" . ("Finances and net worth"))
                          ("Pet" . ("Empty cat boxes"
@@ -6768,7 +6765,7 @@ Reference:https://stackoverflow.com/q/23622296"
   (cashpw/narrow-between-text "#+begin_quote" "end_quote"))
 
 (defun cashpw/org-headings-scheduled-for-day-in-path (path day-time)
-  "Return headings in BUFFER which are scheduled for DAY-TIME's day."
+  "Return alist of headings and markers in PATH which are scheduled for DAY-TIME's day."
   (with-current-buffer (find-file-noselect path)
     (remove
      nil
@@ -6802,9 +6799,18 @@ Reference:https://stackoverflow.com/q/23622296"
                        (org-entry-get nil "ITEM"))
               . ,(point-marker)))))))))
 
-(defcustom cashpw/scheduled-for-today-paths
-   (cashpw/org-agenda-files--update)
-           "TODO.")
+(defun cashpw/org-headings-with-tag-in-path (path tag)
+  "Return alist of headings and markers in PATH which have TAG."
+  (with-current-buffer (find-file-noselect path)
+    (remove
+     nil
+     (org-map-entries
+      (lambda ()
+        `(,(org-entry-get nil "ITEM") . ,(point-marker)))
+      (concat "+" tag)))))
+
+(defcustom cashpw/scheduled-for-today-paths (cashpw/org-agenda-files--update)
+  "TODO.")
 
 (defun cashpw/org-headings-scheduled-for-day-in-paths (paths day-time)
   "Return headings in BUFFERS which are scheduled for DAY-TIME's day."
@@ -6815,26 +6821,47 @@ Reference:https://stackoverflow.com/q/23622296"
       (cashpw/org-headings-scheduled-for-day-in-path path day-time))
     paths)))
 
-(defun cashpw/select-from-scheduled-for-today ()
-  "Return marker at selected heading."
-  (let* ((headline-to-marker-alist
-          (cashpw/org-headings-scheduled-for-day-in-paths
-           cashpw/scheduled-for-today-paths
-           (current-time)))
-         (vertico-sort-function #'vertico-sort-alpha)
-         (headline (completing-read "Heading: " headline-to-marker-alist nil t))
-         (marker
-          (alist-get headline headline-to-marker-alist nil nil #'string=)))
-    marker))
+(defun cashpw/select-marker-from-alist (label-to-marker-alist)
+  "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
+  (interactive)
+  (let* ((vertico-sort-function #'vertico-sort-alpha)
+         (selection (completing-read "Select: " label-to-marker-alist nil t)))
+    (alist-get selection label-to-marker-alist nil nil #'string=)))
 
 (defun cashpw/select-from-scheduled-for-today-and-mark-inprogress ()
   "Prompt user to select a headline (scheduled for today) and clock in."
   (interactive)
-  (org-with-point-at (cashpw/select-from-scheduled-for-today) (org-todo "INPROGRESS")))
+  (let ((marker
+         (cashpw/select-marker-from-alist
+          (cashpw/org-headings-scheduled-for-day-in-paths
+           cashpw/scheduled-for-today-paths (current-time)))))
+    (org-with-point-at marker (org-todo "INPROGRESS"))))
 
 (defun cashpw/select-from-scheduled-for-today-and-go-to ()
   "Prompt user to select a headline (scheduled for today) and go to it."
   (interactive)
-  (let ((marker (cashpw/select-from-scheduled-for-today)))
+  (let ((marker
+         (cashpw/select-marker-from-alist
+          (cashpw/org-headings-scheduled-for-day-in-paths
+           cashpw/scheduled-for-today-paths (current-time)))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
+
+(defvar cashpw/todo-selection-alist nil
+  "TODO.")
+
+(defun cashpw/select-from-todos-and-go-to (&optional force-refresh)
+  "Prompt user to select a TODO and go to it."
+  (interactive)
+  (let ((label-to-marker-alist
+         (if (and cashpw/todo-selection-alist (not force-refresh))
+             cashpw/todo-selection-alist
+           (append
+            (cashpw/org-headings-with-tag-in-path
+             cashpw/path--personal-todos "unscheduled")
+            (cashpw/org-headings-scheduled-for-day-in-paths
+             cashpw/scheduled-for-today-paths (current-time))))))
+    (setq cashpw/todo-selection-alist label-to-marker-alist)
+    (let ((marker (cashpw/select-marker-from-alist label-to-marker-alist)))
+      (switch-to-buffer (marker-buffer marker))
+      (goto-char marker))))
