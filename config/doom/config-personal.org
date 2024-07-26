@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-07-26 Fri 11:05]
+:LAST_MODIFIED: [2024-07-26 Fri 15:18]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -8675,11 +8675,6 @@ All args are passed to `org-roam-node-read'."
 Private files are designated with the =private= =filetag=.
 
 ***** Config
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(after! ox-hugo
-  (set)
-  )
-#+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/kill-all-markdown-buffers ()

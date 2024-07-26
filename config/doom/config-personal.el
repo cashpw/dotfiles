@@ -6130,10 +6130,6 @@ All args are passed to `org-roam-node-read'."
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 
-(after! ox-hugo
-  (set)
-  )
-
 (defun cashpw/kill-all-markdown-buffers ()
   "Kill all other org-roam buffers except current."
   (let ((buffers-to-kill
