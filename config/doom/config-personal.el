@@ -792,9 +792,9 @@ Passes arguments, including NEW-WINDOW, along."
 (use-package! org-mime
   :custom
   org-mime-export-options '(:with-latex dvipng
-                                  :section-numbers nil
-                                  :with-author nil
-                                  :with-toc nil))
+                            :section-numbers nil
+                            :with-author nil
+                            :with-toc nil))
 
 (defun cashpw/notmuch--toggle-all-open ()
   "Toggle `cashpw/notmuch-all-open' between nil and t."
@@ -1963,7 +1963,6 @@ Only parent headings of the current heading remain visible."
     (unless org-gcal--access-token
       (setq org-gcal--access-token
             (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    (message "org-gcal--get-access-token: %s" org-gcal--access-token)
     org-gcal--access-token))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)

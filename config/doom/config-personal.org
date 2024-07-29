@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-07-26 Fri 15:18]
+:LAST_MODIFIED: [2024-07-28 Sun 07:22]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1619,6 +1619,14 @@ Passes arguments, including NEW-WINDOW, along."
  browse-url-browser-function 'cashpw/browse-url)
 #+end_src
 
+#+begin_src emacs-lisp
+(setq
+ browse-url-browser-function 'browse-url-firefox)
+#+end_src
+
+#+RESULTS:
+: browse-url-firefox
+
 *** EmacsWebWowser (eww)
 *** WWWを見る (w3m) :disabled:
 
@@ -1794,9 +1802,9 @@ This approximates a WYSiWYG HTML mail editor from within Emacs, and can be usefu
 (use-package! org-mime
   :custom
   org-mime-export-options '(:with-latex dvipng
-                                  :section-numbers nil
-                                  :with-author nil
-                                  :with-toc nil))
+                            :section-numbers nil
+                            :with-author nil
+                            :with-toc nil))
 #+end_src
 
 **** =notmuch=
@@ -3491,6 +3499,9 @@ Doom emacs provides =org-gcal=.
 ***** Config
 
 ****** Overrides
+:PROPERTIES:
+:ID:       fc802a57-4eda-415f-b7f7-bcbc86b7ce3d
+:END:
 
 Issue: Decrypt prompt disappears before I can type in the password.
 
@@ -3531,7 +3542,6 @@ Solutions:
     (unless org-gcal--access-token
       (setq org-gcal--access-token
             (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    (message "org-gcal--get-access-token: %s" org-gcal--access-token)
     org-gcal--access-token))
 #+end_src
 
