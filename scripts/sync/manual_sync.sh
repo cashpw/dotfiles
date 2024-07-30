@@ -6,7 +6,6 @@
 unison \
   -auto \
   -batch \
-  -ignore "Name {org-roam.db,org-roam.db-journal}" \
   -ignore "Regex .unison.*" \
   /home/cashweaver/proj/notes \
   "ssh://cashweaver.c.googlers.com//usr/local/google/home/cashweaver/proj/notes"
