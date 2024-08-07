@@ -541,6 +541,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                          (message "Garbage collection: Ran for %.06fsec"
                                   (k-time (garbage-collect))))))
 
+(when (cashpw/machine-p 'personal-phone)
+  (let ((functions-to-disable
+         '('doom/increase-font-size 'doom/reset-font-size)))
+    (dolist (fn functions-to-disable)
+      (advice-add fn :override #'ignore))))
+
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom

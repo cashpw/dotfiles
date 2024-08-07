@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-07 Wed 12:16]
+:LAST_MODIFIED: [2024-08-07 Wed 12:21]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -918,6 +918,18 @@ https://akrl.sdf.org/#orgc15a10d
                          (message "Garbage collection: Running...")
                          (message "Garbage collection: Ran for %.06fsec"
                                   (k-time (garbage-collect))))))
+#+end_src
+
+* Machines
+
+** Phone
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(when (cashpw/machine-p 'personal-phone)
+  (let ((functions-to-disable
+         '('doom/increase-font-size 'doom/reset-font-size)))
+    (dolist (fn functions-to-disable)
+      (advice-add fn :override #'ignore))))
 #+end_src
 
 * Doom Emacs
