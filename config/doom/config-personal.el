@@ -542,10 +542,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                   (k-time (garbage-collect))))))
 
 (when (cashpw/machine-p 'personal-phone)
-  (let ((functions-to-disable
-         '('doom/increase-font-size 'doom/reset-font-size)))
-    (dolist (fn functions-to-disable)
-      (advice-add fn :override #'ignore))))
+  (advice-add 'doom/increase-font-size :override #'ignore) 
+  (advice-add 'doom/reset-font-size :override #'ignore))
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
