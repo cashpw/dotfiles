@@ -39,7 +39,7 @@ https://akrl.sdf.org/#orgc15a10d"
 (defun cashpw/machine-p (machine)
   "Return true if executed on my work machine."
   (pcase machine
-    ('personal
+    ('personal-phone
      (file-directory-p cashpw/path--personal-phone-id-file))
     ('personal
      (file-directory-p cashpw/path--personal-home-dir))

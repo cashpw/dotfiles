@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-07 Wed 10:36]
+:LAST_MODIFIED: [2024-08-07 Wed 10:37]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
@@ -157,7 +157,7 @@ https://akrl.sdf.org/#orgc15a10d"
 (defun cashpw/machine-p (machine)
   "Return true if executed on my work machine."
   (pcase machine
-    ('personal
+    ('personal-phone
      (file-directory-p cashpw/path--personal-phone-id-file))
     ('personal
      (file-directory-p cashpw/path--personal-home-dir))
