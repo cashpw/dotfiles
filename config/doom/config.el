@@ -71,11 +71,11 @@ https://akrl.sdf.org/#orgc15a10d"
   "File that, when present, indicates the current machine is my Cloudtop instance.")
 
 (defvar cashpw/path--personal-phone-home-dir
-  "~"
+  "/data/data/com.termux/files/home"
   "Path to home directory on my personal phone.")
 
 (defvar cashpw/path--personal-phone-id-file
-  "~/is-phone"
+  "/data/data/com.termux/files/home/is-phone"
   "File that, when present, indicates the current machine is my personal phone.")
 
 (defvar cashpw/path--home-dir
