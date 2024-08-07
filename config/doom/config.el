@@ -40,7 +40,7 @@ https://akrl.sdf.org/#orgc15a10d"
   "Return true if executed on my work machine."
   (pcase machine
     ('personal-phone
-     (file-directory-p cashpw/path--personal-phone-id-file))
+     (file-exists-p cashpw/path--personal-phone-id-file))
     ('personal
      (file-directory-p cashpw/path--personal-home-dir))
     ('work
