@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-04 Sun 15:47]
+:LAST_MODIFIED: [2024-08-07 Wed 10:56]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -512,14 +512,18 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (package! centered-cursor-mode))
 #+end_src
 
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 #+end_src
 

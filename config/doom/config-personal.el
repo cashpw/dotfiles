@@ -346,7 +346,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       str
     (format "%s/" str)))
 
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 
 ;; (use-package! electric-case
