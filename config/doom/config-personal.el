@@ -1722,6 +1722,45 @@ ${content}"))
 (use-package! org-fc-type-vocab
   :after org-fc)
 
+(defun cashpw/org-fc-awk-index-files (files)
+  "Generate a list of all cards and positions in FILES.
+Unlike `org-fc-awk-index-paths', files are included directly in
+the AWK command and directories are not supported."
+  (mapcar
+   (lambda (file)
+     (plist-put
+      file
+      :cards
+      (mapcar
+       (lambda (card)
+         (plist-put
+          card
+          :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
+         (plist-put
+          card
+          :tags
+          (org-fc-awk-combine-tags
+           (plist-get card :inherited-tags) (plist-get card :local-tags))))
+       (plist-get file :cards))))
+   (read
+    (shell-command-to-string
+     (org-fc-awk--command
+      "awk/index.awk"
+      :variables (org-fc-awk--indexer-variables)
+      ;; Avoid "Argument list too long" error
+      ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
+      :input
+      (concat
+       (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
+       "*"))))))
+
+(when (cashpw/machine-p 'personal-phone)
+  (after!
+    org-fc
+    (advice-add
+     'org-fc-awk-index-files
+     :override 'cashpw/org-fc-awk-index-files)))
+
 (defcustom cashpw/org-fc--one-per-file-exceptions
   '()
   "List of filetitles to exclude from the one-position-per-file filter.")
