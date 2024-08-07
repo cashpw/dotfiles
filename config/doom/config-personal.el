@@ -1935,35 +1935,32 @@ Only parent headings of the current heading remain visible."
     (org-show-set-visibility org-fc-narrow-visibility)
     (if (member "noheading" tags) (org-fc-hide-heading))))
 
+(defun cashpw/org-gcal--get-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (org-gcal--get-access-token (car (car org-gcal-file-alist))))
+
+(defun cashpw/org-gcal--reset-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (setq org-gcal--access-token nil))
+
+(defvar org-gcal--access-token nil
+  "Set if a sync function is running.")
+
+(defun cashpw/org-gcal--get-access-token (calendar-id)
+  "Return the access token for CALENDAR-ID."
+  (unless org-gcal--access-token
+    (setq org-gcal--access-token
+          (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
+  org-gcal--access-token)
+
+
 (after!
   org-gcal
 
-  (defun cashpw/org-gcal--get-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
-
-  (defun cashpw/org-gcal--reset-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (setq org-gcal--access-token nil))
+  (advice-add 'org-gcal--get-access-token :override #'cashpw/org-gcal--get-access-token)
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token)
-
-  (defvar org-gcal--access-token nil
-    "Set if a sync function is running.")
-
-  (defun org-gcal--sync-unlock ()
-    "Deactivate sync lock in case of failed sync."
-    (interactive)
-    (setq org-gcal--sync-lock nil))
-
-  (defun org-gcal--get-access-token (calendar-id)
-    "Return the access token for CALENDAR-ID."
-    (message "org-gcal--get-access-token")
-    (unless org-gcal--access-token
-      (setq org-gcal--access-token
-            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    org-gcal--access-token))
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)

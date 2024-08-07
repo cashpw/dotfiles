@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-07-28 Sun 07:22]
+:LAST_MODIFIED: [2024-08-04 Sun 15:47]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3514,35 +3514,32 @@ Solutions:
 2. Get and cache the access token outside of the =deferred= block!
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--get-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (org-gcal--get-access-token (car (car org-gcal-file-alist))))
+
+(defun cashpw/org-gcal--reset-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (setq org-gcal--access-token nil))
+
+(defvar org-gcal--access-token nil
+  "Set if a sync function is running.")
+
+(defun cashpw/org-gcal--get-access-token (calendar-id)
+  "Return the access token for CALENDAR-ID."
+  (unless org-gcal--access-token
+    (setq org-gcal--access-token
+          (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
+  org-gcal--access-token)
+
+
 (after!
   org-gcal
 
-  (defun cashpw/org-gcal--get-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
-
-  (defun cashpw/org-gcal--reset-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (setq org-gcal--access-token nil))
+  (advice-add 'org-gcal--get-access-token :override #'cashpw/org-gcal--get-access-token)
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token)
-
-  (defvar org-gcal--access-token nil
-    "Set if a sync function is running.")
-
-  (defun org-gcal--sync-unlock ()
-    "Deactivate sync lock in case of failed sync."
-    (interactive)
-    (setq org-gcal--sync-lock nil))
-
-  (defun org-gcal--get-access-token (calendar-id)
-    "Return the access token for CALENDAR-ID."
-    (message "org-gcal--get-access-token")
-    (unless org-gcal--access-token
-      (setq org-gcal--access-token
-            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    org-gcal--access-token))
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token))
 #+end_src
 
 #+RESULTS:
@@ -8323,39 +8320,40 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
 (use-package! deflink)
 #+end_src
 
-**** Amazon
+**** Types
+***** Amazon
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "amazon"
          "https://amazon.com/dp/%s")
 #+end_src
 
-**** Digital Object Identifier (DOI)
+***** Digital Object Identifier (DOI)
 
 Priovded through [[id:91380f2e-823f-4ad0-9e14-617a021d86a3][=org-modules=]].
 
-**** Google Documents
+***** Google Documents
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-doc"
          "https://docs.google.com/document/d/%s")
 #+end_src
 
-**** Google Sheets
+***** Google Sheets
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-sheets"
          "https://docs.google.com/spreadsheets/d/%s")
 #+end_src
 
-**** Google Slides
+***** Google Slides
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-slides"
          "https://docs.google.com/presentation/d/%s")
 #+end_src
 
-**** ID
+***** ID
 
 Auto-complete =id:= with known =org-roam= IDs.
 
@@ -8375,40 +8373,43 @@ All args are passed to `org-roam-node-read'."
 
 #+end_src
 
-**** Instagram
+***** Instagram
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(deflink "instagram"
-         "https://instagram.com/%s")
+(deflink
+ "instagram"
+ "https://instagram.com/%s"
+ (lambda (link _) (concat "@" link)))
 #+end_src
 
-**** ISBN
+***** ISBN
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "isbn"
          "https://books.google.com/books?vid=ISBN/%s")
 #+end_src
 
-**** Reddit
+***** Reddit
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "reddit"
          "https://reddit.com/%s")
 #+end_src
 
-**** Stackoverflow
+***** Stackoverflow
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "stackoverflow"
          "https://stackoverflow.com/%s")
 #+end_src
 
-**** Twitter
+***** Twitter
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "twitter"
          "https://twitter.com")
 #+end_src
+
 
 *** Transclusion
 
