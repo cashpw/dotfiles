@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-07 Wed 12:21]
+:LAST_MODIFIED: [2024-08-07 Wed 12:31]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1271,6 +1271,7 @@ vterm               ; the best terminal emulation in Emacs
 (syntax
  +flymake)
 (spell
+ +hunspell
  +flyspell
  +everywhere)
 ;; grammar

@@ -99,6 +99,7 @@
  (syntax
   +flymake)
  (spell
+  +hunspell
   +flyspell
   +everywhere)
  ;; grammar
