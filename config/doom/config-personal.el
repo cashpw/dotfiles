@@ -1407,12 +1407,10 @@ ${content}"))
 
 ;; (eglot)
 
-(unless (executable-find "emacs-lsp-booster")
-  (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
-(use-package! eglot-booster
-  :after eglot
-  :config
-  (eglot-booster-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (unless (executable-find "emacs-lsp-booster")
+    (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
+  (use-package! eglot-booster :after eglot :config (eglot-booster-mode)))
 
 (defun cashpw/eglot-pause ()
   "Pause eglot; see `cashpw/eglot-unpause'."
@@ -5861,8 +5859,11 @@ All args are passed to `org-roam-node-read'."
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
 
-(deflink "instagram"
-         "https://instagram.com/%s")
+(deflink
+ "instagram"
+ "https://instagram.com/%s"
+ ;; (lambda (link _) (concat "@" link))
+ )
 
 (deflink "isbn"
          "https://books.google.com/books?vid=ISBN/%s")

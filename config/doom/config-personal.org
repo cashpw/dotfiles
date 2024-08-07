@@ -2570,12 +2570,10 @@ The [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] project
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(unless (executable-find "emacs-lsp-booster")
-  (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
-(use-package! eglot-booster
-  :after eglot
-  :config
-  (eglot-booster-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (unless (executable-find "emacs-lsp-booster")
+    (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
+  (use-package! eglot-booster :after eglot :config (eglot-booster-mode)))
 #+end_src
 
 **** Helper functions
@@ -8383,7 +8381,8 @@ All args are passed to `org-roam-node-read'."
 (deflink
  "instagram"
  "https://instagram.com/%s"
- (lambda (link _) (concat "@" link)))
+ ;; (lambda (link _) (concat "@" link))
+ )
 #+end_src
 
 ***** ISBN
