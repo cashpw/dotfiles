@@ -7,7 +7,9 @@
 
 (package! aggressive-indent)
 
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (package! centered-cursor-mode))
 
 ;; (package! electric-case

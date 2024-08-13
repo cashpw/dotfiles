@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-11 Sun 18:06]
+:LAST_MODIFIED: [2024-08-13 Tue 12:51]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -512,14 +512,18 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (package! centered-cursor-mode))
 #+end_src
 
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 #+end_src
 
@@ -917,6 +921,16 @@ https://akrl.sdf.org/#orgc15a10d
                                   (k-time (garbage-collect))))))
 #+end_src
 
+* Machines
+
+** Phone
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(when (cashpw/machine-p 'personal-phone)
+  (advice-add 'doom/increase-font-size :override #'ignore) 
+  (advice-add 'doom/reset-font-size :override #'ignore))
+#+end_src
+
 * Doom Emacs
 
 I use [[github:hlissner/doom-emacs][Doom Emacs]] as the base for my configuration to save time and get to coding faster than I would if I had to roll an entire configuration from scratch.
@@ -1258,6 +1272,7 @@ vterm               ; the best terminal emulation in Emacs
 (syntax
  +flymake)
 (spell
+ +hunspell
  +flyspell
  +everywhere)
 ;; grammar
@@ -2567,12 +2582,10 @@ The [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] project
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(unless (executable-find "emacs-lsp-booster")
-  (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
-(use-package! eglot-booster
-  :after eglot
-  :config
-  (eglot-booster-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (unless (executable-find "emacs-lsp-booster")
+    (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
+  (use-package! eglot-booster :after eglot :config (eglot-booster-mode)))
 #+end_src
 
 **** Helper functions
@@ -3230,6 +3243,49 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   :after org-fc)
 #+end_src
 
+****** Override
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-fc-awk-index-files (files)
+  "Generate a list of all cards and positions in FILES.
+Unlike `org-fc-awk-index-paths', files are included directly in
+the AWK command and directories are not supported."
+  (mapcar
+   (lambda (file)
+     (plist-put
+      file
+      :cards
+      (mapcar
+       (lambda (card)
+         (plist-put
+          card
+          :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
+         (plist-put
+          card
+          :tags
+          (org-fc-awk-combine-tags
+           (plist-get card :inherited-tags) (plist-get card :local-tags))))
+       (plist-get file :cards))))
+   (read
+    (shell-command-to-string
+     (org-fc-awk--command
+      "awk/index.awk"
+      :variables (org-fc-awk--indexer-variables)
+      ;; Avoid "Argument list too long" error
+      ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
+      :input
+      (concat
+       (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
+       "*"))))))
+
+(when (cashpw/machine-p 'personal-phone)
+  (after!
+    org-fc
+    (advice-add
+     'org-fc-awk-index-files
+     :override 'cashpw/org-fc-awk-index-files)))
+#+end_src
+
 ***** Filters
 
 ****** One card per file
@@ -3567,35 +3623,32 @@ Solutions:
 2. Get and cache the access token outside of the =deferred= block!
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--get-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (org-gcal--get-access-token (car (car org-gcal-file-alist))))
+
+(defun cashpw/org-gcal--reset-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (setq org-gcal--access-token nil))
+
+(defvar org-gcal--access-token nil
+  "Set if a sync function is running.")
+
+(defun cashpw/org-gcal--get-access-token (calendar-id)
+  "Return the access token for CALENDAR-ID."
+  (unless org-gcal--access-token
+    (setq org-gcal--access-token
+          (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
+  org-gcal--access-token)
+
+
 (after!
   org-gcal
 
-  (defun cashpw/org-gcal--get-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
-
-  (defun cashpw/org-gcal--reset-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (setq org-gcal--access-token nil))
+  (advice-add 'org-gcal--get-access-token :override #'cashpw/org-gcal--get-access-token)
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token)
-
-  (defvar org-gcal--access-token nil
-    "Set if a sync function is running.")
-
-  (defun org-gcal--sync-unlock ()
-    "Deactivate sync lock in case of failed sync."
-    (interactive)
-    (setq org-gcal--sync-lock nil))
-
-  (defun org-gcal--get-access-token (calendar-id)
-    "Return the access token for CALENDAR-ID."
-    (message "org-gcal--get-access-token")
-    (unless org-gcal--access-token
-      (setq org-gcal--access-token
-            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    org-gcal--access-token))
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token))
 #+end_src
 
 #+RESULTS:
@@ -8398,39 +8451,40 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
   (plist-get (cashpw/org-link--decompose link-string) :description))
 #+end_src
 
-**** Amazon
+**** Types
+***** Amazon
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "amazon"
          "https://amazon.com/dp/%s")
 #+end_src
 
-**** Digital Object Identifier (DOI)
+***** Digital Object Identifier (DOI)
 
 Priovded through [[id:91380f2e-823f-4ad0-9e14-617a021d86a3][=org-modules=]].
 
-**** Google Documents
+***** Google Documents
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-doc"
          "https://docs.google.com/document/d/%s")
 #+end_src
 
-**** Google Sheets
+***** Google Sheets
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-sheets"
          "https://docs.google.com/spreadsheets/d/%s")
 #+end_src
 
-**** Google Slides
+***** Google Slides
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "google-slides"
          "https://docs.google.com/presentation/d/%s")
 #+end_src
 
-**** ID
+***** ID
 
 Auto-complete =id:= with known =org-roam= IDs.
 
@@ -8450,40 +8504,44 @@ All args are passed to `org-roam-node-read'."
 
 #+end_src
 
-**** Instagram
+***** Instagram
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(deflink "instagram"
-         "https://instagram.com/%s")
+(deflink
+ "instagram"
+ "https://instagram.com/%s"
+ ;; (lambda (link _) (concat "@" link))
+ )
 #+end_src
 
-**** ISBN
+***** ISBN
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "isbn"
          "https://books.google.com/books?vid=ISBN/%s")
 #+end_src
 
-**** Reddit
+***** Reddit
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "reddit"
          "https://reddit.com/%s")
 #+end_src
 
-**** Stackoverflow
+***** Stackoverflow
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "stackoverflow"
          "https://stackoverflow.com/%s")
 #+end_src
 
-**** Twitter
+***** Twitter
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (deflink "twitter"
          "https://twitter.com")
 #+end_src
+
 
 *** Transclusion
 

@@ -346,7 +346,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       str
     (format "%s/" str)))
 
-(unless (cashpw/machine-p 'work-cloudtop)
+(unless
+    ;; Avoid 'void-variable mouse-wheel-up-event' error
+    (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 
 ;; (use-package! electric-case
@@ -539,6 +541,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                          (message "Garbage collection: Running...")
                          (message "Garbage collection: Ran for %.06fsec"
                                   (k-time (garbage-collect))))))
+
+(when (cashpw/machine-p 'personal-phone)
+  (advice-add 'doom/increase-font-size :override #'ignore) 
+  (advice-add 'doom/reset-font-size :override #'ignore))
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
@@ -1406,12 +1412,10 @@ ${content}"))
 
 ;; (eglot)
 
-(unless (executable-find "emacs-lsp-booster")
-  (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
-(use-package! eglot-booster
-  :after eglot
-  :config
-  (eglot-booster-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (unless (executable-find "emacs-lsp-booster")
+    (cashpw/error "Cannot find 'emacs-lsp-booster' executable."))
+  (use-package! eglot-booster :after eglot :config (eglot-booster-mode)))
 
 (defun cashpw/eglot-pause ()
   "Pause eglot; see `cashpw/eglot-unpause'."
@@ -1723,6 +1727,45 @@ ${content}"))
 (use-package! org-fc-type-vocab
   :after org-fc)
 
+(defun cashpw/org-fc-awk-index-files (files)
+  "Generate a list of all cards and positions in FILES.
+Unlike `org-fc-awk-index-paths', files are included directly in
+the AWK command and directories are not supported."
+  (mapcar
+   (lambda (file)
+     (plist-put
+      file
+      :cards
+      (mapcar
+       (lambda (card)
+         (plist-put
+          card
+          :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
+         (plist-put
+          card
+          :tags
+          (org-fc-awk-combine-tags
+           (plist-get card :inherited-tags) (plist-get card :local-tags))))
+       (plist-get file :cards))))
+   (read
+    (shell-command-to-string
+     (org-fc-awk--command
+      "awk/index.awk"
+      :variables (org-fc-awk--indexer-variables)
+      ;; Avoid "Argument list too long" error
+      ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
+      :input
+      (concat
+       (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
+       "*"))))))
+
+(when (cashpw/machine-p 'personal-phone)
+  (after!
+    org-fc
+    (advice-add
+     'org-fc-awk-index-files
+     :override 'cashpw/org-fc-awk-index-files)))
+
 (defcustom cashpw/org-fc--one-per-file-exceptions
   '()
   "List of filetitles to exclude from the one-position-per-file filter.")
@@ -1973,35 +2016,32 @@ Only parent headings of the current heading remain visible."
       (org-node-put-created)
       (org-set-property (org-gallery--image-prop-source) image-url))))
 
+(defun cashpw/org-gcal--get-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (org-gcal--get-access-token (car (car org-gcal-file-alist))))
+
+(defun cashpw/org-gcal--reset-access-token (&rest r)
+  "Call `org-gcal--get-access-token' for the first calendar in the list."
+  (setq org-gcal--access-token nil))
+
+(defvar org-gcal--access-token nil
+  "Set if a sync function is running.")
+
+(defun cashpw/org-gcal--get-access-token (calendar-id)
+  "Return the access token for CALENDAR-ID."
+  (unless org-gcal--access-token
+    (setq org-gcal--access-token
+          (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
+  org-gcal--access-token)
+
+
 (after!
   org-gcal
 
-  (defun cashpw/org-gcal--get-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (org-gcal--get-access-token (car (car org-gcal-file-alist))))
-
-  (defun cashpw/org-gcal--reset-access-token (&rest r)
-    "Call `org-gcal--get-access-token' for the first calendar in the list."
-    (setq org-gcal--access-token nil))
+  (advice-add 'org-gcal--get-access-token :override #'cashpw/org-gcal--get-access-token)
 
   (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token)
-
-  (defvar org-gcal--access-token nil
-    "Set if a sync function is running.")
-
-  (defun org-gcal--sync-unlock ()
-    "Deactivate sync lock in case of failed sync."
-    (interactive)
-    (setq org-gcal--sync-lock nil))
-
-  (defun org-gcal--get-access-token (calendar-id)
-    "Return the access token for CALENDAR-ID."
-    (message "org-gcal--get-access-token")
-    (unless org-gcal--access-token
-      (setq org-gcal--access-token
-            (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-    org-gcal--access-token))
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
@@ -5919,8 +5959,11 @@ All args are passed to `org-roam-node-read'."
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
 
-(deflink "instagram"
-         "https://instagram.com/%s")
+(deflink
+ "instagram"
+ "https://instagram.com/%s"
+ ;; (lambda (link _) (concat "@" link))
+ )
 
 (deflink "isbn"
          "https://books.google.com/books?vid=ISBN/%s")

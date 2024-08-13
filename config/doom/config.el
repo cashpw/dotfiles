@@ -39,6 +39,8 @@ https://akrl.sdf.org/#orgc15a10d"
 (defun cashpw/machine-p (machine)
   "Return true if executed on my work machine."
   (pcase machine
+    ('personal-phone
+     (file-exists-p cashpw/path--personal-phone-id-file))
     ('personal
      (file-directory-p cashpw/path--personal-home-dir))
     ('work
@@ -68,10 +70,20 @@ https://akrl.sdf.org/#orgc15a10d"
   "/usr/local/google/home/cashweaver/is-work-laptop"
   "File that, when present, indicates the current machine is my Cloudtop instance.")
 
+(defvar cashpw/path--personal-phone-home-dir
+  "/data/data/com.termux/files/home"
+  "Path to home directory on my personal phone.")
+
+(defvar cashpw/path--personal-phone-id-file
+  "/data/data/com.termux/files/home/is-phone"
+  "File that, when present, indicates the current machine is my personal phone.")
+
 (defvar cashpw/path--home-dir
   (cond
    ((cashpw/machine-p 'personal)
     cashpw/path--personal-home-dir)
+   ((cashpw/machine-p 'personal-phone)
+    cashpw/path--personal-phone-home-dir)
    ((cashpw/machine-p 'work)
     cashpw/path--work-home-dir)
    (t
