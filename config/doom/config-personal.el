@@ -508,7 +508,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :n "r" #'cashpw/org-fc-review-all
     :n "R" #'org-fc-review)
    (:prefix ("r")
-    :desc "New node from citation" :n "c" #'cashpw/org-roam-node-from-cite))
+    :desc "New art node" :n "a" #'cashpw/org-roam-node-create--art
+    :desc "New reference node" :n "c" #'cashpw/org-roam-node-from-cite))
   (:prefix ("p")
    :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix ("t")
@@ -1935,6 +1936,43 @@ Only parent headings of the current heading remain visible."
     (org-show-set-visibility org-fc-narrow-visibility)
     (if (member "noheading" tags) (org-fc-hide-heading))))
 
+(use-package! org-gallery
+  :after (:all org org-download)
+  :config
+  (defun cashpw/org-download-image--no-insert (image-url)
+    (with-temp-buffer
+      (org-mode)
+      (org-download-image image-url)))
+
+  (defun cashpw/org-gallery--add-image ()
+    "Add a gallery image."
+    (interactive)
+    (let* ((image-url
+            (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING)))
+           (title (read-string "Title: "))
+           (description (read-string "Description: ")))
+      (while (not (member org-gallery--tag (org-get-tags (point) t)))
+        (org-up-heading-safe))
+      (org-insert-subheading nil)
+      (cashpw/org-download-image--no-insert image-url)
+      (insert
+       ;; Based on `org-download-link-format-function-default'
+       (if (and (>= (string-to-number org-version) 9.3)
+                (eq org-download-method 'attach))
+           (format "[[attachment:%s][%s]]"
+                   (org-link-escape
+                    (file-relative-name org-download-path-last-file (org-attach-dir)))
+                   title)
+         (format
+          "[[file:%s][%s]]"
+          (org-link-escape
+           (funcall org-download-abbreviate-filename-function org-download-path-last-file))
+          title)))
+      (newline)
+      (insert description)
+      (org-node-put-created)
+      (org-set-property (org-gallery--image-prop-source) image-url))))
+
 (after!
   org-gcal
 
@@ -3226,7 +3264,6 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 (setq
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
- org-attach-directory (file-truename (format "%s/attachments/" org-roam-directory))
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
 
 (after! org
@@ -3285,7 +3322,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-roam-completion-everywhere nil
 
    org-roam-directory cashpw/path--notes-dir
-   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory)
+   org-attach-directory (file-truename (format "%s/attachments/" org-roam-directory))
    org-directory org-roam-directory
    org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
   (add-hook
@@ -3372,6 +3409,83 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 
 * TODO [#2] Steps"))))))))
 
+(defun cashpw/org-roam-node-create--art-inner
+    (title artist-node-link &optional image-url citekey)
+  "Create a roam node based on bibliography citation.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (let ((citation
+         (format "%s%s"
+                 artist-node-link
+                 (if citekey
+                     (format ", [cite:@%s]" citekey)
+                   "")))
+        (node-properties
+         (format ":PROPERTIES:%s
+:END:"
+                 (if citekey
+                     (format "\n:ROAM_REFS: [cite:@%s]" citekey)
+                   "")))
+        (downloaded-image
+         (if image-url
+             (format "\n%s\n"
+                     (string-trim
+                      (let ((org-download-image-dir cashpw/path--notes-dir))
+                        (with-temp-buffer
+                          (org-mode)
+                          (org-download-image image-url)
+                          (buffer-string)))))
+           "")))
+    (org-roam-capture-
+     :templates
+     '(("a" "art" plain "%?"
+        :if-new
+        (file+head
+         "${slug}.org"
+         "${node-properties}
+#+title: ${title}
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :art:
+
+${citation}
+${downloaded-image}
+* TODO [#2] Notes :noexport:
+* TODO [#2] Thoughts :noexport:")
+        :immediate-finish t
+        :unnarrowed t))
+     :info
+     (list
+      :citation citation
+      :node-properties node-properties
+      :downloaded-image downloaded-image)
+     :node (org-roam-node-create :title title)
+     :props '(:finalize find-file))))
+
+(defun cashpw/org-roam-node-create--art ()
+  "Create a roam node.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive)
+  (let* ((artist-node-link
+          (with-temp-buffer
+            (org-mode)
+            (org-node-insert-link nil)
+            (buffer-string)))
+         (artist-name (cashpw/org-link--get-description artist-node-link))
+         (reference
+          (when (y-or-n-p "Add citation? ")
+            (citar-select-ref)))
+         (reference-title
+          (when reference
+            (citar-format--entry (citar-format--parse "${title}") reference)))
+         (image-url
+          (when (y-or-n-p "Add image? ")
+            (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING))))
+         (title (format "%s | %s" artist-name (read-string "Title: "))))
+    (cashpw/org-roam-node-create--art-inner title artist-node-link
+                                            image-url
+                                            reference)))
+
 (defun cashpw/org-roam-node-from-cite--inner (entry title)
   "Create a roam node based on bibliography citation.
 
@@ -3384,7 +3498,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
 :ROAM_REFS: [cite:@${citekey}]
 :END:
 #+title: ${title}
-#+author: Cash Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :reference:
 
@@ -3895,76 +4008,6 @@ This is an internal function."
 
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-backlinks)
-
-(defun cashpw/org-hugo--set-gallery-item-citation ()
-  "Based on `citar-org-roam-ref-add."
-  (interactive)
-  (let ((citation (with-temp-buffer (org-cite-insert nil)
-                                    (buffer-string))))
-    (org-set-property "CITATION" citation)))
-
-(defun cashpw/org-roam--export-gallery (backend)
-  "Transform a list of headings into a list of files compatible with {{< gallery >}}.
-
-Only run when BACKEND is `'hugo'."
-  (when (and (org-roam-file-p)
-             (equal backend 'hugo))
-    (let ((gallery-tag "gallery")
-          (org-use-tag-inheritance nil))
-      (save-excursion
-        (goto-char (point-min))
-        (org-map-entries
-         (lambda ()
-           (let* ((sub-heading-level (1+ (org-outline-level)))
-                  (match (s-lex-format "LEVEL=${sub-heading-level}"))
-                  ;; Speed up `org-entry-properties' (see `org-map-entries')
-                  (org-trust-scanner-tags t)
-                  (image-lines '()))
-             (org-narrow-to-subtree)
-             (org-map-entries
-              (lambda ()
-                (let* ((file (org-entry-get nil "ITEM"))
-                       (citation-property-name "CITATION")
-                       (citation-key (when-let ((citation-property-alist (org-entry-properties nil citation-property-name)))
-                                       (replace-regexp-in-string "\\[cite.*:@\\([^;]*\\)\\(;\\)?.*\\]"
-                                                                 "\\1"
-                                                                 (cdr (assoc citation-property-name
-                                                                             citation-property-alist)))))
-                       (citar-entry (citar-get-entry citation-key))
-                       (attr (cdr (assoc "author" citar-entry)))
-                       (attrlink (cdr (assoc "url" citar-entry)))
-                       (attr-html (concat
-                                   "#+ATTR_HTML: "
-                                   (cond
-                                    ((and attr attrlink)
-                                     (s-lex-format " :attr ${attr} :attrlink ${attrlink}"))
-                                    (attr
-                                     (s-lex-format " :attr ${attr}"))
-                                    (t
-                                     ""))))
-                       (line (s-lex-format "
-${attr-html}
-${file}
-")))
-                  (push line
-                        image-lines)
-                  ))
-              match
-              'tree)
-             (end-of-line)
-             (newline)
-             (delete-region (point) (point-max))
-             (newline)
-             (insert "#+BEGIN_HUGOGALLERY")
-             (newline)
-             (insert (s-join "" (nreverse image-lines)))
-             (insert "#+END_HUGOGALLERY")
-             (newline)
-             (widen)))
-         gallery-tag)))))
-
-(add-hook! 'org-export-before-processing-hook
-           'cashpw/org-roam--export-gallery)
 
 (after! doct-org-roam
   (setq
@@ -5837,6 +5880,20 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 (use-package! deflink)
 
+(defun cashpw/org-link--decompose (link-string)
+  "Return plist with link and description of LINK-STRING."
+  (string-match "\\[\\[\\(.*\\)\\]\\[\\(.*\\)\\]\\]" link-string)
+  `(:link ,(match-string 1 link-string)
+    :description ,(match-string 2 link-string)))
+
+(defun cashpw/org-link--get-link (link-string)
+  "Extract link from LINK-STRING."
+  (plist-get (cashpw/org-link--decompose link-string) :link))
+
+(defun cashpw/org-link--get-description (link-string)
+  "Extract description from LINK-STRING."
+  (plist-get (cashpw/org-link--decompose link-string) :description))
+
 (deflink "amazon"
          "https://amazon.com/dp/%s")
 
@@ -6496,6 +6553,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     :n "d" #'org-download-delete
     :n "e" #'org-download-edit
     :n "i" #'org-download-image
+    :n "g" #'org-gallery--add-image
     :n "r" #'org-download-rename-at-point
     :n "s" #'org-download-screenshot
     :n "y" #'org-download-yank)

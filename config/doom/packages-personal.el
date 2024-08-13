@@ -169,6 +169,10 @@
            :branch "feat/classes"
            :files (:defaults "awk" "demo.org")))
 
+(package! org-gallery
+  :recipe (:host github
+           :repo "cashpw/org-gallery"))
+
 (unpin! org-gcal)
 
 (package! org-multi-clock
