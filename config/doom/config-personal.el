@@ -1757,14 +1757,13 @@ the AWK command and directories are not supported."
       :input
       (concat
        (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
-       "*"))))))
+       "*.org"))))))
 
-(when (cashpw/machine-p 'personal-phone)
-  (after!
-    org-fc
-    (advice-add
-     'org-fc-awk-index-files
-     :override 'cashpw/org-fc-awk-index-files)))
+(after!
+  org-fc
+  (advice-add
+   'org-fc-awk-index-files
+   :override 'cashpw/org-fc-awk-index-files))
 
 (defcustom cashpw/org-fc--one-per-file-exceptions
   '()
@@ -1979,7 +1978,8 @@ Only parent headings of the current heading remain visible."
     (org-show-set-visibility org-fc-narrow-visibility)
     (if (member "noheading" tags) (org-fc-hide-heading))))
 
-(use-package! org-gallery
+(use-package!
+    org-gallery
   :after (:all org org-download)
   :config
   (defun cashpw/org-download-image--no-insert (image-url)
@@ -2002,46 +2002,61 @@ Only parent headings of the current heading remain visible."
        ;; Based on `org-download-link-format-function-default'
        (if (and (>= (string-to-number org-version) 9.3)
                 (eq org-download-method 'attach))
-           (format "[[attachment:%s][%s]]"
+           (format "[[attachment:%s]%s]"
                    (org-link-escape
-                    (file-relative-name org-download-path-last-file (org-attach-dir)))
-                   title)
-         (format
-          "[[file:%s][%s]]"
-          (org-link-escape
-           (funcall org-download-abbreviate-filename-function org-download-path-last-file))
-          title)))
+                    (file-relative-name org-download-path-last-file
+                                        (org-attach-dir)))
+                   (if (not (string-empty-p title))
+                       (format "[%s]" title)
+                     ""))
+         (format "[[file:%s]%s]"
+                 (org-link-escape
+                  (funcall org-download-abbreviate-filename-function
+                           org-download-path-last-file))
+
+                 (if (not (string-empty-p title))
+                     (format "[%s]" title)
+                   ""))))
       (newline)
       (insert description)
       (org-node-put-created)
       (org-set-property (org-gallery--image-prop-source) image-url))))
 
-(defun cashpw/org-gcal--get-access-token (&rest r)
-  "Call `org-gcal--get-access-token' for the first calendar in the list."
-  (org-gcal--get-access-token (car (car org-gcal-file-alist))))
+(defvar cashpw/org-gcal--access-tokens (make-hash-table :test #'equal))
 
-(defun cashpw/org-gcal--reset-access-token (&rest r)
+(defun cashpw/org-gcal--clear-access-tokens (&rest r)
   "Call `org-gcal--get-access-token' for the first calendar in the list."
-  (setq org-gcal--access-token nil))
+  (clrhash cashpw/org-gcal--access-tokens))
 
 (defvar org-gcal--access-token nil
   "Set if a sync function is running.")
 
+(defun cashpw/org-gcal--cache-access-tokens (&rest r)
+  "Cache access tokens for all calendars."
+  (let ((calendar-ids (-uniq (mapcar #'car org-gcal-file-alist))))
+    (dolist (calendar-id calendar-ids)
+      (cashpw/org-gcal--get-access-token calendar-id))))
+
 (defun cashpw/org-gcal--get-access-token (calendar-id)
   "Return the access token for CALENDAR-ID."
-  (unless org-gcal--access-token
-    (setq org-gcal--access-token
-          (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))))
-  org-gcal--access-token)
+  (let ((cached-access-token
+         (gethash calendar-id cashpw/org-gcal--access-tokens)))
+    (unless cached-access-token
+      (puthash
+       calendar-id
+       (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))
+       cashpw/org-gcal--access-tokens))
+    (gethash calendar-id cashpw/org-gcal--access-tokens)))
 
 
 (after!
   org-gcal
+  (advice-add
+   'org-gcal--get-access-token
+   :override #'cashpw/org-gcal--get-access-token)
 
-  (advice-add 'org-gcal--get-access-token :override #'cashpw/org-gcal--get-access-token)
-
-  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--get-access-token)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--reset-access-token))
+  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--cache-access-tokens)
+  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--clear-access-tokens))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
@@ -2743,7 +2758,7 @@ Return nil if no attendee exists with that EMAIL."
   :after org-roam
   :hook ((org-mode . org-node-cache-mode))
   :custom
-  (org-node-creation-fn #'org-node-new-by-roam-capture)
+  (org-node-creation-fn #'org-node-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn
@@ -3370,34 +3385,45 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    (lambda ()
      (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
 
-(after! doct-org-roam
-  (setq
-   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
-   ;; and specifying the tag with a variable, because this didn't produce the right output.
-   ;; I didn't have time to dive in an understand why.
-   org-roam-capture-templates (doct-org-roam `((:group "org-roam"
-                                                :type plain
-                                                :template "%?"
-                                                :file "${slug}.org"
-                                                :unnarrowed t
-                                                :children (("Concept"
-                                                            :keys "c"
-                                                            :head ("#+title: ${title}
+(after!
+ doct-org-roam
+ (setq
+  ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+  ;; and specifying the tag with a variable, because this didn't produce the right output.
+  ;; I didn't have time to dive in an understand why.
+  org-roam-capture-templates
+  (doct-org-roam
+   `((:group
+      "org-roam"
+      :type plain
+      :template "%?"
+      :file "${slug}.org"
+      :unnarrowed t
+      :children
+      (("Concept"
+        :keys "c"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:"))
-                                                           ("On X"
-                                                            :keys "o"
-                                                            :head ("#+title: ${title}
+       ("On X"
+        :keys "o"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
-                                                           ("Project"
-                                                            :keys "P"
-                                                            :file "proj--${slug}.org"
-                                                            :head ("#+title: ${title}
+       ("Project"
+        :keys "P"
+        :file "proj--${slug}.org"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :project:private:
@@ -3405,9 +3431,35 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 * Notes
 * Questions
 * PROJ ${title}"))
-                                                           ("Person"
-                                                            :keys "p"
-                                                            :head ("#+title: ${title}
+       ("Person"
+        :keys "p"
+        :head
+        (
+         "#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :person:
+* Flashcards :noexport:"))
+
+
+       ("Photographer"
+        :keys "h"
+        :head
+        (
+         "#+title: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :person:
+
+A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
+* TODO [#2] Add photos :noexport:
+* Flashcards :noexport:"))
+
+       ("Friend (person)"
+        :keys "f"
+        :head
+        (
+         "#+title: ${title}
 #+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
@@ -3418,23 +3470,28 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 * Gifts
 * Events
 * Reminders
-* Notes
-"))
-                                                           ("Verse"
-                                                            :keys "v"
-                                                            :head ("#+title: ${title}
+* Notes"))
+       ("Verse"
+        :keys "v"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :verse:"))
-                                                           ("Quote"
-                                                            :keys "u"
-                                                            :head ("#+title: ${title}
+       ("Quote"
+        :keys "u"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :quote:"))
-                                                           ("Recipe"
-                                                            :keys "r"
-                                                            :head ("#+title: ${title}
+       ("Recipe"
+        :keys "r"
+        :head
+        (
+         "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :recipe:
@@ -5916,7 +5973,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
    ;; Prefer IDs to filenames+headers when creating links.
    ;; Headers can change, filenames can change, the IDs won't change
    ;; and can move to follow the relevant content.
-   org-id-link-to-org-use-id t))
+   org-id-link-to-org-use-id 'use-existing))
 
 (use-package! deflink)
 
@@ -5962,8 +6019,7 @@ All args are passed to `org-roam-node-read'."
 (deflink
  "instagram"
  "https://instagram.com/%s"
- ;; (lambda (link _) (concat "@" link))
- )
+ (lambda (link _) (concat "@" link)))
 
 (deflink "isbn"
          "https://books.google.com/books?vid=ISBN/%s")
@@ -6590,16 +6646,25 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
                               :desc "08:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:45"))
                               :desc "09:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:45")))))
 
-   (:prefix ("D")
+   (:prefix ("D" . "Download")
     :n "R" #'org-download-rename-last-file
     :n "c" #'org-download-clipboard
     :n "d" #'org-download-delete
     :n "e" #'org-download-edit
     :n "i" #'org-download-image
-    :n "g" #'org-gallery--add-image
+    :n "g" #'cashpw/org-gallery--add-image
     :n "r" #'org-download-rename-at-point
     :n "s" #'org-download-screenshot
     :n "y" #'org-download-yank)
+
+   (:prefix ("E" . "Emphasis")
+    :n "*" (cmd! (org-emphasize ?*))
+    :n "/" (cmd! (org-emphasize ?/))
+    :n "+" (cmd! (org-emphasize ?+))
+    :n "~" (cmd! (org-emphasize ?~))
+    :n "_" (cmd! (org-emphasize ?_))
+    :n "=" (cmd! (org-emphasize ?=)))
+
    (:prefix ("l")
             (:prefix ("T" . "transclusion")
              :n "a" #'org-transclusion-add
@@ -6871,7 +6936,11 @@ Reference:https://stackoverflow.com/q/23622296"
           (join-line)
           (evil-next-line))
         (evil-next-line)
-        (evil-next-line)))))
+        (evil-next-line))
+
+      ;; Join line-break-hyphenated words (for example: "back- ground")
+      (goto-char 0)
+      (replace-regexp "\\([A-Za-z]\\)- \\([A-Za-z]\\)" "\\1\\2"))))
 
 (defun cashpw/foo ()
   (interactive)
