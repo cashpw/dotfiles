@@ -235,6 +235,8 @@
 
 (package! vulpea)
 
+(package! org-modern)
+
 (package! deflink
   :recipe (:host github
            :repo "cashpw/deflink"))

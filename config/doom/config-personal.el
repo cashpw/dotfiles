@@ -3329,8 +3329,15 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
 
   (setq
-   org-ellipsis " ▼"
+   org-auto-align-tags nil
+   org-pretty-entities t
+   org-ellipsis "…"
    org-hide-leading-stars t))
+
+(use-package! org-modern
+  :after org
+  :config
+  (global-org-modern-mode))
 
 (after! org-roam
   ;; Override to only replace if it's a roam link.

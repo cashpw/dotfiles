@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-26 Mon 07:17]
+:LAST_MODIFIED: [2024-08-26 Mon 21:25]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -5477,10 +5477,30 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
 
   (setq
-   org-ellipsis " ▼"
+   org-auto-align-tags nil
+   org-pretty-entities t
+   org-ellipsis "…"
    org-hide-leading-stars t))
 #+end_src
 
+**** =org-modern=
+
+A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]]. See [[github:doomemacs/doomemacs/issues/6434][Replace most of org +pretty feature with org-modern]] and [[github:doomemacs/themes/issues/709][Support org-modern]]
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-modern)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-modern
+  :after org
+  :config
+  (global-org-modern-mode))
+#+end_src
 
 *** Notes
 **** Roam (=org-roam=)
