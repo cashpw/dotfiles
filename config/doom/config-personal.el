@@ -651,11 +651,23 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                             :src_block_end "«"
                             :quote         "“"
                             :quote_end     "”"
+
+                            ;; Typography
+                            ;; :list_property "∷"
+                            ;; :em_dash       "—"
+                            ;; :ellipses      "…"
+                            ;; :arrow_right   "→"
+                            ;; :arrow_left    "←"
+                            ;; :arrow_lr      "↔"
+                            ;; :properties    "⚙"
+                            ;; :end           "∎"
+
                             ;; Functional
                             :lambda        "λ"
                             :def           "ƒ"
                             :composition   "∘"
                             :map           "↦"
+
                             ;; Types
                             :null          "∅"
                             :true          "𝕥"
@@ -667,6 +679,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                             :str           "S"
                             :bool          "𝔹"
                             :list          "L"
+
                             ;; Flow
                             ;; :not           "￢"
                             :not           "¬"
@@ -678,6 +691,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                             :some          "∃"
                             :return        "⟼"
                             :yield         "⟻"
+
                             ;; Other
                             ;; :union         "⋃"
                             :union         "∪"
@@ -686,6 +700,14 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                             :tuple         "⨂"
                             :pipe          "" ;; FIXME: find a non-private char
                             :dot           "•"))
+
+;; (defadvice! +org-init-appearance-h--no-ligatures-a ()
+;;   :after #'+org-init-appearance-h
+;;   (set-ligatures! 'org-mode nil)
+;;   (set-ligatures! 'org-mode
+;;     :list_property "::"
+;;     :em_dash       "---"
+;;     :ellipsis      "..."))
 
 (setq
  cashpw/indent-level 2)

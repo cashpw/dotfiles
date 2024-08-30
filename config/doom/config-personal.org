@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-26 Mon 21:25]
+:LAST_MODIFIED: [2024-08-28 Wed 09:01]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1189,7 +1189,8 @@ hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
 ;;hydra
 indent-guides     ; highlighted indent columns
 (ligatures         ; ligatures and symbols to make your code pretty again
- +extra)
+ +extra
+ +fira)
 ;;minimap           ; show a map of the code on the side
 modeline            ; snazzy, Atom-inspired modeline, plus API
 ;;nav-flash         ; blink cursor line after big motions
@@ -1544,11 +1545,23 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
                             :src_block_end "«"
                             :quote         "“"
                             :quote_end     "”"
+
+                            ;; Typography
+                            ;; :list_property "∷"
+                            ;; :em_dash       "—"
+                            ;; :ellipses      "…"
+                            ;; :arrow_right   "→"
+                            ;; :arrow_left    "←"
+                            ;; :arrow_lr      "↔"
+                            ;; :properties    "⚙"
+                            ;; :end           "∎"
+
                             ;; Functional
                             :lambda        "λ"
                             :def           "ƒ"
                             :composition   "∘"
                             :map           "↦"
+
                             ;; Types
                             :null          "∅"
                             :true          "𝕥"
@@ -1560,6 +1573,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
                             :str           "S"
                             :bool          "𝔹"
                             :list          "L"
+
                             ;; Flow
                             ;; :not           "￢"
                             :not           "¬"
@@ -1571,6 +1585,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
                             :some          "∃"
                             :return        "⟼"
                             :yield         "⟻"
+
                             ;; Other
                             ;; :union         "⋃"
                             :union         "∪"
@@ -1579,6 +1594,14 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
                             :tuple         "⨂"
                             :pipe          "" ;; FIXME: find a non-private char
                             :dot           "•"))
+
+;; (defadvice! +org-init-appearance-h--no-ligatures-a ()
+;;   :after #'+org-init-appearance-h
+;;   (set-ligatures! 'org-mode nil)
+;;   (set-ligatures! 'org-mode
+;;     :list_property "::"
+;;     :em_dash       "---"
+;;     :ellipsis      "..."))
 #+end_src
 
 ** Indentation
@@ -8357,13 +8380,14 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
        :template "* %a :website:\n\n%U %?\n\n%:initial")
       (:group
        "Todo"
-       :file cashpw/path--personal-todos
        :children
        (("Todo"
          :keys "t"
          :children
-         (("Todo"
+         (
+          ("Todo"
            :keys "t"
+           :file cashpw/path--personal-todos
            :before-finalize
            (lambda ()
              (cashpw/org--prompt-for-priority-when-missing)
@@ -8376,8 +8400,13 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
                (org-set-effort))
              (cashpw/org--prompt-for-category-when-missing))
            :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+          ("Roam"
+           :keys "r"
+           :file (lambda () (concat cashpw/path--notes-dir "/todos-roam.org"))
+           :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
           ("Email"
            :keys "e"
+           :file cashpw/path--personal-todos
            :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
            (("Email"
