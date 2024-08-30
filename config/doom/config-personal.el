@@ -3356,10 +3356,54 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-ellipsis "…"
    org-hide-leading-stars t))
 
-(use-package! org-modern
+(use-package!
+    org-modern
   :after org
-  :config
-  (global-org-modern-mode))
+  :custom
+  (org-modern-todo-faces
+   '(("INPROGRESS" .
+      (:weight
+       semi-bold
+       :foreground "orange"
+       :background "black"
+       :inverse-video t))))
+  (org-modern-priority-faces
+   '((?0
+      .
+      (:weight
+       semi-bold
+       :foreground "firebrick"
+       :background "white"
+       :inverse-video t))
+     (?1
+      .
+      (:weight
+       semi-bold
+       :foreground "gray100"
+       :background "black"
+       :inverse-video t))
+     (?2
+      .
+      (:weight
+       semi-bold
+       :foreground "gray80"
+       :background "black"
+       :inverse-video t))
+     (?3
+      .
+      (:weight
+       semi-bold
+       :foreground "gray65"
+       :background "black"
+       :inverse-video t))
+     (?4
+      .
+      (:weight
+       semi-bold
+       :foreground "gray60"
+       :background "black"
+       :inverse-video t))))
+  :config (global-org-modern-mode))
 
 (after! org-roam
   ;; Override to only replace if it's a roam link.

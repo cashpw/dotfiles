@@ -5519,10 +5519,54 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! org-modern
+(use-package!
+    org-modern
   :after org
-  :config
-  (global-org-modern-mode))
+  :custom
+  (org-modern-todo-faces
+   '(("INPROGRESS" .
+      (:weight
+       semi-bold
+       :foreground "orange"
+       :background "black"
+       :inverse-video t))))
+  (org-modern-priority-faces
+   '((?0
+      .
+      (:weight
+       semi-bold
+       :foreground "firebrick"
+       :background "white"
+       :inverse-video t))
+     (?1
+      .
+      (:weight
+       semi-bold
+       :foreground "gray100"
+       :background "black"
+       :inverse-video t))
+     (?2
+      .
+      (:weight
+       semi-bold
+       :foreground "gray80"
+       :background "black"
+       :inverse-video t))
+     (?3
+      .
+      (:weight
+       semi-bold
+       :foreground "gray65"
+       :background "black"
+       :inverse-video t))
+     (?4
+      .
+      (:weight
+       semi-bold
+       :foreground "gray60"
+       :background "black"
+       :inverse-video t))))
+  :config (global-org-modern-mode))
 #+end_src
 
 *** Notes
@@ -7806,7 +7850,7 @@ See `org-clock-special-range' for KEY."
 
 ***** Priorities
 
-I use a numeric scale for priorities rather than the default =A= through =C=.
+I use a numeric scale for priorities rather than the default alphabetic.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org
