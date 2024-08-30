@@ -142,10 +142,6 @@
   :recipe (:host github
            :repo "cashpw/org-roam-contacts"))
 
-(package! citar-org-roam
-  :recipe (:host github
-           :repo "emacs-citar/citar-org-roam"))
-
 (package! clocktable-by-category
   :recipe (:host github
            :repo "cashpw/clocktable-by-category"))

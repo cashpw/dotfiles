@@ -5908,13 +5908,14 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
        :template "* %a :website:\n\n%U %?\n\n%:initial")
       (:group
        "Todo"
-       :file cashpw/path--personal-todos
        :children
        (("Todo"
          :keys "t"
          :children
-         (("Todo"
+         (
+          ("Todo"
            :keys "t"
+           :file cashpw/path--personal-todos
            :before-finalize
            (lambda ()
              (cashpw/org--prompt-for-priority-when-missing)
@@ -5927,8 +5928,13 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
                (org-set-effort))
              (cashpw/org--prompt-for-category-when-missing))
            :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+          ("Roam"
+           :keys "r"
+           :file (lambda () (concat cashpw/path--notes-dir "/todos-roam.org"))
+           :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
           ("Email"
            :keys "e"
+           :file cashpw/path--personal-todos
            :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
            (("Email"
@@ -6602,7 +6608,7 @@ Reference: https://superuser.com/a/604264"
                                         cashpw/path--home-dir)
  cashpw/bibliographies `(,cashpw/path--roam-bibliography))
 
-(use-package! citar
+(after! citar
   :when (modulep! :completion vertico)
   :config
   (setq
@@ -6612,6 +6618,7 @@ Reference: https://superuser.com/a/604264"
                    (link ,(nerd-icons-octicon "nf-oct-link" :face 'nerd-icons-orange :v-adjust 0.01) . " "))
    citar-symbol-separator "  "
    citar-notes-paths `(,cashpw/path--notes-dir))
+
   (defun cashpw/citar-full-names (names)
     "Transform names like LastName, FirstName to FirstName LastName.
 
@@ -6627,12 +6634,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
   (setq citar-display-transform-functions
         '((("author" "editor") . cashpw/citar-full-names))))
 
-(use-package! citar-org)
-
-;; (use-package! citar-org-roam
-;;   :after citar org-roam
-;;   :no-require
-;;   :config (citar-org-roam-mode))
+;; (use-package! citar-org)
 
 (use-package! oc
   :after org citar
