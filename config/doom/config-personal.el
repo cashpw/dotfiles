@@ -2070,7 +2070,6 @@ Only parent headings of the current heading remain visible."
        cashpw/org-gcal--access-tokens))
     (gethash calendar-id cashpw/org-gcal--access-tokens)))
 
-
 (after!
   org-gcal
   (advice-add
@@ -3359,9 +3358,19 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 (use-package!
     org-modern
   :after org
-  :custom
+  :custom (org-modern-horizontal-rule "──────────")
+  (org-modern-list
+   '((?+ . "•")
+     (?- . "•")
+     (?* . "•")))
   (org-modern-todo-faces
-   '(("INPROGRESS" .
+   '(("PROJ" .
+      (:weight
+       semi-bold
+       :foreground "DarkGoldenrod3"
+       :background "black"
+       :inverse-video t))
+     ("INPROGRESS" .
       (:weight
        semi-bold
        :foreground "orange"
@@ -3403,7 +3412,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
        :foreground "gray60"
        :background "black"
        :inverse-video t))))
-  :config (global-org-modern-mode))
+  :config
+  ;; (set-face-attribute 'org-modern-horizontal-rule nil :strike-through "gray70")
+  (global-org-modern-mode))
 
 (after! org-roam
   ;; Override to only replace if it's a roam link.

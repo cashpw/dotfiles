@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-08-30 Fri 15:32]
+:LAST_MODIFIED: [2024-08-31 Sat 08:12]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3672,7 +3672,6 @@ Solutions:
        cashpw/org-gcal--access-tokens))
     (gethash calendar-id cashpw/org-gcal--access-tokens)))
 
-
 (after!
   org-gcal
   (advice-add
@@ -5516,9 +5515,19 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
 (use-package!
     org-modern
   :after org
-  :custom
+  :custom (org-modern-horizontal-rule "──────────")
+  (org-modern-list
+   '((?+ . "•")
+     (?- . "•")
+     (?* . "•")))
   (org-modern-todo-faces
-   '(("INPROGRESS" .
+   '(("PROJ" .
+      (:weight
+       semi-bold
+       :foreground "DarkGoldenrod3"
+       :background "black"
+       :inverse-video t))
+     ("INPROGRESS" .
       (:weight
        semi-bold
        :foreground "orange"
@@ -5560,7 +5569,9 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
        :foreground "gray60"
        :background "black"
        :inverse-video t))))
-  :config (global-org-modern-mode))
+  :config
+  ;; (set-face-attribute 'org-modern-horizontal-rule nil :strike-through "gray70")
+  (global-org-modern-mode))
 #+end_src
 
 *** Notes
