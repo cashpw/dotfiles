@@ -3367,7 +3367,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    '(("PROJ" .
       (:weight
        semi-bold
-       :foreground "DarkGoldenrod3"
+       :foreground "dark gray"
        :background "black"
        :inverse-video t))
      ("INPROGRESS" .

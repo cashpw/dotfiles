@@ -2806,6 +2806,10 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 (unpin! org-contrib)
 #+end_src
 
+#+begin_src emacs-lisp :tangle packages-personal.el
+(add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
+#+end_src
+
 *** Modules
 :PROPERTIES:
 :ID:       91380f2e-823f-4ad0-9e14-617a021d86a3
@@ -5524,7 +5528,7 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
    '(("PROJ" .
       (:weight
        semi-bold
-       :foreground "DarkGoldenrod3"
+       :foreground "dark gray"
        :background "black"
        :inverse-video t))
      ("INPROGRESS" .
