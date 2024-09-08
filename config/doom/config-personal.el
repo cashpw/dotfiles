@@ -3429,6 +3429,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
           (org-roam-link-replace-at-point)))))
   (advice-add 'org-roam-link-replace-all :override 'cashpw/org-roam-link-replace-all)
 
+  ;; Disabling for now in favor of org-node. I don't use this for much outside of the org-roam-buffer.
+  (advice-add 'org-roam-db-sync :override 'ignore)
+
   (setq
    org-roam-db-update-on-save nil)
 
