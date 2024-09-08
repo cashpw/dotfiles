@@ -254,3 +254,7 @@
 ;; (package! org-window-habit
 ;;   :recipe (:host github
 ;;            :repo "colonelpanic8/org-window-habit"))
+
+(package! font-lock-profiler
+  :recipe (:host github
+           :repo "Lindydancer/font-lock-profiler"))

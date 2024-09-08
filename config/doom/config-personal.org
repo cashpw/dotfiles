@@ -10185,6 +10185,19 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 #+RESULTS:
 : cashpw/select-from-scheduled-for-today-and-go-to
 
+** =font-lock-profiler=
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! font-lock-profiler
+  :recipe (:host github
+           :repo "Lindydancer/font-lock-profiler"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! font-lock-profiler)
+#+end_src
+
+
 * Wishlist
 :PROPERTIES:
 :ID:       c7bb88c8-96bc-4269-bc3a-4fa820030a58

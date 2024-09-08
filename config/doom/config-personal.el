@@ -7134,3 +7134,5 @@ Reference:https://stackoverflow.com/q/23622296"
     (let ((marker (cashpw/select-marker-from-alist label-to-marker-alist)))
       (switch-to-buffer (marker-buffer marker))
       (goto-char marker))))
+
+(use-package! font-lock-profiler)
