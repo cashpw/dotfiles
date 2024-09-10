@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-09-10 Tue 09:36]
+:LAST_MODIFIED: [2024-09-10 Tue 16:43]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2337,38 +2337,38 @@ https://pandoc.org/
   "Source control."
   :group 'cashpw)
 
-(defcustom cashpw/source-control--commit-categories '(("Fix" . (:emoji "🐛"
-                                                                :gitmoji ":bug:"))
-                                                      ("UI" . (:emoji "💄"
-                                                               :gitmoji ":lipstick:"))
-                                                      ("UX" . (:emoji "💄"
-                                                               :gitmoji ":lipstick:"))
-                                                      ("Add" . (:emoji "✨"
-                                                                :gitmoji ":sparkles:"))
-                                                      ("Feature" . (:emoji "✨"
-                                                                    :gitmoji ":sparkles:"))
-                                                      ("Document" . (:emoji "📝"
-                                                                     :gitmoji ":memo:"))
-                                                      ("Typo" . (:emoji "✏️"
-                                                                 :gitmoji ":pencil2:"))
-                                                      ("Refactor" . (:emoji "♻"
-                                                                     :gitmoji ":recycle:"))
-                                                      ("Rollout" . (:emoji "🚀"
-                                                                    :gitmoji ":rocket:"))
-                                                      ("Launch" . (:emoji "🚀"
-                                                                   :gitmoji ":rocket:"))
-                                                      ("Version" . (:emoji "🔖"
-                                                                    :gitmoji ":bookmark:"))
-                                                      ("Release" . (:emoji "🔖"
-                                                                    :gitmoji ":bookmark:"))
-                                                      ("Deploy" . (:emoji "🚀"
-                                                                   :gitmoji ":rocket:"))
-                                                      ("Delete" . (:emoji "🔥"
-                                                                   :gitmoji ":fire:"))
-                                                      ("Remove" . (:emoji "🔥"
-                                                                   :gitmoji ":fire:"))
-                                                      ("Test" . (:emoji "✅"
-                                                                 :gitmoji ":white_check_mark:")))
+(defcustom cashpw/source-control--commit-categories '(("Fix" . (:symbol "🐛"
+                                                                :shortcode ":bug:"))
+                                                      ("UI" . (:symbol "💄"
+                                                               :shortcode ":lipstick:"))
+                                                      ("UX" . (:symbol "💄"
+                                                               :shortcode ":lipstick:"))
+                                                      ("Add" . (:symbol "✨"
+                                                                :shortcode ":sparkles:"))
+                                                      ("Feature" . (:symbol "✨"
+                                                                    :shortcode ":sparkles:"))
+                                                      ("Document" . (:symbol "📝"
+                                                                     :shortcode ":memo:"))
+                                                      ("Typo" . (:symbol "✏️"
+                                                                 :shortcode ":pencil2:"))
+                                                      ("Refactor" . (:symbol "♻"
+                                                                     :shortcode ":recycle:"))
+                                                      ("Rollout" . (:symbol "🚀"
+                                                                    :shortcode ":rocket:"))
+                                                      ("Launch" . (:symbol "🚀"
+                                                                   :shortcode ":rocket:"))
+                                                      ("Version" . (:symbol "🔖"
+                                                                    :shortcode ":bookmark:"))
+                                                      ("Release" . (:symbol "🔖"
+                                                                    :shortcode ":bookmark:"))
+                                                      ("Deploy" . (:symbol "🚀"
+                                                                   :shortcode ":rocket:"))
+                                                      ("Delete" . (:symbol "🔥"
+                                                                   :shortcode ":fire:"))
+                                                      ("Remove" . (:symbol "🔥"
+                                                                   :shortcode ":fire:"))
+                                                      ("Test" . (:symbol "✅"
+                                                                 :shortcode ":white_check_mark:")))
   "Alist of commit categories and extras."
   :group 'cashpw/source-control
   :type 'string)
@@ -2393,13 +2393,13 @@ ${content}"))
 (defun cashpw/source-control--commit--build-message ()
   "Return commit message template."
   (let* ((category (cashpw/source-control--read-commit-category))
-         (emoji (plist-get (cdr category) :gitmoji))
+         (emoji (plist-get (cdr category) :symbol))
          ;; (what-section (cashpw/source-control--commit--section "What does this change?"
          ;;                                                       "1. TODO"))
          ;; (why-section (cashpw/source-control--commit--section "Why make these changes?"
          ;;                                                      "TODO"))
          )
-    (s-lex-format "${emoji}: ")))
+    (s-lex-format "${emoji} ")))
 
 (defun cashpw/source-control--commit--insert-message ()
   "Insert my commit message template."
