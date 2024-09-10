@@ -1,12 +1,15 @@
 #!/usr/bin/env sh
-# Commit, if necessary, and push notes.
+#
+# 1. Commit, if necessary
+# 2. Pull
+# 3. Push
 
 set -e
 
 cd ~/proj/notes
 
 if [ -n "$(git diff --exit-code)" ]; then
-    echo "Cannot push with uncommitted changes. Please specify a commit message."
+    echo "There are uncommitted changes. Please specify a commit message."
 
     read -p "(f)lashcards, (j)ournal, or (c)ustom: " choice
     case $choice in
@@ -17,4 +20,4 @@ if [ -n "$(git diff --exit-code)" ]; then
     esac
 fi
 
-git push
+git pull && git push
