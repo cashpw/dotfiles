@@ -19,6 +19,8 @@ polybar-msg cmd quit
 echo "---" | tee -a /tmp/polybar1.log
 if is_work_desktop; then
   polybar desktop 2>&1 | tee -a /tmp/polybar1.log & disown
+elif is_work_laptop; then
+  polybar laptop 2>&1 | tee -a /tmp/polybar1.log & disown
 fi
 
 echo "Bars launched..."
