@@ -2780,7 +2780,7 @@ Return nil if no attendee exists with that EMAIL."
   :hook ((org-mode . org-node-cache-mode))
   :custom
   (org-node-creation-fn #'org-node-new-via-roam-capture)
-  (org-node-slug-fn #'org-node-slugify-like-roam)
+  (org-node-slug-fn #'org-node-slugify-like-roam-actual)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn
    (lambda (node)
@@ -2840,6 +2840,15 @@ Return nil if no attendee exists with that EMAIL."
   ;;        ;; of lower priority to run.
   ;;        :exclusive 'no))))
   ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
+  )
+
+(use-package! org-node-fakeroam
+  :after (:all org-roam org-node)
+  :config
+  (org-roam-db-autosync-mode 0)
+  (org-node-fakeroam-jit-backlinks-mode) ;; no use roam db to build buffer
+  (org-node-fakeroam-fast-render-mode) ;; build the buffer fast
+  (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 
 ;; (use-package! org-special-block-extras
@@ -3338,6 +3347,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;(cashpw/org-agenda-files--update))
 
 (setq
+  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
@@ -3433,7 +3443,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   (advice-add 'org-roam-db-sync :override 'ignore)
 
   (setq
-   org-roam-db-update-on-save nil)
+   org-roam-db-update-on-save nil
+   org-roam-link-auto-replace nil)
 
   ;; Deprecated in favor of =org-node='s cache.
   ;; Sync when I'm away from keyoard.
@@ -6786,11 +6797,10 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashpw/org-noter-insert-selected-text-inside-note-content))
 
-(use-package! pdf-tools)
-
+(unless (cashpw/machine-p 'personal-phone)
 (use-package! pdf-tools
   :config
-  (pdf-tools-install))
+  (pdf-tools-install)))
 
 (use-package! protobuf-mode)
 

@@ -205,6 +205,9 @@
   :recipe (:host github
            :repo "meedstrom/org-node"))
 
+(package! org-node-fakeroam
+  :recipe (:host github :repo "meedstrom/org-node-fakeroam" :branch "melpa"))
+
 (package! org-roam-ui)
 
 ;; (package! org-special-block-extras)
@@ -238,8 +241,6 @@
 (package! deflink
   :recipe (:host github
            :repo "cashpw/deflink"))
-
-(package! pdf-tools)
 
 (package! protobuf-mode)
 

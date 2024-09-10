@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-09-10 Tue 08:13]
+:LAST_MODIFIED: [2024-09-10 Tue 09:36]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1303,7 +1303,7 @@ lookup              ; navigate your code and its documentation
 magit             ; a git porcelain for Emacs
 ;;make              ; run make tasks from Emacs
 ;;pass              ; password manager for nerds
-(:if (not (cashpw/machine-p 'personal-phone) pdf))               ; pdf enhancements
+(:if pdf               ; pdf enhancements
 ;;prodigy           ; FIXME managing external services & code builders
 ;;terraform         ; infrastructure as code
 ;;tmux              ; an API for interacting with tmux
@@ -4659,7 +4659,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
   :hook ((org-mode . org-node-cache-mode))
   :custom
   (org-node-creation-fn #'org-node-new-via-roam-capture)
-  (org-node-slug-fn #'org-node-slugify-like-roam)
+  (org-node-slug-fn #'org-node-slugify-like-roam-actual)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn
    (lambda (node)
@@ -4719,6 +4719,28 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
   ;;        ;; of lower priority to run.
   ;;        :exclusive 'no))))
   ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
+  )
+#+end_src
+
+**** =org-node-fakeroam=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-node-fakeroam
+  :recipe (:host github :repo "meedstrom/org-node-fakeroam" :branch "melpa"))
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-node-fakeroam
+  :after (:all org-roam org-node)
+  :config
+  (org-roam-db-autosync-mode 0)
+  (org-node-fakeroam-jit-backlinks-mode) ;; no use roam db to build buffer
+  (org-node-fakeroam-fast-render-mode) ;; build the buffer fast
+  (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 #+end_src
 
@@ -5482,6 +5504,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
+  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
@@ -5608,7 +5631,8 @@ Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
   (advice-add 'org-roam-db-sync :override 'ignore)
 
   (setq
-   org-roam-db-update-on-save nil)
+   org-roam-db-update-on-save nil
+   org-roam-link-auto-replace nil)
 
   ;; Deprecated in favor of =org-node='s cache.
   ;; Sync when I'm away from keyoard.
@@ -9426,30 +9450,17 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 ** TODO Portable Document Format (PDF)
 *** Packages
 **** =pdf-tools=
-
 ***** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! pdf-tools)
-#+end_src
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! pdf-tools)
-#+end_src
-**** =pdf-tools=
-***** Package
-DEADLINE: <2021-12-02 Thu 10:00> SCHEDULED: <2021-12-02 Thu>
 
 =pdf-tools= is provided by =init.el=.
 
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(unless (cashpw/machine-p 'personal-phone)
 (use-package! pdf-tools
   :config
-  (pdf-tools-install))
+  (pdf-tools-install)))
 #+end_src
 
 ** Protobuf
