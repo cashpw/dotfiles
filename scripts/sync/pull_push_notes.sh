@@ -11,6 +11,7 @@ cd ~/proj/notes
 if [ -n "$(git diff --exit-code)" ]; then
     echo "There are uncommitted changes. Please specify a commit message."
 
+    git add -A
     read -p "(f)lashcards, (j)ournal, or (c)ustom: " choice
     case $choice in
         f) git commit -m "Flashcards";;
