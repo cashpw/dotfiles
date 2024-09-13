@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-09-10 Tue 16:43]
+:LAST_MODIFIED: [2024-09-12 Thu 08:39]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -831,6 +831,15 @@ Doom Emacs provides =alert=.
   (:prefix ("d" . "agenDa")
    :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Gallery" :n "g" (cmd!
+                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
+                             (org-agenda nil ".gallery")
+                             (org-agenda-write gallery-view-path t)
+                             (org-agenda-quit)
+                             (with-temp-buffer
+                               (insert-file-contents gallery-view-path)
+                               (let ((default-directory cashpw/path--notes-dir))
+                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
    :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
@@ -865,10 +874,11 @@ Doom Emacs provides =alert=.
                                'follow-up
                                gptel-directives))))
   (:prefix ("o")
-           (:prefix ("n")
-            :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
-            :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-            :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+   :desc "Elfeed" :n "e" #'elfeed
+   (:prefix ("n")
+    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
+    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
@@ -1438,7 +1448,7 @@ calendar
 ;;emms
 everywhere
 ;;irc               ; how neckbeards socialize
-;;(rss +org)        ; emacs as an RSS reader
+(rss +org)        ; emacs as an RSS reader
 #+end_src
 
 *** Configuration
@@ -1678,6 +1688,30 @@ Passes arguments, including NEW-WINDOW, along."
 ;;   :config
 ;;   (w3m-display-mode 'tabbed-dedicated-frames))
 #+end_src
+** Image viewer
+*** =feh=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/feh-gallery (image-paths)
+  "Open a feh gallery of IMAGE-PATHS."
+  (shell-command (concat "feh "
+                         "--fullscreen "
+                         (string-join image-paths " "))))
+
+(defun cashpw/org-get-link-image-paths-in-buffer ()
+  "Return list of image paths from links in current buffer."
+  (org-element-map (org-element-parse-buffer) 'link
+    (lambda (link)
+      (when (string= (org-element-property :type link) "file")
+        (concat (cashpw/maybe-add-trailing-forward-slash default-directory)
+                (org-element-property :path link))))))
+
+(defun cashpw/feh-gallery-of-linked-images-in-buffer ()
+  "Open a feh gallery of all images in the current buffer."
+  (interactive)
+  (cashpw/feh-gallery (cashpw/org-get-link-image-paths-in-buffer)))
+#+end_src
+
 ** E-reader (epub)
 *** =nov.el= 
 
@@ -2328,6 +2362,29 @@ https://pandoc.org/
        ;; Remove :PROPERTIES: drawers beneath headings
        " | sed -E '/^[[:space:]]*:/d'")))
     (org-mode)))
+#+end_src
+
+** RSS
+
+*** =elfeed=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! elfeed
+  (setq
+   elfeed-db-directory cashpw/path--notes-dir))
+#+end_src
+
+*** =elfeed-org=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! elfeed-org
+  (setq
+   rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org")))
+  (map!
+   :map elfeed-search-mode-map
+   :n "u" #'elfeed-update
+   :nv "a" #'elfeed-search-untag-all-unread))
+
 #+end_src
 
 ** Source control
@@ -5244,6 +5301,52 @@ because it's slow."
                         (file-name-directory buffer-file-name))))
 #+end_src
 
+***** Update =has_gallery= tag
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode--buffer-has-gallery-p ()
+  "Return non-nil if current buffer has a heading tagged as a gallery entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     ":gallery:")))
+
+(defun cashpw/org-roam-update-has-gallery-tag ()
+  "Update :has-gallery: tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (cashpw/magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-gallery-p)
+            (setq tags (cons "has_gallery" tags))
+          (setq tags (remove "has_gallery" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+#+end_src
+
 **** Scheduling task for my calendar blocks
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -5504,7 +5607,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
-  org-id-locations-file-relative nil
+ org-image-max-width 600
+ org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
@@ -6248,15 +6352,16 @@ Optional:
 
 (defun cashpw/org-roam-before-save ()
   (when (vulpea-buffer-p)
-  (cashpw/org-roam-rewrite-smart-to-ascii)
-  ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
-  (cashpw/org-roam-add-bibliography)
-  (cashpw/org-roam-add-flashcards
-   "TODO"
-   2
-   ":noexport:")
-  (cashpw/org-roam-update-hastodo-tag)
-  ;; (cashpw/org-hugo-export-wim-to-md)
+    (cashpw/org-roam-rewrite-smart-to-ascii)
+    ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
+    (cashpw/org-roam-add-bibliography)
+    (cashpw/org-roam-add-flashcards
+     "TODO"
+     2
+     ":noexport:")
+    (cashpw/org-roam-update-hastodo-tag)
+    (cashpw/org-roam-update-has-gallery-tag)
+    ;; (cashpw/org-hugo-export-wim-to-md)
     ))
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -6752,6 +6857,7 @@ Intended for use with `org-super-agenda-groups'."
   (setq
    org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
                                 (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
+                                (".gallery" "Gallery" ,(cashpw/org-agenda-view--gallery))
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
@@ -7582,6 +7688,23 @@ Category | Scheduled | Effort
          (;; Toss all other todos
           :discard
           (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+***** Gallery
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--gallery ()
+  "Return custom agenda command."
+  `((tags
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 #+end_src
@@ -9499,7 +9622,6 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 #+end_src
 
 * File Management and Navigation
-
 ** =projectile=
 
 *** Known Projects
@@ -9586,7 +9708,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 (unless (cashpw/machine-p 'work-cloudtop)
   (after! projectile (cashpw/projectile-refresh-known-paths)))
 #+end_src
-
 * Key bindings
 * Bucket
 
@@ -10210,7 +10331,6 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! font-lock-profiler)
 #+end_src
-
 
 * Wishlist
 :PROPERTIES:
