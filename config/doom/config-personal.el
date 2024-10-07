@@ -463,6 +463,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (:prefix ("d" . "agenDa")
    :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Gallery" :n "g" (cmd!
+                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
+                             (org-agenda nil ".gallery")
+                             (org-agenda-write gallery-view-path t)
+                             (org-agenda-quit)
+                             (with-temp-buffer
+                               (insert-file-contents gallery-view-path)
+                               (let ((default-directory cashpw/path--notes-dir))
+                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
    :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
@@ -497,10 +506,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                'follow-up
                                gptel-directives))))
   (:prefix ("o")
-           (:prefix ("n")
-            :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
-            :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-            :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+   :desc "Elfeed" :n "e" #'elfeed
+   (:prefix ("n")
+    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
+    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
@@ -757,6 +767,25 @@ Passes arguments, including NEW-WINDOW, along."
 ;; (use-package! w3m
 ;;   :config
 ;;   (w3m-display-mode 'tabbed-dedicated-frames))
+
+(defun cashpw/feh-gallery (image-paths)
+  "Open a feh gallery of IMAGE-PATHS."
+  (shell-command (concat "feh "
+                         "--fullscreen "
+                         (string-join image-paths " "))))
+
+(defun cashpw/org-get-link-image-paths-in-buffer ()
+  "Return list of image paths from links in current buffer."
+  (org-element-map (org-element-parse-buffer) 'link
+    (lambda (link)
+      (when (string= (org-element-property :type link) "file")
+        (concat (cashpw/maybe-add-trailing-forward-slash default-directory)
+                (org-element-property :path link))))))
+
+(defun cashpw/feh-gallery-of-linked-images-in-buffer ()
+  "Open a feh gallery of all images in the current buffer."
+  (interactive)
+  (cashpw/feh-gallery (cashpw/org-get-link-image-paths-in-buffer)))
 
 (use-package! nov
   :custom
@@ -1240,6 +1269,18 @@ TAGS which start with \"-\" are excluded."
        ;; Remove :PROPERTIES: drawers beneath headings
        " | sed -E '/^[[:space:]]*:/d'")))
     (org-mode)))
+
+(after! elfeed
+  (setq
+   elfeed-db-directory cashpw/path--notes-dir))
+
+(after! elfeed-org
+  (setq
+   rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org")))
+  (map!
+   :map elfeed-search-mode-map
+   :n "u" #'elfeed-update
+   :nv "a" #'elfeed-search-untag-all-unread))
 
 (defgroup cashpw/source-control nil
   "Source control."
@@ -3112,6 +3153,48 @@ because it's slow."
        (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
                         (file-name-directory buffer-file-name))))
 
+(defun cashpw/org-mode--buffer-has-gallery-p ()
+  "Return non-nil if current buffer has a heading tagged as a gallery entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     ":gallery:")))
+
+(defun cashpw/org-roam-update-has-gallery-tag ()
+  "Update :has-gallery: tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (cashpw/magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-gallery-p)
+            (setq tags (cons "has_gallery" tags))
+          (setq tags (remove "has_gallery" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
  cashpw/-schedule-block-one '(:start "07:00" :end "09:00")
@@ -3349,7 +3432,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;(cashpw/org-agenda-files--update))
 
 (setq
-  org-id-locations-file-relative nil
+ org-image-max-width 600
+ org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
@@ -3999,15 +4083,16 @@ Optional:
 
 (defun cashpw/org-roam-before-save ()
   (when (vulpea-buffer-p)
-  (cashpw/org-roam-rewrite-smart-to-ascii)
-  ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
-  (cashpw/org-roam-add-bibliography)
-  (cashpw/org-roam-add-flashcards
-   "TODO"
-   2
-   ":noexport:")
-  (cashpw/org-roam-update-hastodo-tag)
-  ;; (cashpw/org-hugo-export-wim-to-md)
+    (cashpw/org-roam-rewrite-smart-to-ascii)
+    ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
+    (cashpw/org-roam-add-bibliography)
+    (cashpw/org-roam-add-flashcards
+     "TODO"
+     2
+     ":noexport:")
+    (cashpw/org-roam-update-hastodo-tag)
+    (cashpw/org-roam-update-has-gallery-tag)
+    ;; (cashpw/org-hugo-export-wim-to-md)
     ))
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -4430,6 +4515,7 @@ Intended for use with `org-super-agenda-groups'."
   (setq
    org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
                                 (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
+                                (".gallery" "Gallery" ,(cashpw/org-agenda-view--gallery))
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
@@ -5193,6 +5279,19 @@ Category | Scheduled | Effort
          (;; Toss all other todos
           :discard
           (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+
+(defun cashpw/org-agenda-view--gallery ()
+  "Return custom agenda command."
+  `((tags
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 

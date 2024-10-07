@@ -12,6 +12,7 @@ if [ -n "$(git status --porcelain)" ]; then
     git add -A
     echo "There are uncommitted changes. Please specify a commit message."
 
+    git add -A
     read -p "(f)lashcards, (j)ournal, or (c)ustom: " choice
     case $choice in
         f) git commit -m "Flashcards";;
