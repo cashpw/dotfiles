@@ -463,6 +463,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (:prefix ("d" . "agenDa")
    :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Gallery" :n "g" (cmd!
+                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
+                             (org-agenda nil ".gallery")
+                             (org-agenda-write gallery-view-path t)
+                             (org-agenda-quit)
+                             (with-temp-buffer
+                               (insert-file-contents gallery-view-path)
+                               (let ((default-directory cashpw/path--notes-dir))
+                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
    :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
@@ -497,10 +506,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                'follow-up
                                gptel-directives))))
   (:prefix ("o")
-           (:prefix ("n")
-            :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
-            :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-            :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+   :desc "Elfeed" :n "e" #'elfeed
+   (:prefix ("n")
+    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
+    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
   (:prefix ("n")
    :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix ("A" . "Flashcards")
@@ -757,6 +767,25 @@ Passes arguments, including NEW-WINDOW, along."
 ;; (use-package! w3m
 ;;   :config
 ;;   (w3m-display-mode 'tabbed-dedicated-frames))
+
+(defun cashpw/feh-gallery (image-paths)
+  "Open a feh gallery of IMAGE-PATHS."
+  (shell-command (concat "feh "
+                         "--fullscreen "
+                         (string-join image-paths " "))))
+
+(defun cashpw/org-get-link-image-paths-in-buffer ()
+  "Return list of image paths from links in current buffer."
+  (org-element-map (org-element-parse-buffer) 'link
+    (lambda (link)
+      (when (string= (org-element-property :type link) "file")
+        (concat (cashpw/maybe-add-trailing-forward-slash default-directory)
+                (org-element-property :path link))))))
+
+(defun cashpw/feh-gallery-of-linked-images-in-buffer ()
+  "Open a feh gallery of all images in the current buffer."
+  (interactive)
+  (cashpw/feh-gallery (cashpw/org-get-link-image-paths-in-buffer)))
 
 (use-package! nov
   :custom
@@ -1241,42 +1270,54 @@ TAGS which start with \"-\" are excluded."
        " | sed -E '/^[[:space:]]*:/d'")))
     (org-mode)))
 
+(after! elfeed
+  (setq
+   elfeed-db-directory cashpw/path--notes-dir))
+
+(after! elfeed-org
+  (setq
+   rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org")))
+  (map!
+   :map elfeed-search-mode-map
+   :n "u" #'elfeed-update
+   :nv "a" #'elfeed-search-untag-all-unread))
+
 (defgroup cashpw/source-control nil
   "Source control."
   :group 'cashpw)
 
-(defcustom cashpw/source-control--commit-categories '(("Fix" . (:emoji "🐛"
-                                                                :gitmoji ":bug:"))
-                                                      ("UI" . (:emoji "💄"
-                                                               :gitmoji ":lipstick:"))
-                                                      ("UX" . (:emoji "💄"
-                                                               :gitmoji ":lipstick:"))
-                                                      ("Add" . (:emoji "✨"
-                                                                :gitmoji ":sparkles:"))
-                                                      ("Feature" . (:emoji "✨"
-                                                                    :gitmoji ":sparkles:"))
-                                                      ("Document" . (:emoji "📝"
-                                                                     :gitmoji ":memo:"))
-                                                      ("Typo" . (:emoji "✏️"
-                                                                 :gitmoji ":pencil2:"))
-                                                      ("Refactor" . (:emoji "♻"
-                                                                     :gitmoji ":recycle:"))
-                                                      ("Rollout" . (:emoji "🚀"
-                                                                    :gitmoji ":rocket:"))
-                                                      ("Launch" . (:emoji "🚀"
-                                                                   :gitmoji ":rocket:"))
-                                                      ("Version" . (:emoji "🔖"
-                                                                    :gitmoji ":bookmark:"))
-                                                      ("Release" . (:emoji "🔖"
-                                                                    :gitmoji ":bookmark:"))
-                                                      ("Deploy" . (:emoji "🚀"
-                                                                   :gitmoji ":rocket:"))
-                                                      ("Delete" . (:emoji "🔥"
-                                                                   :gitmoji ":fire:"))
-                                                      ("Remove" . (:emoji "🔥"
-                                                                   :gitmoji ":fire:"))
-                                                      ("Test" . (:emoji "✅"
-                                                                 :gitmoji ":white_check_mark:")))
+(defcustom cashpw/source-control--commit-categories '(("Fix" . (:symbol "🐛"
+                                                                :shortcode ":bug:"))
+                                                      ("UI" . (:symbol "💄"
+                                                               :shortcode ":lipstick:"))
+                                                      ("UX" . (:symbol "💄"
+                                                               :shortcode ":lipstick:"))
+                                                      ("Add" . (:symbol "✨"
+                                                                :shortcode ":sparkles:"))
+                                                      ("Feature" . (:symbol "✨"
+                                                                    :shortcode ":sparkles:"))
+                                                      ("Document" . (:symbol "📝"
+                                                                     :shortcode ":memo:"))
+                                                      ("Typo" . (:symbol "✏️"
+                                                                 :shortcode ":pencil2:"))
+                                                      ("Refactor" . (:symbol "♻"
+                                                                     :shortcode ":recycle:"))
+                                                      ("Rollout" . (:symbol "🚀"
+                                                                    :shortcode ":rocket:"))
+                                                      ("Launch" . (:symbol "🚀"
+                                                                   :shortcode ":rocket:"))
+                                                      ("Version" . (:symbol "🔖"
+                                                                    :shortcode ":bookmark:"))
+                                                      ("Release" . (:symbol "🔖"
+                                                                    :shortcode ":bookmark:"))
+                                                      ("Deploy" . (:symbol "🚀"
+                                                                   :shortcode ":rocket:"))
+                                                      ("Delete" . (:symbol "🔥"
+                                                                   :shortcode ":fire:"))
+                                                      ("Remove" . (:symbol "🔥"
+                                                                   :shortcode ":fire:"))
+                                                      ("Test" . (:symbol "✅"
+                                                                 :shortcode ":white_check_mark:")))
   "Alist of commit categories and extras."
   :group 'cashpw/source-control
   :type 'string)
@@ -1301,13 +1342,13 @@ ${content}"))
 (defun cashpw/source-control--commit--build-message ()
   "Return commit message template."
   (let* ((category (cashpw/source-control--read-commit-category))
-         (emoji (plist-get (cdr category) :gitmoji))
+         (emoji (plist-get (cdr category) :symbol))
          ;; (what-section (cashpw/source-control--commit--section "What does this change?"
          ;;                                                       "1. TODO"))
          ;; (why-section (cashpw/source-control--commit--section "Why make these changes?"
          ;;                                                      "TODO"))
          )
-    (s-lex-format "${emoji}: ")))
+    (s-lex-format "${emoji} ")))
 
 (defun cashpw/source-control--commit--insert-message ()
   "Insert my commit message template."
@@ -2756,6 +2797,8 @@ Return nil if no attendee exists with that EMAIL."
 
 (use-package! org-multi-clock)
 
+(use-package! org-noter)
+
 (use-package! ol-notmuch
   :after org)
 
@@ -2782,7 +2825,7 @@ Return nil if no attendee exists with that EMAIL."
   :hook ((org-mode . org-node-cache-mode))
   :custom
   (org-node-creation-fn #'org-node-new-via-roam-capture)
-  (org-node-slug-fn #'org-node-slugify-like-roam)
+  (org-node-slug-fn #'org-node-slugify-like-roam-actual)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn
    (lambda (node)
@@ -2842,6 +2885,15 @@ Return nil if no attendee exists with that EMAIL."
   ;;        ;; of lower priority to run.
   ;;        :exclusive 'no))))
   ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
+  )
+
+(use-package! org-node-fakeroam
+  :after (:all org-roam org-node)
+  :config
+  (org-roam-db-autosync-mode 0)
+  (org-node-fakeroam-jit-backlinks-mode) ;; no use roam db to build buffer
+  (org-node-fakeroam-fast-render-mode) ;; build the buffer fast
+  (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 
 ;; (use-package! org-special-block-extras
@@ -3103,6 +3155,48 @@ because it's slow."
        (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
                         (file-name-directory buffer-file-name))))
 
+(defun cashpw/org-mode--buffer-has-gallery-p ()
+  "Return non-nil if current buffer has a heading tagged as a gallery entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     ":gallery:")))
+
+(defun cashpw/org-roam-update-has-gallery-tag ()
+  "Update :has-gallery: tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (cashpw/magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-gallery-p)
+            (setq tags (cons "has_gallery" tags))
+          (setq tags (remove "has_gallery" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
  cashpw/-schedule-block-one '(:start "07:00" :end "09:00")
@@ -3340,6 +3434,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;;(cashpw/org-agenda-files--update))
 
 (setq
+ org-image-max-width 600
+ org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
@@ -3431,8 +3527,12 @@ Don't call directly. Use `cashpw/org-agenda-files'."
           (org-roam-link-replace-at-point)))))
   (advice-add 'org-roam-link-replace-all :override 'cashpw/org-roam-link-replace-all)
 
+  ;; Disabling for now in favor of org-node. I don't use this for much outside of the org-roam-buffer.
+  (advice-add 'org-roam-db-sync :override 'ignore)
+
   (setq
-   org-roam-db-update-on-save nil)
+   org-roam-db-update-on-save nil
+   org-roam-link-auto-replace nil)
 
   ;; Deprecated in favor of =org-node='s cache.
   ;; Sync when I'm away from keyoard.
@@ -3985,15 +4085,16 @@ Optional:
 
 (defun cashpw/org-roam-before-save ()
   (when (vulpea-buffer-p)
-  (cashpw/org-roam-rewrite-smart-to-ascii)
-  ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
-  (cashpw/org-roam-add-bibliography)
-  (cashpw/org-roam-add-flashcards
-   "TODO"
-   2
-   ":noexport:")
-  (cashpw/org-roam-update-hastodo-tag)
-  ;; (cashpw/org-hugo-export-wim-to-md)
+    (cashpw/org-roam-rewrite-smart-to-ascii)
+    ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
+    (cashpw/org-roam-add-bibliography)
+    (cashpw/org-roam-add-flashcards
+     "TODO"
+     2
+     ":noexport:")
+    (cashpw/org-roam-update-hastodo-tag)
+    (cashpw/org-roam-update-has-gallery-tag)
+    ;; (cashpw/org-hugo-export-wim-to-md)
     ))
 
 (defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
@@ -4416,6 +4517,7 @@ Intended for use with `org-super-agenda-groups'."
   (setq
    org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
                                 (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
+                                (".gallery" "Gallery" ,(cashpw/org-agenda-view--gallery))
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
@@ -5179,6 +5281,19 @@ Category | Scheduled | Effort
          (;; Toss all other todos
           :discard
           (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+
+(defun cashpw/org-agenda-view--gallery ()
+  "Return custom agenda command."
+  `((tags
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
@@ -6785,11 +6900,10 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashpw/org-noter-insert-selected-text-inside-note-content))
 
-(use-package! pdf-tools)
-
+(unless (cashpw/machine-p 'personal-phone)
 (use-package! pdf-tools
   :config
-  (pdf-tools-install))
+  (pdf-tools-install)))
 
 (use-package! protobuf-mode)
 
@@ -7136,3 +7250,5 @@ Reference:https://stackoverflow.com/q/23622296"
     (let ((marker (cashpw/select-marker-from-alist label-to-marker-alist)))
       (switch-to-buffer (marker-buffer marker))
       (goto-char marker))))
+
+(use-package! font-lock-profiler)

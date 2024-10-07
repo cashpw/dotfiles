@@ -18,4 +18,4 @@ alias sp='source ~/.profile'
 
 alias v='nvim'
 
-alias syncnotes='bash ~/.scripts/sync/sync_notes.sh'
+alias pn='bash ~/.scripts/sync/pull_push_notes.sh'
