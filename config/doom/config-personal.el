@@ -2754,6 +2754,8 @@ Return nil if no attendee exists with that EMAIL."
 
 (use-package! org-multi-clock)
 
+(use-package! org-noter)
+
 (use-package! ol-notmuch
   :after org)
 

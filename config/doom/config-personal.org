@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-09-10 Tue 16:43]
+:LAST_MODIFIED: [2024-10-07 Mon 15:54]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4473,7 +4473,9 @@ Org-noter’s purpose is to let you create notes that are kept in sync when you 
 /[[github:weirdNox/org-noter][weirdNox/org-noter]]/
 #+end_quote
 
-***** Config
+***** Package
+
+I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-noter
@@ -4481,7 +4483,11 @@ Org-noter’s purpose is to let you create notes that are kept in sync when you 
            :repo "cashpw/org-noter"))
 #+end_src
 
-I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-noter)
+#+end_src
 
 **** =org-notmuch=
 
@@ -4728,7 +4734,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-node-fakeroam
-  :recipe (:host github :repo "meedstrom/org-node-fakeroam" :branch "melpa"))
+  :recipe (:host github :repo "meedstrom/org-node-fakeroam" :branch "main"))
 #+end_src
 
 ***** Config
