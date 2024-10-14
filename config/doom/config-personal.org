@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-10-07 Mon 15:57]
+:LAST_MODIFIED: [2024-10-14 Mon 11:15]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4793,7 +4793,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-node-fakeroam
-  :recipe (:host github :repo "meedstrom/org-node-fakeroam" :branch "main"))
+  :recipe (:host github :repo "meedstrom/org-node-fakeroam"))
 #+end_src
 
 ***** Config
