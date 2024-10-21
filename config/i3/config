@@ -149,12 +149,12 @@ workspace 0 output $monitor_a
 #         Status Bar
 ################################################################################
 
-exec_always --no-startup-id $HOME/.config/polybar/launch.sh
+exec_always --no-startup-id "bash ~/.config/polybar/launch.sh"
 #bar {
-#  font pango:Source Code Pro 8
-#
-#  #status_command i3blocks
-#  status_command SCRIPT_DIR=~/.config/i3blocks i3blocks -c ~/.config/i3blocks.config
+  #font pango:Source Code Pro 8
+
+  #status_command i3blocks
+  #status_command ~/.config/polybar/launch.sh
 #}
 hide_edge_borders both
 
