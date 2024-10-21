@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-10-21 Mon 10:00]
+:LAST_MODIFIED: [2024-10-21 Mon 10:04]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
