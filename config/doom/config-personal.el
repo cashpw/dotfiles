@@ -2747,8 +2747,10 @@ Return nil if no attendee exists with that EMAIL."
                           calendar-path)
       (org-map-entries
        (lambda ()
+         ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
          (when (cashpw/time-past-p (org-get-scheduled-time (point)))
-           (org-cut-subtree))))
+           (org-cut-subtree)
+           (setq org-map-continue-from (save-excursion (beginning-of-line) (point))))))
       ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
@@ -2794,6 +2796,8 @@ Return nil if no attendee exists with that EMAIL."
     org-habit-show-done-always-green t))
 
 (use-package! org-multi-clock)
+
+(use-package! org-noter)
 
 (use-package! ol-notmuch
   :after org)

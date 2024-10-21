@@ -4443,8 +4443,10 @@ Return nil if no attendee exists with that EMAIL."
                           calendar-path)
       (org-map-entries
        (lambda ()
+         ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
          (when (cashpw/time-past-p (org-get-scheduled-time (point)))
-           (org-cut-subtree))))
+           (org-cut-subtree)
+           (setq org-map-continue-from (save-excursion (beginning-of-line) (point))))))
       ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
@@ -4530,7 +4532,9 @@ Org-noter’s purpose is to let you create notes that are kept in sync when you 
 /[[github:weirdNox/org-noter][weirdNox/org-noter]]/
 #+end_quote
 
-***** Config
+***** Package
+
+I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! org-noter
@@ -4538,7 +4542,11 @@ Org-noter’s purpose is to let you create notes that are kept in sync when you 
            :repo "cashpw/org-noter"))
 #+end_src
 
-I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-noter)
+#+end_src
 
 **** =org-notmuch=
 
