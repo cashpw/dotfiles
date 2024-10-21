@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-10-14 Mon 11:15]
+:LAST_MODIFIED: [2024-10-21 Mon 10:00]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -856,7 +856,8 @@ Doom Emacs provides =alert=.
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
+   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send

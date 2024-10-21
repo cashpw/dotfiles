@@ -488,7 +488,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
+   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
