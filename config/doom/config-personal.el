@@ -452,6 +452,98 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (cdr hhmm))
    "Sit down"))
 
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+(defun cashpw/evil-lambda-key (mode keymap key def)
+  "Wrap `evil-define-key' to provide documentation."
+  (set 'sym (make-symbol (documentation def)))
+  (fset sym def)
+  (evil-define-key mode keymap key sym))
+
+(map!
+ ;; Keep in alphabetical order.
+ (:leader
+  :desc "at point" :n "h h" #'helpful-at-point
+  ;; :desc "Langtool" :n "t L" #'langtool-check
+  ;; :desc "LLM" :n "l" #'gptel-send
+  :n "r" #'whisper-run
+  :n "R" #'cashpw/whisper-run-and-cue-gptel
+  (:prefix ("d" . "agenDa")
+   :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
+   :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Gallery" :n "g" (cmd!
+                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
+                             (org-agenda nil ".gallery")
+                             (org-agenda-write gallery-view-path t)
+                             (org-agenda-quit)
+                             (with-temp-buffer
+                               (insert-file-contents gallery-view-path)
+                               (let ((default-directory cashpw/path--notes-dir))
+                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
+   :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
+   :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
+   :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
+   (:prefix ("n" . "Roam")
+    :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
+    :desc "Reading List" :n "r" (cmd! (org-agenda nil ".roam-readinglist")))
+   (:prefix ("r" . "Review")
+    :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
+    :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
+    :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
+   (:prefix ("-" . "Without")
+    :desc "Effort" :n "e" (cmd! (org-agenda nil ".without-effort"))
+    :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
+    :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
+   (:prefix ("p" . "Plan")
+    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
+   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
+  (:prefix ("l")
+   :desc "default" :n "l" (cmd!
+                           (cashpw/gptel-send
+                            (alist-get
+                             'default
+                             gptel-directives)))
+   :desc "chain of thought" :n "c" (cmd!
+                                    (cashpw/gptel-send
+                                     (alist-get
+                                      'chain-of-thought
+                                      gptel-directives)))
+   :desc "follow up" :n "f" (cmd!
+                             (cashpw/gptel-send
+                              (alist-get
+                               'follow-up
+                               gptel-directives))))
+  (:prefix ("o")
+   :desc "Elfeed" :n "e" #'elfeed
+   (:prefix ("n")
+    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
+    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+  (:prefix ("n")
+   :desc "Store email link" :n "L" #'org-notmuch-store-link
+   (:prefix ("A" . "Flashcards")
+    :n "d" #'org-fc-dashboard
+    :n "i" #'org-fc-init
+    :n "u" #'org-fc-update
+    :n "r" #'cashpw/org-fc-review-all
+    :n "R" #'org-fc-review)
+   (:prefix ("r")
+    :desc "New art node" :n "a" #'cashpw/org-roam-node-create--art
+    :desc "New reference node" :n "c" #'cashpw/org-roam-node-from-cite))
+  (:prefix ("p")
+   :n "u" #'cashpw/projectile-refresh-known-paths)
+  (:prefix ("t")
+   :n "C" #'centered-cursor-mode
+   :n "k" #'clm/toggle-command-log-buffer)))
+
+(map!
+ ;; Keep in alphabetical order.
+ :map global-map
+ "M-N" #'operate-on-number-at-point
+ :v "C-r" #'cashpw/replace-selection
+ (:prefix ("z")
+  :n "O" #'evil-open-fold-rec))
+
 (setq
  auto-save-visited-interval 60)
 
@@ -6912,92 +7004,6 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (unless (cashpw/machine-p 'work-cloudtop)
   (after! projectile (cashpw/projectile-refresh-known-paths)))
-
-(map!
- ;; Keep in alphabetical order.
- (:leader
-  :desc "at point" :n "h h" #'helpful-at-point
-  ;; :desc "Langtool" :n "t L" #'langtool-check
-  ;; :desc "LLM" :n "l" #'gptel-send
-  :n "r" #'whisper-run
-  :n "R" #'cashpw/whisper-run-and-cue-gptel
-  (:prefix ("d" . "agenDa")
-   :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
-   :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
-   :desc "Gallery" :n "g" (cmd!
-                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
-                             (org-agenda nil ".gallery")
-                             (org-agenda-write gallery-view-path t)
-                             (org-agenda-quit)
-                             (with-temp-buffer
-                               (insert-file-contents gallery-view-path)
-                               (let ((default-directory cashpw/path--notes-dir))
-                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
-   :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
-   :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
-   :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
-   (:prefix ("n" . "Roam")
-    :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
-    :desc "Reading List" :n "r" (cmd! (org-agenda nil ".roam-readinglist")))
-   (:prefix ("r" . "Review")
-    :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
-    :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
-    :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
-   (:prefix ("-" . "Without")
-    :desc "Effort" :n "e" (cmd! (org-agenda nil ".without-effort"))
-    :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
-    :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
-   (:prefix ("p" . "Plan")
-    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t)))
-  (:prefix ("l")
-   :desc "default" :n "l" (cmd!
-                           (cashpw/gptel-send
-                            (alist-get
-                             'default
-                             gptel-directives)))
-   :desc "chain of thought" :n "c" (cmd!
-                                    (cashpw/gptel-send
-                                     (alist-get
-                                      'chain-of-thought
-                                      gptel-directives)))
-   :desc "follow up" :n "f" (cmd!
-                             (cashpw/gptel-send
-                              (alist-get
-                               'follow-up
-                               gptel-directives))))
-  (:prefix ("o")
-   :desc "Elfeed" :n "e" #'elfeed
-   (:prefix ("n")
-    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
-    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
-  (:prefix ("n")
-   :desc "Store email link" :n "L" #'org-notmuch-store-link
-   (:prefix ("A" . "Flashcards")
-    :n "d" #'org-fc-dashboard
-    :n "i" #'org-fc-init
-    :n "u" #'org-fc-update
-    :n "r" #'cashpw/org-fc-review-all
-    :n "R" #'org-fc-review)
-   (:prefix ("r")
-    :desc "New art node" :n "a" #'cashpw/org-roam-node-create--art
-    :desc "New reference node" :n "c" #'cashpw/org-roam-node-from-cite))
-  (:prefix ("p")
-   :n "u" #'cashpw/projectile-refresh-known-paths)
-  (:prefix ("T" . "Time")
-   :n "p" #'pomm)
-  (:prefix ("t")
-   :n "C" #'centered-cursor-mode
-   :n "k" #'clm/toggle-command-log-buffer)))
-
-(map!
- ;; Keep in alphabetical order.
- :map global-map
- "M-N" #'operate-on-number-at-point
- :v "C-r" #'cashpw/replace-selection
- (:prefix ("z")
-  :n "O" #'evil-open-fold-rec))
 
 (use-package! pomm
   :custom
