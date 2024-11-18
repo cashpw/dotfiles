@@ -195,6 +195,13 @@ Reference: https://emacs.stackexchange.com/a/43985"
  :custom
  (get-secret--dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+(defun cashpw/evil-lambda-key (mode keymap key def)
+  "Wrap `evil-define-key' to provide documentation."
+  (set 'sym (make-symbol (documentation def)))
+  (fset sym def)
+  (evil-define-key mode keymap key sym))
+
 (defun cashpw/grep (command-string)
   "Return grep, with COMMAND-STRING, results as a list."
   (split-string
@@ -487,7 +494,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
+   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
@@ -3682,63 +3690,74 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
 
 (after!
- doct-org-roam
- (setq
-  ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
-  ;; and specifying the tag with a variable, because this didn't produce the right output.
-  ;; I didn't have time to dive in an understand why.
-  org-roam-capture-templates
-  (doct-org-roam
-   `((:group
-      "org-roam"
-      :type plain
-      :template "%?"
-      :file "${slug}.org"
-      :unnarrowed t
-      :children
-      (("Concept"
-        :keys "c"
-        :head
-        (
-         "#+title: ${title}
+  doct-org-roam
+  (setq
+   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+   ;; and specifying the tag with a variable, because this didn't produce the right output.
+   ;; I didn't have time to dive in an understand why.
+   org-roam-capture-templates
+   (doct-org-roam
+    `((:group
+       "org-roam"
+       :type plain
+       :template "%?"
+       :file "${slug}.org"
+       :unnarrowed t
+       :children
+       (("Concept"
+         :keys "c"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:"))
-       ("On X"
-        :keys "o"
-        :head
-        (
-         "#+title: ${title}
+        ("On X"
+         :keys "o"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
-       ("Project"
-        :keys "P"
-        :file "proj--${slug}.org"
-        :head
-        (
-         "#+title: ${title}
+        ("Project"
+         :keys "P"
+         :file "proj--${slug}.org"
+         :head
+         ("#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :project:private:
 
 * Notes
 * Questions
-* PROJ ${title}"))
-       ("Person"
-        :keys "p"
-        :head
-        (
-         "#+title: ${title}
+* PROJ ${title}
+** TODO Close out [/]
+*** TODO Retrospective
+*** TODO Communicate
+** TODO Review
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+
+Review current state of the project and update any tracking documentation.
+** TODO Communicate
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+
+Communicate project status, blockers, etc, to relevant stakeholders.
+"))
+        ("Person"
+         :keys "p"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :person:
 * Flashcards :noexport:"))
 
 
-       ("Photographer"
+        ("Photographer"
         :keys "h"
         :head
         (
@@ -3751,7 +3770,7 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * TODO [#2] Add photos :noexport:
 * Flashcards :noexport:"))
 
-       ("Friend (person)"
+        ("Friend (person)"
         :keys "f"
         :head
         (
@@ -3767,27 +3786,27 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * Events
 * Reminders
 * Notes"))
-       ("Verse"
-        :keys "v"
-        :head
-        (
-         "#+title: ${title}
+        ("Verse"
+         :keys "v"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :verse:"))
-       ("Quote"
-        :keys "u"
-        :head
-        (
-         "#+title: ${title}
+        ("Quote"
+         :keys "u"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :quote:"))
-       ("Recipe"
-        :keys "r"
-        :head
-        (
-         "#+title: ${title}
+        ("Recipe"
+         :keys "r"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :recipe:
@@ -7097,6 +7116,14 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (unless (cashpw/machine-p 'work-cloudtop)
   (after! projectile (cashpw/projectile-refresh-known-paths)))
+
+(use-package! pomm
+  :custom
+  (pomm-work-period 50)
+  (pomm-short-break-period 10)
+  (pomm-short-break-period 10)
+  :commands
+  (pomm pomm-third-time))
 
 (use-package! toml)
 

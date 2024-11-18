@@ -248,6 +248,8 @@
   :recipe (:host github
            :repo "gongo/emacs-toml"))
 
+(package! pomm)
+
 (package! toml
   :recipe (:host github
            :repo "gongo/emacs-toml"))
