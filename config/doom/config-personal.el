@@ -23,10 +23,7 @@
     (save-excursion
       (goto-char
        (point-min))
-      (while (re-search-forward
-              regexp
-              nil
-              t)
+      (while (re-search-forward regexp nil t)
         (replace-match
          replacement)))))
 
@@ -431,7 +428,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    (cashpw/time--today-at-hh-mm
     (car hhmm)
     (cdr hhmm))
-   "Stand up"))
+   "Stand up"
+   '(:persistent t)))
 (cl-dolist (hhmm '((10 . 15)
                    (11 . 15)
                    (12 . 15)
@@ -443,7 +441,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    (cashpw/time--today-at-hh-mm
     (car hhmm)
     (cdr hhmm))
-   "Sit down"))
+   "Sit down"
+   '(:persistent t)))
 
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
@@ -632,6 +631,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+
+(remove-hook 'doom-escape-hook '+popup-close-on-escape-h)
 
 ;; (use-package! svg-tag-mode
 ;;   :config
@@ -1269,6 +1270,28 @@ TAGS which start with \"-\" are excluded."
        ;; Remove :PROPERTIES: drawers beneath headings
        " | sed -E '/^[[:space:]]*:/d'")))
     (org-mode)))
+
+(defun cashpw/pandoc-cli (command)
+  (let ((pandoc-command (format "pandoc %s" command)))
+    (message "Running %s" pandoc-command)
+    (shell-command-to-string pandoc-command)))
+
+(defun cashpw/pandoc-convert (text source-format target-format)
+  "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
+  (cashpw/pandoc-cli (s-lex-format "-f ${source-format} -t ${target-format} <<< \"${text}\"")))
+
+(defun cashpw/pandoc-convert-via-file (text source-format target-format)
+  "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
+  (let ((tmp-input-file-path (format "/tmp/pandoc-tmp-input-%s" (format-time-string "%s")))
+        (tmp-output-file-path (format "/tmp/pandoc-tmp-output-%s" (format-time-string "%s"))))
+    (with-temp-buffer
+      (insert text)
+      (write-file tmp-input-file-path))
+    (cashpw/pandoc-cli (s-lex-format "${tmp-input-file-path} -f ${source-format} -t ${target-format} -o ${tmp-output-file-path}"))
+    (with-current-buffer (find-file-noselect tmp-output-file-path)
+      (buffer-substring-no-properties
+       (point-min)
+       (point-max)))))
 
 (after! elfeed
   (setq
@@ -2105,11 +2128,18 @@ Only parent headings of the current heading remain visible."
   (let ((cached-access-token
          (gethash calendar-id cashpw/org-gcal--access-tokens)))
     (unless cached-access-token
+      (message "[cashpw-gcal] No cached access token for %s." calendar-id)
       (puthash
        calendar-id
-       (aio-wait-for (oauth2-auto-access-token calendar-id 'org-gcal))
-       cashpw/org-gcal--access-tokens))
+       (aio-wait-for
+        (oauth2-auto-access-token calendar-id 'org-gcal))
+       cashpw/org-gcal--access-tokens)
+      (message "[cashpw-gcal] Cached access token for %s." calendar-id))
+    (message "[cashpw-gcal] Used cached access token for %s." calendar-id)
     (gethash calendar-id cashpw/org-gcal--access-tokens)))
+
+(defun cashpw/org-gcal--refresh-token (calendar-id)
+  (deferred:succeed (cashpw/org-gcal--get-access-token calendar-id)))
 
 (after!
   org-gcal
@@ -2193,59 +2223,99 @@ Reference: `org-gcal--update-entry'."
 
 (defun cashpw/org-gcal--remove-gcal-timestamp ()
   "Delete the timestamp `org-gcal' inserts."
-  (org-mark-subtree)
-  (replace-regexp org-element--timestamp-regexp ""
-                  nil
-                  (region-beginning)
-                  (region-end))
-  (deactivate-mark))
+  (save-excursion
+    (ignore-errors
+      (org-up-heading 10))
+    (org-mark-subtree)
+    (replace-regexp org-element--timestamp-regexp ""
+                    nil
+                    (region-beginning)
+                    (region-end))
+    (deactivate-mark)))
 
 (defun cashpw/org-gcal--set-processed (_calendar-id event _update-mode)
   "TODO"
-  (org-set-tags '("processed")))
+  (save-excursion
+    (ignore-errors
+      (org-up-heading 10))
+    (org-set-tags '("processed"))))
 
-(defun cashpw/org-gcal--set-scheduled (_calendar-id event _update-mode)
+(defun cashpw/org-gcal--maybe-set-scheduled (_calendar-id event _update-mode)
   "See `org-gcal-after-update-entry-functions'."
-  (unless (member "processed" (org-get-tags))
-    (shut-up
-      (cashpw/org-gcal--remove-gcal-timestamp)
-      (org-schedule nil (cashpw/org-gcal--timestamp-from-event event)))))
+  (save-excursion
+    (ignore-errors
+      (org-up-heading 10))
+    (unless (member "processed" (org-get-tags))
+      (shut-up
+        (cashpw/org-gcal--remove-gcal-timestamp)
+        (org-schedule nil (cashpw/org-gcal--timestamp-from-event event))))))
 
 (defun cashpw/org-gcal--set-effort (_calendar-id event _update-mode)
   "Set Effort property based on EVENT if not already set.
 
 Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044"
-  (when-let* ((start-time
-               (plist-get
-                (plist-get event :start)
-                :dateTime))
-              (end-time
-               (plist-get
-                (plist-get event :end)
-                :dateTime))
-              (minutes
-               (floor
-                (/ (float-time
-                    (time-subtract
-                     (org-gcal--parse-calendar-time-string
-                      end-time)
-                     (org-gcal--parse-calendar-time-string
-                      start-time)))
-                   60))))
-    (let ((effort
-           (org-entry-get
-            (point)
-            org-effort-property)))
-      (unless
-          effort
-        (org-set-property
-         org-effort-property
-         (apply
-          #'format
-          "%d:%02d"
-          (cl-floor
-           minutes
-           60)))))))
+  (save-excursion
+    (ignore-errors
+      (org-up-heading 10))
+    (when-let* ((start-time
+                 (plist-get
+                  (plist-get event :start)
+                  :dateTime))
+                (end-time
+                 (plist-get
+                  (plist-get event :end)
+                  :dateTime))
+                (minutes
+                 (floor
+                  (/ (float-time
+                      (time-subtract
+                       (org-gcal--parse-calendar-time-string
+                        end-time)
+                       (org-gcal--parse-calendar-time-string
+                        start-time)))
+                     60))))
+      (let ((effort
+             (org-entry-get
+              (point)
+              org-effort-property)))
+        (unless
+            effort
+          (org-set-property
+           org-effort-property
+           (apply
+            #'format
+            "%d:%02d"
+            (cl-floor
+             minutes
+             60))))))))
+
+(defun cashpw/org-gcal--convert-description (_calendar-id _event _update-mode)
+  (save-excursion
+    (org-up-heading-safe)
+    (let ((description (cashpw/org-get-drawer-contents "org-gcal")))
+      (if (string-empty-p (string-clean-whitespace description))
+          (cashpw/org-delete-drawer "org-gcal")
+        (let* ((from-language (cond
+                               ((or
+                                 (s-contains-p "## TODO" description)
+                                 (s-contains-p "- [ ] " description))
+                                "markdown")
+                               (t
+                                "html")))
+               (converted-description
+                (cashpw/pandoc-convert
+                 (format "%s" (cashpw/org-get-drawer-contents "org-gcal"))
+                 (format
+                  "%s-auto_identifiers"
+                  from-language)
+                 "org")))
+          (save-excursion
+            (org-up-heading-safe)
+            (save-restriction
+              (org-narrow-to-subtree)
+              (cashpw/org-delete-drawer "org-gcal")
+              (goto-char (point-max))
+              (insert converted-description))))))))
 
 (defcustom cashpw/org-gcal--summary-categories
   '()
@@ -2253,18 +2323,17 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
   :group 'cashpw
   :type 'sexp)
 
-(defun cashpw/org-gcal--set-category (_calendar-id event _update-mode)
+(defun cashpw/org-gcal--maybe-set-category (_calendar-id event _update-mode)
   "Set appropriate category for EVENT."
-  (unless (member
-           "processed"
-           (org-get-tags))
-    (when-let ((summary (plist-get event :summary)))
-      (dolist (summary-category cashpw/org-gcal--summary-categories)
-        (when (string-match-p (car summary-category) summary)
-          (shut-up
-            (org-set-property
-             "CATEGORY"
-             (cdr summary-category))))))))
+  (save-excursion
+    (ignore-errors
+      (org-up-heading 10))
+    (unless (member "processed" (org-get-tags))
+      (when-let ((summary (plist-get event :summary)))
+        (dolist (summary-category cashpw/org-gcal--summary-categories)
+          (when (string-match-p (car summary-category) summary)
+            (shut-up
+              (org-set-property "CATEGORY" (cdr summary-category)))))))))
 
 (defcustom cashpw/org-gcal--summaries-to-exclude
   '()
@@ -2438,6 +2507,46 @@ Return nil if no attendee exists with that EMAIL."
                                                           (:email "foo4@bar.com")))))
            t
            "A 1-on-1 requires at most three attendees.")
+
+(defun cashpw/org-get-drawer-contents (drawer-name)
+  (if (not (org-at-heading-p))
+      (error "Cannot get drawer contents because point is not at an org heading")
+    (save-excursion
+      (save-restriction
+        (org-narrow-to-element)
+        (re-search-forward
+         (format "^[ \t]*:%s:[ \t]*$" drawer-name)
+         (point-max)
+         'noerror)
+        (let ((element (org-element-at-point)))
+          (when (string= (org-element-property :drawer-name (org-element-at-point)) drawer-name)
+            (buffer-substring-no-properties (org-element-property :contents-begin element)
+                                            (org-element-property :contents-end element))))))))
+
+(defun cashpw/delete-lines-on-and-between (start-point end-point)
+  "Delete lines between START-POINT and END-POINT."
+  (delete-region
+   (progn
+     (goto-char start-point)
+     (beginning-of-line)
+     (point))
+   (progn
+     (goto-char end-point)
+     (next-line)
+     (beginning-of-line)
+     (point))))
+
+(defun cashpw/org-delete-drawer (drawer-name)
+  (save-excursion
+    (save-restriction
+      (org-narrow-to-subtree)
+      (cashpw/delete-lines-on-and-between
+       (re-search-forward
+        (format "^[ \t]*:%s:[ \t]*$" drawer-name)
+        (point-max))
+       (re-search-forward
+        (format ":END:")
+        (point-max))))))
 
 (defun cashpw/org-gcal--get-schedule-string (pom)
   "Return schedule string for heading (calendar event) at POM."
@@ -2651,9 +2760,11 @@ Return nil if no attendee exists with that EMAIL."
                          ("Finance" . ("Finances and net worth"))
                          ("Pet" . ("Empty cat boxes"
                                    "Myth's inhaler"
+                                   "Feed cats"
                                    "Clean pet water and food dishes"))
                          ("Family" . ("Call parents"))
-                         ("Home" . ("Take out the trash"))
+                         ("Home" . ("Take out the trash"
+                                    "Get the mail"))
                          ("Hygeine" . ("Shower"
                                        "Brush teeth"
                                        "Teeth"
@@ -2776,10 +2887,11 @@ Return nil if no attendee exists with that EMAIL."
   (add-hook!
    'org-gcal-after-update-entry-functions
    ;; #'cashpw/org-gcal--set-effort
-   #'cashpw/org-gcal--set-scheduled
-   #'cashpw/org-gcal--set-category
+   #'cashpw/org-gcal--maybe-set-scheduled
+   #'cashpw/org-gcal--maybe-set-category
    #'cashpw/org-gcal--maybe-create-todo-extract-reminder
    #'cashpw/org-gcal--maybe-handle-sleep
+   #'cashpw/org-gcal--convert-description
    #'cashpw/org-gcal--maybe-create-prep-meeting)
   (add-hook
    'org-gcal-after-update-entry-functions
@@ -3335,14 +3447,11 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    `(,cashpw/path--personal-todos
      ,cashpw/path--personal-calendar)))
 
-(defun cashpw/org-agenda-files--projects ()
+(defun cashpw/org-agenda-files--projects-with-todo ()
   "Return list of project agenda files.
 
 Don't call directly. Use `cashpw/org-agenda-files'."
-  (let* ((org-roam-directory cashpw/path--notes-dir))
-    (f-glob
-     "proj--*"
-     org-roam-directory)))
+  (cashpw/org-roam-files-with-tags "hastodo" "project"))
 
 (defun cashpw/org-agenda-files--calendar ()
   "Return list of calendar agenda files.
@@ -3402,8 +3511,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
            (cashpw/org-agenda-files--notes-all))
           ((equal context 'personal)
            (cashpw/org-agenda-files--personal))
-          ((equal context 'projects)
-           (cashpw/org-agenda-files--projects))
+          ((equal context 'projects-with-todo)
+           (cashpw/org-agenda-files--projects-with-todo))
           ((equal context 'calendar)
            (cashpw/org-agenda-files--calendar))
           ((equal context 'journal-this-year)
@@ -3426,6 +3535,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    org-agenda-files (append
                      (cashpw/org-agenda-files 'personal)
                      (cashpw/org-agenda-files 'calendar)
+                     (cashpw/org-agenda-files 'projects-with-todo)
                      (cashpw/org-agenda-files 'journal-this-year-with-todo)
                      (cashpw/org-agenda-files 'people-private-with-todo))))
 
@@ -5826,8 +5936,10 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
 
 (defun cashpw/org-mode-on-done--property-value-equals-p (expected-value)
   "Return non-nil if the heading's `cashpw/org-mode-on-done--property-name' is EXPECTED-VALUE."
-  (let ((actual-value (org-entry-get (point)
-                                     cashpw/org-mode-on-done--property-name)))
+  (let ((actual-value (org-entry-get
+                       (point)
+                       cashpw/org-mode-on-done--property-name
+                       'inherit)))
     (equal actual-value
            expected-value)))
 
