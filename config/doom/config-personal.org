@@ -1,5 +1,9 @@
 :PROPERTIES:
+<<<<<<< HEAD
 :LAST_MODIFIED: [2024-11-18 Mon 10:04]
+=======
+:LAST_MODIFIED: [2024-11-18 Mon 16:06]
+>>>>>>> 8ae0e72df1827aaeaafc99c37fdf9aff0393eeb3
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2123,7 +2127,6 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-get-short-address (address)
   "Returns \"foo@\" for an ADDRESS of \"Foo <foo@bar.com>\"."
-  (message "address: %s")
   (cond
    ((not (string-match "<" address))
     address)
@@ -2132,44 +2135,76 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-create-follow-up-todo ()
   (interactive)
-  (let*
-      ((file cashpw/path--personal-todos)
-       (to-short
-        (let ((to-short
-               (cashpw/mail-get-short-address (message-field-value "To"))))
-          (if (or (string= to-short cashpw/email-address--personal)
-                  (string= to-short cashpw/email-address--gmail))
-              "me"
-            to-short)))
-       (from-short
-        (let ((from-short
-               (cashpw/mail-get-short-address (message-field-value "From"))))
-          (if (or (string= from-short cashpw/email-address--personal)
-                  (string= from-short cashpw/email-address--gmail))
-              "me"
-            from-short)))
-       (subject (message-field-value "Subject"))
-       (message-id
-        (replace-regexp-in-string
-         "<\\(.*\\)>" "\\1" (message-field-value "Message-ID")))
-       (headline-text
-        (s-lex-format
-         "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:")))
-    (with-current-buffer (get-file-buffer file)
-      (goto-char (point-max))
-      (org-insert-heading-respect-content)
-      (org-todo "TODO")
-      (insert headline-text)
-      (org-extras-set-created)
-      (org-schedule nil))))
+  (setq
+   cashpw/email--long-to (message-field-value "To")
+   cashpw/email--subject (message-field-value "Subject")
+   cashpw/email--long-from (message-field-value "From"))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef")
+  ;; (let*
+  ;;     ((file cashpw/path--personal-todos)
+  ;;      (to-short
+  ;;       (let ((to-short
+  ;;              (cashpw/mail-get-short-address (message-field-value "To"))))
+  ;;         (if (member to-short cashpw/email-addresses--personal)
+  ;;             "me"
+  ;;           to-short)))
+  ;;      (from-short
+  ;;       (let ((from-short
+  ;;              (cashpw/mail-get-short-address (message-field-value "From"))))
+  ;;         (if (member from-short cashpw/email-addresses--personal)
+  ;;             "me"
+  ;;           from-short)))
+  ;;      (subject (message-field-value "Subject"))
+  ;;      (message-id
+  ;;       (replace-regexp-in-string
+  ;;        "<\\(.*\\)>" "\\1" (message-field-value "Message-ID")))
+  ;;      (headline-text
+  ;;       (s-lex-format
+  ;;        "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:")))
+  ;;   (with-current-buffer (get-file-buffer file)
+  ;;     (goto-char (point-max))
+  ;;     (org-insert-heading-respect-content)
+  ;;     (org-todo "TODO")
+  ;;     (insert headline-text)
+  ;;     (org-extras-set-created)
+  ;;     (org-schedule nil)))
+  )
+
+(defun cashpw/email--close-mail-buffer ()
+  "TODO"
+  (message "killing sent email buffers")
+  (let ((buffers-to-kill (-filter (lambda (buffer)
+                                         (string-match-p "sent mail" (buffer-name buffer)))
+                                       (buffer-list))))
+    (dolist (buffer-to-kill buffers-to-kill)
+      (kill-buffer buffer-to-kill))))
+
+(defun cashpw/email--close-mail-buffer-and-clean-up-hook ()
+  "TODO"
+  (message "and-clean-up-hook")
+  (cashpw/email--close-mail-buffer)
+  (remove-hook! 'org-capture-after-finalize-hook
+    'cashpw/email--close-mail-buffer-and-clean-up-hook))
+
+(defun cashpw/email--close-mail-buffer-after-capture ()
+  "TODO"
+  (message "close after capture")
+  (add-hook! 'org-capture-after-finalize-hook
+             'cashpw/email--close-mail-buffer-and-clean-up-hook))
 
 (defun cashpw/message-send-and-exit ()
   (interactive)
   (org-mime-htmlize)
   (notmuch-mua-send)
   (if (y-or-n-p "Create follow-up TODO?")
-      (cashpw/mail-create-follow-up-todo))
-  (kill-buffer (current-buffer)))
+      (progn
+        (cashpw/email--close-mail-buffer-after-capture)
+        (cashpw/mail-create-follow-up-todo))
+    (kill-buffer (current-buffer))))
 #+end_src
 
 *** Sending email
@@ -2181,6 +2216,10 @@ TAGS which start with \"-\" are excluded."
  notmuch-fcc-dirs nil
  cashpw/email-address--gmail "cashbweaver@gmail.com"
  cashpw/email-address--personal "cash@cashpw.com")
+
+(defcustom cashpw/email-addresses--personal `(,cashpw/email-address--personal
+                                              ,cashpw/email-address--gmail)
+  "Personal email addresses.")
 
 (defun cashpw/configure-sendmail ()
   "Set appropriate sendmail arguments."
