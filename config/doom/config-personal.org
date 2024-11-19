@@ -1,9 +1,5 @@
 :PROPERTIES:
-<<<<<<< HEAD
-:LAST_MODIFIED: [2024-11-18 Mon 10:04]
-=======
-:LAST_MODIFIED: [2024-11-18 Mon 16:06]
->>>>>>> 8ae0e72df1827aaeaafc99c37fdf9aff0393eeb3
+:LAST_MODIFIED: [2024-11-18 Mon 16:08]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
