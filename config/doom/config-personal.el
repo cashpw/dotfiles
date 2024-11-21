@@ -191,9 +191,9 @@ Reference: https://emacs.stackexchange.com/a/43985"
 (setenv "GPG_AGENT_INFO")
 
 (use-package!
- get-secret
- :custom
- (get-secret--dir (format "%s/.config/secrets" cashpw/path--home-dir)))
+ secret
+ :config
+ (set-secret-dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 
 ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
@@ -499,19 +499,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (:prefix ("l")
    :desc "default" :n "l" (cmd!
                            (cashpw/gptel-send
-                            (alist-get
-                             'default
-                             gptel-directives)))
+                            (alist-get "Default" llm-prompts-alist nil nil #'string=)))
+   :desc "default" :n "L" (cmd!
+                           (cashpw/gptel-send (llm-prompts-select)))
    :desc "chain of thought" :n "c" (cmd!
                                     (cashpw/gptel-send
-                                     (alist-get
-                                      'chain-of-thought
-                                      gptel-directives)))
+                                     (alist-get "Chain of thought" llm-prompts-alist nil nil #'string=)))
    :desc "follow up" :n "f" (cmd!
                              (cashpw/gptel-send
-                              (alist-get
-                               'follow-up
-                               gptel-directives))))
+                              (alist-get "Follow up questions" llm-prompts-alist nil nil #'string=))))
   (:prefix ("o")
    :desc "Elfeed" :n "e" #'elfeed
    (:prefix ("n")
@@ -1425,64 +1421,44 @@ ${content}"))
 
 (use-package! gnuplot)
 
-(defvar cashpw/llm--default-prompt
-  "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")
+(use-package! llm-prompts)
 
-(defvar cashpw/llm--chain-of-thought-prompt
-  "You are a large language model living and a helpful assistant. First, enumerate a list of steps one should follow to find an appropriate answer. Second, follow those steps and show your work.")
-
-(defvar cashpw/llm--follow-up-prompt
-  "Assume the persona of a peer and colleague who is working with me to understand and expand on an idea or question. Respond with between three and ten follow-up questions or considerations. Format your response in markdown.")
-
-(defvar cashpw/llm--writing-prompt
-  "You are a large language model and a writing assistant. Respond concisely.")
-
-(defvar cashpw/llm--programming-prompt
-  "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt, or note.")
-
-(defvar cashpw/llm--chat-prompt
-  "You are a large language model and a conversation partner. Respond concisely.")
-
-(use-package! gptel
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-directives `((default . ,cashpw/llm--default-prompt)
-                      (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
-                      (follow-up . ,cashpw/llm--follow-up-prompt)
-                      (writing . ,cashpw/llm--writing-prompt)
-                      (programming . ,cashpw/llm--programming-prompt)
-                      (chat . ,cashpw/llm--chat-prompt)))
+(use-package!
+    gptel
+  :custom (gptel-default-mode 'org-mode)
+  ;; (gptel-directives
+  ;;  `((default . ,cashpw/llm--default-prompt)
+  ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
+  ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
+  ;;    (writing . ,cashpw/llm--writing-prompt)
+  ;;    (programming . ,cashpw/llm--programming-prompt)
+  ;;    (chat . ,cashpw/llm--chat-prompt)))
 
   :config
   (setq-default
    gptel-model "gemini-1.5-pro-latest"
-   gptel-backend (gptel-make-gemini "Gemini"
-                   :key (get-secret "personal-gemini")
-                   :stream t))
+   gptel-backend (gptel-make-gemini "Gemini" :key (secret-get "personal-gemini") :stream t))
 
   (defun cashpw/gptel-send (prompt)
     "Invoke `gptel-send' with specific PROMPT."
+    (interactive (list (llm-prompts-select)))
     (let ((gptel--system-message prompt))
       (gptel-send))))
 
-(after! (:and gptel whisper)
-  (setq
-   cashpw/gptel-after-whisper nil)
+(after!
+  (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
 
   (defun cashpw/whisper-run-and-cue-gptel ()
     (interactive)
-    (setq
-     cashpw/gptel-after-whisper t)
+    (setq cashpw/gptel-after-whisper t)
     (whisper-run))
 
   (defun cashpw/maybe-gptel-after-whisper ()
     (when cashpw/gptel-after-whisper
       (gptel-send)
-      (setq
-       cashpw/gptel-after-whisper nil)))
+      (setq cashpw/gptel-after-whisper nil)))
 
-  (add-hook 'whisper-post-insert-hook
-            #'cashpw/maybe-gptel-after-whisper))
+  (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
 
 (setq
  company-idle-delay 1
@@ -2786,7 +2762,7 @@ Return nil if no attendee exists with that EMAIL."
                        ;; ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar)
                        )
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(get-secret
+    :client-secret ,(secret-get
                      "org-gcal--personal")
     :no-prep-reminder-summaries ("Walk"
                                  "Clean house")
@@ -2836,7 +2812,7 @@ Return nil if no attendee exists with that EMAIL."
   `(:fetch-file-alist
     (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
     :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(get-secret
+    :client-secret ,(secret-get
                      "org-gcal--personal")
     :no-prep-reminder-summaries ()
     :summary-categories (("Sleep" . ("Sleep")))

@@ -2,8 +2,8 @@
   :recipe (:host github
            :repo "cashpw/day-of-week"))
 
-(package! get-secret
-  :recipe (:host github :repo "cashpw/get-secret"))
+(package! secret
+  :recipe (:host github :repo "cashpw/secret.el"))
 
 (package! aggressive-indent)
 
@@ -116,6 +116,9 @@
 (package! org-msg)
 
 (package! gnuplot)
+
+(package! llm-prompts
+  :recipe (:host github :repo "cashpw/llm-prompts.el"))
 
 (package! gptel)
 
