@@ -497,17 +497,44 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
    :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
   (:prefix ("l")
-   :desc "default" :n "l" (cmd!
-                           (cashpw/gptel-send
-                            (alist-get "Default" llm-prompts-alist nil nil #'string=)))
    :desc "default" :n "L" (cmd!
-                           (cashpw/gptel-send (llm-prompts-select)))
-   :desc "chain of thought" :n "c" (cmd!
-                                    (cashpw/gptel-send
-                                     (alist-get "Chain of thought" llm-prompts-alist nil nil #'string=)))
-   :desc "follow up" :n "f" (cmd!
+                           (cashpw/gptel-send
+                            (llm-prompts-prompt-default)))
+   :desc "empty" :n "l" (cmd!
+                         (cashpw/gptel-send ""))
+   :desc "Council" :n "c" (cmd!
+                           (cashpw/gptel-send
+                            (llm-prompts-prompt-solo-performance-prompt)))
+   :desc "Follow up" :n "f" (cmd!
                              (cashpw/gptel-send
-                              (alist-get "Follow up questions" llm-prompts-alist nil nil #'string=))))
+                              (llm-prompts-prompt-follow-up-questions)))
+   (:prefix ("C" . "Chain of thought")
+    :desc "Basic" :n "c" (cmd!
+                          (cashpw/gptel-send
+                           llm-prompts-prompt-fragment--chain-of-thought))
+    :desc "Agent" :n "a" (cmd!
+                          (cashpw/gptel-send
+                           (llm-prompts-prompt-append-chain-of-thought
+                            (llm-prompts-prompt-agent
+                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix ("t" . "Tree of thought")
+    :desc "Basic" :n "t" (cmd!
+                          (cashpw/gptel-send
+                           llm-prompts-prompt-fragment--tree-of-thought))
+    :desc "Agent" :n "a" (cmd!
+                          (cashpw/gptel-send
+                           (llm-prompts-prompt-append-tree-of-thought
+                            (llm-prompts-prompt-agent
+                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix ("a" . "Agent")
+    :desc "Software engineer" :n "s" (cmd!
+                                      (cashpw/gptel-send
+                                       (llm-prompts-prompt-append-chain-of-thought
+                                        (llm-prompts-prompt-agent "TODO"))))
+    :desc "Editor (non-fiction)" :n "e" (cmd!
+                                         (cashpw/gptel-send
+                                          (llm-prompts-prompt-append-chain-of-thought
+                                           (llm-prompts-prompt-agent "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
   (:prefix ("o")
    :desc "Elfeed" :n "e" #'elfeed
    (:prefix ("n")
@@ -1426,6 +1453,7 @@ ${content}"))
 (use-package!
     gptel
   :custom (gptel-default-mode 'org-mode)
+  (gptel-track-media t)
   ;; (gptel-directives
   ;;  `((default . ,cashpw/llm--default-prompt)
   ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
@@ -1436,14 +1464,30 @@ ${content}"))
 
   :config
   (setq-default
-   gptel-model "gemini-1.5-pro-latest"
+   gptel-model 'gemini-1.5-pro-latest
    gptel-backend (gptel-make-gemini "Gemini" :key (secret-get "personal-gemini") :stream t))
 
   (defun cashpw/gptel-send (prompt)
     "Invoke `gptel-send' with specific PROMPT."
     (interactive (list (llm-prompts-select)))
     (let ((gptel--system-message prompt))
-      (gptel-send))))
+      (gptel-send)))
+
+  (defun cashpw/gptel-send--buffer (system-message)
+    "TODO."
+    (interactive)
+    (let* ((prompt
+            (if (use-region-p)
+                (buffer-substring (region-beginning) (region-end))
+              (buffer-substring (point-min) (point))))
+           (gptel--system-message "")
+           (empty-prefix-alist '((org-mode . "")))
+           (gptel-prompt-prefix-alist empty-prefix-alist))
+      (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
+      (with-current-buffer "*LLM*"
+        (setq-local gptel--system-message "")
+        (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
+        (gptel-send)))))
 
 (after!
   (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
@@ -7293,10 +7337,6 @@ Reference:https://stackoverflow.com/q/23622296"
       ;; Join line-break-hyphenated words (for example: "back- ground")
       (goto-char 0)
       (replace-regexp "\\([A-Za-z]\\)- \\([A-Za-z]\\)" "\\1\\2"))))
-
-(defun cashpw/foo ()
-  (interactive)
-  (cashpw/narrow-between-text "#+begin_quote" "end_quote"))
 
 (defun cashpw/org-headings-scheduled-for-day-in-path (path day-time)
   "Return alist of headings and markers in PATH which are scheduled for DAY-TIME's day."
