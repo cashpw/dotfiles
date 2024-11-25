@@ -2583,58 +2583,65 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package!
-    gptel
-  :custom (gptel-default-mode 'org-mode)
-  (gptel-track-media t)
-  ;; (gptel-directives
-  ;;  `((default . ,cashpw/llm--default-prompt)
-  ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
-  ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
-  ;;    (writing . ,cashpw/llm--writing-prompt)
-  ;;    (programming . ,cashpw/llm--programming-prompt)
-  ;;    (chat . ,cashpw/llm--chat-prompt)))
+ gptel
+ :custom (gptel-default-mode 'org-mode) (gptel-track-media t)
+ ;; (gptel-directives
+ ;;  `((default . ,cashpw/llm--default-prompt)
+ ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
+ ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
+ ;;    (writing . ,cashpw/llm--writing-prompt)
+ ;;    (programming . ,cashpw/llm--programming-prompt)
+ ;;    (chat . ,cashpw/llm--chat-prompt)))
 
-  :config
-  (setq-default
-   gptel-model 'gemini-1.5-pro-latest
-   gptel-backend (gptel-make-gemini "Gemini" :key (secret-get "personal-gemini") :stream t))
+ :config
+ (setq-default
+  gptel-model 'gemini-1.5-pro-latest
+  gptel-backend
+  (gptel-make-gemini
+   "Gemini"
+   :key
+   (secret-get
+    (if (cashpw/machine-p 'work-cloudtop)
+        "corporate-gemini"
+      "personal-gemini"))
+   :stream t))
 
-  (defun cashpw/gptel-send (prompt)
-    "Invoke `gptel-send' with specific PROMPT."
-    (interactive (list (llm-prompts-select)))
-    (let ((gptel--system-message prompt))
-      (gptel-send)))
+ (defun cashpw/gptel-send (prompt)
+   "Invoke `gptel-send' with specific PROMPT."
+   (interactive (list (llm-prompts-select)))
+   (let ((gptel--system-message prompt))
+     (gptel-send)))
 
-  (defun cashpw/gptel-send--buffer (system-message)
-    "TODO."
-    (interactive)
-    (let* ((prompt
-            (if (use-region-p)
-                (buffer-substring (region-beginning) (region-end))
-              (buffer-substring (point-min) (point))))
-           (gptel--system-message "")
-           (empty-prefix-alist '((org-mode . "")))
-           (gptel-prompt-prefix-alist empty-prefix-alist))
-      (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
-      (with-current-buffer "*LLM*"
-        (setq-local gptel--system-message "")
-        (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
-        (gptel-send)))))
+ (defun cashpw/gptel-send--buffer (system-message)
+   "TODO."
+   (interactive)
+   (let* ((prompt
+           (if (use-region-p)
+               (buffer-substring (region-beginning) (region-end))
+             (buffer-substring (point-min) (point))))
+          (gptel--system-message "")
+          (empty-prefix-alist '((org-mode . "")))
+          (gptel-prompt-prefix-alist empty-prefix-alist))
+     (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
+     (with-current-buffer "*LLM*"
+       (setq-local gptel--system-message "")
+       (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
+       (gptel-send)))))
 
 (after!
-  (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
+ (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
 
-  (defun cashpw/whisper-run-and-cue-gptel ()
-    (interactive)
-    (setq cashpw/gptel-after-whisper t)
-    (whisper-run))
+ (defun cashpw/whisper-run-and-cue-gptel ()
+   (interactive)
+   (setq cashpw/gptel-after-whisper t)
+   (whisper-run))
 
-  (defun cashpw/maybe-gptel-after-whisper ()
-    (when cashpw/gptel-after-whisper
-      (gptel-send)
-      (setq cashpw/gptel-after-whisper nil)))
+ (defun cashpw/maybe-gptel-after-whisper ()
+   (when cashpw/gptel-after-whisper
+     (gptel-send)
+     (setq cashpw/gptel-after-whisper nil)))
 
-  (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+ (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
 #+end_src
 
 * Languages
