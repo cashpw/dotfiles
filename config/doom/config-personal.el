@@ -3002,7 +3002,7 @@ Return nil if no attendee exists with that EMAIL."
   :after org-roam
   :hook ((org-mode . org-node-cache-mode))
   :custom
-  (org-node-creation-fn #'org-node-new-via-roam-capture)
+  (org-node-creation-fn #'org-node-fakeroam-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam-actual)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn

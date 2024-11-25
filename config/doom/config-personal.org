@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-11-24 Sun 18:30]
+:LAST_MODIFIED: [2024-11-25 Mon 06:55]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4882,7 +4882,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
   :after org-roam
   :hook ((org-mode . org-node-cache-mode))
   :custom
-  (org-node-creation-fn #'org-node-new-via-roam-capture)
+  (org-node-creation-fn #'org-node-fakeroam-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam-actual)
   (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
   (org-node-filter-fn
