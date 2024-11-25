@@ -494,8 +494,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
-   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t))
+   ;;:desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t))
+   )
   (:prefix ("l")
    :desc "default" :n "L" (cmd!
                            (cashpw/gptel-send
@@ -663,7 +664,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
 
-(remove-hook 'doom-escape-hook '+popup-close-on-escape-h)
+(advice-add
+ '+popup-close-on-escape-h
+ :override #'ignore)
 
 ;; (use-package! svg-tag-mode
 ;;   :config
@@ -3789,15 +3792,15 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 * Notes
 * Questions
 * PROJ ${title}
-** TODO Close out [/]
+** TODO Close out
 *** TODO Retrospective
 *** TODO Communicate
 ** TODO Review
-SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Review current state of the project and update any tracking documentation.
 ** TODO Communicate
-SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Communicate project status, blockers, etc, to relevant stakeholders.
 "))
@@ -3813,10 +3816,10 @@ Communicate project status, blockers, etc, to relevant stakeholders.
 
 
         ("Photographer"
-        :keys "h"
-        :head
-        (
-         "#+title: ${title}
+         :keys "h"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :person:
@@ -3826,10 +3829,10 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * Flashcards :noexport:"))
 
         ("Friend (person)"
-        :keys "f"
-        :head
-        (
-         "#+title: ${title}
+         :keys "f"
+         :head
+         (
+          "#+title: ${title}
 #+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]

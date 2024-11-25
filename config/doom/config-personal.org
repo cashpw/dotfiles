@@ -1,12 +1,12 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-11-22 Fri 08:19]
+:LAST_MODIFIED: [2024-11-24 Sun 18:30]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
 #+EMAIL: cashbweaver@gmail.com
 #+STARTUP: showeverything
 
-This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1]. I build on top of [[github:doomemacs/doomemacs][doomemacs]]. There are others (for example: [[github:SystemCrafters/crafted-emacs][crafted-emacs]], [[github:rougier/nano-emacs][nano]], [[github:bbatsov/prelude][prelude]], [[https://sr.ht/~ashton314/emacs-bedrock/][bedrock]], and [[github:syl20bnr/spacemacs][spacemacs]]). I expect I'll migrate to a more minimal configuration over time. For now, however, =doomemacs= (1) handles all the details I don't want to worry about and (2) has a community that'll find and and fix bugs that I would otherwise have to fix on my own.
+This is my Emacs configuration file; written in [[https://orgmode.org][=org-mode=]] in literate programming. It's based on the work of others[fn:1]. I build on top of [[github:doomemacs/doomemacs][doomemacs]]. There are other frameworks (for example: [[github:SystemCrafters/crafted-emacs][crafted-emacs]], [[github:rougier/nano-emacs][nano]], [[github:bbatsov/prelude][prelude]], [[https://sr.ht/~ashton314/emacs-bedrock/][bedrock]], and [[github:syl20bnr/spacemacs][spacemacs]]), and I expect I'll migrate to a more minimal configuration over time, but for now =doomemacs= (1) handles all the details I don't want to worry about and (2) has a community that'll find and and fix bugs that I would otherwise have to fix on my own.
 
 * General
 
@@ -864,8 +864,9 @@ Doom Emacs provides =alert=.
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to))
-   :desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t)))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t))
+   ;;:desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t))
+   )
   (:prefix ("l")
    :desc "default" :n "L" (cmd!
                            (cashpw/gptel-send
@@ -1463,7 +1464,9 @@ everywhere
 Don't close pop-up windows on escape because I end up closing more popup windows that I don't mean to close.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(remove-hook 'doom-escape-hook '+popup-close-on-escape-h)
+(advice-add
+ '+popup-close-on-escape-h
+ :override #'ignore)
 #+end_src
 
 * Appearance
@@ -2881,6 +2884,7 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 ** Java
 ** TODO Org
 
+;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
 #+begin_src emacs-lisp
 ;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
 ;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
@@ -6031,15 +6035,15 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 ,* Notes
 ,* Questions
 ,* PROJ ${title}
-,** TODO Close out [/]
+,** TODO Close out
 ,*** TODO Retrospective
 ,*** TODO Communicate
 ,** TODO Review
-SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Review current state of the project and update any tracking documentation.
 ,** TODO Communicate
-SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil " ++1w")
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Communicate project status, blockers, etc, to relevant stakeholders.
 "))
@@ -6055,10 +6059,10 @@ Communicate project status, blockers, etc, to relevant stakeholders.
 
 
         ("Photographer"
-        :keys "h"
-        :head
-        (
-         "#+title: ${title}
+         :keys "h"
+         :head
+         (
+          "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :person:
@@ -6068,10 +6072,10 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 ,* Flashcards :noexport:"))
 
         ("Friend (person)"
-        :keys "f"
-        :head
-        (
-         "#+title: ${title}
+         :keys "f"
+         :head
+         (
+          "#+title: ${title}
 ,#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
