@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-11-25 Mon 06:55]
+:LAST_MODIFIED: [2024-11-25 Mon 19:28]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4437,42 +4437,38 @@ Return nil if no attendee exists with that EMAIL."
 ****** Profiles
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defcustom cashpw/org-gcal--current-profile
-  nil
+(cl-defstruct
+    org-gcal-profile
+  "A profile for `org-gcal'."
+  (fetch-file-alist nil :type 'sexp)
+  (client-id nil :type 'string)
+  (client-secret nil :type 'string)
+  (after-update-entry-functions nil :type 'hook)
+  (fetch-event-filters nil :type 'hook)
+  (on-activate nil :type 'sexp))
+
+(defcustom cashpw/org-gcal--current-profile nil
   "The current active profile, set in `cashpw/org-gcal-activate-profile'."
-  :type 'string
+  :type 'org-gcal-profile
   :group 'cashpw)
 
 (defun cashpw/org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
    cashpw/org-gcal--current-profile profile
-   cashpw/org-gcal--no-prep-reminder-summaries (plist-get
-                                                profile
-                                                :no-prep-reminder-summaries)
-   cashpw/org-gcal--summary-categories (-flatten
-                                        (--map
-                                         (-flatten
-                                          (let ((category (car it))
-                                                (summaries (cdr it)))
-                                            (--map
-                                             `(,it . ,category)
-                                             summaries)))
-                                         (plist-get
-                                          profile
-                                          :summary-categories)))
-   cashpw/org-gcal--summaries-to-exclude (plist-get
-                                          profile
-                                          :summaries-to-exclude)
-   org-gcal-client-id (plist-get
-                       profile
-                       :client-id)
-   org-gcal-client-secret (plist-get
-                           profile
-                           :client-secret)
-   org-gcal-fetch-file-alist (plist-get
-                              profile
-                              :fetch-file-alist))
+   cashpw/org-gcal--no-prep-reminder-summaries '()
+   cashpw/org-gcal--summary-categories '()
+   cashpw/org-gcal--summaries-to-exclude '()
+   org-gcal-client-id (org-gcal-profile-client-id profile)
+   org-gcal-client-secret (org-gcal-profile-client-secret profile)
+   org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
+   org-gcal-after-update-entry-functions nil
+   org-gcal-fetch-event-filters nil)
+  (funcall (org-gcal-profile-on-activate profile))
+  (dolist (fn (org-gcal-profile-after-update-entry-functions profile))
+    (add-hook 'org-gcal-after-update-entry-functions fn))
+  (dolist (fn (org-gcal-profile-fetch-event-filters profile))
+    (add-hook 'org-gcal-fetch-event-filters fn))
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
 #+end_src
@@ -4481,72 +4477,99 @@ Return nil if no attendee exists with that EMAIL."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defcustom cashpw/org-gcal--profile-personal
-  `(:fetch-file-alist (("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar)
-                       ;; ("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar)
-                       )
-    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(secret-get
-                     "org-gcal--personal")
-    :no-prep-reminder-summaries ("Walk"
-                                 "Clean house")
-    :summary-categories (("Fitness" . ("Shoulders"
-                                       "Back"
-                                       "Chest"
-                                       "Legs"
-                                       "Mobility, Grip, Neck"
-                                       "Cardio"
-                                       "Stretch"
-                                       "Walk"
-                                       "Total Body Strength with Brianna Mariotti"))
-                         ("Car" . ("Tidy car"))
-                         ("Finance" . ("Finances and net worth"))
-                         ("Pet" . ("Empty cat boxes"
-                                   "Myth's inhaler"
-                                   "Feed cats"
-                                   "Clean pet water and food dishes"))
-                         ("Family" . ("Call parents"))
-                         ("Home" . ("Take out the trash"
-                                    "Get the mail"))
-                         ("Hygeine" . ("Shower"
-                                       "Brush teeth"
-                                       "Teeth"
-                                       "Shave"
-                                       "Acne"))
-                         ("Pottery" . ("Pottery"
-                                       "Wheel Projects with Khaled"))
-                         ("Study" . ("Study"
-                                     "Flashcards"))
-                         ("Food" . ("Huel shake"))
-                         ("Sleep" . ("Sleep"
-                                     "Fall asleep"))
-                         ("R&R" . ("R&R")))
-    :summaries-to-exclude ("^Nap$"
-                           "^Sleeping$"
-                           "^Journal$"  ; Journal TODOs are in the journal files.
-                           "^Work$"
-                           "^Lunch$"
-                           "^End the day"
-                           "^Evening chores"))
-  "Personal configuration for `org-gcal'."
+  (make-org-gcal-profile
+   :fetch-file-alist `(("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
+   :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
+   :client-secret (secret-get "org-gcal--personal")
+   :after-update-entry-functions '(cashpw/org-gcal--maybe-set-scheduled
+                                   cashpw/org-gcal--maybe-set-category
+                                   cashpw/org-gcal--maybe-create-todo-extract-reminder
+                                   cashpw/org-gcal--maybe-create-prep-meeting
+                                   cashpw/org-gcal--convert-description
+                                   cashpw/org-gcal--set-processed)
+   :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
+   :on-activate (lambda ()
+                  (setq
+                   cashpw/org-gcal--no-prep-reminder-summaries '("Walk"
+                                                                 "Clean house")
+                   cashpw/org-gcal--summary-categories (-flatten
+                                                        (--map
+                                                         (-flatten
+                                                          (let ((category (car it))
+                                                                (summaries (cdr it)))
+                                                            (--map
+                                                             `(,it . ,category)
+                                                             summaries)))
+                                                         '(("Fitness" . ("Shoulders"
+                                                                         "Back"
+                                                                         "Chest"
+                                                                         "Legs"
+                                                                         "Mobility, Grip, Neck"
+                                                                         "Cardio"
+                                                                         "Stretch"
+                                                                         "Walk"
+                                                                         "Total Body Strength with Brianna Mariotti"))
+                                                           ("Car" . ("Tidy car"))
+                                                           ("Finance" . ("Finances and net worth"))
+                                                           ("Pet" . ("Empty cat boxes"
+                                                                     "Myth's inhaler"
+                                                                     "Feed cats"
+                                                                     "Clean pet water and food dishes"))
+                                                           ("Family" . ("Call parents"))
+                                                           ("Home" . ("Take out the trash"
+                                                                      "Get the mail"))
+                                                           ("Hygeine" . ("Shower"
+                                                                         "Brush teeth"
+                                                                         "Teeth"
+                                                                         "Shave"
+                                                                         "Acne"))
+                                                           ("Pottery" . ("Pottery"
+                                                                         "Wheel Projects with Khaled"))
+                                                           ("Study" . ("Study"
+                                                                       "Flashcards"))
+                                                           ("Food" . ("Huel shake"))
+                                                           ("Sleep" . ("Sleep"
+                                                                       "Fall asleep"))
+                                                           ("R&R" . ("R&R")))))
+                   cashpw/org-gcal--summaries-to-exclude '("^Nap$"
+                                                           "^Sleeping$"
+                                                           "^Journal$" ; Journal TODOs are in the journal files.
+                                                           "^Work$"
+                                                           "^Lunch$"
+                                                           "^End the day"
+                                                           "^Evening chores"))))
+  "Personal profile for `org-gcal'."
   :group 'cashpw
-  :type 'sexp)
+  :type 'org-gcal-profile)
 #+end_src
 
 ******* Sleep
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defcustom cashpw/org-gcal--profile-sleep
-  `(:fetch-file-alist
-    (("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
-    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-    :client-secret ,(secret-get
-                     "org-gcal--personal")
-    :no-prep-reminder-summaries ()
-    :summary-categories (("Sleep" . ("Sleep")))
-    :summaries-to-exclude ())
-  "Personal configuration for `org-gcal'."
+  (make-org-gcal-profile
+   :fetch-file-alist `(("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
+   :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
+   :client-secret (secret-get "org-gcal--personal")
+   :after-update-entry-functions '(cashpw/org-gcal--maybe-handle-sleep
+                                   cashpw/org-gcal--set-processed)
+   :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
+   :on-activate (lambda ()
+                  (setq
+                   cashpw/org-gcal--no-prep-reminder-summaries '()
+                   cashpw/org-gcal--summary-categories (-flatten
+                                                        (--map
+                                                         (-flatten
+                                                          (let ((category (car it))
+                                                                (summaries (cdr it)))
+                                                            (--map
+                                                             `(,it . ,category)
+                                                             summaries)))
+                                                         '(("Sleep" . ("Sleep")))))
+                   cashpw/org-gcal--summaries-to-exclude '())))
+  "Personal sleep profile for `org-gcal'."
   :group 'cashpw
-  :type 'sexp)
+  :type 'org-gcal-profile)
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
@@ -4638,24 +4661,25 @@ Return nil if no attendee exists with that EMAIL."
 
   :config
   (org-gcal-reload-client-id-secret)
-  (add-hook!
-   'org-gcal-after-update-entry-functions
-   ;; #'cashpw/org-gcal--set-effort
-   #'cashpw/org-gcal--maybe-set-scheduled
-   #'cashpw/org-gcal--maybe-set-category
-   #'cashpw/org-gcal--maybe-create-todo-extract-reminder
-   #'cashpw/org-gcal--maybe-handle-sleep
-   #'cashpw/org-gcal--convert-description
-   #'cashpw/org-gcal--maybe-create-prep-meeting)
-  (add-hook
-   'org-gcal-after-update-entry-functions
-   #'cashpw/org-gcal--set-processed
-   ;; Add to end of list of functions
-   100)
-  (add-hook!
-   'org-gcal-fetch-event-filters
-   #'cashpw/org-gcal--filter-summaries
-   #'cashpw/org-gcal--event-not-declined-by-me-p))
+  ;; (add-hook!
+  ;;  'org-gcal-after-update-entry-functions
+  ;;  ;; #'cashpw/org-gcal--set-effort
+  ;;  #'cashpw/org-gcal--maybe-set-scheduled
+  ;;  #'cashpw/org-gcal--maybe-set-category
+  ;;  #'cashpw/org-gcal--maybe-create-todo-extract-reminder
+  ;;  #'cashpw/org-gcal--maybe-handle-sleep
+  ;;  #'cashpw/org-gcal--convert-description
+  ;;  #'cashpw/org-gcal--maybe-create-prep-meeting)
+  ;; (add-hook
+  ;;  'org-gcal-after-update-entry-functions
+  ;;  #'cashpw/org-gcal--set-processed
+  ;;  ;; Add to end of list of functions
+  ;;  100)
+  ;; (add-hook!
+  ;;  'org-gcal-fetch-event-filters
+  ;;  #'cashpw/org-gcal--filter-summaries
+  ;;  #'cashpw/org-gcal--event-not-declined-by-me-p)
+  )
 #+end_src
 
 **** =org-habit=
