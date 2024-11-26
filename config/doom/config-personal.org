@@ -4660,26 +4660,7 @@ Return nil if no attendee exists with that EMAIL."
   (org-gcal-recurring-events-mode 'top-level)
 
   :config
-  (org-gcal-reload-client-id-secret)
-  ;; (add-hook!
-  ;;  'org-gcal-after-update-entry-functions
-  ;;  ;; #'cashpw/org-gcal--set-effort
-  ;;  #'cashpw/org-gcal--maybe-set-scheduled
-  ;;  #'cashpw/org-gcal--maybe-set-category
-  ;;  #'cashpw/org-gcal--maybe-create-todo-extract-reminder
-  ;;  #'cashpw/org-gcal--maybe-handle-sleep
-  ;;  #'cashpw/org-gcal--convert-description
-  ;;  #'cashpw/org-gcal--maybe-create-prep-meeting)
-  ;; (add-hook
-  ;;  'org-gcal-after-update-entry-functions
-  ;;  #'cashpw/org-gcal--set-processed
-  ;;  ;; Add to end of list of functions
-  ;;  100)
-  ;; (add-hook!
-  ;;  'org-gcal-fetch-event-filters
-  ;;  #'cashpw/org-gcal--filter-summaries
-  ;;  #'cashpw/org-gcal--event-not-declined-by-me-p)
-  )
+  (org-gcal-reload-client-id-secret))
 #+end_src
 
 **** =org-habit=
