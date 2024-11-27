@@ -216,7 +216,19 @@ Reference: https://emacs.stackexchange.com/a/43985"
    (shell-command-to-string
     (format
      "rgrep %s"
-     command-string))))
+     command-string))
+   "\n"
+   t))
+
+(defun cashpw/pcregrep (command-string)
+  "Return rgrep, with COMMAND-STRING, results as a list."
+  (split-string
+   (shell-command-to-string
+    (format
+     "pcregrep %s"
+     command-string))
+   "\n"
+   t))
 
 (defun cashpw/delete-lines-below (line-number)
   "Delete all lines beneath LINE-NUMBER."
@@ -482,9 +494,19 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
    :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
    (:prefix ("n" . "Roam")
-    :desc "Roam" :n "n" (cmd! (org-agenda nil ".roam-roam"))
-    :desc "Reading List" :n "r" (cmd! (org-agenda nil ".roam-readinglist")))
-   (:prefix ("r" . "Review")
+    :desc "Roam" :n "n" (cmd!
+                         (cashpw/org-select-and-go-to-todo
+                          (seq-difference
+                           (cashpw/org-agenda-files 'notes-with-todo)
+                           (append
+                           (cashpw/org-roam-files-with-tag "journal")
+                           `(,cashpw/path--reading-list
+                             ,cashpw/path--personal-todos
+                             ,cashpw/path--personal-calendar)))))
+    :desc "Reading List" :n "r" (cmd!
+                                 (cashpw/org-select-and-go-to-todo
+                                  `(,cashpw/path--reading-list))))
+    (:prefix ("r" . "Review")
     :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
     :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
     :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
@@ -5178,6 +5200,53 @@ items if they have an hour specification like [h]h:mm."
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
+(defun cashpw/org-select-and-go-to-todo (files)
+  (let*
+      ((separator "¥")
+       (space-separated-list-of-files (s-join " " files))
+       (todos-with-file
+        (cashpw/pcregrep
+         (s-lex-format
+          ;; Ignore headings with SCHEDULED or HEADLINE
+          "--multiline --line-number --with-filename '^\\** (TODO|INPROGRESS).*\\n^(?!SCHEDULED:)(?!DEADLINE:)' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:")))
+       (match-alist
+        (mapcar
+         (lambda (todo-with-file)
+           (cl-destructuring-bind (file line-number match)
+               (s-split separator todo-with-file 'omit-nulls)
+             (if (string-match org-complex-heading-regexp match)
+                 (let ((priority (or (match-string 3 match) "[#?]"))
+                       (heading (match-string 4 match)))
+                   `(,(format "%s %s: %s:%s" priority heading file line-number)
+                     .
+                     (:file
+                      ,file
+                      :heading ,heading
+                      :priority ,priority
+                      :line-number ,(string-to-number line-number))))
+               (error "Error! %s (match: %s)" todo-with-file match))))
+         todos-with-file))
+       (selection
+        (let ((vertico-sort-function
+               (lambda (candidates)
+                 ;; Sort by priority and randomize order for same priority
+                 (sort
+                  candidates
+                  (lambda (a b)
+                    (let ((priority-a (substring a 0 4))
+                          (priority-b (substring b 0 4)))
+                      (cond
+                       ((string= priority-a priority-b)
+                        (= 0 (random 2)))
+                       (t
+                        (string< a b)))))))))
+          (alist-get (completing-read "Select TODO: " match-alist) match-alist
+                     nil
+                     nil
+                     #'string=))))
+    (goto-line (plist-get selection :line-number)
+               (find-file (plist-get selection :file)))))
+
 (defun cashpw/org-agenda-view--roam--roam ()
   "Return custom agenda command."
   `((alltodo
@@ -5191,7 +5260,8 @@ items if they have an hour specification like [h]h:mm."
       (org-agenda-files (seq-difference (cashpw/org-agenda-files 'notes-with-todo)
                                         `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
                                           ,cashpw/path--personal-calendar
-                                          ,cashpw/path--personal-todos)))
+                                          ,cashpw/path--personal-todos
+                                          )))
       (org-super-agenda-groups
        `((:discard
           (:scheduled t
