@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-11-27 Wed 13:19]
+:LAST_MODIFIED: [2024-11-29 Fri 20:39]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1681,6 +1681,8 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
     ;; Google documents (Sheets, Slides, Docs, Forms)
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/docs\\.google\\.com"
+
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
     )
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 

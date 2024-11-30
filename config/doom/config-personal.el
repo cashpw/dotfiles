@@ -805,6 +805,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     ;; Google documents (Sheets, Slides, Docs, Forms)
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/docs\\.google\\.com"
+
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
     )
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
