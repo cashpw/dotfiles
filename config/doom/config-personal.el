@@ -2220,48 +2220,6 @@ Only parent headings of the current heading remain visible."
       (org-node-put-created)
       (org-set-property (org-gallery--image-prop-source) image-url))))
 
-(defvar cashpw/org-gcal--access-tokens (make-hash-table :test #'equal))
-
-(defun cashpw/org-gcal--clear-access-tokens (&rest r)
-  "Call `org-gcal--get-access-token' for the first calendar in the list."
-  (clrhash cashpw/org-gcal--access-tokens))
-
-(defvar org-gcal--access-token nil
-  "Set if a sync function is running.")
-
-(defun cashpw/org-gcal--cache-access-tokens (&rest r)
-  "Cache access tokens for all calendars."
-  (let ((calendar-ids (-uniq (mapcar #'car org-gcal-file-alist))))
-    (dolist (calendar-id calendar-ids)
-      (cashpw/org-gcal--get-access-token calendar-id))))
-
-(defun cashpw/org-gcal--get-access-token (calendar-id)
-  "Return the access token for CALENDAR-ID."
-  (let ((cached-access-token
-         (gethash calendar-id cashpw/org-gcal--access-tokens)))
-    (unless cached-access-token
-      (message "[cashpw-gcal] No cached access token for %s." calendar-id)
-      (puthash
-       calendar-id
-       (aio-wait-for
-        (oauth2-auto-access-token calendar-id 'org-gcal))
-       cashpw/org-gcal--access-tokens)
-      (message "[cashpw-gcal] Cached access token for %s." calendar-id))
-    (message "[cashpw-gcal] Used cached access token for %s." calendar-id)
-    (gethash calendar-id cashpw/org-gcal--access-tokens)))
-
-(defun cashpw/org-gcal--refresh-token (calendar-id)
-  (deferred:succeed (cashpw/org-gcal--get-access-token calendar-id)))
-
-(after!
-  org-gcal
-  (advice-add
-   'org-gcal--get-access-token
-   :override #'cashpw/org-gcal--get-access-token)
-
-  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--cache-access-tokens)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--clear-access-tokens))
-
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
                                 :dateTime))
@@ -3016,6 +2974,8 @@ Return nil if no attendee exists with that EMAIL."
   ;; See https://github.com/kidd/org-gcal.el/issues/172
   (org-gcal-auto-archive nil)
   (org-gcal-recurring-events-mode 'top-level)
+  ;; https://github.com/dengste/org-caldav/issues/117
+  (setenv "GPG_AGENT_INFO")
 
   :config
   (org-gcal-reload-client-id-secret))

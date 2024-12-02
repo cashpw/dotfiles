@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-02 Mon 10:48]
+:LAST_MODIFIED: [2024-12-02 Mon 15:01]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3808,68 +3808,6 @@ Doom emacs provides =org-gcal=.
 
 ***** Config
 
-****** Overrides
-:PROPERTIES:
-:ID:       fc802a57-4eda-415f-b7f7-bcbc86b7ce3d
-:END:
-
-Issue: Decrypt prompt disappears before I can type in the password.
-
-Solutions:
-
-1. +Figure out why it's disappearing and fix the root issue+
-
-   I've tried for ~3 hours and don't want to put more time into it.
-
-2. Get and cache the access token outside of the =deferred= block!
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defvar cashpw/org-gcal--access-tokens (make-hash-table :test #'equal))
-
-(defun cashpw/org-gcal--clear-access-tokens (&rest r)
-  "Call `org-gcal--get-access-token' for the first calendar in the list."
-  (clrhash cashpw/org-gcal--access-tokens))
-
-(defvar org-gcal--access-token nil
-  "Set if a sync function is running.")
-
-(defun cashpw/org-gcal--cache-access-tokens (&rest r)
-  "Cache access tokens for all calendars."
-  (let ((calendar-ids (-uniq (mapcar #'car org-gcal-file-alist))))
-    (dolist (calendar-id calendar-ids)
-      (cashpw/org-gcal--get-access-token calendar-id))))
-
-(defun cashpw/org-gcal--get-access-token (calendar-id)
-  "Return the access token for CALENDAR-ID."
-  (let ((cached-access-token
-         (gethash calendar-id cashpw/org-gcal--access-tokens)))
-    (unless cached-access-token
-      (message "[cashpw-gcal] No cached access token for %s." calendar-id)
-      (puthash
-       calendar-id
-       (aio-wait-for
-        (oauth2-auto-access-token calendar-id 'org-gcal))
-       cashpw/org-gcal--access-tokens)
-      (message "[cashpw-gcal] Cached access token for %s." calendar-id))
-    (message "[cashpw-gcal] Used cached access token for %s." calendar-id)
-    (gethash calendar-id cashpw/org-gcal--access-tokens)))
-
-(defun cashpw/org-gcal--refresh-token (calendar-id)
-  (deferred:succeed (cashpw/org-gcal--get-access-token calendar-id)))
-
-(after!
-  org-gcal
-  (advice-add
-   'org-gcal--get-access-token
-   :override #'cashpw/org-gcal--get-access-token)
-
-  (advice-add 'org-gcal-sync :before #'cashpw/org-gcal--cache-access-tokens)
-  (advice-add 'org-gcal-sync :after #'cashpw/org-gcal--clear-access-tokens))
-#+end_src
-
-#+RESULTS:
-: org-gcal--get-access-token
-
 ****** Time
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -4701,6 +4639,8 @@ Return nil if no attendee exists with that EMAIL."
   ;; See https://github.com/kidd/org-gcal.el/issues/172
   (org-gcal-auto-archive nil)
   (org-gcal-recurring-events-mode 'top-level)
+  ;; https://github.com/dengste/org-caldav/issues/117
+  (setenv "GPG_AGENT_INFO")
 
   :config
   (org-gcal-reload-client-id-secret))
