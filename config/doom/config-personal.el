@@ -1323,15 +1323,17 @@ TAGS which start with \"-\" are excluded."
     'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
 
   ;; Create todos
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
     'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up)
-  ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
     'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo)
   (evil-define-key
     'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo-without-link)
 
   ;; Helpers for toggling often-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "T" nil)
   (cashpw/evil-lambda-key
    'normal notmuch-search-mode-map "T0"
    '(lambda ()
