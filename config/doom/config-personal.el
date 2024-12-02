@@ -2797,9 +2797,9 @@ Return nil if no attendee exists with that EMAIL."
    org-gcal-after-update-entry-functions nil
    org-gcal-fetch-event-filters nil)
   (funcall (org-gcal-profile-on-activate profile))
-  (dolist (fn (org-gcal-profile-after-update-entry-functions profile))
+  (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
-  (dolist (fn (org-gcal-profile-fetch-event-filters profile))
+  (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
