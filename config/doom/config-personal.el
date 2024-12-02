@@ -1006,6 +1006,18 @@ TAGS which start with \"-\" are excluded."
    ;; keys
    "tee"))
 
+(defun cashpw/notmuch-search-todo-without-link ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (notmuch-search-show-thread)
+  (goto-char
+   (point-max))
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tew"))
+
 (after! notmuch
   (setq
    notmuch-wash-wrap-lines-length 100
@@ -1203,7 +1215,6 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/email--close-mail-buffer-after-capture ()
   "TODO"
-  (message "close after capture")
   (add-hook! 'org-capture-after-finalize-hook
              'cashpw/email--close-mail-buffer-and-clean-up-hook))
 
@@ -1317,6 +1328,8 @@ TAGS which start with \"-\" are excluded."
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
     'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
+  (evil-define-key
+    'normal notmuch-search-mode-map "T" 'cashpw/notmuch-search-todo-without-link)
 
   ;; Helpers for toggling often-used tags.
   (cashpw/evil-lambda-key
@@ -6326,10 +6339,18 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
            :file cashpw/path--personal-todos
            :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
-           (("Email"
+           (
+            ("Email"
              :keys "e"
              :template
              ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+              ":PROPERTIES:"
+              ":Created: %U"
+              ":END:"))
+            ("Without link"
+             :keys "w"
+             :template
+             ("* TODO [#2] %:subject"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
