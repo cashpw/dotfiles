@@ -1324,12 +1324,12 @@ TAGS which start with \"-\" are excluded."
 
   ;; Create todos
   (evil-define-key
-    'normal notmuch-search-mode-map "f" 'cashpw/notmuch-search-follow-up)
+    'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up)
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
-    'normal notmuch-search-mode-map "t" 'cashpw/notmuch-search-todo)
+    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo)
   (evil-define-key
-    'normal notmuch-search-mode-map "T" 'cashpw/notmuch-search-todo-without-link)
+    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo-without-link)
 
   ;; Helpers for toggling often-used tags.
   (cashpw/evil-lambda-key
