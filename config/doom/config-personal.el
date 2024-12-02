@@ -3060,7 +3060,7 @@ Return nil if no attendee exists with that EMAIL."
           ;; Exclude archives
           (not (s-ends-with-p "archive" (org-node-get-file-path node)))
           ;; Exclude flashcards
-          (not (member "fc" (org-node-get-tags node))))))
+          (not (member "fc" (org-node-get-tags-local node))))))
   (org-node-format-candidate-fn
    (lambda (node title)
      (if (org-node-get-is-subtree node)

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-02 Mon 07:51]
+:LAST_MODIFIED: [2024-12-02 Mon 08:05]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4944,7 +4944,7 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
           ;; Exclude archives
           (not (s-ends-with-p "archive" (org-node-get-file-path node)))
           ;; Exclude flashcards
-          (not (member "fc" (org-node-get-tags node))))))
+          (not (member "fc" (org-node-get-tags-local node))))))
   (org-node-format-candidate-fn
    (lambda (node title)
      (if (org-node-get-is-subtree node)
