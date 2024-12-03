@@ -3498,15 +3498,6 @@ because it's slow."
        all-holidays)))
   (kill-buffer holiday-buffer))
 
-(defun cashpw/org-agenda-files--notes-with-todo ()
-  "Return list of notes which are tagged with :hastodo:.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  (let* ((org-roam-directory cashpw/path--notes-dir)
-         (org-roam-db-location (expand-file-name "org-roam.db"
-                                                 org-roam-directory)))
-    (cashpw/org-roam-files-with-tag "hastodo")))
-
 (defun cashpw/org-agenda-files--notes-all ()
   "Return list of all notes files.
 
@@ -3515,26 +3506,6 @@ Don't call directly. Use `cashpw/org-agenda-files'."
          (org-roam-db-location (expand-file-name "org-roam.db"
                                                  org-roam-directory)))
     (org-roam-list-files)))
-
-(defun cashpw/org-agenda-files--personal ()
-  "Return list of personal agenda files.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  (append
-   `(,cashpw/path--personal-todos
-     ,cashpw/path--personal-calendar)))
-
-(defun cashpw/org-agenda-files--projects-with-todo ()
-  "Return list of project agenda files.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  (cashpw/org-roam-files-with-tags "hastodo" "project"))
-
-(defun cashpw/org-agenda-files--calendar ()
-  "Return list of calendar agenda files.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  '())
 
 (defun cashpw/org-agenda-files--journal-this-year ()
   "Return list of journal agenda files.
@@ -3560,46 +3531,32 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (string-match-p yyyy it)
      (cashpw/org-roam-files-with-tags "journal" "hastodo"))))
 
-(defun cashpw/org-agenda-files--people-private ()
-  "Return list of personal contact agenda files.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  (let* ((org-roam-directory cashpw/path--notes-dir)
-         (org-roam-db-location (expand-file-name "org-roam.db"
-                                                 org-roam-directory)))
-    (cashpw/org-roam-files-with-tags "person" "private")))
-
-(defun cashpw/org-agenda-files--people-private-with-todo ()
-  "Return list of personal contact agenda files.
-
-Don't call directly. Use `cashpw/org-agenda-files'."
-  (let* ((org-roam-directory cashpw/path--notes-dir)
-         (org-roam-db-location (expand-file-name "org-roam.db"
-                                                 org-roam-directory)))
-    (cashpw/org-roam-files-with-tags "person" "private" "hastodo")))
-
 (defun cashpw/org-agenda-files (context &optional include-archive)
   "Return list of agenda files for CONTEXT. Include archived files when INCLUDE-ARCHIVE."
   (let ((files
          (cond
           ((equal context 'notes-with-todo)
-           (cashpw/org-agenda-files--notes-with-todo))
+           (cashpw/org-roam-files-with-tag "hastodo"))
           ((equal context 'notes-all)
            (cashpw/org-agenda-files--notes-all))
           ((equal context 'personal)
-           (cashpw/org-agenda-files--personal))
+           (append
+            `(,cashpw/path--personal-todos
+              ,cashpw/path--personal-calendar)))
           ((equal context 'projects-with-todo)
-           (cashpw/org-agenda-files--projects-with-todo))
+           (cashpw/org-roam-files-with-tags "hastodo" "project"))
+          ((equal context 'pets-with-todo)
+           (cashpw/org-roam-files-with-tags "hastodo" "pet"))
           ((equal context 'calendar)
-           (cashpw/org-agenda-files--calendar))
+           '())
           ((equal context 'journal-this-year)
            (cashpw/org-agenda-files--journal-this-year))
           ((equal context 'journal-this-year-with-todo)
            (cashpw/org-agenda-files--journal-this-year-with-todo))
           ((equal context 'people-private-with-todo)
-           (cashpw/org-agenda-files--people-private-with-todo))
+           (cashpw/org-roam-files-with-tags "person" "private" "hastodo"))
           ((equal context 'people-private)
-           (cashpw/org-agenda-files--people-private)))))
+           (cashpw/org-roam-files-with-tags "person" "private")))))
     (if include-archive
         (append
          files
@@ -3613,12 +3570,13 @@ Don't call directly. Use `cashpw/org-agenda-files'."
                      (cashpw/org-agenda-files 'personal)
                      (cashpw/org-agenda-files 'calendar)
                      (cashpw/org-agenda-files 'projects-with-todo)
+                     (cashpw/org-agenda-files 'pets-with-todo)
                      (cashpw/org-agenda-files 'journal-this-year-with-todo)
                      (cashpw/org-agenda-files 'people-private-with-todo))))
 
 ;; DEBUGGING
 ;;(after! org-roam
-  ;;(cashpw/org-agenda-files--update))
+;;(cashpw/org-agenda-files--update))
 
 (setq
  org-image-max-width 600
@@ -4776,23 +4734,17 @@ Intended for use with `org-super-agenda' `:transformer'. "
     line))
 
 (defun cashpw/org-agenda-category (max-length)
-  (let* ((marker
-          (org-get-at-bol
-           'org-hd-marker))
-         (category
-          (or
-           ;; Skip when we're in the org-agenda buffer as there's no category to get
-           (when (not
-                  (string=
-                   (buffer-name)
-                   org-agenda-buffer-name))
-             (org-with-point-at marker
-               (org-get-category)))
-           (org-get-title)
-           "")))
-    (s-truncate
-     max-length
-     category)))
+  (let*
+      ((marker (org-get-at-bol 'org-hd-marker))
+       (category
+        (or
+         ;; Skip when we're in the org-agenda buffer as there's no category to get
+         (when (not (string= (buffer-name) org-agenda-buffer-name))
+           (let ((org-use-property-inheritance '("CATEGORY")))
+             (org-with-point-at marker (org-get-category))))
+         (org-get-title)
+         "")))
+    (s-truncate max-length category)))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
