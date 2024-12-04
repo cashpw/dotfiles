@@ -4734,17 +4734,11 @@ Intended for use with `org-super-agenda' `:transformer'. "
     line))
 
 (defun cashpw/org-agenda-category (max-length)
-  (let*
-      ((marker (org-get-at-bol 'org-hd-marker))
-       (category
-        (or
-         ;; Skip when we're in the org-agenda buffer as there's no category to get
-         (when (not (string= (buffer-name) org-agenda-buffer-name))
-           (let ((org-use-property-inheritance '("CATEGORY")))
-             (org-with-point-at marker (org-get-category))))
-         (org-get-title)
-         "")))
-    (s-truncate max-length category)))
+  (s-truncate
+   max-length
+   (or (org-entry-get (org-get-at-bol 'org-hd-marker) "CATEGORY" t)
+       (org-get-title)
+       "")))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
