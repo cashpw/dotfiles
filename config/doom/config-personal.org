@@ -7627,7 +7627,7 @@ items if they have an hour specification like [h]h:mm."
 (defun cashpw/org-agenda-view--inbox-get-effort-string ()
   "Return effort string for inbox view."
   (let ((effort-minutes
-         (let ((effort (org-extras-get-property
+         (let ((effort (org-entry-get
                         (point)
                         "Effort")))
            (when effort
@@ -8342,13 +8342,13 @@ Value is a list of space separated numbers indicating weekdays (Monday is 1, ...
   (let ((valid-repeaters '("++1d"
                            ".+1d")))
     (and (-contains-p valid-repeaters (org-get-repeat))
-         (org-extras-get-property pom
+         (org-entry-get pom
                                   cashpw/org-mode-weekday-repeat--property))))
 
 (cl-defun cashpw/org-mode-weekday-repeat--weekdays (pom)
   "Return list of weekdays for entry at POM."
   (let* ((all-weekdays "1 2 3 4 5 6 7")
-         (repeat-weekdays (split-string (or (org-extras-get-property pom
+         (repeat-weekdays (split-string (or (org-entry-get pom
                                                                      cashpw/org-mode-weekday-repeat--property)
                                             all-weekdays))))
     (mapcar #'string-to-number
@@ -8734,7 +8734,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
            (when (search-forward "#+category:")
              (replace-regexp-in-string
               "#\\+category: " "" (org-current-line-string)))))
-        (category (org-extras-get-property (point) "CATEGORY")))
+        (category (org-entry-get (point) "CATEGORY")))
     (message "%s : %s" buffer-category category)
     (when (or (not category)
               (and buffer-category (string= buffer-category category)))
@@ -8766,9 +8766,9 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
              ;; Demand an effort
              (while
                  (or
-                  (not (org-extras-get-property (point) "Effort"))
+                  (not (org-entry-get (point) "Effort"))
                   ;; The default case (clicking <enter> without typing an effort) sets :EFFORT: to an empty string.
-                  (string= (org-extras-get-property (point) "Effort") ""))
+                  (string= (org-entry-get (point) "Effort") ""))
                (org-set-effort))
              (cashpw/org--prompt-for-category-when-missing))
            :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
