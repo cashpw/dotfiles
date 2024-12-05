@@ -862,18 +862,15 @@ Passes arguments, including NEW-WINDOW, along."
  ediff-split-window-function #'split-window-horizontally)
 
 (use-package! ox-gfm)
-(after! emacs-everywhere
-  (setq
-   emacs-everywhere-pandoc-md-args '("-f" "markdown-auto_identifiers"
-                                     "-f" "markdown-smart"
-                                     "-f" "markdown+pipe_tables"
-                                     "-t" "org"))
-  (--each
-      '("Buganizer"
-        "Critique")
-    (add-to-list
-     'emacs-everywhere-markdown-windows
-     it)))
+(after!
+ emacs-everywhere
+ (setq emacs-everywhere-pandoc-md-args
+       `("--from" ,(concat
+           "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
+         "--to" "org"))
+ (--each
+  '("Buganizer" "Critique")
+  (add-to-list 'emacs-everywhere-markdown-windows it)))
 
 (use-package! gnus-alias
   :config
