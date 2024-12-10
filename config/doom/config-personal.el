@@ -862,18 +862,15 @@ Passes arguments, including NEW-WINDOW, along."
  ediff-split-window-function #'split-window-horizontally)
 
 (use-package! ox-gfm)
-(after! emacs-everywhere
-  (setq
-   emacs-everywhere-pandoc-md-args '("-f" "markdown-auto_identifiers"
-                                     "-f" "markdown-smart"
-                                     "-f" "markdown+pipe_tables"
-                                     "-t" "org"))
-  (--each
-      '("Buganizer"
-        "Critique")
-    (add-to-list
-     'emacs-everywhere-markdown-windows
-     it)))
+(after!
+ emacs-everywhere
+ (setq emacs-everywhere-pandoc-md-args
+       `("--from" ,(concat
+           "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
+         "--to" "org"))
+ (--each
+  '("Buganizer" "Critique")
+  (add-to-list 'emacs-everywhere-markdown-windows it)))
 
 (use-package! gnus-alias
   :config
@@ -2809,63 +2806,58 @@ Return nil if no attendee exists with that EMAIL."
    :fetch-file-alist `(("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
    :client-secret (secret-get "org-gcal--personal")
-   :after-update-entry-functions '(cashpw/org-gcal--maybe-set-scheduled
-                                   cashpw/org-gcal--maybe-set-category
-                                   cashpw/org-gcal--maybe-create-todo-extract-reminder
-                                   cashpw/org-gcal--maybe-create-prep-meeting
-                                   cashpw/org-gcal--convert-description
-                                   cashpw/org-gcal--set-processed)
+   :after-update-entry-functions
+   '(cashpw/org-gcal--maybe-set-scheduled
+     cashpw/org-gcal--maybe-set-category
+     cashpw/org-gcal--maybe-create-todo-extract-reminder
+     cashpw/org-gcal--maybe-create-prep-meeting
+     cashpw/org-gcal--convert-description
+     cashpw/org-gcal--set-processed)
    :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
-   :on-activate (lambda ()
-                  (setq
-                   cashpw/org-gcal--no-prep-reminder-summaries '("Walk"
-                                                                 "Clean house")
-                   cashpw/org-gcal--summary-categories (-flatten
-                                                        (--map
-                                                         (-flatten
-                                                          (let ((category (car it))
-                                                                (summaries (cdr it)))
-                                                            (--map
-                                                             `(,it . ,category)
-                                                             summaries)))
-                                                         '(("Fitness" . ("Shoulders"
-                                                                         "Back"
-                                                                         "Chest"
-                                                                         "Legs"
-                                                                         "Mobility, Grip, Neck"
-                                                                         "Cardio"
-                                                                         "Stretch"
-                                                                         "Walk"
-                                                                         "Total Body Strength with Brianna Mariotti"))
-                                                           ("Car" . ("Tidy car"))
-                                                           ("Finance" . ("Finances and net worth"))
-                                                           ("Pet" . ("Empty cat boxes"
-                                                                     "Myth's inhaler"
-                                                                     "Feed cats"
-                                                                     "Clean pet water and food dishes"))
-                                                           ("Family" . ("Call parents"))
-                                                           ("Home" . ("Take out the trash"
-                                                                      "Get the mail"))
-                                                           ("Hygeine" . ("Shower"
-                                                                         "Brush teeth"
-                                                                         "Teeth"
-                                                                         "Shave"
-                                                                         "Acne"))
-                                                           ("Pottery" . ("Pottery"
-                                                                         "Wheel Projects with Khaled"))
-                                                           ("Study" . ("Study"
-                                                                       "Flashcards"))
-                                                           ("Food" . ("Huel shake"))
-                                                           ("Sleep" . ("Sleep"
-                                                                       "Fall asleep"))
-                                                           ("R&R" . ("R&R")))))
-                   cashpw/org-gcal--summaries-to-exclude '("^Nap$"
-                                                           "^Sleeping$"
-                                                           "^Journal$" ; Journal TODOs are in the journal files.
-                                                           "^Work$"
-                                                           "^Lunch$"
-                                                           "^End the day"
-                                                           "^Evening chores"))))
+   :on-activate
+   (lambda ()
+     (setq
+      cashpw/org-gcal--no-prep-reminder-summaries '("Walk" "Clean house")
+      cashpw/org-gcal--summary-categories
+      (-flatten
+       (--map
+        (-flatten
+         (let ((category (car it))
+               (summaries (cdr it)))
+           (--map `(,it . ,category) summaries)))
+        '(("Fitness" .
+           ("Shoulders"
+            "Back"
+            "Chest"
+            "Legs"
+            "Mobility, Grip, Neck"
+            "Cardio"
+            "Stretch"
+            "Walk"))
+          ("Car" . ("Tidy car"))
+          ("Finance" . ("Finances and net worth"))
+          ("Pet" .
+           ("Empty cat boxes"
+            "Myth's inhaler"
+            "Feed cats"
+            "Clean pet water and food dishes"))
+          ("Family" . ("Call parents"))
+          ("Home" .
+           ("Take out the trash"
+            "Get the mail"
+            "Flip pillowcase"
+            "New bedsheets"
+            "New pillowcase"))
+          ("Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
+          ("Pottery" . ("Pottery" "Wheel Projects with Khaled"))
+          ("Study" . ("Study" "Flashcards"))
+          ("Food" . ("Huel shake"))
+          ("Sleep" . ("Sleep" "Fall asleep"))
+          ("R&R" . ("R&R")))))
+      cashpw/org-gcal--summaries-to-exclude
+      '("^Nap$" "^Sleeping$"
+        "^Journal$" ; Journal TODOs are in the journal files.
+        "^Work$" "^Lunch$" "^End the day" "^Evening chores"))))
   "Personal profile for `org-gcal'."
   :group 'cashpw
   :type 'org-gcal-profile)
@@ -2974,10 +2966,10 @@ Return nil if no attendee exists with that EMAIL."
   ;; See https://github.com/kidd/org-gcal.el/issues/172
   (org-gcal-auto-archive nil)
   (org-gcal-recurring-events-mode 'top-level)
-  ;; https://github.com/dengste/org-caldav/issues/117
-  (setenv "GPG_AGENT_INFO")
 
   :config
+  ;; https://github.com/dengste/org-caldav/issues/117
+  (setenv "GPG_AGENT_INFO")
   (org-gcal-reload-client-id-secret))
 
 (after! org-habit
