@@ -3764,6 +3764,7 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 ** TODO Close out
 *** TODO Retrospective
 *** TODO Communicate
+** TODO Administration
 ** TODO Review
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
