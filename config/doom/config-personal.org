@@ -5700,13 +5700,15 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 (defun cashpw/org-agenda-files--update ()
   "Update `org-agenda-files'."
   (setq
-   org-agenda-files (append
-                     (cashpw/org-agenda-files 'personal)
-                     (cashpw/org-agenda-files 'calendar)
-                     (cashpw/org-agenda-files 'projects-with-todo)
-                     (cashpw/org-agenda-files 'pets-with-todo)
-                     (cashpw/org-agenda-files 'journal-this-year-with-todo)
-                     (cashpw/org-agenda-files 'people-private-with-todo))))
+   org-agenda-files
+   (seq-uniq
+    (append
+     (cashpw/org-agenda-files 'personal)
+     (cashpw/org-agenda-files 'calendar)
+     (cashpw/org-agenda-files 'projects-with-todo)
+     (cashpw/org-agenda-files 'pets-with-todo)
+     (cashpw/org-agenda-files 'journal-this-year-with-todo)
+     (cashpw/org-agenda-files 'people-private-with-todo)))))
 
 ;; DEBUGGING
 ;;(after! org-roam
