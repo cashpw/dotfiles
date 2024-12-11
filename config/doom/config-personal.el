@@ -872,6 +872,45 @@ Passes arguments, including NEW-WINDOW, along."
   '("Buganizer" "Critique")
   (add-to-list 'emacs-everywhere-markdown-windows it)))
 
+(after!
+  emacs-everywhere
+  (defun emacs-everywhere-insert-selection ()
+    "Insert the last text selection into the buffer."
+    (pcase system-type
+      ('darwin
+       (progn
+         (call-process
+          "osascript"
+          nil
+          nil
+          nil
+          "-e"
+          "tell application \"System Events\" to keystroke \"c\" using command down")
+         (sleep-for emacs-everywhere-clipboard-sleep-delay) ; lets clipboard info propagate
+         (yank)))
+      ((or 'ms-dos 'windows-nt 'cygwin)
+       (emacs-everywhere-insert-selection--windows))
+      (_
+       (when-let ((selection (gui-get-selection 'PRIMARY 'UTF8_STRING)))
+         (gui-backend-set-selection 'PRIMARY "")
+         (insert selection))))
+    (when (and (eq major-mode 'org-mode)
+               (emacs-everywhere-markdown-p)
+               (executable-find "pandoc"))
+      (apply #'call-process-region
+             (point-min)
+             (point-max)
+             "pandoc"
+             t
+             t
+             t
+             emacs-everywhere-pandoc-md-args)
+      (deactivate-mark)
+      (goto-char (point-max)))
+    (cond
+     ((bound-and-true-p evil-local-mode)
+      (evil-insert-state)))))
+
 (use-package! gnus-alias
   :config
   (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
