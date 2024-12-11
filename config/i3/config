@@ -183,12 +183,11 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # i3lock; logout, shutdown, etc
-set $Locker i3lock --image=$HOME/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password
 set $mode_system System: (l) lock, (e) logout, (s) suspend, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
   bindsym l exec --no-startup-id "bash ~/.scripts/utility/lock.sh", mode "default"
   bindsym e exec --no-startup-id i3-msg exit, mode "default"
-  bindsym l exec --no-startup-id "bash ~/.scripts/utility/suspend.sh", mode "default"
+  bindsym s exec --no-startup-id "bash ~/.scripts/utility/suspend.sh", mode "default"
   bindsym r exec --no-startup-id systemctl reboot, mode "default"
   bindsym Shift+s exec --no-startup-id  systemctl poweroff -i, mode "default"
 
