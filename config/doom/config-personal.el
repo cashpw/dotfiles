@@ -2227,34 +2227,39 @@ Only parent headings of the current heading remain visible."
     (let* ((image-url
             (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING)))
            (title (read-string "Title: "))
-           (description (read-string "Description: ")))
-      (while (not (member org-gallery--tag (org-get-tags (point) t)))
-        (org-up-heading-safe))
-      (org-insert-subheading nil)
-      (cashpw/org-download-image--no-insert image-url)
-      (insert
-       ;; Based on `org-download-link-format-function-default'
-       (if (and (>= (string-to-number org-version) 9.3)
-                (eq org-download-method 'attach))
-           (format "[[attachment:%s]%s]"
+           (description (read-string "Description: "))
+           (headings-up 10))
+      (while (and (> headings-up 0)
+                  (not (member org-gallery--tag (org-get-tags (point) t))))
+        (org-up-heading-safe)
+        (decf headings-up))
+      (if (= headings-up 0)
+          (error "Couldn't find gallery tag")
+        (org-insert-subheading nil)
+        (cashpw/org-download-image--no-insert image-url)
+        (insert
+         ;; Based on `org-download-link-format-function-default'
+         (if (and (>= (string-to-number org-version) 9.3)
+                  (eq org-download-method 'attach))
+             (format "[[attachment:%s]%s]"
+                     (org-link-escape
+                      (file-relative-name org-download-path-last-file
+                                          (org-attach-dir)))
+                     (if (not (string-empty-p title))
+                         (format "[%s]" title)
+                       ""))
+           (format "[[file:%s]%s]"
                    (org-link-escape
-                    (file-relative-name org-download-path-last-file
-                                        (org-attach-dir)))
+                    (funcall org-download-abbreviate-filename-function
+                             org-download-path-last-file))
+
                    (if (not (string-empty-p title))
                        (format "[%s]" title)
-                     ""))
-         (format "[[file:%s]%s]"
-                 (org-link-escape
-                  (funcall org-download-abbreviate-filename-function
-                           org-download-path-last-file))
-
-                 (if (not (string-empty-p title))
-                     (format "[%s]" title)
-                   ""))))
-      (newline)
-      (insert description)
-      (org-node-put-created)
-      (org-set-property (org-gallery--image-prop-source) image-url))))
+                     ""))))
+        (newline)
+        (insert description)
+        (org-node-put-created)
+        (org-set-property (org-gallery--image-prop-source) image-url)))))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
