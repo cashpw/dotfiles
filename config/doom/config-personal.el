@@ -2881,6 +2881,7 @@ Return nil if no attendee exists with that EMAIL."
             "Feed cats"
             "Clean pet water and food dishes"))
           ("Family" . ("Call parents"))
+          ("Friend" . ("Call with Alian, Ethan, and Austin"))
           ("Home" .
            ("Take out the trash"
             "Get the mail"

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-11 Wed 08:30]
+:LAST_MODIFIED: [2024-12-13 Fri 18:09]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4541,6 +4541,7 @@ Return nil if no attendee exists with that EMAIL."
             "Feed cats"
             "Clean pet water and food dishes"))
           ("Family" . ("Call parents"))
+          ("Friend" . ("Call with Alian, Ethan, and Austin"))
           ("Home" .
            ("Take out the trash"
             "Get the mail"
