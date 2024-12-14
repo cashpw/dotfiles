@@ -1579,12 +1579,12 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
- +ligatures-extra-symbols '(;; org
-                            :name          "»"
-                            :src_block     "»"
-                            :src_block_end "«"
-                            :quote         "“"
-                            :quote_end     "”"
+ +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
+                            ;; :name          "»"
+                            ;; :src_block     "»"
+                            ;; :src_block_end "«"
+                            ;; :quote         "“"
+                            ;; :quote_end     "”"
 
                             ;; Typography
                             ;; :list_property "∷"

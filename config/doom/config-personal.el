@@ -712,12 +712,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                     16)))
 
 (setq
- +ligatures-extra-symbols '(;; org
-                            :name          "»"
-                            :src_block     "»"
-                            :src_block_end "«"
-                            :quote         "“"
-                            :quote_end     "”"
+ +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
+                            ;; :name          "»"
+                            ;; :src_block     "»"
+                            ;; :src_block_end "«"
+                            ;; :quote         "“"
+                            ;; :quote_end     "”"
 
                             ;; Typography
                             ;; :list_property "∷"
