@@ -1683,6 +1683,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
     "^https?:\\/\\/docs\\.google\\.com"
 
     "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
+    "accounts.google.com"
     )
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 

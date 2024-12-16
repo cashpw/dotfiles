@@ -807,6 +807,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     "^https?:\\/\\/docs\\.google\\.com"
 
     "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
+    "accounts.google.com"
     )
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
