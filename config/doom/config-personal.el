@@ -3130,24 +3130,44 @@ Return nil if no attendee exists with that EMAIL."
   (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 
-;; (use-package! org-special-block-extras
-;;   :after org
-;;   :hook (org-mode . org-special-block-extras-mode)
-;;   :custom
-;;   (o-docs-libraries
-;;    '("~/org-special-block-extras/documentation.org")
-;;    "The places where I keep my ‘#+documentation’")
-;;   (org-defblock hugogallery
-;;                 (editor "Editor HugoGallery") ()
-;;                 "Docstring"
-;;                 (if (not (equal backend 'hugo))
-;;                     contents
-;;                   (format "{{< gallery >}}%s{{< /gallery >}}"
-;;                           (replace-regexp-in-string ":class:class"
-;;                                                     ":class"
-;;                                                     (replace-regexp-in-string "\\(attr_html: \\(.*:class\\)?\\)"
-;;                                                                               "\\1:class hugo-gallery-image "
-;;                                                                               contents))))))
+(use-package!
+    org-special-block-extras
+  :after org
+  :hook (org-mode . org-special-block-extras-mode)
+  ;; (o-docs-libraries
+  ;;  '("~/org-special-block-extras/documentation.org")
+  ;;  "The places where I keep my ‘#+documentation’")
+  :config
+  (org-defblock
+   quote2 nil
+   (pcase backend
+     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (_ raw-contents)))
+  (org-defblock
+   quote3 nil
+   (pcase backend
+     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (_ raw-contents)))
+  (org-defblock
+   quote4 nil
+   (pcase backend
+     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (_ raw-contents)))
+  (org-defblock
+   quote5 nil
+   (pcase backend
+     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (_ raw-contents)))
+  (org-defblock
+   quote6 nil
+   (pcase backend
+     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+     (_ raw-contents))))
 
 (use-package! org-tempo)
 
@@ -4814,6 +4834,10 @@ Intended for use with `org-super-agenda' `:transformer'. "
                  :scheduled past)))
          (:name "In Progress"
           :todo "INPROGRESS")
+         (:name "Chores"
+          :tag "chore"
+          :transformer (--> it
+                            (cashpw/org-agenda--simplify-line it)))
          (:auto-map cashpw/org-super-agenda--get-priority
           :transformer cashpw/org-super-agenda--simplify-map)
          (;; Toss all other todos
