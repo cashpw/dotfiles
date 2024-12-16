@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-16 Mon 12:42]
+:LAST_MODIFIED: [2024-12-16 Mon 14:26]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3855,9 +3855,9 @@ Set special repeaters for =org-mode= TODOs
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! repeat-todo
   :after org
-  :custom
+  :config
   ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
-  (repeat-todo-mode t))
+  (setq repeat-todo-mode t))
 #+end_src
 
 **** =org-gcal= (Calendar)

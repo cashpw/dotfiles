@@ -2264,9 +2264,9 @@ Only parent headings of the current heading remain visible."
 
 (use-package! repeat-todo
   :after org
-  :custom
+  :config
   ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
-  (repeat-todo-mode t))
+  (setq repeat-todo-mode t))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
