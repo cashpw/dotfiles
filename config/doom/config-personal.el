@@ -2262,6 +2262,9 @@ Only parent headings of the current heading remain visible."
         (org-node-put-created)
         (org-set-property (org-gallery--image-prop-source) image-url)))))
 
+(use-package! repeat-todo
+  :after org)
+
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
                                 :dateTime))
@@ -5920,154 +5923,6 @@ See `org-clock-special-range' for KEY."
   :group 'cashpw/org-mode-on-done
   :type 'hook)
 
-(defcustom cashpw/org-mode-weekday-repeat--property "CASHPW_REPEAT_WEEKDAYS"
-  "Property name to indicate how to handle DONE event repeated weekly.
-
-Value is a list of space separated numbers indicating weekdays (Monday is 1, ..., Sunday is 7)."
-  :group 'cashpw/org-mode-weekday-repeat
-  :type 'string)
-
-(cl-defun cashpw/org-mode-weekday-repeat--p (pom)
-  "Return non-nil if the heading at POM is configured to repeat on weekdays."
-  (let ((valid-repeaters '("++1d"
-                           ".+1d")))
-    (and (-contains-p valid-repeaters (org-get-repeat))
-         (org-entry-get pom
-                                  cashpw/org-mode-weekday-repeat--property))))
-
-(cl-defun cashpw/org-mode-weekday-repeat--weekdays (pom)
-  "Return list of weekdays for entry at POM."
-  (let* ((all-weekdays "1 2 3 4 5 6 7")
-         (repeat-weekdays (split-string (or (org-entry-get pom
-                                                                     cashpw/org-mode-weekday-repeat--property)
-                                            all-weekdays))))
-    (mapcar #'string-to-number
-            repeat-weekdays)))
-
-(cl-defun cashpw/org-mode-weekday-repeat--next-scheduled-time (current-scheduled-time weekdays)
-  "Return the next valid, by WEEKDAYS, time after CURRENT-SCHEDULED-TIME.
-
-WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
-  (let* (;; The scheduled time may be in the past!
-         (days-between-scheduled-and-today (- (time-to-days (current-time))
-                                              (time-to-days current-scheduled-time)))
-         (scheduled-in-future (< days-between-scheduled-and-today 0))
-         (next-scheduled-time (if (> days-between-scheduled-and-today 0)
-                                  (time-add current-scheduled-time (days-to-time days-between-scheduled-and-today))
-                                current-scheduled-time))
-         (add-one-day (lambda ()
-                        (setq next-scheduled-time (time-add (days-to-time 1)
-                                                            next-scheduled-time)))))
-    (funcall add-one-day)
-    (while (not (-contains-p weekdays
-                             (day-of-week-day-number next-scheduled-time)))
-      (funcall add-one-day))
-    next-scheduled-time))
-
-(cl-defun cashpw/org-mode-weekday-repeat--maybe-reschedule (pom)
-  "Reschedule heading at POM to the next appropriate weekday."
-  (when (cashpw/org-mode-weekday-repeat--p pom)
-    (let* ((weekdays (cashpw/org-mode-weekday-repeat--weekdays pom))
-           (scheduled-time (org-get-scheduled-time pom))
-           (next-scheduled-time
-            ;; Schedule to the day before the next schedule time because
-            ;; it'll get moved forward one day past when we schedule it
-            (time-subtract (cashpw/org-mode-weekday-repeat--next-scheduled-time scheduled-time
-                                                                                weekdays)
-                           (days-to-time 1)))
-           (hh-mm (format-time-string "%H:%M" next-scheduled-time))
-           (format-string
-            (if (string= hh-mm "00:00")
-                "%F"
-              "%F %H:%M")))
-      (org-schedule nil (format-time-string format-string
-                                            next-scheduled-time)))))
-
-(setq current-time-override-time (current-time))
-(defun current-time-override ()
-  current-time-override-time)
-(advice-add 'current-time :override 'current-time-override)
-
-;; Event is scheduled for today
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 2)))
-            (format-time-string "%FT%T%z" tuesday))
-   t))
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 3)))
-            (format-time-string "%FT%T%z" wednesday))
-   t))
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1)))
-            (format-time-string "%FT%T%z" next-monday))
-   t))
-(let* ((friday (date-to-time "2000-01-07T08:00:00-0700"))
-       (next-monday (date-to-time "2000-01-10T08:00:00-0700"))
-       (current-time-override-time friday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time friday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" next-monday))
-   t))
-
-
-;; Event is scheduled in the future
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time tuesday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" wednesday))
-   t
-   "Should schedule for next valid future day when scheduled in future."))
-
-;; Event is scheduled in the future
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (friday (date-to-time "2000-01-07T08:00:00-0700"))
-       (current-time-override-time monday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time wednesday
-                                                                                     '(1 5)))
-            (format-time-string "%FT%T%z" friday))
-   t
-   "Should schedule for next valid future day when scheduled in future."))
-
-;; Event is scheduled in the past
-(let* ((monday (date-to-time "2000-01-03T08:00:00-0700"))
-       (tuesday (date-to-time "2000-01-04T08:00:00-0700"))
-       (wednesday (date-to-time "2000-01-05T08:00:00-0700"))
-       (current-time-override-time tuesday))
-  (cl-assert
-   (string= (format-time-string "%FT%T%z"
-                                (cashpw/org-mode-weekday-repeat--next-scheduled-time monday
-                                                                                     '(1 2 3 4 5)))
-            (format-time-string "%FT%T%z" wednesday))
-   t
-   "Should schedule for next valid future day when scheduled in past."))
-
-(advice-remove 'current-time 'current-time-override)
-
 (defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
   "Property name to indicate how to handle DONE event."
   :group 'cashpw/org-mode-on-done
@@ -6230,8 +6085,7 @@ WEEKDAYS: See `cashpw/org-mode-weekday-repeat--weekdays'."
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
-    (when (org-get-repeat)
-      (cashpw/org-mode-weekday-repeat--maybe-reschedule (point)))
+    (repeat-todo--reschedule (point))
     (cond
      ((cashpw/org-mode-on-done--is-noop)
       ;; (unless (org-get-repeat)

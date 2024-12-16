@@ -176,6 +176,10 @@
   :recipe (:host github
            :repo "cashpw/org-gallery"))
 
+(package! repeat-todo
+  :recipe (:host github
+           :repo "cashpw/repeat-todo"))
+
 (unpin! org-gcal)
 
 (package! org-multi-clock
