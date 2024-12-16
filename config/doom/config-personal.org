@@ -3854,7 +3854,10 @@ Set special repeaters for =org-mode= TODOs
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! repeat-todo
-  :after org)
+  :after org
+  :custom
+  ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
+  (repeat-todo-mode t))
 #+end_src
 
 **** =org-gcal= (Calendar)

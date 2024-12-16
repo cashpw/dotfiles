@@ -2263,7 +2263,10 @@ Only parent headings of the current heading remain visible."
         (org-set-property (org-gallery--image-prop-source) image-url)))))
 
 (use-package! repeat-todo
-  :after org)
+  :after org
+  :custom
+  ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
+  (repeat-todo-mode t))
 
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
