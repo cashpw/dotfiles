@@ -4548,6 +4548,7 @@ Return nil if no attendee exists with that EMAIL."
             "Clean pet water and food dishes"))
           ("Family" . ("Call parents"))
           ("Friend" . ("Call with Alian, Ethan, and Austin"))
+          ("Food" . ("Lunch" "Dinner"))
           ("Home" .
            ("Take out the trash"
             "Get the mail"
@@ -4558,12 +4559,18 @@ Return nil if no attendee exists with that EMAIL."
           ("Pottery" . ("Pottery" "Wheel Projects with Khaled"))
           ("Study" . ("Study" "Flashcards"))
           ("Food" . ("Huel shake"))
-          ("Sleep" . ("Sleep" "Fall asleep"))
+          ("Sleep" . ("Sleep"))
           ("R&R" . ("R&R")))))
       cashpw/org-gcal--summaries-to-exclude
-      '("^Nap$" "^Sleeping$"
-        "^Journal$" ; Journal TODOs are in the journal files.
-        "^Work$" "^Lunch$" "^End the day" "^Evening chores"))))
+      '("^Nap$"
+        "^Sleeping$"
+        "^Slack$"
+        "^Drive "
+        "^Shower, etc$"
+        "^Chores$"
+        "^Work$"
+        "^End the day"
+        "^Fall asleep$"))))
   "Personal profile for `org-gcal'."
   :group 'cashpw
   :type 'org-gcal-profile)
