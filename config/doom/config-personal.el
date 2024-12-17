@@ -3656,7 +3656,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
- org-agenda-bulk-custom-functions `((?L org-extras-reschedule-overdue-todo-agenda)))
+ org-agenda-bulk-custom-functions '((?L org-extras-reschedule-overdue-todo-agenda)
+                                    (?> cashpw/org-agenda-push-to-next-occurrence-or-kill)))
 
 (after! org
   ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
@@ -4810,9 +4811,33 @@ Intended for use with `org-super-agenda' `:transformer'. "
 (defun cashpw/org-agenda-category (max-length)
   (s-truncate
    max-length
-   (or (org-entry-get (org-get-at-bol 'org-hd-marker) "CATEGORY" t)
+   (or (org-entry-get (point) "CATEGORY" t)
        (org-get-title)
        "")))
+
+(defun cashpw/org-agenda-icon ()
+  (let ((properties (org-entry-properties (point))))
+    (concat
+     (cond
+      ((when-let ((scheduled (alist-get "SCHEDULED" properties nil nil 'string=)))
+         (org-get-repeat scheduled))
+       "⟳")
+      ((when-let* ((file-path (alist-get "FILE" properties nil nil 'string=))
+                   (file-name (f-filename file-path)))
+         (string= file-name "calendar-personal.org"))
+       "C")
+      (t
+       " "))
+     " ")))
+
+(defun cashpw/org-agenda-push-to-next-occurrence-or-kill ()
+  "Reschedule to next occurrence if item at point repeats; else kill."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry nil
+      (if (org-get-repeat)
+          (org-extras-reschedule-overdue-todo)
+        (org-mark-subtree)
+        (kill-region))))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -4825,6 +4850,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-agenda-span 1)
       (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
       (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-prefix-format '((agenda . " %i %-21(cashpw/org-agenda-category 20)%-12t%-2(cashpw/org-agenda-icon)%-5e")))
       (org-super-agenda-groups
        '((:discard
           (:scheduled future
@@ -5573,11 +5599,9 @@ Category | Scheduled | Effort
   "Overridden in my work config."
   "")
 
-(map! :after org-agenda
-      :map org-agenda-mode-map
-      :m "C-SPC" #'org-agenda-show-and-scroll-up
-      :localleader
-      "o" #'org-agenda-set-property)
+(after! org-agenda
+  ;; Override
+  (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-push-to-next-occurrence-or-kill))
 
 (defun cashpw/org-clock--agenda-with-archives ()
   "Return list of agenda files to use with clocktable."
