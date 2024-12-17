@@ -182,6 +182,10 @@
 
 (unpin! org-gcal)
 
+(package! org-gcal-extras
+  :recipe (:host github
+           :repo "cashpw/org-gcal-extras"))
+
 (package! org-multi-clock
   :recipe (:host gitlab
            :repo "OlMon/org-multi-clock"))

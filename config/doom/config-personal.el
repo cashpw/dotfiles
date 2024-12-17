@@ -2268,6 +2268,8 @@ Only parent headings of the current heading remain visible."
   ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
   (setq repeat-todo-mode t))
 
+(use-package! org-gcal-extras)
+
 (defun cashpw/org-gcal--timestamp-from-event (event)
   (let* ((start-time (plist-get (plist-get event :start)
                                 :dateTime))
@@ -2339,74 +2341,6 @@ Reference: `org-gcal--update-entry'."
         (parse-iso8601-time-string end-datetime)
       (date-to-time end-date))))
 
-(defun cashpw/org-gcal--remove-gcal-timestamp ()
-  "Delete the timestamp `org-gcal' inserts."
-  (save-excursion
-    (ignore-errors
-      (org-up-heading 10))
-    (org-mark-subtree)
-    (replace-regexp org-element--timestamp-regexp ""
-                    nil
-                    (region-beginning)
-                    (region-end))
-    (deactivate-mark)))
-
-(defun cashpw/org-gcal--set-processed (_calendar-id event _update-mode)
-  "TODO"
-  (save-excursion
-    (ignore-errors
-      (org-up-heading 10))
-    (org-set-tags '("processed"))))
-
-(defun cashpw/org-gcal--maybe-set-scheduled (_calendar-id event _update-mode)
-  "See `org-gcal-after-update-entry-functions'."
-  (save-excursion
-    (ignore-errors
-      (org-up-heading 10))
-    (unless (member "processed" (org-get-tags))
-      (shut-up
-        (cashpw/org-gcal--remove-gcal-timestamp)
-        (org-schedule nil (cashpw/org-gcal--timestamp-from-event event))))))
-
-(defun cashpw/org-gcal--set-effort (_calendar-id event _update-mode)
-  "Set Effort property based on EVENT if not already set.
-
-Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044"
-  (save-excursion
-    (ignore-errors
-      (org-up-heading 10))
-    (when-let* ((start-time
-                 (plist-get
-                  (plist-get event :start)
-                  :dateTime))
-                (end-time
-                 (plist-get
-                  (plist-get event :end)
-                  :dateTime))
-                (minutes
-                 (floor
-                  (/ (float-time
-                      (time-subtract
-                       (org-gcal--parse-calendar-time-string
-                        end-time)
-                       (org-gcal--parse-calendar-time-string
-                        start-time)))
-                     60))))
-      (let ((effort
-             (org-entry-get
-              (point)
-              org-effort-property)))
-        (unless
-            effort
-          (org-set-property
-           org-effort-property
-           (apply
-            #'format
-            "%d:%02d"
-            (cl-floor
-             minutes
-             60))))))))
-
 (defun cashpw/org-gcal--convert-description (_calendar-id _event _update-mode)
   (save-excursion
     (org-up-heading-safe)
@@ -2434,24 +2368,6 @@ Reference: https://github.com/kidd/org-gcal.el/issues/150#issuecomment-825837044
               (cashpw/org-delete-drawer "org-gcal")
               (goto-char (point-max))
               (insert converted-description))))))))
-
-(defcustom cashpw/org-gcal--summary-categories
-  '()
-  "List of calendar event summaries and their categories."
-  :group 'cashpw
-  :type 'sexp)
-
-(defun cashpw/org-gcal--maybe-set-category (_calendar-id event _update-mode)
-  "Set appropriate category for EVENT."
-  (save-excursion
-    (ignore-errors
-      (org-up-heading 10))
-    (unless (member "processed" (org-get-tags))
-      (when-let ((summary (plist-get event :summary)))
-        (dolist (summary-category cashpw/org-gcal--summary-categories)
-          (when (string-match-p (car summary-category) summary)
-            (shut-up
-              (org-set-property "CATEGORY" (cdr summary-category)))))))))
 
 (defcustom cashpw/org-gcal--summaries-to-exclude
   '()
@@ -2683,8 +2599,7 @@ Return nil if no attendee exists with that EMAIL."
   (when-let (time-string (cashpw/org-gcal--get-schedule-string pom))
     (org-read-date t t time-string nil)))
 
-(defcustom cashpw/org-gcal--no-prep-reminder-summaries
-  '()
+(defcustom cashpw/org-gcal--no-prep-reminder-summaries '()
   "List of event summaries (titles), as regexps, for which we shouldn't create 'Prepare: ...' todos."
   :type '(repeat string)
   :group 'org-gcal)
@@ -2692,84 +2607,60 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--create-prep-meeting (summary time)
   "Insert a preparation evnet."
   (org-insert-todo-heading-respect-content)
-  (insert
-   (s-lex-format
-    "Prepare: ${summary}"))
+  (insert (s-lex-format "Prepare: ${summary}"))
   (shut-up
-    (org-priority
-     2)
-    (org-set-property
-     "Effort"
-     "5m")
-    (org-schedule
-     nil
-     (format-time-string
-      "%F"
-      time))))
+   (org-priority 2)
+   (org-set-property "Effort" "5m")
+   (org-schedule nil (format-time-string "%F" time))))
 
-(defun cashpw/org-gcal--maybe-create-prep-meeting (_calendar-id event _update-mode)
+(defun cashpw/org-gcal--maybe-create-prep-meeting
+    (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
-  (when (and
-         (not
-          (member
-           "processed"
-           (org-get-tags)))
-         (sequencep event)
-         (>= (length (plist-get event :attendees))
-             2)
-         (--none-p
-          (string-match-p it (plist-get event :summary))
-          cashpw/org-gcal--no-prep-reminder-summaries))
-    (let* ((event-start-time
-            (cashpw/org-gcal--start
-             event))
+  (when (and (not (member "processed" (org-get-tags)))
+             (sequencep event) (>= (length (plist-get event :attendees)) 2)
+             (--none-p
+              (string-match-p it (plist-get event :summary))
+              cashpw/org-gcal--no-prep-reminder-summaries))
+    (let* ((event-start-time (cashpw/org-gcal--start event))
            (prepare-time
             (org-time-subtract
              event-start-time
              (days-to-time
-              (if (day-of-week-monday-p
-                   event-start-time)
+              (if (day-of-week-monday-p event-start-time)
                   3
                 1)))))
-      (when (or
-             (cashpw/time-today-p prepare-time)
-             (cashpw/time-future-p prepare-time))
+      (when (or (cashpw/time-today-p prepare-time)
+                (cashpw/time-future-p prepare-time))
         (cashpw/org-gcal--create-prep-meeting
-         (plist-get event :summary)
-         prepare-time)))))
+         (plist-get event :summary) prepare-time)))))
 
 (defcustom cashpw/org-gcal--no-extract-todo-reminder-summaries
-  '("Walk"
-    "Clean house")
+  '("Walk" "Clean house")
   "List of event summaries (titles), as regexps, for which we shouldn't create 'Extract todos: ...' todos."
   :type '(repeat string)
   :group 'org-gcal)
 
-(defun cashpw/org-gcal--create-todo-extract-reminder (_calendar-id event _update-mode)
+(defun cashpw/org-gcal--create-todo-extract-reminder
+    (_calendar-id event _update-mode)
   "Insert a reminder to extract todos folling an EVENT."
   (let* ((event-summary (plist-get event :summary))
          (event-end-time (cashpw/org-gcal--end event)))
     (org-insert-todo-heading-respect-content)
     (insert (s-lex-format "Extract TODOs: ${event-summary}"))
     (shut-up
-      (org-priority 2)
-      (org-set-property "Effort" "5m")
-      (org-schedule nil (format-time-string "%F %H:%M" event-end-time)))))
+     (org-priority 2) (org-set-property "Effort" "5m")
+     (org-schedule nil (format-time-string "%F %H:%M" event-end-time)))))
 
-(defun cashpw/org-gcal--maybe-create-todo-extract-reminder (_calendar-id event _update-mode)
+(defun cashpw/org-gcal--maybe-create-todo-extract-reminder
+    (_calendar-id event _update-mode)
   "Insert a 1-on-1 prep heading todo if EVENT is for a 1-on-1 event."
-  (when (and
-         (not
-          (member
-           "processed"
-           (org-get-tags)))
-         (sequencep event)
-         (>= (length (plist-get event :attendees))
-             2)
-         (--none-p
-          (string-match-p it (plist-get event :summary))
-          cashpw/org-gcal--no-extract-todo-reminder-summaries))
-    (cashpw/org-gcal--create-todo-extract-reminder _calendar-id event _update-mode)))
+  (when (and (not (member "processed" (org-get-tags)))
+             (sequencep event) (>= (length (plist-get event :attendees)) 2)
+             (--none-p
+              (string-match-p it (plist-get event :summary))
+              cashpw/org-gcal--no-extract-todo-reminder-summaries))
+    (cashpw/org-gcal--create-todo-extract-reminder
+     _calendar-id event _update-mode)))
 
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
@@ -2858,65 +2749,64 @@ Return nil if no attendee exists with that EMAIL."
    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
    :client-secret (secret-get "org-gcal--personal")
    :after-update-entry-functions
-   '(cashpw/org-gcal--maybe-set-scheduled
-     cashpw/org-gcal--maybe-set-category
+   '(org-gcal-extras--set-scheduled
+     org-gcal-extras--set-category
      cashpw/org-gcal--maybe-create-todo-extract-reminder
      cashpw/org-gcal--maybe-create-prep-meeting
-     cashpw/org-gcal--convert-description
-     cashpw/org-gcal--set-processed)
+     cashpw/org-gcal--convert-description)
    :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
+   :summaries-to-skip
+   '("^Nap$"
+     "^Sleeping$"
+     "^Slack$"
+     "^Drive "
+     "^Shower, etc$"
+     "^Chores$"
+     "^Work$"
+     "^End the day"
+     "^Fall asleep$")
+   :categories
+   (-flatten
+    (--map
+     (-flatten
+      (let ((category (car it))
+            (summaries (cdr it)))
+        (--map `(,it . ,category) summaries)))
+     '(("Fitness" .
+        ("Shoulders"
+         "Back"
+         "Chest"
+         "Legs"
+         "Mobility, Grip, Neck"
+         "Cardio"
+         "Stretch"
+         "Walk"))
+       ("Car" . ("Tidy car"))
+       ("Finance" . ("Finances and net worth"))
+       ("Pet" .
+        ("Empty cat boxes"
+         "Myth's inhaler"
+         "Feed cats"
+         "Clean pet water and food dishes"))
+       ("Family" . ("Call parents"))
+       ("Friend" . ("Call with Alian, Ethan, and Austin"))
+       ("Food" . ("Lunch" "Dinner"))
+       ("Home" .
+        ("Take out the trash"
+         "Get the mail"
+         "Flip pillowcase"
+         "New bedsheets"
+         "New pillowcase"))
+       ("Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
+       ("Pottery" . ("Pottery" "Wheel Projects with Khaled"))
+       ("Study" . ("Study" "Flashcards"))
+       ("Food" . ("Huel shake"))
+       ("Sleep" . ("Sleep"))
+       ("R&R" . ("R&R")))))
    :on-activate
    (lambda ()
-     (setq
-      cashpw/org-gcal--no-prep-reminder-summaries '("Walk" "Clean house")
-      cashpw/org-gcal--summary-categories
-      (-flatten
-       (--map
-        (-flatten
-         (let ((category (car it))
-               (summaries (cdr it)))
-           (--map `(,it . ,category) summaries)))
-        '(("Fitness" .
-           ("Shoulders"
-            "Back"
-            "Chest"
-            "Legs"
-            "Mobility, Grip, Neck"
-            "Cardio"
-            "Stretch"
-            "Walk"))
-          ("Car" . ("Tidy car"))
-          ("Finance" . ("Finances and net worth"))
-          ("Pet" .
-           ("Empty cat boxes"
-            "Myth's inhaler"
-            "Feed cats"
-            "Clean pet water and food dishes"))
-          ("Family" . ("Call parents"))
-          ("Friend" . ("Call with Alian, Ethan, and Austin"))
-          ("Food" . ("Lunch" "Dinner"))
-          ("Home" .
-           ("Take out the trash"
-            "Get the mail"
-            "Flip pillowcase"
-            "New bedsheets"
-            "New pillowcase"))
-          ("Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
-          ("Pottery" . ("Pottery" "Wheel Projects with Khaled"))
-          ("Study" . ("Study" "Flashcards"))
-          ("Food" . ("Huel shake"))
-          ("Sleep" . ("Sleep"))
-          ("R&R" . ("R&R")))))
-      cashpw/org-gcal--summaries-to-exclude
-      '("^Nap$"
-        "^Sleeping$"
-        "^Slack$"
-        "^Drive "
-        "^Shower, etc$"
-        "^Chores$"
-        "^Work$"
-        "^End the day"
-        "^Fall asleep$"))))
+     (setq cashpw/org-gcal--no-prep-reminder-summaries
+           '("Walk" "Clean house"))))
   "Personal profile for `org-gcal'."
   :group 'cashpw
   :type 'org-gcal-profile)
