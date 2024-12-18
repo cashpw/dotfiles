@@ -2708,41 +2708,6 @@ Return nil if no attendee exists with that EMAIL."
    t
    end-time))
 
-(cl-defstruct
-    org-gcal-profile
-  "A profile for `org-gcal'."
-  (fetch-file-alist nil :type 'sexp)
-  (client-id nil :type 'string)
-  (client-secret nil :type 'string)
-  (after-update-entry-functions nil :type 'hook)
-  (fetch-event-filters nil :type 'hook)
-  (on-activate nil :type 'sexp))
-
-(defcustom cashpw/org-gcal--current-profile nil
-  "The current active profile, set in `cashpw/org-gcal-activate-profile'."
-  :type 'org-gcal-profile
-  :group 'cashpw)
-
-(defun cashpw/org-gcal-activate-profile (profile)
-  "Set appropriate `org-gcal' variables based on PROFILE."
-  (setq
-   cashpw/org-gcal--current-profile profile
-   cashpw/org-gcal--no-prep-reminder-summaries '()
-   cashpw/org-gcal--summary-categories '()
-   cashpw/org-gcal--summaries-to-exclude '()
-   org-gcal-client-id (org-gcal-profile-client-id profile)
-   org-gcal-client-secret (org-gcal-profile-client-secret profile)
-   org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
-   org-gcal-after-update-entry-functions nil
-   org-gcal-fetch-event-filters nil)
-  (funcall (org-gcal-profile-on-activate profile))
-  (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
-    (add-hook 'org-gcal-after-update-entry-functions fn))
-  (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
-    (add-hook 'org-gcal-fetch-event-filters fn))
-  (when (fboundp 'org-gcal-reload-client-id-secret)
-    (org-gcal-reload-client-id-secret)))
-
 (defcustom cashpw/org-gcal--profile-personal
   (make-org-gcal-profile
    :fetch-file-alist `(("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
@@ -2809,7 +2774,7 @@ Return nil if no attendee exists with that EMAIL."
            '("Walk" "Clean house"))))
   "Personal profile for `org-gcal'."
   :group 'cashpw
-  :type 'org-gcal-profile)
+  :type 'sexp)
 
 (defcustom cashpw/org-gcal--profile-sleep
   (make-org-gcal-profile
@@ -2834,14 +2799,14 @@ Return nil if no attendee exists with that EMAIL."
                    cashpw/org-gcal--summaries-to-exclude '())))
   "Personal sleep profile for `org-gcal'."
   :group 'cashpw
-  :type 'org-gcal-profile)
+  :type 'sexp)
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
   (interactive "nDays to fetch: ")
   (org-gcal-sync-tokens-clear)
   (let ((previous-profile cashpw/org-gcal--current-profile))
-    (cashpw/org-gcal-activate-profile
+    (org-gcal-activate-profile
      cashpw/org-gcal--profile-sleep)
     (let ((org-gcal-up-days
            n-days)
@@ -2854,7 +2819,7 @@ Return nil if no attendee exists with that EMAIL."
                     summary
                     "Sleep"))))
         (org-gcal-fetch)))
-    (cashpw/org-gcal-activate-profile
+    (org-gcal-activate-profile
      previous-profile)))
 
 (defun cashpw/org-gcal-fetch ()
@@ -2904,7 +2869,7 @@ Return nil if no attendee exists with that EMAIL."
   (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
-(cashpw/org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+(org-gcal-activate-profile cashpw/org-gcal--profile-personal)
 (use-package! org-gcal
   :custom
   (plstore-cache-passphrase-for-symmetric-encryption t)
