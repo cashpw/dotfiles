@@ -4733,22 +4733,21 @@ Intended for use with `org-super-agenda' `:transformer'. "
 (defun cashpw/org-reschedule-to-today-at-point ()
   "Reschedule heading at point to today. Keep duration and repeater."
   (interactive)
-  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED")))
+  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED"))
+             (scheduled-time-string-without-year-month-day
+              (replace-regexp-in-string
+               "[0-9]\+-[0-9]\\{2\\}-[0-9]\\{2\\}"
+               ""
+               scheduled-time-string)))
     (cl-destructuring-bind
         (_ _ _ today-day today-month today-year _ _ _) (decode-time (current-time))
       (org-schedule
        nil
-       (concat
-        (format-time-string "%F"
-                            (cashpw/time--overwrite
-                             (org-time-string-to-time scheduled-time-string)
-                             :year today-year
-                             :month today-month
-                             :day today-day))
-        (replace-regexp-in-string
-         "[0-9]\+-[0-9]\\{2\\}-[0-9]\\{2\\}\\( \\)?"
-         ""
-         scheduled-time-string))))))
+       (format "%s-%s-%s%s"
+               today-year
+               today-month
+               today-day
+               scheduled-time-string-without-year-month-day)))))
 
 (defun cashpw/org-agenda-reschedule-to-today ()
   "Reschedule event at point to today."
