@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-17 Tue 12:25]
+:LAST_MODIFIED: [2024-12-18 Wed 12:08]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2682,7 +2682,7 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
 
  :config
  (setq-default
-  gptel-model 'gemini-1.5-pro-latest
+  gptel-model 'gemini-exp-1206
   gptel-backend
   (gptel-make-gemini
    "Gemini"

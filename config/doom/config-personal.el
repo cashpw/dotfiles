@@ -1542,7 +1542,7 @@ ${content}"))
 
  :config
  (setq-default
-  gptel-model 'gemini-1.5-pro-latest
+  gptel-model 'gemini-exp-1206
   gptel-backend
   (gptel-make-gemini
    "Gemini"
