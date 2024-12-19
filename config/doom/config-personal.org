@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-19 Thu 07:20]
+:LAST_MODIFIED: [2024-12-19 Thu 07:25]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -7066,6 +7066,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
        " "))
      " ")))
 #+end_src
+
 **** Custom functions
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -7943,6 +7944,7 @@ Category | Scheduled | Effort
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org-agenda
   ;; Override
+  (define-key org-agenda-mode-map (kbd ".") #'cashpw/org-agenda-reschedule-to-today)
   (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-reschedule-to-next-occurrence-or-kill))
 #+end_src
 *** =org-clock=

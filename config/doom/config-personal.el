@@ -5517,6 +5517,7 @@ Category | Scheduled | Effort
 
 (after! org-agenda
   ;; Override
+  (define-key org-agenda-mode-map (kbd ".") #'cashpw/org-agenda-reschedule-to-today)
   (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-reschedule-to-next-occurrence-or-kill))
 
 (defun cashpw/org-clock--agenda-with-archives ()
