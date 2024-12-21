@@ -58,6 +58,39 @@ Reference: https://emacs.stackexchange.com/a/43985"
 Reference: https://emacs.stackexchange.com/a/43985"
   (cashpw/iso-week-to-time year week 7))
 
+(cl-defun cashpw/time--overwrite (time
+                                  &key
+                                  seconds
+                                  minutes
+                                  hours
+                                  day
+                                  month
+                                  year
+                                  day-of-week
+                                  daylight-savings-time-p
+                                  utc-offset)
+  "Return TIME with overwritten values."
+  (cl-destructuring-bind
+      (prev-seconds
+       prev-minutes
+       prev-hours
+       prev-day
+       prev-month
+       prev-year
+       prev-day-of-week
+       prev-daylight-savings-time-p
+       prev-utc-offset)
+      (decode-time time)
+    (encode-time (or seconds prev-seconds)
+                 (or minutes prev-minutes)
+                 (or hours prev-hours)
+                 (or day prev-days)
+                 (or month prev-month)
+                 (or year prev-year)
+                 (or day-of-week prev-day-of-week)
+                 (or daylight-savings-time-p prev-daylight-savings-time-p)
+                 (or utc-offset prev-utc-offset))))
+
 (defun cashpw/time--today-at-hh-mm (hh mm)
   "Return a time object for the current day at HH:MM."
   (cl-destructuring-bind (seconds
@@ -2999,6 +3032,7 @@ Return nil if no attendee exists with that EMAIL."
   ;;  '("~/org-special-block-extras/documentation.org")
   ;;  "The places where I keep my ‘#+documentation’")
   :config
+  (defun )
   (org-defblock
    quote2 nil
    (pcase backend
@@ -3512,7 +3546,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions '((?L org-extras-reschedule-overdue-todo-agenda)
-                                    (?> cashpw/org-agenda-push-to-next-occurrence-or-kill)))
+                                    (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
+                                    (?. cashpw/org-agenda-reschedule-to-today)))
 
 (after! org
   ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
@@ -4685,14 +4720,40 @@ Intended for use with `org-super-agenda' `:transformer'. "
        " "))
      " ")))
 
-(defun cashpw/org-agenda-push-to-next-occurrence-or-kill ()
+(defun cashpw/org-agenda-reschedule-to-next-occurrence-or-kill ()
   "Reschedule to next occurrence if item at point repeats; else kill."
   (interactive)
-  (org-agenda-with-point-at-orig-entry nil
-      (if (org-get-repeat)
-          (org-extras-reschedule-overdue-todo)
-        (org-mark-subtree)
-        (kill-region))))
+  (org-agenda-with-point-at-orig-entry
+      nil
+    (if (org-get-repeat)
+        (org-extras-reschedule-overdue-todo)
+      (org-mark-subtree)
+      (kill-region))))
+
+(defun cashpw/org-reschedule-to-today-at-point ()
+  "Reschedule heading at point to today. Keep duration and repeater."
+  (interactive)
+  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED"))
+             (scheduled-time-string-without-year-month-day
+              (replace-regexp-in-string
+               "[0-9]\+-[0-9]\\{2\\}-[0-9]\\{2\\}"
+               ""
+               scheduled-time-string)))
+    (cl-destructuring-bind
+        (_ _ _ today-day today-month today-year _ _ _) (decode-time (current-time))
+      (org-schedule
+       nil
+       (format "%s-%s-%s%s"
+               today-year
+               today-month
+               today-day
+               scheduled-time-string-without-year-month-day)))))
+
+(defun cashpw/org-agenda-reschedule-to-today ()
+  "Reschedule event at point to today."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil (cashpw/org-reschedule-to-today-at-point)))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -5456,7 +5517,8 @@ Category | Scheduled | Effort
 
 (after! org-agenda
   ;; Override
-  (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-push-to-next-occurrence-or-kill))
+  (define-key org-agenda-mode-map (kbd ".") #'cashpw/org-agenda-reschedule-to-today)
+  (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-reschedule-to-next-occurrence-or-kill))
 
 (defun cashpw/org-clock--agenda-with-archives ()
   "Return list of agenda files to use with clocktable."
