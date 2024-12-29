@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-19 Thu 07:25]
+:LAST_MODIFIED: [2024-12-29 Sun 05:10]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -245,9 +245,10 @@ Reference: https://emacs.stackexchange.com/a/43985"
 **** Time is same day
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/time-same-day-p (time day-time)
-  "Return non-nil if TIME occurs on DAY-TIME's day."
-  (= (time-to-days time) (time-to-days day-time)))
+(defun cashpw/time-same-day-p (time-a time-b)
+  "Return non-nil if TIME-A and TIME-B are on the same day."
+  (when (and time-a time-b)
+    (= (time-to-days time-a) (time-to-days time-b))))
 #+end_src
 
 **** Time is today
@@ -927,8 +928,7 @@ Doom Emacs provides =alert=.
     :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
    (:prefix ("p" . "Plan")
     :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todos-and-go-to t))
-   ;;:desc "Go to TODO (force)" :n ">" (cmd! (cashpw/select-from-todos-and-go-to t))
+   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to))
    )
   (:prefix ("l")
    :desc "default" :n "L" (cmd!
@@ -1747,6 +1747,10 @@ Passes arguments, including NEW-WINDOW, along."
 : browse-url-firefox
 
 *** EmacsWebWowser (eww)
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (after! eww
+;;   (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+#+end_src
 *** WWWを見る (w3m) :disabled:
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -2554,8 +2558,59 @@ https://pandoc.org/
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! elfeed
+  (elfeed-set-timeout 36000)
   (setq
-   elfeed-db-directory cashpw/path--notes-dir))
+   elfeed-use-curl t
+   elfeed-curl-extra-arguments '("--insecure")
+   elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
+  (evil-define-key
+    'normal
+    elfeed-search-mode-map
+    "t"
+    #'cashpw/elfeed-search-for-unread-tags))
+
+(defun cashpw/elfeed-search-for-tags (&optional tags)
+  "Search for Elfeed entries tagged with TAGS."
+  (interactive)
+  (let ((tags (or tags
+                  (completing-read-multiple "Tags: " (elfeed-db-get-all-tags)))))
+    (elfeed-search-set-filter (string-join (mapcar (lambda (tag) (concat "+" tag)) tags) " "))
+    (elfeed-search-update)))
+
+(defun cashpw/elfeed-search-for-unread-tags (&optional tags)
+  "Search for Elfeed entries tagged with TAG."
+  (interactive)
+  (cashpw/elfeed-search-for-tags
+   (append
+    '("unread")
+    (completing-read-multiple "Tags: " (elfeed-db-get-all-tags)))))
+#+end_src
+
+#+RESULTS:
+#+end_src
+
+*** =elfeed-protocol=
+
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el :results none
+(package! elfeed-protocol)
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! elfeed-protocol
+  :after elfeed
+  :custom
+  (elfeed-protocol-fever-update-unread-only t)
+  (elfeed-protocol-fever-fetch-category-as-tag t)
+  (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
+  (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
+                            :api-url "http://rss.cashpw.com/fever/"
+                            :password ,(secret-get "freshrss"))))
+  :config
+  (elfeed-protocol-enable))
 #+end_src
 
 *** =elfeed-org=
@@ -4428,7 +4483,7 @@ Return nil if no attendee exists with that EMAIL."
      cashpw/org-gcal--maybe-create-todo-extract-reminder
      cashpw/org-gcal--maybe-create-prep-meeting
      cashpw/org-gcal--convert-description)
-   :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
+   :fetch-event-filters '()
    :summaries-to-skip
    '("^Nap$"
      "^Sleeping$"
@@ -4454,6 +4509,8 @@ Return nil if no attendee exists with that EMAIL."
          "Mobility, Grip, Neck"
          "Cardio"
          "Stretch"
+         "Stretch: Hamstrings"
+         "Stretch: Hips"
          "Walk"))
        ("Car" . ("Tidy car"))
        ("Finance" . ("Finances and net worth"))
@@ -4761,18 +4818,14 @@ I spent a few hours on [2024-05-26 Sun] experimenting with =org-ql= with the goa
 
 ***** Package
 
-Disabled until I find a use-case.
-
 #+begin_src emacs-lisp :tangle packages-personal.el
-;; (package! org-ql)
+(package! org-ql)
 #+end_src
 
 ***** Config
 
-Disabled until I find a use-case.
-
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (use-package! org-ql)
+(use-package! org-ql)
 #+end_src
 
 **** =org-recipes=
@@ -4955,7 +5008,7 @@ A unified interface for Emacs' Org-mode block & link types
 ***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-special-block-extras)
+;; (package! org-special-block-extras)
 #+end_src
 
 Disabled because it slows down in org files.
@@ -4963,45 +5016,45 @@ Disabled because it slows down in org files.
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package!
-    org-special-block-extras
-  :after org
-  :hook (org-mode . org-special-block-extras-mode)
-  ;; (o-docs-libraries
-  ;;  '("~/org-special-block-extras/documentation.org")
-  ;;  "The places where I keep my ‘#+documentation’")
-  :config
-  (defun )
-  (org-defblock
-   quote2 nil
-   (pcase backend
-     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (_ raw-contents)))
-  (org-defblock
-   quote3 nil
-   (pcase backend
-     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (_ raw-contents)))
-  (org-defblock
-   quote4 nil
-   (pcase backend
-     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (_ raw-contents)))
-  (org-defblock
-   quote5 nil
-   (pcase backend
-     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (_ raw-contents)))
-  (org-defblock
-   quote6 nil
-   (pcase backend
-     (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-     (_ raw-contents))))
+;; (use-package!
+;;     org-special-block-extras
+;;   :after org
+;;   :hook (org-mode . org-special-block-extras-mode)
+;;   ;; (o-docs-libraries
+;;   ;;  '("~/org-special-block-extras/documentation.org")
+;;   ;;  "The places where I keep my ‘#+documentation’")
+;;   :config
+;;   (defun )
+;;   (org-defblock
+;;    quote2 nil
+;;    (pcase backend
+;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (_ raw-contents)))
+;;   (org-defblock
+;;    quote3 nil
+;;    (pcase backend
+;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (_ raw-contents)))
+;;   (org-defblock
+;;    quote4 nil
+;;    (pcase backend
+;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (_ raw-contents)))
+;;   (org-defblock
+;;    quote5 nil
+;;    (pcase backend
+;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (_ raw-contents)))
+;;   (org-defblock
+;;    quote6 nil
+;;    (pcase backend
+;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
+;;      (_ raw-contents))))
 #+end_src
 
 **** =org-super-agenda=
@@ -10299,109 +10352,47 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 ** =completing-read= for today's agenda
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-
-(defun cashpw/org-headings-scheduled-for-day-in-path (path day-time)
-  "Return alist of headings and markers in PATH which are scheduled for DAY-TIME's day."
-  (with-current-buffer (find-file-noselect path)
-    (remove
-     nil
-     (org-map-entries
-      (lambda ()
-        (when (not (org-entry-is-done-p))
-          (let* ((scheduled
-                  (org-element-property :scheduled (org-element-at-point)))
-                 (scheduled-time (org-get-scheduled-time (point))))
-            (when (and scheduled-time
-                       (cashpw/time-same-day-p scheduled-time day-time))
-              `(,(format "%s%s"
-                         (let ((hour-start
-                                (org-element-property :hour-start scheduled))
-                               (minute-start
-                                (org-element-property :minute-start scheduled))
-                               (hour-end
-                                (org-element-property :hour-end scheduled))
-                               (minute-end
-                                (org-element-property :minute-end scheduled)))
-                           (cond
-                            ((and hour-start minute-start hour-end minute-end)
-                             (format "%02d:%02d-%02d:%02d "
-                                     hour-start
-                                     minute-start
-                                     hour-end
-                                     minute-end))
-                            ((and hour-start minute-start)
-                             (format "%02d:%02d " hour-start minute-start))
-                            (t
-                             "")))
-                         (org-entry-get nil "ITEM"))
-                . ,(point-marker))))))))))
-
-(defun cashpw/org-headings-with-tag-in-path (path tag)
-  "Return alist of headings and markers in PATH which have TAG."
-  (with-current-buffer (find-file-noselect path)
-    (remove
-     nil
-     (org-map-entries
-      (lambda ()
-        `(,(org-entry-get nil "ITEM") . ,(point-marker)))
-      (concat "+" tag)))))
-
-(defcustom cashpw/scheduled-for-today-paths (cashpw/org-agenda-files--update)
-  "TODO.")
-
-(defun cashpw/org-headings-scheduled-for-day-in-paths (paths day-time)
-  "Return headings in BUFFERS which are scheduled for DAY-TIME's day."
-  (-flatten-n
-   1
-   (mapcar
-    (lambda (path)
-      (cashpw/org-headings-scheduled-for-day-in-path path day-time))
-    paths)))
-
-(defun cashpw/select-marker-from-alist (label-to-marker-alist)
+(defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
   (interactive)
   (let* ((vertico-sort-function #'vertico-sort-alpha)
          (selection (completing-read "Select: " label-to-marker-alist nil t)))
     (alist-get selection label-to-marker-alist nil nil #'string=)))
 
-(defun cashpw/select-from-scheduled-for-today-and-mark-inprogress ()
-  "Prompt user to select a headline (scheduled for today) and clock in."
-  (interactive)
-  (let ((marker
-         (cashpw/select-marker-from-alist
-          (cashpw/org-headings-scheduled-for-day-in-paths
-           cashpw/scheduled-for-today-paths (current-time)))))
-    (org-with-point-at marker (org-todo "INPROGRESS"))))
+(defun cashpw/org-today--format-heading ()
+  "Return string identifier for heading at point."
+  (let* ((scheduled (org-element-property :scheduled (org-element-at-point)))
+         (time-string
+          (let ((hour-start (org-element-property :hour-start scheduled))
+                (minute-start (org-element-property :minute-start scheduled))
+                (hour-end (org-element-property :hour-end scheduled))
+                (minute-end (org-element-property :minute-end scheduled)))
+            (cond
+             ((and hour-start minute-start hour-end minute-end)
+              (format "%02d:%02d-%02d:%02d "
+                      hour-start
+                      minute-start
+                      hour-end
+                      minute-end))
+             ((and hour-start minute-start)
+              (format "%02d:%02d " hour-start minute-start))
+             (t
+              "")))))
+    (concat time-string (org-entry-get nil "ITEM"))))
 
-(defun cashpw/select-from-scheduled-for-today-and-go-to ()
-  "Prompt user to select a headline (scheduled for today) and go to it."
+(defun cashpw/select-from-todays-todos-and-go-to ()
+  "Prompt user to select a todo, then go to it."
   (interactive)
   (let ((marker
          (cashpw/select-marker-from-alist
-          (cashpw/org-headings-scheduled-for-day-in-paths
-           cashpw/scheduled-for-today-paths (current-time)))))
+          (org-ql-query
+            :select
+            (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
+            :from (cashpw/org-agenda-files--update)
+            :where
+            '(or (tags "unscheduled") (deadline 0) (scheduled 0))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
-
-(defvar cashpw/todo-selection-alist nil
-  "TODO.")
-
-(defun cashpw/select-from-todos-and-go-to (&optional force-refresh)
-  "Prompt user to select a TODO and go to it."
-  (interactive)
-  (let ((label-to-marker-alist
-         (if (and cashpw/todo-selection-alist (not force-refresh))
-             cashpw/todo-selection-alist
-           (append
-            (cashpw/org-headings-with-tag-in-path
-             cashpw/path--personal-todos "unscheduled")
-            (cashpw/org-headings-scheduled-for-day-in-paths
-             cashpw/scheduled-for-today-paths (current-time))))))
-    (setq cashpw/todo-selection-alist label-to-marker-alist)
-    (let ((marker (cashpw/select-marker-from-alist label-to-marker-alist)))
-      (switch-to-buffer (marker-buffer marker))
-      (goto-char marker))))
 #+end_src
 
 #+RESULTS:

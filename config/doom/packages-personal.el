@@ -115,6 +115,8 @@
 
 (package! org-msg)
 
+(package! elfeed-protocol)
+
 (package! gnuplot)
 
 (package! llm-prompts
@@ -204,7 +206,7 @@
   :recipe (:host github
            :repo "alphapapa/org-protocol-capture-html"))
 
-;; (package! org-ql)
+(package! org-ql)
 
 (package! org-recipes
   :recipe (:host github
@@ -221,7 +223,7 @@
 
 (package! org-roam-ui)
 
-(package! org-special-block-extras)
+;; (package! org-special-block-extras)
 
 (package! org-super-agenda)
 
