@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-29 Sun 07:35]
+:LAST_MODIFIED: [2024-12-29 Sun 10:54]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -7280,15 +7280,34 @@ Intended for use with `org-super-agenda' `:transformer'. "
 ****** Logged
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/org-agenda-view--review--files-fn ()
+(defun cashpw/org-agenda-view--review--today-files-fn ()
   "Return list of files for review agenda views."
-  (append
-   ;; (cashpw/org-agenda-files 'notes-with-todos)
-   ;; (cashpw/org-archive-files-in-directory cashpw/path--notes-dir)
-   (cashpw/org-agenda-files 'personal t)
-   (cashpw/org-agenda-files 'calendar t)
-   (cashpw/org-agenda-files 'journal-this-year t)
-   (cashpw/org-agenda-files 'people-private t)))
+
+  (let* ((yyyy-mm-dd (format-time-string "%F" (current-time)))
+         (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
+         (clock-grep-string (format "CLOCK: \\[%s" yyyy-mm-dd)))
+    (seq-uniq
+     (append
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org" state-grep-string cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org" clock-grep-string cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org_archive"
+               state-grep-string
+               cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org_archive"
+               clock-grep-string
+               cashpw/path--notes-dir)))))
+  ;; (append
+  ;;  ;; (cashpw/org-agenda-files 'notes-with-todos)
+  ;;  ;; (cashpw/org-archive-files-in-directory cashpw/path--notes-dir)
+  ;;  (cashpw/org-agenda-files 'personal t)
+  ;;  (cashpw/org-agenda-files 'calendar t)
+  ;;  (cashpw/org-agenda-files 'journal-this-year t)
+  ;;  (cashpw/org-agenda-files 'people-private t))
+  )
 
 (defun cashpw/org-agenda-view--review--logged ()
   "Return custom agenda command."
@@ -7296,17 +7315,17 @@ Intended for use with `org-super-agenda' `:transformer'. "
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
       (org-agenda-show-log t)
       (org-agenda-start-with-log-mode '(state closed clock))
-      (org-agenda-hide-tags-regexp (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
+      (org-agenda-hide-tags-regexp
+       (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
       (org-clocktable-defaults '(:fileskip0 t))
-      (org-super-agenda-groups '(
-                                 (:name "Logged"
-                                  :log t)
-                                 (;; Toss all other todos
-                                  :discard
-                                  (:todo t))))))))
+      (org-super-agenda-groups
+       '((:name "Logged" :log t)
+         ( ;; Toss all other todos
+          :discard
+          (:todo t))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 #+end_src
@@ -7322,7 +7341,7 @@ See =org-agenda-clock-consistency-checks=.
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
       (org-agenda-show-log 'clockcheck)
       (org-agenda-start-with-log-mode 'clockcheck)
       (org-clocktable-defaults '(:fileskip0 t))
@@ -7574,7 +7593,7 @@ items if they have an hour specification like [h]h:mm."
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
       ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
       (org-agenda-clockreport-mode t)
       (org-clocktable-defaults '(:fileskip0 t))
