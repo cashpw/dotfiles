@@ -7297,7 +7297,7 @@ Reference:https://stackoverflow.com/q/23622296"
   "Prompt user to select a todo, then go to it."
   (interactive)
   (let ((marker
-         (cashpw/select-marker-from-alist
+         (cashpw/org-today--select-marker-from-alist
           (org-ql-query
             :select
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))

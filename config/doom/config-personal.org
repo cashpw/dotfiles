@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-29 Sun 05:10]
+:LAST_MODIFIED: [2024-12-29 Sun 07:35]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -10384,7 +10384,7 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
   "Prompt user to select a todo, then go to it."
   (interactive)
   (let ((marker
-         (cashpw/select-marker-from-alist
+         (cashpw/org-today--select-marker-from-alist
           (org-ql-query
             :select
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
