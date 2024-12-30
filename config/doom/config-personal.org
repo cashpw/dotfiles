@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2024-12-29 Sun 10:54]
+:LAST_MODIFIED: [2024-12-29 Sun 12:27]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4525,6 +4525,7 @@ Return nil if no attendee exists with that EMAIL."
        ("Home" .
         ("Take out the trash"
          "Get the mail"
+         "Clean house"
          "Flip pillowcase"
          "New bedsheets"
          "New pillowcase"))

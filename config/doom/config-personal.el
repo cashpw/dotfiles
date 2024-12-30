@@ -2833,6 +2833,7 @@ Return nil if no attendee exists with that EMAIL."
        ("Home" .
         ("Take out the trash"
          "Get the mail"
+         "Clean house"
          "Flip pillowcase"
          "New bedsheets"
          "New pillowcase"))
