@@ -1469,33 +1469,66 @@ TAGS which start with \"-\" are excluded."
     (with-current-buffer (find-file-noselect tmp-output-file-path)
       (buffer-substring-no-properties (point-min) (point-max)))))
 
-(after! elfeed
-  (elfeed-set-timeout 36000)
+(after!
+  elfeed (elfeed-set-timeout 36000)
   (setq
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
+  (map!
+   :map elfeed-search-mode-map
+   :n
+   "u"
+   #'elfeed-update
+   :n
+   "f"
+   (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+   :nv
+   "a"
+   #'elfeed-search-untag-all-unread)
   (evil-define-key
     'normal
     elfeed-search-mode-map
     "t"
-    #'cashpw/elfeed-search-for-unread-tags))
+    (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
 
-(defun cashpw/elfeed-search-for-tags (&optional tags)
+(defun cashpw/elfeed-search-for-tags (&optional tags unread-only)
   "Search for Elfeed entries tagged with TAGS."
   (interactive)
-  (let ((tags (or tags
-                  (completing-read-multiple "Tags: " (elfeed-db-get-all-tags)))))
-    (elfeed-search-set-filter (string-join (mapcar (lambda (tag) (concat "+" tag)) tags) " "))
+  (let* ((tags
+          (or tags
+              (completing-read-multiple "Tags: " (elfeed-db-get-all-tags))))
+         (search-filter
+          (string-join (append
+                        (when unread-only
+                          '("+unread"))
+                        (mapcar (lambda (tag) (concat "+" tag)) tags))
+                       " ")))
+    (elfeed-search-set-filter search-filter)
     (elfeed-search-update)))
 
-(defun cashpw/elfeed-search-for-unread-tags (&optional tags)
-  "Search for Elfeed entries tagged with TAG."
+(defun cashpw/elfeed-search-for-feed (&optional feed unread-only)
+  "Search for Elfeed entries from feed."
   (interactive)
-  (cashpw/elfeed-search-for-tags
-   (append
-    '("unread")
-    (completing-read-multiple "Tags: " (elfeed-db-get-all-tags)))))
+  (let* ((feed
+          (or feed
+              (completing-read
+               "Feed: "
+               (let (feed-titles)
+                 (maphash
+                  (lambda (_ value)
+                    (push (elfeed-feed-title value) feed-titles)
+                    value)
+                  elfeed-db-feeds)
+                 (reverse (delete nil feed-titles))))))
+         (search-filter
+          (format "%s=%s"
+                  (when unread-only
+                    "+unread ")
+                  (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
+                  )))
+    (elfeed-search-set-filter search-filter)
+    (elfeed-search-update)))
 
 (use-package! elfeed-protocol
   :after elfeed
@@ -1505,17 +1538,13 @@ TAGS which start with \"-\" are excluded."
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
   (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
                             :api-url "http://rss.cashpw.com/fever/"
-                            :password ,(secret-get "freshrss"))))
+                            :password ,(secret-get "rss.cashpw.com"))))
   :config
   (elfeed-protocol-enable))
 
-(after! elfeed-org
-  (setq
-   rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org")))
-  (map!
-   :map elfeed-search-mode-map
-   :n "u" #'elfeed-update
-   :nv "a" #'elfeed-search-untag-all-unread))
+;; (after! elfeed-org
+;;   (setq
+;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
 
 (defgroup cashpw/source-control nil
   "Source control."
