@@ -639,7 +639,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                   (k-time (garbage-collect))))))
 
 (when (cashpw/machine-p 'personal-phone)
-  (advice-add 'doom/increase-font-size :override #'ignore) 
+  (advice-add 'doom/increase-font-size :override #'ignore)
   (advice-add 'doom/reset-font-size :override #'ignore))
 
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
@@ -1429,25 +1429,17 @@ TAGS which start with \"-\" are excluded."
 (defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
   "Converts the current buffer to org-mode in place."
   (interactive)
-  (let ((buffer-content
-         (buffer-string))
+  (let ((buffer-content (buffer-string))
         (tmp-file
-         (format
-          "/tmp/%s.md"
-          (format-time-string
-           "%s" (current-time)))))
+         (format "/tmp/%s.md" (format-time-string "%s" (current-time)))))
     (with-temp-buffer
-      (insert
-       buffer-content)
-      (write-file
-       tmp-file))
+      (insert buffer-content)
+      (write-file tmp-file))
     (erase-buffer)
     (insert
      (shell-command-to-string
       (concat
-       (format
-        "pandoc --wrap=none -f markdown -t org %s"
-        tmp-file)
+       (format "pandoc --wrap=none -f markdown -t org %s" tmp-file)
        ;; Remove :PROPERTIES: drawers beneath headings
        " | sed -E '/^[[:space:]]*:/d'")))
     (org-mode)))
@@ -1459,20 +1451,23 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/pandoc-convert (text source-format target-format)
   "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
-  (cashpw/pandoc-cli (s-lex-format "-f ${source-format} -t ${target-format} <<< \"${text}\"")))
+  (cashpw/pandoc-cli
+   (s-lex-format "-f ${source-format} -t ${target-format} <<< \"${text}\"")))
 
 (defun cashpw/pandoc-convert-via-file (text source-format target-format)
   "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
-  (let ((tmp-input-file-path (format "/tmp/pandoc-tmp-input-%s" (format-time-string "%s")))
-        (tmp-output-file-path (format "/tmp/pandoc-tmp-output-%s" (format-time-string "%s"))))
-    (with-temp-buffer
-      (insert text)
-      (write-file tmp-input-file-path))
-    (cashpw/pandoc-cli (s-lex-format "${tmp-input-file-path} -f ${source-format} -t ${target-format} -o ${tmp-output-file-path}"))
+  (let ((tmp-input-file-path
+         (format "/tmp/pandoc-tmp-input-%s" (format-time-string "%s")))
+        (tmp-output-file-path
+         (format "/tmp/pandoc-tmp-output-%s" (format-time-string "%s"))))
+    (with-temp-buffer text
+      (let ((coding-system-for-write 'utf-8))
+        (write-file tmp-input-file-path)))
+    (cashpw/pandoc-cli
+     (s-lex-format
+      "${tmp-input-file-path} -f ${source-format} -t ${target-format} -o ${tmp-output-file-path}"))
     (with-current-buffer (find-file-noselect tmp-output-file-path)
-      (buffer-substring-no-properties
-       (point-min)
-       (point-max)))))
+      (buffer-substring-no-properties (point-min) (point-max)))))
 
 (after! elfeed
   (elfeed-set-timeout 36000)
@@ -1614,7 +1609,7 @@ ${content}"))
 
  :config
  (setq-default
-  gptel-model 'gemini-exp-1206
+  gptel-model 'gemini-2.0-flash-exp
   gptel-backend
   (gptel-make-gemini
    "Gemini"
@@ -7274,13 +7269,11 @@ Reference:https://stackoverflow.com/q/23622296"
       (while (not
               (string-equal-ignore-case
                (org-current-line-string) "#+end_quote"))
-        (message "1")
         ;; 2. While 'next line isn't empty': (evil-join)
         (while (and (not
                      (string-equal-ignore-case
                       (org-current-line-string) "#+end_quote"))
                     (not (string-empty-p (org-current-line-string))))
-          (message "2")
           (join-line)
           (evil-next-line))
         (evil-next-line)
@@ -7333,3 +7326,70 @@ Reference:https://stackoverflow.com/q/23622296"
     (goto-char marker)))
 
 (use-package! font-lock-profiler)
+
+(require 'url)
+
+(defun cashpw/get-first-url-on-line ()
+  (interactive)
+  (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+         (match (string-match "http\\(s\\)?:\\/\\/[^] ]+" line)))
+    (match-string 0 line)))
+
+(defun cashpw/get-url-contents (url)
+  (let ((content
+         (with-current-buffer (url-retrieve-synchronously url)
+           (shr-render-region (point-min) (point-max))
+           (buffer-string))))
+    (string-join
+     (delq
+      nil
+      (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode)) content)))))
+
+(defun cashpw/llm-get-tags-for-url (url valid-tags)
+  "Return list of tags for URL pulled from VALID-TAGS."
+  (when (string-match-p "reddit.com" url)
+    (error "Cannot read content at %s due to policy." url))
+  (with-temp-buffer
+    (let* ((done nil)
+           (response nil)
+           (wait-duration 0)
+           (timeout-seconds 10)
+           (url
+            (cond
+             ;; Prefer hn.svelte.dev for better HTML
+             ((string-match-p "news\\.ycombinator\\.com" url)
+              (replace-regexp-in-string
+               "news\\.ycombinator\\.com\\/item\\?id="
+               "hn.svelte.dev/item/"
+               url))
+             (t
+              url)))
+           (content (cashpw/get-url-contents url)))
+      (insert
+       (format
+        "Which of the following tags are most applicable to the following article? Respond with only a comma-separated list of tags inspired from the list below. Print \"oops\" if the article resembles a notice that the website was inaccessible.
+
+The tags are: %s.
+
+The article is:
+
+%s"
+        (string-join valid-tags " ")
+        (if (> (length content) 10000)
+            (substring content 0 10000)
+          content)))
+      (gptel--sanitize-model)
+      (gptel-request
+          nil
+        :stream nil
+        :callback
+        (lambda (r _)
+          (setq
+           done t
+           response r)))
+      (while (and (not done) (< wait-duration timeout-seconds))
+        (sleep-for 1)
+        (cl-incf wait-duration))
+      (delete-region (point-min) (point-max))
+      (insert response))
+    (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
