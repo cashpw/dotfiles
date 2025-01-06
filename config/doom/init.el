@@ -115,7 +115,12 @@
  ;;ein               ; tame Jupyter notebooks with emacs
  (eval +overlay)     ; run code, run (also, repls)
  ;;gist              ; interacting with github gists
- lookup              ; navigate your code and its documentation
+ (lookup              ; navigate your code and its documentation
+  +docsets
+  +dictionary
+  ;; Disabled because I can't figure out how to download wordnet on corp machines
+  ;; +offline
+  )
  (lsp               ; M-x vscode
   ;; Prefer `eglot' because corporate tools also use Eglot.
   +eglot)
