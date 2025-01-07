@@ -7376,7 +7376,11 @@ Reference:https://stackoverflow.com/q/23622296"
 
 (defun cashpw/llm-get-tags-for-url (url valid-tags)
   "Return list of tags for URL pulled from VALID-TAGS."
-  (when (string-match-p "reddit.com" url)
+  (when (or
+         (string-match-p "reddit.com" url)
+         (string-match-p "youtube.com" url)
+         (string-match-p "wsj.com" url)
+         (string-match-p "imgur.com" url))
     (error "Cannot read content at %s due to policy." url))
   (with-temp-buffer
     (let* ((done nil)
