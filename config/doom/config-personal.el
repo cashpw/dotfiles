@@ -516,14 +516,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
    :desc "Gallery" :n "g" (cmd!
-                           (let ((gallery-view-path (concat "/tmp/gallery_view.org")))
+                           (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+                                 (default-directory cashpw/path--notes-dir)
+                                 (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
                              (org-agenda nil ".gallery")
-                             (org-agenda-write gallery-view-path t)
-                             (org-agenda-quit)
-                             (with-temp-buffer
-                               (insert-file-contents gallery-view-path)
-                               (let ((default-directory cashpw/path--notes-dir))
-                                 (cashpw/feh-gallery-of-linked-images-in-buffer)))))
+                             (cashpw/feh-gallery-of-linked-images-in-buffer)
+                             (org-agenda-quit)))
    :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
    :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
@@ -533,14 +531,14 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                           (seq-difference
                            (cashpw/org-agenda-files 'notes-with-todo)
                            (append
-                           (cashpw/org-roam-files-with-tag "journal")
-                           `(,cashpw/path--reading-list
-                             ,cashpw/path--personal-todos
-                             ,cashpw/path--personal-calendar)))))
+                            (cashpw/org-roam-files-with-tag "journal")
+                            `(,cashpw/path--reading-list
+                              ,cashpw/path--personal-todos
+                              ,cashpw/path--personal-calendar)))))
     :desc "Reading List" :n "r" (cmd!
                                  (cashpw/org-select-and-go-to-todo
                                   `(,cashpw/path--reading-list))))
-    (:prefix ("r" . "Review")
+   (:prefix ("r" . "Review")
     :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
     :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
     :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
@@ -5585,6 +5583,11 @@ Category | Scheduled | Effort
           (:todo t))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
+
+(defun cashpw/cmp-random (a b)
+  (if (> 0.5 (random))
+      1
+    -1))
 
 (defun cashpw/org-agenda-view--gallery ()
   "Return custom agenda command."
