@@ -1878,6 +1878,7 @@ ${content}"))
 (use-package! org-download
   :after org
   :custom
+  (org-download-method 'attach)
   (org-download-heading-lvl nil))
 
 ;; (remove-hook! 'org-mode-hook #'org-fancy-priorities-mode)

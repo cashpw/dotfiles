@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-01-06 Mon 21:11]
+:LAST_MODIFIED: [2025-01-07 Tue 14:48]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3392,6 +3392,7 @@ Point B (the target) is an Emacs org-mode buffer where the inline link will be i
 (use-package! org-download
   :after org
   :custom
+  (org-download-method 'attach)
   (org-download-heading-lvl nil))
 #+end_src
 
