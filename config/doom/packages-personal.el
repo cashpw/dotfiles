@@ -101,6 +101,10 @@
 
 (package! nerd-icons)
 
+(package! exec-path-from-shell)
+(package! asana
+  :recipe (:host github :repo "lmartel/emacs-asana"))
+
 ;; (package! w3m)
 
 (package! nov)

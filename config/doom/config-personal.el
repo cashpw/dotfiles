@@ -214,6 +214,10 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")
   "Personal calendar file.")
 
+(defvar cashpw/path--personal-asana
+  (s-lex-format "${cashpw/path--notes-dir}/asana.org")
+  "Personal calendar file.")
+
 (defvar cashpw/path--sleep-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-sleep.org")
   "Sleep calendar file.")
@@ -507,118 +511,220 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (map!
  ;; Keep in alphabetical order.
  (:leader
-  :desc "at point" :n "h h" #'helpful-at-point
+  :desc "at point"
+  :n "h h" #'helpful-at-point
   ;; :desc "Langtool" :n "t L" #'langtool-check
   ;; :desc "LLM" :n "l" #'gptel-send
   :n "r" #'whisper-run
   :n "R" #'cashpw/whisper-run-and-cue-gptel
-  (:prefix ("d" . "agenDa")
-   :desc "Inbox" :n "i" (cmd! (org-agenda nil ".inbox"))
-   :desc "Overdue" :n "o" (cmd! (org-agenda nil ".overdue"))
-   :desc "Gallery" :n "g" (cmd!
-                           (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
-                                 (default-directory cashpw/path--notes-dir)
-                                 (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
-                             (org-agenda nil ".gallery")
-                             (cashpw/feh-gallery-of-linked-images-in-buffer)
-                             (org-agenda-quit)))
-   :desc "Today" :n "d" (cmd! (org-agenda nil ".today"))
-   :desc "Week" :n "w" (cmd! (org-agenda nil ".week"))
-   :desc "Habits" :n "h" (cmd! (org-agenda nil ".habits"))
-   (:prefix ("n" . "Roam")
-    :desc "Roam" :n "n" (cmd!
-                         (cashpw/org-select-and-go-to-todo
-                          (seq-difference
-                           (cashpw/org-agenda-files 'notes-with-todo)
-                           (append
-                            (cashpw/org-roam-files-with-tag "journal")
-                            `(,cashpw/path--reading-list
-                              ,cashpw/path--personal-todos
-                              ,cashpw/path--personal-calendar)))))
-    :desc "Reading List" :n "r" (cmd!
-                                 (cashpw/org-select-and-go-to-todo
-                                  `(,cashpw/path--reading-list))))
-   (:prefix ("r" . "Review")
-    :desc "Clock check" :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
-    :desc "Logged" :n "l" (cmd! (org-agenda nil ".review-logged"))
-    :desc "Clock report" :n "r" (cmd! (org-agenda nil ".review-clockreport")))
-   (:prefix ("-" . "Without")
-    :desc "Effort" :n "e" (cmd! (org-agenda nil ".without-effort"))
-    :desc "Scheduled" :n "s" (cmd! (org-agenda nil ".without-scheduled"))
-    :desc "Priority" :n "p" (cmd! (org-agenda nil ".without-priority")))
-   (:prefix ("p" . "Plan")
-    :desc "Week" :n "w" (cmd! (org-agenda nil ".plan-week")))
-   :desc "Go to TODO" :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to))
-   )
-  (:prefix ("l")
-   :desc "default" :n "L" (cmd!
-                           (cashpw/gptel-send
-                            (llm-prompts-prompt-default)))
-   :desc "empty" :n "l" (cmd!
-                         (cashpw/gptel-send ""))
-   :desc "Council" :n "c" (cmd!
-                           (cashpw/gptel-send
-                            (llm-prompts-prompt-solo-performance-prompt)))
-   :desc "Follow up" :n "f" (cmd!
-                             (cashpw/gptel-send
-                              (llm-prompts-prompt-follow-up-questions)))
-   (:prefix ("C" . "Chain of thought")
-    :desc "Basic" :n "c" (cmd!
-                          (cashpw/gptel-send
-                           llm-prompts-prompt-fragment--chain-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-chain-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("t" . "Tree of thought")
-    :desc "Basic" :n "t" (cmd!
-                          (cashpw/gptel-send
-                           llm-prompts-prompt-fragment--tree-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-tree-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("a" . "Agent")
-    :desc "Software engineer" :n "s" (cmd!
-                                      (cashpw/gptel-send
-                                       (llm-prompts-prompt-append-chain-of-thought
-                                        (llm-prompts-prompt-agent "TODO"))))
-    :desc "Editor (non-fiction)" :n "e" (cmd!
-                                         (cashpw/gptel-send
-                                          (llm-prompts-prompt-append-chain-of-thought
-                                           (llm-prompts-prompt-agent "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
-  (:prefix ("o")
-   :desc "Elfeed" :n "e" #'elfeed
-   (:prefix ("n")
-    :desc "Commonplace" :n "C" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
-    :desc "Journal" :n "j" (cmd! (cashpw/open-file (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
-    :desc "Todos" :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
-  (:prefix ("n")
-   :desc "Store email link" :n "L" #'org-notmuch-store-link
-   (:prefix ("A" . "Flashcards")
+  (:prefix
+   ("d" . "agenDa")
+   :desc "Inbox"
+   :n "i" (cmd! (org-agenda nil ".inbox"))
+   :desc "Overdue"
+   :n "o" (cmd! (org-agenda nil ".overdue"))
+   :desc "Gallery"
+   :n "g"
+   (cmd!
+    (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+          (default-directory cashpw/path--notes-dir)
+          (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
+      (org-agenda nil ".gallery")
+      (cashpw/feh-gallery-of-linked-images-in-buffer)
+      (org-agenda-quit)))
+   :desc "Today"
+   :n "d" (cmd! (org-agenda nil ".today"))
+   :desc "Week"
+   :n "w" (cmd! (org-agenda nil ".week"))
+   :desc "Habits"
+   :n "h" (cmd! (org-agenda nil ".habits"))
+   (:prefix
+    ("n" . "Roam")
+    :desc "Roam"
+    :n
+    "n"
+    (cmd!
+     (cashpw/org-select-and-go-to-todo
+      (seq-difference
+       (cashpw/org-agenda-files 'notes-with-todo)
+       (append
+        (cashpw/org-roam-files-with-tag "journal")
+        `(,cashpw/path--reading-list
+          ,cashpw/path--personal-todos ,cashpw/path--personal-calendar)))))
+    :desc "Reading List"
+    :n
+    "r"
+    (cmd! (cashpw/org-select-and-go-to-todo `(,cashpw/path--reading-list))))
+   (:prefix
+    ("r" . "Review")
+    :desc "Clock check"
+    :n
+    "c"
+    (cmd! (org-agenda nil ".review-clockcheck"))
+    :desc "Logged"
+    :n
+    "l"
+    (cmd! (org-agenda nil ".review-logged"))
+    :desc "Clock report"
+    :n
+    "r"
+    (cmd! (org-agenda nil ".review-clockreport")))
+   (:prefix
+    ("-" . "Without")
+    :desc "Effort"
+    :n
+    "e"
+    (cmd! (org-agenda nil ".without-effort"))
+    :desc "Scheduled"
+    :n
+    "s"
+    (cmd! (org-agenda nil ".without-scheduled"))
+    :desc "Priority"
+    :n
+    "p"
+    (cmd! (org-agenda nil ".without-priority")))
+   (:prefix
+    ("p" . "Plan")
+    :desc "Week"
+    :n
+    "w"
+    (cmd! (org-agenda nil ".plan-week")))
+   :desc "Go to TODO"
+   :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
+  (:prefix
+   ("l")
+   :desc "default"
+   :n
+   "L"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
+   :desc "empty"
+   :n
+   "l"
+   (cmd! (cashpw/gptel-send ""))
+   :desc "Council"
+   :n
+   "c"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-solo-performance-prompt)))
+   :desc "Follow up"
+   :n
+   "f"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-follow-up-questions)))
+   :desc "YouTube"
+   :n
+   "y"
+   (cmd!
+    (let ((buffer (get-buffer-create "*Gptel YouTube*")))
+      (with-current-buffer buffer
+        (org-mode)
+        (delete-region (point-min) (point-max))
+        (insert
+         (format "\n** %s\n"
+                 (with-temp-buffer
+                   (org-mode)
+                   (org-timestamp '(16) t)
+                   (buffer-string))))
+        (insert
+         (llm-prompts-prompt-extract-wisdom-yt (read-string "YouTube URL: ")))
+        (cashpw/gptel-send ""))
+      (display-buffer buffer)))
+   (:prefix
+    ("C" . "Chain of thought")
+    :desc "Basic"
+    :n
+    "c"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--chain-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("t" . "Tree of thought")
+    :desc "Basic"
+    :n
+    "t"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--tree-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-tree-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("a" . "Agent")
+    :desc "Software engineer"
+    :n "s"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent "TODO"))))
+    :desc "Editor (non-fiction)"
+    :n "e"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
+  (:prefix
+   ("o")
+   :desc "Elfeed"
+   :n "e" #'elfeed
+   (:prefix
+    ("n")
+    :desc "Commonplace"
+    :n "C"
+    (cmd!
+     (cashpw/open-file
+      (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :desc "Journal"
+    :n "j"
+    (cmd!
+     (cashpw/open-file
+      (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
+    :desc "Todos"
+    :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+  (:prefix
+   ("n")
+   :desc "Store email link"
+   :n "L" #'org-notmuch-store-link
+   (:prefix
+    ("A" . "Flashcards")
     :n "d" #'org-fc-dashboard
     :n "i" #'org-fc-init
     :n "u" #'org-fc-update
     :n "r" #'cashpw/org-fc-review-all
     :n "R" #'org-fc-review)
-   (:prefix ("r")
-    :desc "New art node" :n "a" #'cashpw/org-roam-node-create--art
-    :desc "New reference node" :n "c" #'cashpw/org-roam-node-from-cite))
-  (:prefix ("p")
-   :n "u" #'cashpw/projectile-refresh-known-paths)
-  (:prefix ("t")
+   (:prefix
+    ("r")
+    :desc "New art node"
+    :n
+    "a"
+    #'cashpw/org-roam-node-create--art
+    :desc "New reference node"
+    :n
+    "c"
+    #'cashpw/org-roam-node-from-cite))
+  (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
+  (:prefix
+   ("t")
    :n "C" #'centered-cursor-mode
    :n "k" #'clm/toggle-command-log-buffer)))
 
 (map!
  ;; Keep in alphabetical order.
- :map global-map
- "M-N" #'operate-on-number-at-point
- :v "C-r" #'cashpw/replace-selection
- (:prefix ("z")
-  :n "O" #'evil-open-fold-rec))
+ :map
+ global-map
+ "M-N"
+ #'operate-on-number-at-point
+ :v
+ "C-r"
+ #'cashpw/replace-selection
+ (:prefix ("z") :n "O" #'evil-open-fold-rec))
 
 (setq
  auto-save-visited-interval 60)
@@ -826,6 +932,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (add-hook! 'json-mode-hook
            #'cashpw/json-mode--set-indent)
+
+(use-package! helm)
+(use-package! exec-path-from-shell)
+(use-package! asana
+  :after (:and exec-path-from-shell helm)
+  :custom
+  (asana-token (secret-get "asana")))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
@@ -1622,6 +1735,76 @@ ${content}"))
 (use-package! gnuplot)
 
 (use-package! llm-prompts)
+
+(defvar llm-prompts-prompt--extract-wisdom-yt
+  "# IDENTITY and PURPOSE
+
+You extract surprising, insightful, and interesting information from text content. You are interested in insights related to the purpose and meaning of life, human flourishing, the role of technology in the future of humanity, artificial intelligence and its affect on humans, memes, learning, reading, books, continuous improvement, and similar topics.
+
+Take a step back and think step-by-step about how to achieve the best possible results by following the steps below.
+
+# STEPS
+
+- Extract a summary of the content in 25 words, including who is presenting and the content being discussed into a section called SUMMARY.
+
+- Extract 20 to 50 of the most surprising, insightful, and/or interesting ideas from the input in a section called IDEAS:. If there are less than 50 then collect all of them. Make sure you extract at least 20.
+
+- Extract 10 to 20 of the best insights from the input and from a combination of the raw input and the IDEAS above into a section called INSIGHTS. These INSIGHTS should be fewer, more refined, more insightful, and more abstracted versions of the best ideas in the content.
+
+- Extract 15 to 30 of the most surprising, insightful, and/or interesting quotes from the input into a section called QUOTES:. Use the exact quote text from the input.
+
+- Extract 15 to 30 of the most practical and useful personal habits of the speakers, or mentioned by the speakers, in the content into a section called HABITS. Examples include but aren't limited to: sleep schedule, reading habits, things they always do, things they always avoid, productivity tips, diet, exercise, etc.
+
+- Extract 15 to 30 of the most surprising, insightful, and/or interesting valid facts about the greater world that were mentioned in the content into a section called FACTS:.
+
+- Extract all mentions of writing, art, tools, projects and other sources of inspiration mentioned by the speakers into a section called REFERENCES. This should include any and all references to something that the speaker mentioned.
+
+- Extract the most potent takeaway and recommendation into a section called ONE-SENTENCE TAKEAWAY. This should be a 15-word sentence that captures the most important essence of the content.
+
+- Extract the 15 to 30 of the most surprising, insightful, and/or interesting recommendations that can be collected from the content into a section called RECOMMENDATIONS.
+
+# OUTPUT INSTRUCTIONS
+
+- Only output Markdown.
+
+- Write the IDEAS bullets as exactly 16 words.
+
+- Write the RECOMMENDATIONS bullets as exactly 16 words.
+
+- Write the HABITS bullets as exactly 16 words.
+
+- Write the FACTS bullets as exactly 16 words.
+
+- Write the INSIGHTS bullets as exactly 16 words.
+
+- Extract at least 25 IDEAS from the content.
+
+- Extract at least 10 INSIGHTS from the content.
+
+- Extract at least 20 items for the other output sections.
+
+- Do not give warnings or notes; only output the requested sections.
+
+- You use bulleted lists for output, not numbered lists.
+
+- Do not repeat ideas, quotes, facts, or resources.
+
+- Do not start items with the same opening words.
+
+- Ensure you follow ALL these instructions when creating your output.
+
+# INPUT
+
+INPUT:")
+
+(defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
+  "Return prompt."
+  (format "%s
+
+%s"
+          llm-prompts-prompt--extract-wisdom-yt
+          (shell-command-to-string
+           (format "~/third_party/fabric/fabric --transcript --youtube=%s" youtube-url))))
 
 (use-package!
  gptel
@@ -3567,6 +3750,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
           ((equal context 'personal)
            (append
             `(,cashpw/path--personal-todos
+              ,cashpw/path--personal-asana
               ,cashpw/path--personal-calendar)))
           ((equal context 'projects-with-todo)
            (cashpw/org-roam-files-with-tags "hastodo" "project"))
