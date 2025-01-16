@@ -937,6 +937,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;; (use-package! exec-path-from-shell)
 (use-package! asana
   :custom
+  (asana-tasks-org-file cashpw/path--personal-asana)
   (asana-token (secret-get "asana")))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser

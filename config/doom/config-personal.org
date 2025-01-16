@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-01-15 Wed 10:18]
+:LAST_MODIFIED: [2025-01-15 Wed 18:38]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1830,6 +1830,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 ;; (use-package! exec-path-from-shell)
 (use-package! asana
   :custom
+  (asana-tasks-org-file cashpw/path--personal-asana)
   (asana-token (secret-get "asana")))
 #+end_src
 
