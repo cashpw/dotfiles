@@ -933,10 +933,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (add-hook! 'json-mode-hook
            #'cashpw/json-mode--set-indent)
 
-(use-package! helm)
-(use-package! exec-path-from-shell)
+;; (use-package! helm)
+;; (use-package! exec-path-from-shell)
 (use-package! asana
-  :after (:and exec-path-from-shell helm)
   :custom
   (asana-token (secret-get "asana")))
 
