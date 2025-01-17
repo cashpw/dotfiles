@@ -2496,8 +2496,7 @@ Only parent headings of the current heading remain visible."
   :after (:all org org-download)
   :config
   (defun cashpw/org-download-image--no-insert (image-url)
-    (with-temp-buffer
-      (org-mode)
+    (cl-letf (((symbol-function 'org-download-insert-link) #'ignore))
       (org-download-image image-url)))
 
   (defun cashpw/org-gallery--add-image ()
@@ -2520,14 +2519,14 @@ Only parent headings of the current heading remain visible."
          ;; Based on `org-download-link-format-function-default'
          (if (and (>= (string-to-number org-version) 9.3)
                   (eq org-download-method 'attach))
-             (format "[[attachment:%s]%s]"
+             (format " [[attachment:%s]%s]"
                      (org-link-escape
                       (file-relative-name org-download-path-last-file
                                           (org-attach-dir)))
                      (if (not (string-empty-p title))
                          (format "[%s]" title)
                        ""))
-           (format "[[file:%s]%s]"
+           (format " [[file:%s]%s]"
                    (org-link-escape
                     (funcall org-download-abbreviate-filename-function
                              org-download-path-last-file))
@@ -2535,10 +2534,12 @@ Only parent headings of the current heading remain visible."
                    (if (not (string-empty-p title))
                        (format "[%s]" title)
                      ""))))
+        (end-of-line)
         (newline)
         (insert description)
         (org-node-put-created)
-        (org-set-property (org-gallery--image-prop-source) image-url)))))
+        (org-set-property (org-gallery--image-prop-source) image-url)
+        ))))
 
 (use-package! repeat-todo
   :after org
