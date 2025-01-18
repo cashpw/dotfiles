@@ -5023,10 +5023,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-agenda-files (cashpw/org-agenda-view--today--files))
       (org-agenda-prefix-format '((agenda . " %i %-21(cashpw/org-agenda-category 20)%-12t%-2(cashpw/org-agenda-icon)%-5e")))
       (org-super-agenda-groups
-       '((:discard
-          (:scheduled future
-           :deadline future))
-         (:name "Schedule"
+       '((:name "Schedule"
           :time-grid t
           :order 0
           :transformer (--> it
