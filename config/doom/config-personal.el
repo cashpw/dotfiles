@@ -5023,7 +5023,10 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-agenda-files (cashpw/org-agenda-view--today--files))
       (org-agenda-prefix-format '((agenda . " %i %-21(cashpw/org-agenda-category 20)%-12t%-2(cashpw/org-agenda-icon)%-5e")))
       (org-super-agenda-groups
-       '((:name "Schedule"
+       '((:discard
+          (:scheduled future
+          :scheduled past))
+         (:name "Schedule"
           :time-grid t
           :order 0
           :transformer (--> it
@@ -5731,13 +5734,19 @@ Category | Scheduled | Effort
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
+(defun cashpw/org-agenda-view--overdue--files ()
+  "Return list of files for overdue agenda view."
+  (-intersection
+    (cashpw/org-files-with-tag "hastodo" cashpw/path--notes-dir)
+    (cashpw/rgrep (format "-l \"<20\" %s/*.org" cashpw/path--notes-dir))))
+
 (defun cashpw/org-agenda-view--overdue ()
   "Return custom agenda command."
   `((agenda
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 1)
-      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-files (cashpw/org-agenda-view--overdue--files))
       (org-super-agenda-groups
        '((:discard
           (:scheduled future
