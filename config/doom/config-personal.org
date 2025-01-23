@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-01-18 Sat 10:38]
+:LAST_MODIFIED: [2025-01-23 Thu 09:36]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6265,6 +6265,7 @@ Review current state of the project and update any tracking documentation.
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Communicate project status, blockers, etc, to relevant stakeholders.
+,* Flashcards
 "))
         ("Person"
          :keys "p"

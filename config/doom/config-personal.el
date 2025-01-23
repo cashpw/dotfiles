@@ -3987,6 +3987,7 @@ Review current state of the project and update any tracking documentation.
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Communicate project status, blockers, etc, to relevant stakeholders.
+* Flashcards
 "))
         ("Person"
          :keys "p"
