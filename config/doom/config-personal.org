@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-01-23 Thu 09:36]
+:LAST_MODIFIED: [2025-02-12 Wed 07:59]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6222,6 +6222,13 @@ If FORCE, force a rebuild of the cache from scratch."
        :template "%?"
        :file "${slug}.org"
        :unnarrowed t
+       :before-finalize (lambda ()
+                          (save-excursion
+                            (let ((id (org-entry-get (point-min) "ID")))
+                              (goto-char (point-min))
+                              (org-set-property "DIR" (format "attachments/%s/%s"
+                                                              (substring id 0 2)
+                                                              (substring id 2))))))
        :children
        (("Concept"
          :keys "c"
