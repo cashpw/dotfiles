@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-15 Sat 20:37]
+:LAST_MODIFIED: [2025-02-16 Sun 06:06]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1847,9 +1847,12 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/docs\\.google\\.com"
 
+    ;; YouTube
+    ;; Why? Not usable in text browsers.
+    "^https?:\\/\\/\\(www.\\)?youtube\\.com"
+
     "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
-    "accounts.google.com"
-    )
+    "accounts.google.com")
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
 (defun cashpw/browse-url (url &optional new-window)

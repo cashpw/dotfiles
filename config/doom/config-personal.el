@@ -950,9 +950,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/docs\\.google\\.com"
 
+    ;; YouTube
+    ;; Why? Not usable in text browsers.
+    "^https?:\\/\\/\\(www.\\)?youtube\\.com"
+
     "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
-    "accounts.google.com"
-    )
+    "accounts.google.com")
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
 (defun cashpw/browse-url (url &optional new-window)
