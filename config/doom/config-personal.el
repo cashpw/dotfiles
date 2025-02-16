@@ -3273,45 +3273,51 @@ Return nil if no attendee exists with that EMAIL."
   (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 
-;; (use-package!
-;;     org-special-block-extras
-;;   :after org
-;;   :hook (org-mode . org-special-block-extras-mode)
-;;   ;; (o-docs-libraries
-;;   ;;  '("~/org-special-block-extras/documentation.org")
-;;   ;;  "The places where I keep my ‘#+documentation’")
-;;   :config
-;;   (defun )
-;;   (org-defblock
-;;    quote2 nil
-;;    (pcase backend
-;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (_ raw-contents)))
-;;   (org-defblock
-;;    quote3 nil
-;;    (pcase backend
-;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (_ raw-contents)))
-;;   (org-defblock
-;;    quote4 nil
-;;    (pcase backend
-;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (_ raw-contents)))
-;;   (org-defblock
-;;    quote5 nil
-;;    (pcase backend
-;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (_ raw-contents)))
-;;   (org-defblock
-;;    quote6 nil
-;;    (pcase backend
-;;      (`hugo (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export hugo " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (`markdown (s-join "\n" (--map (concat "> " it) (cl-delete "#+begin_export markdown " (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=) :test #'string=))))
-;;      (_ raw-contents))))
+(use-package!
+    org-defblock
+  :after org)
+
+(use-package!
+    org-defblock
+  :after org
+  :hook (org-mode . org-defblock-mode)
+  :config
+  (defun cashpw/org-defblock--quote-format ()
+    "TODO."
+    (message "contents: %s, depth: %d, backend: %s, raw-contents: %s" contents depth backend raw-contents)
+    (pcase backend
+      (`hugo
+       (s-join
+        "\n"
+        (--map
+           (format "> %s" it)
+         (cl-delete
+          "#+begin_export hugo "
+          (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
+          :test #'string=))))
+      (`markdown
+       (s-join
+        "\n"
+        (--map
+           (format "> %s" it)
+         (cl-delete
+          "#+begin_export markdown "
+          (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
+          :test #'string=))))
+      (`md
+       (s-join
+        "\n"
+        (--map
+           (format "> %s" it)
+         (cl-delete
+          "#+begin_export md "
+          (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
+          :test #'string=))))
+      (_ raw-contents)))
+  (org-defblock quote2 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote3 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote4 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote5 nil (cashpw/org-defblock--quote-format)))
 
 (use-package! org-tempo)
 
@@ -3944,6 +3950,13 @@ Don't call directly. Use `cashpw/org-agenda-files'."
        :template "%?"
        :file "${slug}.org"
        :unnarrowed t
+       :before-finalize (lambda ()
+                          (save-excursion
+                            (let ((id (org-entry-get (point-min) "ID")))
+                              (goto-char (point-min))
+                              (org-set-property "DIR" (format "attachments/%s/%s"
+                                                              (substring id 0 2)
+                                                              (substring id 2))))))
        :children
        (("Concept"
          :keys "c"

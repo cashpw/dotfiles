@@ -226,7 +226,8 @@
 
 (package! org-roam-ui)
 
-;; (package! org-special-block-extras)
+(package! org-defblock
+  :recipe (:host github :repo "cashpw/org-defblock"))
 
 (package! org-super-agenda)
 
