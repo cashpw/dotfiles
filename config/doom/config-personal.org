@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-16 Sun 06:06]
+:LAST_MODIFIED: [2025-02-17 Mon 08:41]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1829,9 +1829,10 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 ;; (use-package! helm)
 ;; (use-package! exec-path-from-shell)
 (use-package! asana
-  :custom
-  (asana-tasks-org-file cashpw/path--personal-asana)
-  (asana-token (secret-get "asana")))
+  :config
+  (setq
+   asana-tasks-org-file cashpw/path--personal-asana
+   asana-token (secret-get "asana")))
 #+end_src
 
 ** Browser
@@ -8173,7 +8174,7 @@ Category | Scheduled | Effort
 (cashpw/org-agenda-custom-commands--maybe-update)
 #+end_src
 
-***** No priority
+***** Unscheduled
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-agenda-view--not-scheduled ()
   "Return custom agenda command."
@@ -8185,7 +8186,8 @@ Category | Scheduled | Effort
           :log t)
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-           :todo "PROJ"))
+           :todo "PROJ"
+           :tag ("unscheduled")))
          (:discard
           (:scheduled t))
          (:auto-category t)))))))

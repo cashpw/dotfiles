@@ -936,9 +936,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;; (use-package! helm)
 ;; (use-package! exec-path-from-shell)
 (use-package! asana
-  :custom
-  (asana-tasks-org-file cashpw/path--personal-asana)
-  (asana-token (secret-get "asana")))
+  :config
+  (setq
+   asana-tasks-org-file cashpw/path--personal-asana
+   asana-token (secret-get "asana")))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
@@ -5744,7 +5745,8 @@ Category | Scheduled | Effort
           :log t)
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-           :todo "PROJ"))
+           :todo "PROJ"
+           :tag ("unscheduled")))
          (:discard
           (:scheduled t))
          (:auto-category t)))))))
