@@ -2969,22 +2969,23 @@ Return nil if no attendee exists with that EMAIL."
   (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
-(org-gcal-activate-profile cashpw/org-gcal--profile-personal)
-(use-package! org-gcal
-  :custom
-  (plstore-cache-passphrase-for-symmetric-encryption t)
-  (org-gcal-up-days 1)
-  (org-gcal-down-days 8)
-  (org-gcal-remove-cancelled-events t)
-  (org-gcal-remove-events-with-cancelled-todo t)
-  ;; See https://github.com/kidd/org-gcal.el/issues/172
-  (org-gcal-auto-archive nil)
-  (org-gcal-recurring-events-mode 'top-level)
+(after! org-gcal-extras
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+  (use-package! org-gcal
+    :custom
+    (plstore-cache-passphrase-for-symmetric-encryption t)
+    (org-gcal-up-days 1)
+    (org-gcal-down-days 8)
+    (org-gcal-remove-cancelled-events t)
+    (org-gcal-remove-events-with-cancelled-todo t)
+    ;; See https://github.com/kidd/org-gcal.el/issues/172
+    (org-gcal-auto-archive nil)
+    (org-gcal-recurring-events-mode 'top-level)
 
-  :config
-  ;; https://github.com/dengste/org-caldav/issues/117
-  (setenv "GPG_AGENT_INFO")
-  (org-gcal-reload-client-id-secret))
+    :config
+    ;; https://github.com/dengste/org-caldav/issues/117
+    (setenv "GPG_AGENT_INFO")
+    (org-gcal-reload-client-id-secret)))
 
 (after! org-habit
   (setq
