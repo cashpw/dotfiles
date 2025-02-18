@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-17 Mon 08:41]
+:LAST_MODIFIED: [2025-02-17 Mon 17:35]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1955,7 +1955,7 @@ https://depp.brause.cc/nov.el/
 Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =calfw= through =app/calendar=.
 ** Calculator (=calc=)
 *** Packages
-**** =causal= :disabled:
+**** =causal=
 
 #+begin_quote
 An opinionated [[https://github.com/magit/transient][Transient]]-based porcelain to support the casual usage of Emacs [[https://www.gnu.org/software/emacs/manual/html_mono/calc.html][Calc]].
@@ -1966,14 +1966,14 @@ An opinionated [[https://github.com/magit/transient][Transient]]-based porcelain
 ***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-;; (package! casual)
+(package! casual)
 #+end_src
 
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (use-package! casual
-;;   :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+(use-package! casual
+  :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
 #+end_src
 
 ** =ediff=

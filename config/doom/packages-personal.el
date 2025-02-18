@@ -108,7 +108,7 @@
 
 (package! nov)
 
-;; (package! casual)
+(package! casual)
 
 (package! ox-gfm)
 
