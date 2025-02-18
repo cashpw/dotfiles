@@ -2713,7 +2713,8 @@ Return nil if no attendee exists with that EMAIL."
     (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
   (when (and (not (member "processed" (org-get-tags)))
-             (sequencep event) (>= (length (plist-get event :attendees)) 2)
+             (sequencep event)
+             (= (length (plist-get event :attendees)) 1)
              (--none-p
               (string-match-p it (plist-get event :summary))
               cashpw/org-gcal--no-prep-reminder-summaries))
