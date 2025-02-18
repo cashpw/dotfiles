@@ -142,7 +142,10 @@
 
 (add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
 
-;; (package! org-link-beautify)
+;; (package! org-link-beautify
+;;   :recipe (:host nil
+;;            :repo "https://repo.or.cz/org-link-beautify.git"
+;;            :branch "v1.2.3"))
 
 (package! org-extras
   :recipe (:host github

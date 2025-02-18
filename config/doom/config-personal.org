@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-17 Mon 17:35]
+:LAST_MODIFIED: [2025-02-17 Mon 21:32]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3375,14 +3375,17 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
    :override #'ignore))
 #+end_src
 
-**** =org-link-beautify=
+**** =org-link-beautify= :disabled:
 
-Disabled because it slowed down agenda view.
+Disabled because (1) it slowed down agenda view and (2) it wasn't that useful.
 
 ***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-;; (package! org-link-beautify)
+;; (package! org-link-beautify
+;;   :recipe (:host nil
+;;            :repo "https://repo.or.cz/org-link-beautify.git"
+;;            :branch "v1.2.3"))
 #+end_src
 
 ***** Config
@@ -3393,6 +3396,7 @@ Disabled because it slowed down agenda view.
 ;;   ;; :custom
 ;;   ;; (org-link-beautify-async-preview t)
 ;;   :config
+;;   (set-face-attribute 'org-link-beautify-link-icon-face nil :weight 'normal)
 ;;   (org-link-beautify-mode 1))
 #+end_src
 

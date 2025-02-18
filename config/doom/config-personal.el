@@ -2035,6 +2035,7 @@ INPUT:")
 ;;   ;; :custom
 ;;   ;; (org-link-beautify-async-preview t)
 ;;   :config
+;;   (set-face-attribute 'org-link-beautify-link-icon-face nil :weight 'normal)
 ;;   (org-link-beautify-mode 1))
 
 (use-package! org-extras
