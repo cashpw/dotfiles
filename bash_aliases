@@ -18,4 +18,18 @@ alias sp='source ~/.profile'
 
 alias v='nvim'
 
+# Convenience
 alias pn='bash ~/.scripts/sync/pull_push_notes.sh'
+
+# Editor
+alias e='emacsclient -t -a ""'
+
+# Applications
+## Fabric
+alias fabric='~/third_party/fabric/fabric'
+alias transcript='fabric --transcript --youtube '
+## Redshift
+alias rson='redshift -O 3700 -l 37.63:-122.41 -b 1.0:0.7'
+alias rsdark='redshift -O 3700 -l 37.63:-122.41 -b 0.7:0.7'
+alias rsoff='redshift -x'
+

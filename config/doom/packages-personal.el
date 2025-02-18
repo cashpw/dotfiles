@@ -101,11 +101,14 @@
 
 (package! nerd-icons)
 
+(package! asana
+  :recipe (:host github :repo "cashpw/asana.el"))
+
 ;; (package! w3m)
 
 (package! nov)
 
-;; (package! casual)
+(package! casual)
 
 (package! ox-gfm)
 
@@ -139,7 +142,10 @@
 
 (add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
 
-;; (package! org-link-beautify)
+;; (package! org-link-beautify
+;;   :recipe (:host nil
+;;            :repo "https://repo.or.cz/org-link-beautify.git"
+;;            :branch "v1.2.3"))
 
 (package! org-extras
   :recipe (:host github
@@ -223,7 +229,8 @@
 
 (package! org-roam-ui)
 
-;; (package! org-special-block-extras)
+(package! org-defblock
+  :recipe (:host github :repo "cashpw/org-defblock"))
 
 (package! org-super-agenda)
 

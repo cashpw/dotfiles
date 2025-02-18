@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: Update with next steps
+# key: with-next-steps
+# uuid: with-next-steps
+# --
+${1:Text}
+
+*Next steps*
+
+1. ${2: Step}
