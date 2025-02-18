@@ -1170,18 +1170,6 @@ TAGS which start with \"-\" are excluded."
             end)
     (notmuch-search-next-thread)))
 
-(defun cashpw/notmuch-search-follow-up ()
-  "Capture the email at point in search for following up."
-  (interactive)
-  (notmuch-search-show-thread)
-  (goto-char
-   (point-max))
-  (org-capture
-   ;; goto
-   nil
-   ;; keys
-   "tef"))
-
 (defun cashpw/notmuch-search-todo ()
   "Capture the email at point in search for a todo."
   (interactive)
@@ -1192,9 +1180,9 @@ TAGS which start with \"-\" are excluded."
    ;; goto
    nil
    ;; keys
-   "tee"))
+   "teE"))
 
-(defun cashpw/notmuch-search-todo-without-link ()
+(defun cashpw/notmuch-search-todo-today ()
   "Capture the email at point in search for a todo."
   (interactive)
   (notmuch-search-show-thread)
@@ -1204,7 +1192,7 @@ TAGS which start with \"-\" are excluded."
    ;; goto
    nil
    ;; keys
-   "tew"))
+   "tee"))
 
 (after! notmuch
   (setq
@@ -1514,11 +1502,9 @@ TAGS which start with \"-\" are excluded."
   (evil-define-key 'normal notmuch-search-mode-map "t" nil)
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
-    'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up)
+    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo-today)
   (evil-define-key
-    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo)
-  (evil-define-key
-    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo-without-link)
+    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "T" nil)
@@ -6434,25 +6420,23 @@ See `org-clock-special-range' for KEY."
            :file cashpw/path--personal-todos
            :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
-           (
-            ("Email"
-             :keys "e"
+           (("Todo"
+             :keys "E"
+             :after-finalize (lambda () (message "buffer name: %s" (buffer-name)))
              :template
              ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
-            ("Without link"
-             :keys "w"
+            ("Todo today"
+             :keys "e"
+             :before-finalize (lambda ()
+                                (org-schedule nil (current-time)))
+             :after-finalize (lambda ()
+                               (notmuch-bury-or-kill-this-buffer))
+             :immediate-finish t
              :template
-             ("* TODO [#2] %:subject"
-              ":PROPERTIES:"
-              ":Created: %U"
-              ":END:"))
-            ("Follow up"
-             :keys "f"
-             :template
-             ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))))))))

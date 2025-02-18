@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: Recruiter: No
+# key: recruiter-no
+# uuid: recruiter-no
+# --
+Hi ${1:name},
+
+Thank you for reaching out. I'm not looking for new opportunities at this time. I'll keep your email archived and available so I can find it when my situation changes.

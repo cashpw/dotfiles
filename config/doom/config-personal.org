@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-17 Mon 21:32]
+:LAST_MODIFIED: [2025-02-18 Tue 09:28]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2219,18 +2219,6 @@ TAGS which start with \"-\" are excluded."
 ****** Todo
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/notmuch-search-follow-up ()
-  "Capture the email at point in search for following up."
-  (interactive)
-  (notmuch-search-show-thread)
-  (goto-char
-   (point-max))
-  (org-capture
-   ;; goto
-   nil
-   ;; keys
-   "tef"))
-
 (defun cashpw/notmuch-search-todo ()
   "Capture the email at point in search for a todo."
   (interactive)
@@ -2241,9 +2229,9 @@ TAGS which start with \"-\" are excluded."
    ;; goto
    nil
    ;; keys
-   "tee"))
+   "teE"))
 
-(defun cashpw/notmuch-search-todo-without-link ()
+(defun cashpw/notmuch-search-todo-today ()
   "Capture the email at point in search for a todo."
   (interactive)
   (notmuch-search-show-thread)
@@ -2253,7 +2241,7 @@ TAGS which start with \"-\" are excluded."
    ;; goto
    nil
    ;; keys
-   "tew"))
+   "tee"))
 #+end_src
 ***** Config
 
@@ -2596,11 +2584,9 @@ I need to use a different =send-mail-function= when sending email at work. I ove
   (evil-define-key 'normal notmuch-search-mode-map "t" nil)
   ;; Note this unbinds `notmuch-search-filter-by-tag'.
   (evil-define-key
-    'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up)
+    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo-today)
   (evil-define-key
-    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo)
-  (evil-define-key
-    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo-without-link)
+    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo)
 
   ;; Helpers for toggling often-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "T" nil)
@@ -3293,48 +3279,8 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 #+end_src
 
 ** Java
-** TODO Org
 
-;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
-#+begin_src emacs-lisp
-;; Pin org to 9.6.1 to fix https://github.com/kaushalmodi/ox-hugo/issues/722
-;; Reference: https://github.com/doomemacs/doomemacs/commit/c79f55f7760b09d0633dddfcc01cd6e0ea47ef45
-(package! org
-  :recipe (:host github
-           ;; REVIEW: I intentionally avoid git.savannah.gnu.org because of SSL
-           ;;   issues (see #5655), uptime issues, download time, and lack of
-           ;;   shallow clone support.
-           :repo "emacs-straight/org-mode"
-           :files (:defaults "etc")
-           :depth 1
-           ;; HACK: Org has a post-install step that generates org-version.el
-           ;;   and org-loaddefs.el, but Straight doesn't invoke this step, and
-           ;;   the former doesn't work if the Org repo is a shallow clone.
-           ;;   Rather than impose the network burden of a full clone (and other
-           ;;   redundant work in Org's makefile), I'd rather fake these files
-           ;;   instead. Besides, Straight already produces a org-autoloads.el,
-           ;;   so org-loaddefs.el isn't needed.
-           :build t
-           :pre-build
-           (progn
-             (with-temp-file "org-loaddefs.el")
-             (with-temp-file "org-version.el"
-               (let ((version
-                      (with-temp-buffer
-                        (insert-file-contents (doom-path "lisp/org.el") nil 0 1024)
-                        (if (re-search-forward "^;; Version: \\([^\n-]+\\)" nil t)
-                            (match-string-no-properties 1)
-                          "Unknown"))))
-                 (insert (format "(defun org-release () %S)\n" version)
-                         (format "(defun org-git-version (&rest _) \"%s-??-%s\")\n"
-                                 version (cdr (doom-call-process "git" "rev-parse" "--short" "HEAD")))
-                         "(provide 'org-version)\n")))))
-  :pin "fe92a3cedba541482d5954eacb2b13e6f57a39c4")
-(package! org-contrib
-  :recipe (:host github
-           :repo "emacsmirror/org-contrib")
-  :pin "fff6c888065588527b1c1d7dd7e41c29ef767e17")
-#+end_src
+** TODO Org
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (unpin! org)
@@ -9016,25 +8962,23 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
            :file cashpw/path--personal-todos
            :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
-           (
-            ("Email"
-             :keys "e"
+           (("Todo"
+             :keys "E"
+             :after-finalize (lambda () (message "buffer name: %s" (buffer-name)))
              :template
              ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
-            ("Without link"
-             :keys "w"
+            ("Todo today"
+             :keys "e"
+             :before-finalize (lambda ()
+                                (org-schedule nil (current-time)))
+             :after-finalize (lambda ()
+                               (notmuch-bury-or-kill-this-buffer))
+             :immediate-finish t
              :template
-             ("* TODO [#2] %:subject"
-              ":PROPERTIES:"
-              ":Created: %U"
-              ":END:"))
-            ("Follow up"
-             :keys "f"
-             :template
-             ("* TODO [#2] Follow up: [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))))))))
@@ -9261,7 +9205,6 @@ All args are passed to `org-roam-node-read'."
 (deflink "twitter"
          "https://twitter.com")
 #+end_src
-
 
 *** Transclusion
 
@@ -9980,6 +9923,36 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :n "n" #'org-noter-insert-note
    :n "N" #'org-noter-insert-precise-note
    :desc "Quote (precise)" :n "Q" #'cashpw/org-noter-insert-selected-text-inside-note-content))
+#+end_src
+
+*** Snippets
+**** Email
+***** Recruiter: No
+
+#+begin_src text :tangle snippets/org-mode/recruiter-no
+# -*- mode: snippet -*-
+# name: Recruiter: No
+# key: recruiter-no
+# uuid: recruiter-no
+# --
+Hi ${1:name},
+
+Thank you for reaching out. I'm not looking for new opportunities at this time. I'll keep your email archived and available so I can find it when my situation changes.
+#+end_src
+**** Process
+***** With next steps
+
+#+begin_src text :tangle snippets/org-mode/with-next-steps
+# -*- mode: snippet -*-
+# name: Update with next steps
+# key: with-next-steps
+# uuid: with-next-steps
+# --
+${1:Text}
+
+,*Next steps*
+
+1. ${2: Step}
 #+end_src
 
 ** TODO Portable Document Format (PDF)
