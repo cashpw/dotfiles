@@ -93,7 +93,11 @@
         ,(format "%sunread.org_archive" org-roam-directory))
       cashpw/org-roam--file-path-exceptions-to-add-bibliography
       `(,(format "%sunread.org" org-roam-directory)
-        ,(format "%sunread.org_archive" org-roam-directory))))))
+        ,(format "%sunread.org_archive" org-roam-directory)))))
+ '(warning-suppress-types
+   '((org-element org-element-parser)
+     (defvaralias)
+     (lexical-binding))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
