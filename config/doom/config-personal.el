@@ -957,34 +957,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/\\(www.\\)?youtube\\.com"
 
-    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
-    "accounts.google.com")
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com" "accounts.google.com")
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
-(defcustom cashpw/browse-url-browser-function-override nil
-  "Set this to non-nil to override `cashpw/browse-url' to always use a specific function.")
-
-(defun cashpw/browse-url-override-for-fn (function override-browse-url)
-  "Set `cashpw/browse-url-browser-function-override' to OVERRIDE-BROWSE-URL for calls to FUNCTION."
-  ;; This needs to be a macro, I think.
-  ;; (advice-add 'pdf-util-tooltip-arrow :before #'pdf-sync-scroll-to-column)
-  ;; (advice-remove 'pdf-util-tooltip-arrow #'pdf-sync-scroll-to-column)
-  )
-
-(defun cashpw/browse-url (url &optional new-window)
-  "Select correct browser to open URL.
-
-Passes arguments, including NEW-WINDOW, along."
-  (if (functionp cashpw/browse-url-browser-function-override)
-      (funcall cashpw/browse-url-browser-function-override url new-window))
-  (if (--any
-       (string-match-p it url)
-       cashpw/url-patterns-to-open-in-external-browser)
-      (browse-url-firefox url new-window)
-    (eww-browse-url url new-window)))
-
 (setq
- browse-url-browser-function 'cashpw/browse-url)
+ browse-url-handlers
+ (-map
+  (lambda (pattern) `(,pattern . browse-url-firefox))
+  cashpw/url-patterns-to-open-in-external-browser)
+ browse-url-browser-function 'eww-browse-url)
 
 ;; (after! eww
 ;;   (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
@@ -3095,15 +3076,7 @@ Return nil if no attendee exists with that EMAIL."
     :config
     ;; https://github.com/dengste/org-caldav/issues/117
     (setenv "GPG_AGENT_INFO")
-    (org-gcal-reload-client-id-secret)
-
-    (defun cashpw/org-gcal--override-browser ()
-      (setq cashpw/browse-url-browser-function-override #'browse-url-firefox))
-    (defun cashpw/org-gcal--remove-override-browser ()
-      (setq cashpw/browse-url-browser-function-override nil))
-
-    (advice-add 'org-gcal-fetch :before 'cashpw/org-gcal--override-browser)
-    (advice-add 'org-gcal-fetch :after 'cashpw/org-gcal--remove-override-browser)))
+    (org-gcal-reload-client-id-secret)))
 
 (after! org-habit
   (setq
