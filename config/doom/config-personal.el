@@ -3100,10 +3100,10 @@ Return nil if no attendee exists with that EMAIL."
     (defun cashpw/org-gcal--override-browser ()
       (setq cashpw/browse-url-browser-function-override #'browse-url-firefox))
     (defun cashpw/org-gcal--remove-override-browser ()
-      (setq cashpw/browse-url-browser-function-override nil)
+      (setq cashpw/browse-url-browser-function-override nil))
 
     (advice-add 'org-gcal-fetch :before 'cashpw/org-gcal--override-browser)
-    (advice-add 'org-gcal-fetch :after 'cashpw/org-gcal--remove-override-browser))))
+    (advice-add 'org-gcal-fetch :after 'cashpw/org-gcal--remove-override-browser)))
 
 (after! org-habit
   (setq
