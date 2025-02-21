@@ -1,6 +1,6 @@
 (setq search-invisible t)
 
-(setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+;; (setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
 
 (use-package! s
   :demand t)
@@ -961,10 +961,22 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     "accounts.google.com")
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
+(defcustom cashpw/browse-url-browser-function-override nil
+  "Set this to non-nil to override `cashpw/browse-url' to always use a specific function.")
+
+(defun cashpw/browse-url-override-for-fn (function override-browse-url)
+  "Set `cashpw/browse-url-browser-function-override' to OVERRIDE-BROWSE-URL for calls to FUNCTION."
+  ;; This needs to be a macro, I think.
+  ;; (advice-add 'pdf-util-tooltip-arrow :before #'pdf-sync-scroll-to-column)
+  ;; (advice-remove 'pdf-util-tooltip-arrow #'pdf-sync-scroll-to-column)
+  )
+
 (defun cashpw/browse-url (url &optional new-window)
   "Select correct browser to open URL.
 
 Passes arguments, including NEW-WINDOW, along."
+  (if (functionp cashpw/browse-url-browser-function-override)
+      (funcall cashpw/browse-url-browser-function-override url new-window))
   (if (--any
        (string-match-p it url)
        cashpw/url-patterns-to-open-in-external-browser)
@@ -3035,10 +3047,7 @@ Return nil if no attendee exists with that EMAIL."
   (flyspell-mode 0)
 
   (org-gcal-sync-tokens-clear)
-  (let ((calendar-path
-         (cdr
-          (car
-           org-gcal-fetch-file-alist))))
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
     (let ((org-agenda-files
            ;; Set limited agenda files to improve performance
            `(,calendar-path)))
@@ -3051,24 +3060,23 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-  (let ((calendar-path
-         (cdr
-          (car
-           org-gcal-fetch-file-alist))))
-    (with-current-buffer (find-file-noselect
-                          calendar-path)
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect calendar-path)
       (org-map-entries
        (lambda ()
          ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
          (when (cashpw/time-past-p (org-get-scheduled-time (point)))
            (org-cut-subtree)
-           (setq org-map-continue-from (save-excursion (beginning-of-line) (point))))))
+           (setq org-map-continue-from
+                 (save-excursion
+                   (beginning-of-line)
+                   (point))))))
       ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
-      ;(insert "* Flashcards")))
+                                        ;(insert "* Flashcards")))
       )
-  (cashpw/org-gcal-fetch)))
+    (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (after! org-gcal-extras
@@ -3087,7 +3095,15 @@ Return nil if no attendee exists with that EMAIL."
     :config
     ;; https://github.com/dengste/org-caldav/issues/117
     (setenv "GPG_AGENT_INFO")
-    (org-gcal-reload-client-id-secret)))
+    (org-gcal-reload-client-id-secret)
+
+    (defun cashpw/org-gcal--override-browser ()
+      (setq cashpw/browse-url-browser-function-override #'browse-url-firefox))
+    (defun cashpw/org-gcal--remove-override-browser ()
+      (setq cashpw/browse-url-browser-function-override nil)
+
+    (advice-add 'org-gcal-fetch :before 'cashpw/org-gcal--override-browser)
+    (advice-add 'org-gcal-fetch :after 'cashpw/org-gcal--remove-override-browser))))
 
 (after! org-habit
   (setq
