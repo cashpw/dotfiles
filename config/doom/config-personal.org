@@ -1861,9 +1861,8 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 
 (setq
  browse-url-handlers
- (-map
-  (lambda (pattern) `(,pattern . browse-url-firefox))
-  cashpw/url-patterns-to-open-in-external-browser)
+ (--map
+  `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
  browse-url-browser-function 'eww-browse-url)
 #+end_src
 

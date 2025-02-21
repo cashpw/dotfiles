@@ -962,9 +962,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
 (setq
  browse-url-handlers
- (-map
-  (lambda (pattern) `(,pattern . browse-url-firefox))
-  cashpw/url-patterns-to-open-in-external-browser)
+ (--map
+  `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
  browse-url-browser-function 'eww-browse-url)
 
 ;; (after! eww
