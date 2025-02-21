@@ -1,5 +1,7 @@
 (setq search-invisible t)
 
+(setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+
 (use-package! s
   :ensure t)
 (use-package! dash

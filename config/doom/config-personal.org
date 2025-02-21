@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-18 Tue 09:28]
+:LAST_MODIFIED: [2025-02-21 Fri 07:39]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -17,6 +17,10 @@ Allow search and replace actions to affect hidden text.
 #+end_src
 
 ** Early packages
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+#+end_src
 
 Activate some packages early to prevent errors.
 
