@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-21 Fri 07:39]
+:LAST_MODIFIED: [2025-02-21 Fri 10:14]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -26,9 +26,9 @@ Activate some packages early to prevent errors.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! s
-  :ensure t)
+  :demand t)
 (use-package! dash
-  :ensure t)
+  :demand t)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 #+end_src

@@ -3,9 +3,9 @@
 (setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
 
 (use-package! s
-  :ensure t)
+  :demand t)
 (use-package! dash
-  :ensure t)
+  :demand t)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 
