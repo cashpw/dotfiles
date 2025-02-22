@@ -1007,16 +1007,58 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (setq
  ediff-split-window-function #'split-window-horizontally)
 
-(use-package! ox-gfm)
+(use-package! ox-gfm
+  :config
+
+  (defun cashpw/org-gfm-timestamp (timestamp contents info)
+    "Translate TIMESTAMP to a compatible form. INFO is a plist holding contextual information."
+    (format "%s" (org-timestamp-translate timestamp)))
+
+  ;; Override so we can set some add to translate-alist
+  (org-export-define-derived-backend 'gfm 'md
+    :filters-alist '((:filter-parse-tree . org-md-separate-elements))
+    :menu-entry
+    '(?g "Export to Github Flavored Markdown"
+      ((?G "To temporary buffer"
+           (lambda (a s v b) (org-gfm-export-as-markdown a s v)))
+       (?g "To file" (lambda (a s v b) (org-gfm-export-to-markdown a s v)))
+       (?o "To file and open"
+           (lambda (a s v b)
+             (if a (org-gfm-export-to-markdown t s v)
+               (org-open-file (org-gfm-export-to-markdown nil s v)))))))
+    :translate-alist '((inner-template . org-gfm-inner-template)
+                       (paragraph . org-gfm-paragraph)
+                       (timestamp . cashpw/org-gfm-timestamp)
+                       (strike-through . org-gfm-strike-through)
+                       (example-block . org-gfm-example-block)
+                       (src-block . org-gfm-src-block)
+                       (table-cell . org-gfm-table-cell)
+                       (table-row . org-gfm-table-row)
+                       (table . org-gfm-table))))
+
 (after!
- emacs-everywhere
- (setq emacs-everywhere-pandoc-md-args
-       `("--from" ,(concat
-           "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
-         "--to" "org"))
- (--each
-  '("Buganizer" "Critique")
-  (add-to-list 'emacs-everywhere-markdown-windows it)))
+  emacs-everywhere
+  (setq
+   emacs-everywhere-org-export-options
+   "#+property: header-args :exports both
+#+options: toc:nil ':nil -:nil <:nil\n"
+   emacs-everywhere-pandoc-md-args
+   `("--from"
+     ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
+     "--to"
+     "org"))
+
+  (--each
+      '(
+        ;; Google issue tracker
+        "Buganizer"
+
+        ;; Google code review
+        "Critique"
+
+        ;; Google chat
+        "Chat")
+    (add-to-list 'emacs-everywhere-markdown-windows it)))
 
 (after!
   emacs-everywhere
