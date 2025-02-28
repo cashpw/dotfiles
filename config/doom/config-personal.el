@@ -2154,18 +2154,42 @@ INPUT:")
   (ignore-errors
     (doom/reset-font-size)))
 
-(defun cashpw/org-fc--after-flip ()
+(defun cashpw/org-fc--maybe-increment-new-seen-today ()
+  "Increment `cashpw/org-fc-review-new-limit--new-seen-today' if flipped card is new."
   (let ((current-position (oref org-fc-review--session current-item)))
-    (if (org-fc-position--new-p current-position)
-        (cl-incf cashpw/org-fc-review-new-limit--new-seen-today)))
-  (evil-open-fold-rec)
-  (cancel-timer cashpw/org-fc--card-timer)
+    (when (org-fc-position--new-p current-position)
+      (cl-incf cashpw/org-fc-review-new-limit--new-seen-today))))
+
+(defun cashpw/org-fc--show-latex-for-tree ()
+  "Show latex under current tree."
+  (message "Showing latex")
   (org-map-entries (lambda ()
                      (org-latex-preview 4))
                    ;; match
                    nil
                    ;; scope
                    'tree))
+
+(defun cashpw/org-fc--open-front-link ()
+  "Open first link/attachment for \"front\" position if that's the one we're reviewing."
+  (when (org-fc-review-session-p)
+    (let* ((pos (oref org-fc-review--session current-item))
+           (card (oref pos card)))
+      (when (and
+             (string= "double" (oref card type))
+             (and (stringp (oref pos pos))
+                  (string= "front" (oref pos pos))))
+        (let ((bound (org-element-end (org-element-context))))
+          (save-excursion
+            (when (search-forward "[[link:" bound 'noerror)
+              (org-open-at-point)))
+          (save-excursion
+            (when (search-forward "[[attachment:" bound 'noerror)
+              (org-open-at-point))))))))
+
+(defun cashpw/org-fc--after-flip ()
+  (evil-open-fold-rec)
+  (cancel-timer cashpw/org-fc--card-timer))
 
 (defun cashpw/org-fc-review-all ()
   "Review everything except reading flashcards."
@@ -2244,12 +2268,20 @@ INPUT:")
     (kbd "q") 'org-fc-review-quit)
   (add-hook! 'org-fc-review-edit-mode-hook
              #'cashpw/org-fc--reset-card-timer-expired-effects)
+
   (add-hook! 'org-fc-before-setup-hook
-             #'cashpw/org-fc--before-setup)
+             '(cashpw/org-fc--before-setup))
+  (add-hook! 'org-fc-after-setup-hook
+             '(cashpw/org-fc--open-front-link))
+
   (add-hook! 'org-fc-after-flip-hook
-             #'cashpw/org-fc--after-flip)
+             '(cashpw/org-fc--after-flip
+               cashpw/org-fc--maybe-increment-new-seen-today
+               cashpw/org-fc--show-latex-for-tree))
+
   (add-hook! 'org-fc-before-review-hook
              #'cashpw/org-fc--before-review)
+
   (add-hook! 'org-fc-after-review-hook
              #'cashpw/org-fc--after-review)
   ;; (setq
