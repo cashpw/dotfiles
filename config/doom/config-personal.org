@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-21 Fri 07:39]
+:LAST_MODIFIED: [2025-02-28 Fri 20:29]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -5878,7 +5878,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
- org-image-max-width 600
+ org-image-max-width 'window
  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
@@ -6906,6 +6906,12 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   15m
 :END:
+
+,** TODO About me
+
+,** TODO About Cayla
+
+,** TODO About the day
 
 ,* TODO [#2] Gratitude
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>

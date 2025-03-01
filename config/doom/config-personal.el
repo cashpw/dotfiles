@@ -3718,7 +3718,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 ;;(cashpw/org-agenda-files--update))
 
 (setq
- org-image-max-width 600
+ org-image-max-width 'window
  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
@@ -4620,6 +4620,12 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
 :Effort:   15m
 :END:
+
+** TODO About me
+
+** TODO About Cayla
+
+** TODO About the day
 
 * TODO [#2] Gratitude
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
