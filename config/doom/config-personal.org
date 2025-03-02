@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-02 Sun 06:20]
+:LAST_MODIFIED: [2025-03-02 Sun 06:21]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -19,16 +19,16 @@ Allow search and replace actions to affect hidden text.
 ** Early packages
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+;; (setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
 #+end_src
 
 Activate some packages early to prevent errors.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! s
-  :ensure t)
+  :demand t)
 (use-package! dash
-  :ensure t)
+  :demand t)
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 #+end_src
@@ -1856,22 +1856,14 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
     ;; Why? Not usable in text browsers.
     "^https?:\\/\\/\\(www.\\)?youtube\\.com"
 
-    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com"
-    "accounts.google.com")
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com" "accounts.google.com")
   "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
 
-(defun cashpw/browse-url (url &optional new-window)
-  "Select correct browser to open URL.
-
-Passes arguments, including NEW-WINDOW, along."
-  (if (--any
-       (string-match-p it url)
-       cashpw/url-patterns-to-open-in-external-browser)
-      (browse-url-firefox url new-window)
-    (eww-browse-url url new-window)))
-
 (setq
- browse-url-browser-function 'cashpw/browse-url)
+ browse-url-handlers
+ (--map
+  `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
+ browse-url-browser-function 'eww-browse-url)
 #+end_src
 
 #+begin_src emacs-lisp
@@ -1996,16 +1988,58 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
 #+end_src
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! ox-gfm)
+(use-package! ox-gfm
+  :config
+
+  (defun cashpw/org-gfm-timestamp (timestamp contents info)
+    "Translate TIMESTAMP to a compatible form. INFO is a plist holding contextual information."
+    (format "%s" (org-timestamp-translate timestamp)))
+
+  ;; Override so we can set some add to translate-alist
+  (org-export-define-derived-backend 'gfm 'md
+    :filters-alist '((:filter-parse-tree . org-md-separate-elements))
+    :menu-entry
+    '(?g "Export to Github Flavored Markdown"
+      ((?G "To temporary buffer"
+           (lambda (a s v b) (org-gfm-export-as-markdown a s v)))
+       (?g "To file" (lambda (a s v b) (org-gfm-export-to-markdown a s v)))
+       (?o "To file and open"
+           (lambda (a s v b)
+             (if a (org-gfm-export-to-markdown t s v)
+               (org-open-file (org-gfm-export-to-markdown nil s v)))))))
+    :translate-alist '((inner-template . org-gfm-inner-template)
+                       (paragraph . org-gfm-paragraph)
+                       (timestamp . cashpw/org-gfm-timestamp)
+                       (strike-through . org-gfm-strike-through)
+                       (example-block . org-gfm-example-block)
+                       (src-block . org-gfm-src-block)
+                       (table-cell . org-gfm-table-cell)
+                       (table-row . org-gfm-table-row)
+                       (table . org-gfm-table))))
+
 (after!
- emacs-everywhere
- (setq emacs-everywhere-pandoc-md-args
-       `("--from" ,(concat
-           "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
-         "--to" "org"))
- (--each
-  '("Buganizer" "Critique")
-  (add-to-list 'emacs-everywhere-markdown-windows it)))
+  emacs-everywhere
+  (setq
+   emacs-everywhere-org-export-options
+   "#+property: header-args :exports both
+,#+options: toc:nil ':nil -:nil <:nil\n"
+   emacs-everywhere-pandoc-md-args
+   `("--from"
+     ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
+     "--to"
+     "org"))
+
+  (--each
+      '(
+        ;; Google issue tracker
+        "Buganizer"
+
+        ;; Google code review
+        "Critique"
+
+        ;; Google chat
+        "Chat")
+    (add-to-list 'emacs-everywhere-markdown-windows it)))
 #+end_src
 
 *** Fix for import
@@ -3639,18 +3673,42 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   (ignore-errors
     (doom/reset-font-size)))
 
-(defun cashpw/org-fc--after-flip ()
+(defun cashpw/org-fc--maybe-increment-new-seen-today ()
+  "Increment `cashpw/org-fc-review-new-limit--new-seen-today' if flipped card is new."
   (let ((current-position (oref org-fc-review--session current-item)))
-    (if (org-fc-position--new-p current-position)
-        (cl-incf cashpw/org-fc-review-new-limit--new-seen-today)))
-  (evil-open-fold-rec)
-  (cancel-timer cashpw/org-fc--card-timer)
+    (when (org-fc-position--new-p current-position)
+      (cl-incf cashpw/org-fc-review-new-limit--new-seen-today))))
+
+(defun cashpw/org-fc--show-latex-for-tree ()
+  "Show latex under current tree."
+  (message "Showing latex")
   (org-map-entries (lambda ()
                      (org-latex-preview 4))
                    ;; match
                    nil
                    ;; scope
                    'tree))
+
+(defun cashpw/org-fc--open-front-link ()
+  "Open first link/attachment for \"front\" position if that's the one we're reviewing."
+  (when (org-fc-review-session-p)
+    (let* ((pos (oref org-fc-review--session current-item))
+           (card (oref pos card)))
+      (when (and
+             (string= "double" (oref card type))
+             (and (stringp (oref pos pos))
+                  (string= "front" (oref pos pos))))
+        (let ((bound (org-element-end (org-element-context))))
+          (save-excursion
+            (when (search-forward "[[link:" bound 'noerror)
+              (org-open-at-point)))
+          (save-excursion
+            (when (search-forward "[[attachment:" bound 'noerror)
+              (org-open-at-point))))))))
+
+(defun cashpw/org-fc--after-flip ()
+  (evil-open-fold-rec)
+  (cancel-timer cashpw/org-fc--card-timer))
 
 (defun cashpw/org-fc-review-all ()
   "Review everything except reading flashcards."
@@ -3729,12 +3787,20 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (kbd "q") 'org-fc-review-quit)
   (add-hook! 'org-fc-review-edit-mode-hook
              #'cashpw/org-fc--reset-card-timer-expired-effects)
+
   (add-hook! 'org-fc-before-setup-hook
-             #'cashpw/org-fc--before-setup)
+             '(cashpw/org-fc--before-setup))
+  (add-hook! 'org-fc-after-setup-hook
+             '(cashpw/org-fc--open-front-link))
+
   (add-hook! 'org-fc-after-flip-hook
-             #'cashpw/org-fc--after-flip)
+             '(cashpw/org-fc--after-flip
+               cashpw/org-fc--maybe-increment-new-seen-today
+               cashpw/org-fc--show-latex-for-tree))
+
   (add-hook! 'org-fc-before-review-hook
              #'cashpw/org-fc--before-review)
+
   (add-hook! 'org-fc-after-review-hook
              #'cashpw/org-fc--after-review)
   ;; (setq
@@ -4164,7 +4230,6 @@ Doom emacs provides =org-gcal=.
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package! org-gcal-extras)
 #+end_src
-
 
 ****** Time
 
@@ -4709,10 +4774,7 @@ Return nil if no attendee exists with that EMAIL."
   (flyspell-mode 0)
 
   (org-gcal-sync-tokens-clear)
-  (let ((calendar-path
-         (cdr
-          (car
-           org-gcal-fetch-file-alist))))
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
     (let ((org-agenda-files
            ;; Set limited agenda files to improve performance
            `(,calendar-path)))
@@ -4725,24 +4787,23 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-  (let ((calendar-path
-         (cdr
-          (car
-           org-gcal-fetch-file-alist))))
-    (with-current-buffer (find-file-noselect
-                          calendar-path)
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect calendar-path)
       (org-map-entries
        (lambda ()
          ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
          (when (cashpw/time-past-p (org-get-scheduled-time (point)))
            (org-cut-subtree)
-           (setq org-map-continue-from (save-excursion (beginning-of-line) (point))))))
+           (setq org-map-continue-from
+                 (save-excursion
+                   (beginning-of-line)
+                   (point))))))
       ;; (cashpw/delete-lines-below 9)
       ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
       ;;(goto-char (point-max))
-      ;(insert "* Flashcards")))
+                                        ;(insert "* Flashcards")))
       )
-  (cashpw/org-gcal-fetch)))
+    (cashpw/org-gcal-fetch)))
 #+end_src
 
 ***** =use-package=
