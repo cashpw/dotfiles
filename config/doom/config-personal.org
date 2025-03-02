@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-02 Sun 06:21]
+:LAST_MODIFIED: [2025-03-02 Sun 07:20]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3612,8 +3612,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defvar cashpw/org-fc--card-timer
-  nil
+(defvar cashpw/org-fc--card-timer nil
   "The timer for the current card.")
 
 (defun cashpw/org-fc--handle-card-timer-expired ()
@@ -3621,7 +3620,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 
 (defun cashpw/org-fc--reset-card-timer-expired-effects ()
   (if cashpw/org-fc--card-timer
-    (cancel-timer cashpw/org-fc--card-timer))
+      (cancel-timer cashpw/org-fc--card-timer))
   (set-background-color "#1d1f21"))
 
 (defun cashpw/org-fc-review-pause ()
@@ -3632,18 +3631,18 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
     (doom/reset-font-size)))
 
 (defun cashpw/org-fc--before-review ()
-  (setq
-   org-format-latex-options '(:foreground default
-                              :background default
-                              :scale 5.0
-                              :html-foreground "Black"
-                              :html-background "Transparent"
-                              :html-scale 1.0
-                              :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+  (setq org-format-latex-options
+        '(:foreground
+          default
+          :background default
+          :scale 5.0
+          :html-foreground "Black"
+          :html-background "Transparent"
+          :html-scale 1.0
+          :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
   (ignore-errors
     (doom/reset-font-size))
-  (setq
-   org-image-actual-width 1200)
+  (setq org-image-actual-width 1200)
   ;; (cashpw/eglot-pause)
   ;; (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
@@ -3651,21 +3650,24 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 
 (defun cashpw/org-fc--before-setup ()
   (cashpw/org-fc--reset-card-timer-expired-effects)
-  (setq
-   cashpw/org-fc--card-timer (run-with-timer cashpw/org-fc--seconds-per-card
-                                             nil
-                                             #'cashpw/org-fc--handle-card-timer-expired)))
+  (setq cashpw/org-fc--card-timer
+        (run-with-timer
+         cashpw/org-fc--seconds-per-card
+         nil
+         #'cashpw/org-fc--handle-card-timer-expired)))
 
 (defun cashpw/org-fc--after-review ()
   (cashpw/org-fc--reset-card-timer-expired-effects)
   (setq
-   org-format-latex-options '(:foreground default
-                              :background default
-                              :scale 1.5
-                              :html-foreground "Black"
-                              :html-background "Transparent"
-                              :html-scale 1.0
-                              :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
+   org-format-latex-options
+   '(:foreground
+     default
+     :background default
+     :scale 1.5
+     :html-foreground "Black"
+     :html-background "Transparent"
+     :html-scale 1.0
+     :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
    org-image-actual-width nil)
   ;; (global-flycheck-mode)
   ;; (cashpw/eglot-unpause)
@@ -3681,30 +3683,36 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 
 (defun cashpw/org-fc--show-latex-for-tree ()
   "Show latex under current tree."
-  (message "Showing latex")
-  (org-map-entries (lambda ()
-                     (org-latex-preview 4))
-                   ;; match
-                   nil
-                   ;; scope
-                   'tree))
+  (org-map-entries
+   (lambda () (org-latex-preview 4))
+   ;; match
+   nil
+   ;; scope
+   'tree))
 
 (defun cashpw/org-fc--open-front-link ()
   "Open first link/attachment for \"front\" position if that's the one we're reviewing."
-  (when (org-fc-review-session-p)
+  (unless (null org-fc-review--session)
     (let* ((pos (oref org-fc-review--session current-item))
            (card (oref pos card)))
-      (when (and
-             (string= "double" (oref card type))
-             (and (stringp (oref pos pos))
-                  (string= "front" (oref pos pos))))
+      (when (and (string= "double" (oref card type))
+                 (and (stringp (oref pos pos))
+                      (string= "front" (oref pos pos))))
         (let ((bound (org-element-end (org-element-context))))
-          (save-excursion
-            (when (search-forward "[[link:" bound 'noerror)
-              (org-open-at-point)))
-          (save-excursion
-            (when (search-forward "[[attachment:" bound 'noerror)
-              (org-open-at-point))))))))
+          (dolist (target '("[[file:" "[[attachment:"))
+            (save-excursion
+              (when (search-forward target bound 'noerror)
+                (let ((extension
+                       (s-downcase
+                        (url-file-extension
+                         (org-element-property :path (org-element-context))))))
+                  (cond
+                   ((member extension '(".jpg" ".jpeg" ".gif" ".png"))
+                    ;; This happends automatically.
+                    ;; (org-link-preview)
+                    )
+                   ((member extension '(".mp4"))
+                    (org-open-at-point))))))))))))
 
 (defun cashpw/org-fc--after-flip ()
   (evil-open-fold-rec)
@@ -3714,8 +3722,7 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   "Review everything except reading flashcards."
   (interactive)
   (org-fc-cache-mode)
-  (org-fc-review '(:paths all
-                   :filter (not (tag "reading")))))
+  (org-fc-review '(:paths all :filter (not (tag "reading")))))
 
 (defun cashpw/org-fc-review-skip-card ()
   "Skip card and proceed to next. Based on `org-fc-review-suspend-card'."
@@ -3723,100 +3730,118 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
   (org-fc-review-reset)
   (org-fc-review-session--next org-fc-review--session))
 
-(use-package! org-fc
-  :after org
-  :custom
-  (org-fc-directories `(,cashpw/path--notes-dir))
-  (org-fc-review-history-file (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
-  (org-fc-bury-siblings t)
-  (org-fc-bury-siblings t)
-  (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
-  (org-fc-review-new-limit 20)
-  (org-fc-review-new-limit-schedule 'day)
-  (org-fc-review-hide-title-in-header-line t)
-  ;; Define twice so the keys show up in the hint
-  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
-  (org-fc-review-flip-mode-map (let ((map (make-sparse-keymap)))
-                                 (define-key map (kbd "n") 'org-fc-review-flip)
-                                 (define-key map (kbd "q") 'org-fc-review-quit)
-                                 (define-key map (kbd "e") 'org-fc-review-edit)
-                                 (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
-                                 (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-                                 (define-key map (kbd "S") 'org-fc-review-suspend-card)
-                                 map))
-  (org-fc-review-rate-mode-map (let ((map (make-sparse-keymap)))
-                                 (define-key map (kbd "0") 'org-fc-review-rate-again)
-                                 (define-key map (kbd "1") 'org-fc-review-rate-hard)
-                                 (define-key map (kbd "2") 'org-fc-review-rate-good)
-                                 (define-key map (kbd "3") 'org-fc-review-rate-easy)
-                                 (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-                                 (define-key map (kbd "S") 'org-fc-review-suspend-card)
-                                 (define-key map (kbd "e") 'org-fc-review-edit)
-                                 (define-key map (kbd "q") 'org-fc-review-quit)
-                                 map))
+(use-package!
+ org-fc
+ :after org
+ :custom
+ (org-fc-directories `(,cashpw/path--notes-dir))
+ (org-fc-review-history-file
+  (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
+ (org-fc-bury-siblings t)
+ (org-fc-bury-siblings t)
+ (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
+ (org-fc-review-new-limit 20)
+ (org-fc-review-new-limit-schedule 'day)
+ (org-fc-review-hide-title-in-header-line t)
+ ;; Define twice so the keys show up in the hint
+ ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+ (org-fc-review-flip-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "n") 'org-fc-review-flip)
+    (define-key map (kbd "q") 'org-fc-review-quit)
+    (define-key map (kbd "e") 'org-fc-review-edit)
+    (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
+    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+    (define-key map (kbd "S") 'org-fc-review-suspend-card)
+    map))
+ (org-fc-review-rate-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "0") 'org-fc-review-rate-again)
+    (define-key map (kbd "1") 'org-fc-review-rate-hard)
+    (define-key map (kbd "2") 'org-fc-review-rate-good)
+    (define-key map (kbd "3") 'org-fc-review-rate-easy)
+    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+    (define-key map (kbd "S") 'org-fc-review-suspend-card)
+    (define-key map (kbd "e") 'org-fc-review-edit)
+    (define-key map (kbd "q") 'org-fc-review-quit)
+    map))
 
-  :config
-  (require 'org-fc-hydra)
-  (require 'org-fc-keymap-hint)
+ :config
+ (require 'org-fc-hydra)
+ (require 'org-fc-keymap-hint)
 
-  (setq
-   cashpw/org-fc--seconds-per-card 10)
+ (setq cashpw/org-fc--seconds-per-card 10)
 
-  (add-to-list 'org-fc-custom-contexts
-               '(reading-list . (:filter (tag "reading"))))
-  (add-to-list 'org-fc-custom-contexts
-               '(not-reading-list . (:filter (not (tag "reading")))))
+ (add-to-list
+  'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
+ (add-to-list
+  'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
 
-  ;; Define twice so the keys show up in the hint
-  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
-  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-flip-mode
-    (kbd "n") 'org-fc-review-flip
-    (kbd "s") 'cashpw/org-fc-review-skip-card
-    (kbd "S") 'org-fc-review-suspend-card
-    (kbd "e") 'org-fc-review-edit
-    (kbd "p") 'cashpw/org-fc-review-pause
-    (kbd "q") 'org-fc-review-quit)
-  (evil-define-minor-mode-key '(normal insert emacs) 'org-fc-review-rate-mode
-    (kbd "0") 'org-fc-review-rate-again
-    (kbd "1") 'org-fc-review-rate-hard
-    (kbd "2") 'org-fc-review-rate-good
-    (kbd "3") 'org-fc-review-rate-easy
-    (kbd "s") 'cashpw/org-fc-review-skip-card
-    (kbd "S") 'org-fc-review-suspend-card
-    (kbd "e") 'org-fc-review-edit
-    (kbd "q") 'org-fc-review-quit)
-  (add-hook! 'org-fc-review-edit-mode-hook
-             #'cashpw/org-fc--reset-card-timer-expired-effects)
+ ;; Define twice so the keys show up in the hint
+ ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+ (evil-define-minor-mode-key
+  '(normal insert emacs)
+  'org-fc-review-flip-mode
+  (kbd "n")
+  'org-fc-review-flip
+  (kbd "s")
+  'cashpw/org-fc-review-skip-card
+  (kbd "S")
+  'org-fc-review-suspend-card
+  (kbd "e")
+  'org-fc-review-edit
+  (kbd "p")
+  'cashpw/org-fc-review-pause
+  (kbd "q")
+  'org-fc-review-quit)
+ (evil-define-minor-mode-key
+  '(normal insert emacs)
+  'org-fc-review-rate-mode
+  (kbd "0")
+  'org-fc-review-rate-again
+  (kbd "1")
+  'org-fc-review-rate-hard
+  (kbd "2")
+  'org-fc-review-rate-good
+  (kbd "3")
+  'org-fc-review-rate-easy
+  (kbd "s")
+  'cashpw/org-fc-review-skip-card
+  (kbd "S")
+  'org-fc-review-suspend-card
+  (kbd "e")
+  'org-fc-review-edit
+  (kbd "q")
+  'org-fc-review-quit)
+ (add-hook!
+  'org-fc-review-edit-mode-hook
+  #'cashpw/org-fc--reset-card-timer-expired-effects)
 
-  (add-hook! 'org-fc-before-setup-hook
-             '(cashpw/org-fc--before-setup))
-  (add-hook! 'org-fc-after-setup-hook
-             '(cashpw/org-fc--open-front-link))
+ (add-hook! 'org-fc-before-setup-hook '(cashpw/org-fc--before-setup))
+ (add-hook! 'org-fc-after-setup-hook '(cashpw/org-fc--open-front-link))
 
-  (add-hook! 'org-fc-after-flip-hook
-             '(cashpw/org-fc--after-flip
-               cashpw/org-fc--maybe-increment-new-seen-today
-               cashpw/org-fc--show-latex-for-tree))
+ (add-hook!
+  'org-fc-after-flip-hook
+  '(cashpw/org-fc--after-flip
+    cashpw/org-fc--maybe-increment-new-seen-today
+    cashpw/org-fc--show-latex-for-tree))
 
-  (add-hook! 'org-fc-before-review-hook
-             #'cashpw/org-fc--before-review)
+ (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
 
-  (add-hook! 'org-fc-after-review-hook
-             #'cashpw/org-fc--after-review)
-  ;; (setq
-  ;;  org-fc-review-position-filters '())
-  ;; (setq
-  ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
-  ;;                                   cashpw/org-fc--filter-limit-implement
-  ;;                                   cashpw/org-fc--filter-limit-new))
+ (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
+ ;; (setq
+ ;;  org-fc-review-position-filters '())
+ ;; (setq
+ ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
+ ;;                                   cashpw/org-fc--filter-limit-implement
+ ;;                                   cashpw/org-fc--filter-limit-new))
 
-  (setq org-roam-db-node-include-function (lambda ()
-                                            ;; Exclude org-fc cards from roam
-                                            (not (org-fc-entry-p))))
-  )
+ (setq org-roam-db-node-include-function
+       (lambda ()
+         ;; Exclude org-fc cards from roam
+         (not (org-fc-entry-p)))))
 
-(use-package! org-fc-type-vocab
-  :after org-fc)
+(use-package! org-fc-type-vocab :after org-fc)
 #+end_src
 
 ****** Override
