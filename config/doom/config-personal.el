@@ -2917,7 +2917,8 @@ Return nil if no attendee exists with that EMAIL."
      org-gcal-extras--set-category
      cashpw/org-gcal--maybe-create-todo-extract-reminder
      cashpw/org-gcal--maybe-create-prep-meeting
-     cashpw/org-gcal--convert-description)
+     ;; cashpw/org-gcal--convert-description
+     )
    :fetch-event-filters '()
    :summaries-to-skip
    '("^Nap$"
@@ -3713,9 +3714,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (cashpw/org-agenda-files 'journal-this-year-with-todo)
      (cashpw/org-agenda-files 'people-private-with-todo)))))
 
-;; DEBUGGING
-;;(after! org-roam
-;;(cashpw/org-agenda-files--update))
+(cashpw/org-agenda-files--update)
 
 (setq
  org-image-max-width 'window

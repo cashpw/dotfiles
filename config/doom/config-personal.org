@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-02-28 Fri 20:29]
+:LAST_MODIFIED: [2025-03-02 Sun 06:20]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4582,7 +4582,8 @@ Return nil if no attendee exists with that EMAIL."
      org-gcal-extras--set-category
      cashpw/org-gcal--maybe-create-todo-extract-reminder
      cashpw/org-gcal--maybe-create-prep-meeting
-     cashpw/org-gcal--convert-description)
+     ;; cashpw/org-gcal--convert-description
+     )
    :fetch-event-filters '()
    :summaries-to-skip
    '("^Nap$"
@@ -5869,9 +5870,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (cashpw/org-agenda-files 'journal-this-year-with-todo)
      (cashpw/org-agenda-files 'people-private-with-todo)))))
 
-;; DEBUGGING
-;;(after! org-roam
-;;(cashpw/org-agenda-files--update))
+(cashpw/org-agenda-files--update)
 #+end_src
 
 *** TODO
