@@ -3856,6 +3856,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
     org-modern
   :after org
   :custom (org-modern-horizontal-rule "──────────")
+  (org-modern-star 'fold)
+  (org-modern-hide-stars nil)
   (org-modern-list
    '((?+ . "•")
      (?- . "•")

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-03 Mon 09:38]
+:LAST_MODIFIED: [2025-03-03 Mon 12:11]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6035,6 +6035,8 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
     org-modern
   :after org
   :custom (org-modern-horizontal-rule "──────────")
+  (org-modern-star 'fold)
+  (org-modern-hide-stars nil)
   (org-modern-list
    '((?+ . "•")
      (?- . "•")
