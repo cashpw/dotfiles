@@ -3635,8 +3635,7 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME."
          (start-time
           (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
          (end-time
-          (error "Cannot schedule end-time without start-time.")))
-        (org-set-property "CATEGORY" category)))))
+          (error "Cannot schedule end-time without start-time.")))))))
 
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
