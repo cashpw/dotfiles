@@ -4548,16 +4548,16 @@ Return nil if no attendee exists with that EMAIL."
   (org-insert-todo-heading-respect-content)
   (insert (s-lex-format "Prepare: ${summary}"))
   (shut-up
-   (org-priority 2)
-   (org-set-property "Effort" "5m")
-   (org-schedule nil (format-time-string "%F" time))))
+    (org-priority 2)
+    (org-set-property "Effort" "5m")
+    (org-schedule nil (format-time-string "%F" time))))
 
 (defun cashpw/org-gcal--maybe-create-prep-meeting
     (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
   (when (and (not (member "processed" (org-get-tags)))
              (sequencep event)
-             (= (length (plist-get event :attendees)) 1)
+             (> (length (plist-get event :attendees)) 1)
              (--none-p
               (string-match-p it (plist-get event :summary))
               cashpw/org-gcal--no-prep-reminder-summaries))
@@ -4569,8 +4569,7 @@ Return nil if no attendee exists with that EMAIL."
               (if (day-of-week-monday-p event-start-time)
                   3
                 1)))))
-      (when (or (cashpw/time-today-p prepare-time)
-                (cashpw/time-future-p prepare-time))
+      (unless (cashpw/time-past-p prepare-time)
         (cashpw/org-gcal--create-prep-meeting
          (plist-get event :summary) prepare-time)))))
 #+end_src
