@@ -2895,19 +2895,17 @@ Return nil if no attendee exists with that EMAIL."
 
 (defun cashpw/org-gcal--create-prep-meeting (summary time)
   "Insert a preparation evnet."
-  (org-insert-todo-heading-respect-content)
-  (insert (s-lex-format "Prepare: ${summary}"))
-  (shut-up
-    (org-priority 2)
-    (org-set-property "Effort" "5m")
-    (org-schedule nil (format-time-string "%F" time))))
+  (cashpw/org-insert-todo
+   (s-lex-format "Prepare: ${summary}")
+   :priority 2
+   :effort "5m"
+   :start-time time))
 
 (defun cashpw/org-gcal--maybe-create-prep-meeting
     (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
   (when (and (not (member "processed" (org-get-tags)))
-             (sequencep event)
-             (> (length (plist-get event :attendees)) 1)
+             (sequencep event) (> (length (plist-get event :attendees)) 1)
              (--none-p
               (string-match-p it (plist-get event :summary))
               cashpw/org-gcal--no-prep-reminder-summaries))
@@ -2934,11 +2932,11 @@ Return nil if no attendee exists with that EMAIL."
   "Insert a reminder to extract todos folling an EVENT."
   (let* ((event-summary (plist-get event :summary))
          (event-end-time (cashpw/org-gcal--end event)))
-    (org-insert-todo-heading-respect-content)
-    (insert (s-lex-format "Extract TODOs: ${event-summary}"))
-    (shut-up
-     (org-priority 2) (org-set-property "Effort" "5m")
-     (org-schedule nil (format-time-string "%F %H:%M" event-end-time)))))
+    (cashpw/org-insert-todo
+     (s-lex-format "Extract TODOs: ${event-summary}")
+     :priority 2
+     :effort "5m"
+     :start-time event-end-time)))
 
 (defun cashpw/org-gcal--maybe-create-todo-extract-reminder
     (_calendar-id event _update-mode)
@@ -3608,6 +3606,37 @@ because it's slow."
   (and buffer-file-name
        (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
                         (file-name-directory buffer-file-name))))
+
+(cl-defun cashpw/org-insert-todo
+    (text &key point-or-marker priority effort category start-time end-time)
+  "Insert TODO at POINT-OR-MARKER.
+
+Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME."
+  (save-excursion
+    (when point-or-marker
+      (goto-char point-or-marker))
+    (org-insert-todo-heading-respect-content)
+    (insert text)
+    (shut-up
+      (when priority
+        (org-priority priority))
+      (when effort
+        (org-set-property "Effort" effort))
+      (when category
+        (org-set-property "CATEGORY" category))
+      (when (or start-time end-time)
+        (cond
+         ((and start-time end-time)
+          (org-schedule
+           nil
+           (format "%s-%s"
+                   (format-time-string "%F %a %H:%M" start-time)
+                   (format-time-string "%H:%M" end-time))))
+         (start-time
+          (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
+         (end-time
+          (error "Cannot schedule end-time without start-time.")))
+        (org-set-property "CATEGORY" category)))))
 
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
