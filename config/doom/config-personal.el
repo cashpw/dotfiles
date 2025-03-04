@@ -3069,49 +3069,39 @@ Return nil if no attendee exists with that EMAIL."
 
 (defcustom cashpw/org-gcal--profile-sleep
   (make-org-gcal-profile
-   :fetch-file-alist `(("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com" . ,cashpw/path--sleep-calendar))
+   :fetch-file-alist
+   `(("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com"
+      .
+      ,cashpw/path--sleep-calendar))
    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
    :client-secret (secret-get "org-gcal--personal")
-   :after-update-entry-functions '(cashpw/org-gcal--maybe-handle-sleep
-                                   cashpw/org-gcal--set-processed)
-   :fetch-event-filters '(cashpw/org-gcal--filter-summaries)
-   :on-activate (lambda ()
-                  (setq
-                   cashpw/org-gcal--no-prep-reminder-summaries '()
-                   cashpw/org-gcal--summary-categories (-flatten
-                                                        (--map
-                                                         (-flatten
-                                                          (let ((category (car it))
-                                                                (summaries (cdr it)))
-                                                            (--map
-                                                             `(,it . ,category)
-                                                             summaries)))
-                                                         '(("Sleep" . ("Sleep")))))
-                   cashpw/org-gcal--summaries-to-exclude '())))
-  "Personal sleep profile for `org-gcal'."
-  :group 'cashpw
-  :type 'sexp)
+   :after-update-entry-functions '(cashpw/org-gcal--maybe-handle-sleep cashpw/org-gcal--set-processed)
+   :categories
+   :on-activate
+   (lambda ()
+     (setq
+      cashpw/org-gcal--no-prep-reminder-summaries '()
+      cashpw/org-gcal--summary-categories
+      (-flatten
+       (--map
+        (-flatten
+         (let ((category (car it))
+               (summaries (cdr it)))
+           (--map `(,it . ,category) summaries)))
+        '(("Sleep" . ("Sleep")))))
+      cashpw/org-gcal--summaries-to-exclude '())))
+  )
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
   (interactive "nDays to fetch: ")
   (org-gcal-sync-tokens-clear)
   (let ((previous-profile cashpw/org-gcal--current-profile))
-    (org-gcal-activate-profile
-     cashpw/org-gcal--profile-sleep)
-    (let ((org-gcal-up-days
-           n-days)
-          (org-gcal-down-days
-           1))
-      (cl-letf (((symbol-function
-                  'cashpw/org-gcal--filter-summaries)
-                 (lambda (summary)
-                   (string=
-                    summary
-                    "Sleep"))))
-        (org-gcal-fetch)))
-    (org-gcal-activate-profile
-     previous-profile)))
+    (org-gcal-activate-profile cashpw/org-gcal--profile-sleep)
+    (let ((org-gcal-up-days n-days)
+          (org-gcal-down-days 1))
+      (org-gcal-fetch))
+    (org-gcal-activate-profile previous-profile)))
 
 (defun cashpw/org-gcal-fetch ()
   "Clear calendar buffer and fetch events."
@@ -4736,11 +4726,11 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :Effort:   15m
 :END:
 
-** TODO About me
+** About me
 
-** TODO About Cayla
+** About Cayla
 
-** TODO About the day
+** About the day
 
 * TODO [#2] Gratitude
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
