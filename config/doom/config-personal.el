@@ -2951,49 +2951,21 @@ Return nil if no attendee exists with that EMAIL."
 
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
-  (when (and
-         (not
-          (member
-           "processed"
-           (org-get-tags)))
-         (sequencep event)
-         (string-match-p
-          "^Sleep$"
-          (plist-get
-           event
-           :summary)))
-    (let ((inhibit-message
-           t)
-          (message-log-max
-           nil))
-      (when-let
-          ((start-time
-            (org-gcal--parse-calendar-time-string
-             (plist-get
-              (plist-get
-               event
-               :start)
-              :dateTime)))
-           (end-time
-            (org-gcal--parse-calendar-time-string
-             (plist-get
-              (plist-get
-               event
-               :end)
-              :dateTime))))
-        (cashpw/org-gcal--set-logbook
-         start-time
-         end-time)))))
-
-(defun cashpw/org-gcal--set-logbook (start-time end-time)
-  "Set logbook entries for EVENT for the full scheduled time."
-  (org-clock-in
-   nil
-   start-time)
-  (org-clock-out
-   nil
-   t
-   end-time))
+  (unless (member "processed" (org-get-tags))
+    (when (and
+           (sequencep event)
+           (string-match-p "^Sleep$" (plist-get event :summary)))
+        (let
+            ((start-time
+              (org-gcal--parse-calendar-time-string
+               (plist-get (plist-get event :start) :dateTime)))
+             (end-time
+              (org-gcal--parse-calendar-time-string
+               (plist-get (plist-get event :end) :dateTime))))
+          (cashpw/org-clock-add-entry start-time end-time)))
+      ;; (let ((inhibit-message t)
+      ;;       (message-log-max nil)))
+      ))
 
 (defcustom cashpw/org-gcal--profile-personal
   (make-org-gcal-profile
@@ -3067,41 +3039,51 @@ Return nil if no attendee exists with that EMAIL."
   :group 'cashpw
   :type 'sexp)
 
-(defcustom cashpw/org-gcal--profile-sleep
-  (make-org-gcal-profile
-   :fetch-file-alist
-   `(("amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com"
-      .
-      ,cashpw/path--sleep-calendar))
-   :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-   :client-secret (secret-get "org-gcal--personal")
-   :after-update-entry-functions '(cashpw/org-gcal--maybe-handle-sleep cashpw/org-gcal--set-processed)
-   :categories
-   :on-activate
-   (lambda ()
-     (setq
-      cashpw/org-gcal--no-prep-reminder-summaries '()
-      cashpw/org-gcal--summary-categories
-      (-flatten
-       (--map
-        (-flatten
-         (let ((category (car it))
-               (summaries (cdr it)))
-           (--map `(,it . ,category) summaries)))
-        '(("Sleep" . ("Sleep")))))
-      cashpw/org-gcal--summaries-to-exclude '())))
-  )
+;; "amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com"
+(setq
+ cashpw/org-gcal--profile-sleep
+ (make-org-gcal-profile
+  :fetch-file-alist
+  `(("mu8kpccp2uqujvhkhh6iv8pla0@group.calendar.google.com"
+     .
+     ,cashpw/path--sleep-calendar))
+  :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
+  :client-secret (secret-get "org-gcal--personal")
+  :after-update-entry-functions '(cashpw/org-gcal--remove-gcal-timestamp
+                                  cashpw/org-gcal--maybe-handle-sleep)
+  :categories
+  (-flatten
+   (--map
+    (-flatten
+     (let ((category (car it))
+           (summaries (cdr it)))
+       (--map `(,it . ,category) summaries)))
+    '(("Sleep" . ("Sleep")))))
+  :on-activate (lambda () (setq cashpw/org-gcal--no-prep-reminder-summaries '())))
+ ;; "Personal sleep profile for `org-gcal'."
+ ;; :group 'cashpw
+ ;; :type 'sexp)
+ )
+
+(defun cashpw/org-gcal--remove-gcal-timestamp (_calendar-id _event _update-mode)
+  "Wrapper."
+  (org-gcal-extras--remove-gcal-timestamp))
 
 (defun cashpw/org-gcal-fetch-sleep (n-days)
   "Fetch the last N-DAYS of sleep calendar."
   (interactive "nDays to fetch: ")
-  (org-gcal-sync-tokens-clear)
-  (let ((previous-profile cashpw/org-gcal--current-profile))
+  (let* ((previous-profile org-gcal--current-profile)
+         (org-gcal-up-days n-days)
+         (org-gcal-down-days 1)
+         (calendar-path (cdr (car org-gcal-fetch-file-alist)))
+         (org-agenda-files
+          ;; Set limited agenda files to improve performance
+          `(,calendar-path)))
+    (org-gcal-sync-tokens-clear)
     (org-gcal-activate-profile cashpw/org-gcal--profile-sleep)
-    (let ((org-gcal-up-days n-days)
-          (org-gcal-down-days 1))
-      (org-gcal-fetch))
-    (org-gcal-activate-profile previous-profile)))
+    (deferred:sync! (org-gcal-fetch))
+    ;; (org-gcal-activate-profile previous-profile)
+    ))
 
 (defun cashpw/org-gcal-fetch ()
   "Clear calendar buffer and fetch events."
@@ -3114,11 +3096,11 @@ Return nil if no attendee exists with that EMAIL."
   (flyspell-mode 0)
 
   (org-gcal-sync-tokens-clear)
-  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
-    (let ((org-agenda-files
-           ;; Set limited agenda files to improve performance
-           `(,calendar-path)))
-      (org-gcal-fetch)))
+  (let* ((calendar-path (cdr (car org-gcal-fetch-file-alist)))
+         (org-agenda-files
+          ;; Set limited agenda files to improve performance
+          `(,calendar-path)))
+    (deferred:sync! (org-gcal-fetch)))
 
   (flyspell-mode 1)
   (advice-remove 'org-generid-id-update-id-locations #'ignore)
@@ -3127,6 +3109,7 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
     (with-current-buffer (find-file-noselect calendar-path)
       (org-map-entries
