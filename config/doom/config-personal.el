@@ -2446,28 +2446,52 @@ Not persisted; resets when reloading Emacs!")
    cashpw/org-fc-review-new-limit 10
    cashpw/org-fc-review-new-limit-schedule 'day))
 
-(cl-defmethod cashpw/org-fc--filter-limit-implement ((positions list))
-  "Return nil to remove the POSITIONS (`org-fc-position's) from the review list."
-  (let ((implement-position-limit 1)
-        (implement-position-count 0))
-    (--filter
-     (let ((tags (oref (oref it card) tags)))
-       (if (member "implement" tags)
-           (if (= implement-position-count implement-position-limit)
-               nil
-             (cl-incf implement-position-count)
-             t)
-         t))
-     positions)))
+(defmacro cashpw/org-fc--make-tag-limit-fn (tag max-count)
+  "Return a function suitable for `org-fc-review-position-filters' which limits tagged cards.
 
-(after! org-fc
+- TAG: The tag to limit
+- MAX-COUNT: The maximum count of cards tagged with TAG to include in a review."
+  (let ((function-name (format "cashpw/org-fc--filter-limit-tag-%s" tag)))
+    `(defun ,(intern function-name) (positions)
+       ,(format "Remove all but %d positions which are tagged %s."
+                max-count
+                tag)
+       (let ((position-limit ,max-count)
+             (included-count 0)
+             (removed-count 0))
+         (prog1 (--filter
+                 (let ((tags (oref (oref it card) tags)))
+                   (if (member ,tag tags)
+                       (if (= included-count position-limit)
+                           (progn
+                             (cl-incf removed-count)
+                             nil)
+                         (cl-incf included-count)
+                         t)
+                     t))
+                 positions)
+           (message
+            "[%s] %d positions were tagged with %s. We removed %d from the set, leaving %d for review."
+            ,function-name
+            (+ removed-count included-count)
+            ,tag
+            removed-count
+            included-count))))))
+
+(cashpw/org-fc--make-tag-limit-fn "implement" 1)
+(cashpw/org-fc--make-tag-limit-fn "asl" 5)
+(cashpw/org-fc--make-tag-limit-fn "photo" 3)
+
+(after!
+  org-fc
   (setq
-   ;; org-fc-review-position-filters '()
-   org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
-                                    cashpw/org-fc--filter-limit-implement
-                                    cashpw/org-fc--filter-limit-new
-                                    org-fc-positions--filter-blocked)
-   ))
+   org-fc-review-position-filters
+   '(cashpw/org-fc--filter-one-per-file
+     cashpw/org-fc--filter-limit-new
+     cashpw/org-fc--filter-limit-tag-implement
+     cashpw/org-fc--filter-limit-tag-asl
+     cashpw/org-fc--filter-limit-tag-photo
+     org-fc-positions--filter-blocked)))
 
 (after! org-fc
   (setq
@@ -5858,6 +5882,9 @@ Clock in at CLOCK-IN-TIME and clock out at CLOCK-OUT-TIME."
    (list
     (org-read-date t t nil "Clock in")
     (org-read-date t t nil "Clock out")))
+  (message "Clocking from %s to %s"
+           (format-time-string "%F %T%Z" clock-in-time)
+           (format-time-string "%F %T%Z" clock-out-time))
   (org-clock-in nil clock-in-time)
   (org-clock-out nil nil clock-out-time))
 
