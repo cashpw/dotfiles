@@ -2025,6 +2025,9 @@ INPUT:")
 ;;   (treesit-auto-add-to-auto-mode-alist 'all)
 ;;   (global-treesit-auto-mode))
 
+(after! embark
+  (define-key global-map (kbd "M-E") #'embark-act))
+
 (setq
  flutter-sdk-path "/home/cashweaver/snap/flutter/common/flutter"
  lsp-dart-flutter-sdk flutter-sdk-path
