@@ -5984,6 +5984,15 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 (cashpw/org-agenda-files--update)
 #+end_src
 
+**** Cache reset
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-element-cache-reset-all ()
+  "Helper method to interactively reset all."
+  (interactive)
+  (org-element-cache-reset 'all))
+#+end_src
+
 *** TODO
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none

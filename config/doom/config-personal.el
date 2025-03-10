@@ -3827,6 +3827,11 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 
 (cashpw/org-agenda-files--update)
 
+(defun cashpw/org-element-cache-reset-all ()
+  "Helper method to interactively reset all."
+  (interactive)
+  (org-element-cache-reset 'all))
+
 (setq
  org-image-max-width 'window
  org-id-locations-file-relative nil
