@@ -2926,7 +2926,8 @@ Return nil if no attendee exists with that EMAIL."
    (s-lex-format "Prepare: ${summary}")
    :priority 2
    :effort "5m"
-   :start-time time))
+   :start-time time
+   :include-hh-mm nil))
 
 (defun cashpw/org-gcal--maybe-create-prep-meeting
     (_calendar-id event _update-mode)
@@ -2938,15 +2939,18 @@ Return nil if no attendee exists with that EMAIL."
               cashpw/org-gcal--no-prep-reminder-summaries))
     (let* ((event-start-time (cashpw/org-gcal--start event))
            (prepare-time
-            (org-time-subtract
-             event-start-time
-             (days-to-time
-              (if (day-of-week-monday-p event-start-time)
-                  3
-                1)))))
+            (cashpw/time--zero-out-hh-mm-ss
+             (cond
+              ((day-of-week-monday-p event-start-time)
+               ;; Prepare for Monday events on the preceding Friday
+               (org-time-subtract event-start-time (days-to-time 3)))
+              (t
+               ;; Prepare for all other events on the day before
+               (org-time-subtract event-start-time (days-to-time 1)))))))
       (unless (cashpw/time-past-p prepare-time)
         (cashpw/org-gcal--create-prep-meeting
-         (plist-get event :summary) prepare-time)))))
+         (plist-get event :summary)
+         prepare-time)))))
 
 (defcustom cashpw/org-gcal--no-extract-todo-reminder-summaries
   '("Walk" "Clean house")
@@ -2963,7 +2967,8 @@ Return nil if no attendee exists with that EMAIL."
      (s-lex-format "Extract TODOs: ${event-summary}")
      :priority 2
      :effort "5m"
-     :start-time event-end-time)))
+     :start-time event-end-time
+     :include-hh-mm t)))
 
 (defun cashpw/org-gcal--maybe-create-todo-extract-reminder
     (_calendar-id event _update-mode)
@@ -3611,10 +3616,10 @@ because it's slow."
                         (file-name-directory buffer-file-name))))
 
 (cl-defun cashpw/org-insert-todo
-    (text &key point-or-marker priority effort category start-time end-time)
+    (text &key point-or-marker priority effort category start-time end-time include-hh-mm)
   "Insert TODO at POINT-OR-MARKER.
 
-Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME."
+Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLUDE-HH-MM)."
   (save-excursion
     (when point-or-marker
       (goto-char point-or-marker))
@@ -3635,8 +3640,10 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME."
            (format "%s-%s"
                    (format-time-string "%F %a %H:%M" start-time)
                    (format-time-string "%H:%M" end-time))))
-         (start-time
+         ((and (start-time include-hh-mm))
           (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
+         (start-time
+          (org-schedule nil (format-time-string "%F %a" start-time)))
          (end-time
           (error "Cannot schedule end-time without start-time.")))))))
 
