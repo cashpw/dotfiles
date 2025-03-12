@@ -3154,14 +3154,8 @@ Return nil if no attendee exists with that EMAIL."
              (setq org-map-continue-from
                    (save-excursion
                      (beginning-of-line)
-                     (point))))))
-        ;; (cashpw/delete-lines-below 9)
-        ;; Insert a heading because `org-gcal' throws an error if we cancel the first event
-        ;;(goto-char (point-max))
-                                        ;(insert "* Flashcards")))
-        )
-      (cashpw/org-gcal-fetch)))
-  )
+                     (point)))))))
+      (cashpw/org-gcal-fetch))))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (after! org-gcal-extras
@@ -3634,18 +3628,18 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
         (org-set-property "CATEGORY" category))
       (when (or start-time end-time)
         (cond
+         ((and end-time (null start-time))
+          (error "Cannot schedule end-time without start-time."))
          ((and start-time end-time)
           (org-schedule
            nil
            (format "%s-%s"
                    (format-time-string "%F %a %H:%M" start-time)
                    (format-time-string "%H:%M" end-time))))
-         ((and (start-time include-hh-mm))
+         ((and start-time include-hh-mm)
           (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
          (start-time
-          (org-schedule nil (format-time-string "%F %a" start-time)))
-         (end-time
-          (error "Cannot schedule end-time without start-time.")))))))
+          (org-schedule nil (format-time-string "%F %a" start-time))))))))
 
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
@@ -4037,6 +4031,7 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
 #+filetags: :project:private:
 
 * Notes
+* Log
 * Questions
 * PROJ ${title}
 ** TODO Close out
