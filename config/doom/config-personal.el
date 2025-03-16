@@ -3141,21 +3141,21 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-  (if (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
-      (error "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again.")
-    (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
-    (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
-      (with-current-buffer (find-file-noselect calendar-path)
-        (org-map-entries
-         (lambda ()
-           ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
-           (when (cashpw/time-past-p (org-get-scheduled-time (point)))
-             (org-cut-subtree)
-             (setq org-map-continue-from
-                   (save-excursion
-                     (beginning-of-line)
-                     (point)))))))
-      (cashpw/org-gcal-fetch))))
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect calendar-path)
+      (if (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
+          (error "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again."))
+      (org-map-entries
+       (lambda ()
+         ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
+         (when (cashpw/time-past-p (org-get-scheduled-time (point)))
+           (org-cut-subtree)
+           (setq org-map-continue-from
+                 (save-excursion
+                   (beginning-of-line)
+                   (point)))))))
+    (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (after! org-gcal-extras
