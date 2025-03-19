@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-12 Wed 08:13]
+:LAST_MODIFIED: [2025-03-16 Sun 12:14]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4644,20 +4644,18 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
   (unless (member "processed" (org-get-tags))
-    (when (and
-           (sequencep event)
-           (string-match-p "^Sleep$" (plist-get event :summary)))
-        (let
-            ((start-time
-              (org-gcal--parse-calendar-time-string
-               (plist-get (plist-get event :start) :dateTime)))
-             (end-time
-              (org-gcal--parse-calendar-time-string
-               (plist-get (plist-get event :end) :dateTime))))
-          (cashpw/org-clock-add-entry start-time end-time)))
-      ;; (let ((inhibit-message t)
-      ;;       (message-log-max nil)))
-      ))
+    (when (and (sequencep event)
+               (string-match-p "^Sleep$" (plist-get event :summary)))
+      (let ((start-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :start) :dateTime)))
+            (end-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :end) :dateTime))))
+        (cashpw/org-clock-add-entry start-time end-time)))
+    ;; (let ((inhibit-message t)
+    ;;       (message-log-max nil)))
+    ))
 #+end_src
 
 ****** Profiles
@@ -5778,7 +5776,7 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
                    (format-time-string "%H:%M" end-time))))
          ((and start-time include-hh-mm)
           (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
-         (start-time
+         ((and start-time)
           (org-schedule nil (format-time-string "%F %a" start-time))))))))
 #+end_src
 
