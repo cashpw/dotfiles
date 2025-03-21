@@ -2984,20 +2984,18 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
   (unless (member "processed" (org-get-tags))
-    (when (and
-           (sequencep event)
-           (string-match-p "^Sleep$" (plist-get event :summary)))
-        (let
-            ((start-time
-              (org-gcal--parse-calendar-time-string
-               (plist-get (plist-get event :start) :dateTime)))
-             (end-time
-              (org-gcal--parse-calendar-time-string
-               (plist-get (plist-get event :end) :dateTime))))
-          (cashpw/org-clock-add-entry start-time end-time)))
-      ;; (let ((inhibit-message t)
-      ;;       (message-log-max nil)))
-      ))
+    (when (and (sequencep event)
+               (string-match-p "^Sleep$" (plist-get event :summary)))
+      (let ((start-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :start) :dateTime)))
+            (end-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :end) :dateTime))))
+        (cashpw/org-clock-add-entry start-time end-time)))
+    ;; (let ((inhibit-message t)
+    ;;       (message-log-max nil)))
+    ))
 
 (defcustom cashpw/org-gcal--profile-personal
   (make-org-gcal-profile
@@ -3141,21 +3139,21 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
-  (if (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
-      (error "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again.")
-    (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
-    (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
-      (with-current-buffer (find-file-noselect calendar-path)
-        (org-map-entries
-         (lambda ()
-           ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
-           (when (cashpw/time-past-p (org-get-scheduled-time (point)))
-             (org-cut-subtree)
-             (setq org-map-continue-from
-                   (save-excursion
-                     (beginning-of-line)
-                     (point)))))))
-      (cashpw/org-gcal-fetch))))
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect calendar-path)
+      (if (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
+          (error "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again."))
+      (org-map-entries
+       (lambda ()
+         ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
+         (when (cashpw/time-past-p (org-get-scheduled-time (point)))
+           (org-cut-subtree)
+           (setq org-map-continue-from
+                 (save-excursion
+                   (beginning-of-line)
+                   (point)))))))
+    (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
 (after! org-gcal-extras
@@ -3638,7 +3636,7 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
                    (format-time-string "%H:%M" end-time))))
          ((and start-time include-hh-mm)
           (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
-         (start-time
+         ((and start-time)
           (org-schedule nil (format-time-string "%F %a" start-time))))))))
 
 (setq
