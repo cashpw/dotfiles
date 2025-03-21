@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-12 Wed 08:13]
+:LAST_MODIFIED: [2025-03-19 Wed 14:58]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4576,7 +4576,7 @@ Return nil if no attendee exists with that EMAIL."
   "Insert a preparation evnet."
   (cashpw/org-insert-todo
    (s-lex-format "Prepare: ${summary}")
-   :priority 2
+   :priority 1
    :effort "5m"
    :start-time time
    :include-hh-mm nil))

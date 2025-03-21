@@ -2924,7 +2924,7 @@ Return nil if no attendee exists with that EMAIL."
   "Insert a preparation evnet."
   (cashpw/org-insert-todo
    (s-lex-format "Prepare: ${summary}")
-   :priority 2
+   :priority 1
    :effort "5m"
    :start-time time
    :include-hh-mm nil))
