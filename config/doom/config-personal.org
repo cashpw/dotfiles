@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-16 Sun 12:14]
+:LAST_MODIFIED: [2025-03-23 Sun 09:11]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -68,23 +68,16 @@ Use YEAR-MONTH-DAY style dates.
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/replace-regexp-in-buffer (regexp replacement &optional buffer)
   "Replace all occurences of REGEXP in BUFFER with REPLACMENT."
-  (with-current-buffer
-      (or buffer
-          (current-buffer))
+  (with-current-buffer (or buffer (current-buffer))
     (save-excursion
-      (goto-char
-       (point-min))
+      (goto-char (point-min))
       (while (re-search-forward regexp nil t)
-        (replace-match
-         replacement)))))
+        (replace-match replacement 'fixedcase)))))
 
 (defun cashpw/replace-regexp-in-file (regexp replacement file-path)
   "Replace all occurences of REGEXP in FILE-PATH with REPLACMENT."
-  (cashpw/replace-regexp-in-buffer
-   regexp
-   replacement
-   (find-file-noselect
-    file-path)))
+  (cashpw/replace-regexp-in-buffer regexp replacement
+                                   (find-file-noselect file-path)))
 #+end_src
 
 **** ISO Week
@@ -4643,7 +4636,8 @@ Return nil if no attendee exists with that EMAIL."
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
   "Maybe handle a sleep EVENT."
-  (unless (member "processed" (org-get-tags))
+  (if (member "processed" (org-get-tags))
+      (message "Skipping processed event.")
     (when (and (sequencep event)
                (string-match-p "^Sleep$" (plist-get event :summary)))
       (let ((start-time
@@ -6229,50 +6223,90 @@ If FORCE, force a rebuild of the cache from scratch."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after!
-  doct-org-roam
-  (setq
-   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
-   ;; and specifying the tag with a variable, because this didn't produce the right output.
-   ;; I didn't have time to dive in an understand why.
-   org-roam-capture-templates
-   (doct-org-roam
-    `((:group
-       "org-roam"
-       :type plain
-       :template "%?"
-       :file "${slug}.org"
-       :unnarrowed t
-       :before-finalize (lambda ()
-                          (save-excursion
-                            (let ((id (org-entry-get (point-min) "ID")))
-                              (goto-char (point-min))
-                              (org-set-property "DIR" (format "attachments/%s/%s"
-                                                              (substring id 0 2)
-                                                              (substring id 2))))))
-       :children
-       (("Concept"
-         :keys "c"
-         :head
-         (
-          "#+title: ${title}
+ doct-org-roam
+ (setq
+  ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+  ;; and specifying the tag with a variable, because this didn't produce the right output.
+  ;; I didn't have time to dive in an understand why.
+  org-roam-capture-templates
+  (doct-org-roam
+   `((:group
+      "org-roam"
+      :type plain
+      :template "%?"
+      :file "${slug}.org"
+      :unnarrowed t
+      :before-finalize
+      (lambda ()
+        (save-excursion
+          (let ((id (org-entry-get (point-min) "ID")))
+            (goto-char (point-min))
+            (org-set-property
+             "DIR"
+             (format "attachments/%s/%s"
+                     (substring id 0 2)
+                     (substring id 2))))))
+      :children
+      (("Concept"
+        :keys "c"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :concept:"))
-        ("On X"
-         :keys "o"
-         :head
-         (
-          "#+title: ${title}
+       ("On X"
+        :keys "o"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
-        ("Project"
-         :keys "P"
-         :file "proj--${slug}.org"
-         :head
-         ("#+title: ${title}
+       ("American sign language (ASL)"
+        :keys "a"
+        :prepare-finalize
+        (lambda ()
+          (org-with-point-at
+           (org-find-exact-headline-in-buffer "ASL") (org-fc-type-double-init))
+          (org-with-point-at (point-min) (org-attach))
+          (let ((attachment-file-name
+                 (nth 0 (directory-files (org-attach-dir) nil "mp4"))))
+            (save-excursion
+              (cashpw/replace-regexp-in-buffer
+               "ATTACH_\\(.*\\)_END_ATTACH"
+               (format "[[attachment:%s][\\1]]" attachment-file-name)))))
+        :head
+        (
+         "#+title: ${title} (ASL)
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :concept:
+
+ATTACH_${title}_END_ATTACH in [[id:1056a7fd-6e6c-4c83-9910-a3528277ab0b][American sign language]].
+
+,* Flashcards :noexport:
+,** ASL :asl:
+
+ATTACH_ASL_END_ATTACH
+
+,*** Back
+
+${title}
+
+,*** Source
+[cite:@asluniversityASLAmericanSignLanguage]
+
+,* Bibliography
+,#+print_bibliography:"))
+       ("Project"
+        :keys "P"
+        :file "proj--${slug}.org"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :project:private:
@@ -6295,22 +6329,22 @@ SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil 
 Communicate project status, blockers, etc, to relevant stakeholders.
 ,* Flashcards
 "))
-        ("Person"
-         :keys "p"
-         :head
-         (
-          "#+title: ${title}
+       ("Person"
+        :keys "p"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :person:
 ,* Flashcards :noexport:"))
 
 
-        ("Photographer"
-         :keys "h"
-         :head
-         (
-          "#+title: ${title}
+       ("Photographer"
+        :keys "h"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :person:
@@ -6319,11 +6353,11 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 ,* TODO [#2] Add photos :noexport:
 ,* Flashcards :noexport:"))
 
-        ("Friend (person)"
-         :keys "f"
-         :head
-         (
-          "#+title: ${title}
+       ("Friend (person)"
+        :keys "f"
+        :head
+        (
+         "#+title: ${title}
 ,#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
@@ -6335,27 +6369,27 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 ,* Events
 ,* Reminders
 ,* Notes"))
-        ("Verse"
-         :keys "v"
-         :head
-         (
-          "#+title: ${title}
+       ("Verse"
+        :keys "v"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :verse:"))
-        ("Quote"
-         :keys "u"
-         :head
-         (
-          "#+title: ${title}
+       ("Quote"
+        :keys "u"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :quote:"))
-        ("Recipe"
-         :keys "r"
-         :head
-         (
-          "#+title: ${title}
+       ("Recipe"
+        :keys "r"
+        :head
+        (
+         "#+title: ${title}
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+filetags: :recipe:
@@ -8493,6 +8527,11 @@ See `org-clock-special-range' for KEY."
   (run-at-time "00:00"
                seconds-in-day
                #'cashpw/org-clock--clocktable-update-default-properties))
+
+
+(defun cashpw/org-clocktable-files-for-yyyy-mm-dd (yyyy-mm-dd)
+  "Return list of files with clock entries for YYYY-MM-DD."
+  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir)))
 #+end_src
 
 ***** =clocktable-by-category=
@@ -8500,10 +8539,11 @@ See `org-clock-special-range' for KEY."
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/clocktable-by-category--properties (time)
   "Return clocktable-by-category properties."
-  `(:files-fn cashpw/org-clock--agenda-with-archives
-    :block ,(format-time-string
-             "%Y-%m-%d"
-             time)
+  `(:files-fn
+    (lambda ()
+      (cashpw/org-clocktable-files-for-yyyy-mm-dd
+       ,(format-time-string "%F" time)))
+    :block ,(format-time-string "%F" time)
     :merge-duplicate-headlines t
     ;; :narrow 200
     ;; :fileskip0 t
@@ -8512,17 +8552,18 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/clocktable-by-category--update-default-properties ()
   "Return default clocktable-by-category properties"
-  (setq
-   clocktable-by-category--default-properties (cashpw/clocktable-by-category--properties
-                                               (current-time))))
+  (setq clocktable-by-category--default-properties
+        (cashpw/clocktable-by-category--properties (current-time))))
 
 (cashpw/clocktable-by-category--update-default-properties)
 ;; Update the properties once per day as they include `:block' with today's date.
 (let ((seconds-in-day (* 60 60 24)))
-  (cancel-function-timers #'cashpw/clocktable-by-category--update-default-properties)
-  (run-at-time "00:00"
-               seconds-in-day
-               #'cashpw/clocktable-by-category--update-default-properties))
+  (cancel-function-timers
+   #'cashpw/clocktable-by-category--update-default-properties)
+  (run-at-time
+   "00:00"
+   seconds-in-day
+   #'cashpw/clocktable-by-category--update-default-properties))
 #+end_src
 
 ***** =clocktable-by-tag=
