@@ -4066,10 +4066,10 @@ ${title}
 * Log
 * Questions
 * PROJ ${title}
-** TODO Close out
-*** TODO Retrospective
-*** TODO Communicate
-** TODO Administration
+** TODO Close out :unscheduled:
+*** TODO Retrospective :unscheduled:
+*** TODO Communicate :unscheduled:
+** TODO Administration :unscheduled:
 ** TODO Review
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
@@ -5795,6 +5795,7 @@ Category | Scheduled | Effort
           (:property "Effort"))
          ;; (:name "Without effort"
          ;;  :effort< "0:01")
+         (:auto-category t)
          ))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
@@ -5804,14 +5805,17 @@ Category | Scheduled | Effort
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
       (org-super-agenda-groups
        '((;; Automatically named "Log"
           :log t)
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-           :todo "PROJ"))
-         (:name "Without priority"
-          :priority>= "0")))))))
+           :todo "PROJ"
+           ;; Discard everything with a priority
+           :pred (lambda (item)
+                   (org-extras-get-priority (get-text-property 0 'org-hd-marker item)))))
+         (:auto-category t)))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
@@ -5820,15 +5824,36 @@ Category | Scheduled | Effort
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-cmp-user-defined
+       (lambda (a b)
+         (let* ((a-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker a)))
+                (a-priority
+                 (string-to-number
+                  (or a-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest)))))
+                (b-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker b)))
+                (b-priority
+                 (string-to-number
+                  (or b-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest))))))
+           (if (> a-priority b-priority)
+               1
+             -1))))
+      (org-agenda-sorting-strategy '((todo . (user-defined-up))))
       (org-super-agenda-groups
-       '((;; Automatically named "Log"
-          :log t)
+       '(( ;; Automatically named "Log"
+          :log
+          t)
          (:discard
-          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+          ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"
            :tag ("unscheduled")))
-         (:discard
-          (:scheduled t))
+         (:discard (:scheduled t))
          (:auto-category t)))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)

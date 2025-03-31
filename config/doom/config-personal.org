@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-03-24 Mon 10:16]
+:LAST_MODIFIED: [2025-03-27 Thu 11:43]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6315,10 +6315,10 @@ ${title}
 ,* Log
 ,* Questions
 ,* PROJ ${title}
-,** TODO Close out
-,*** TODO Retrospective
-,*** TODO Communicate
-,** TODO Administration
+,** TODO Close out :unscheduled:
+,*** TODO Retrospective :unscheduled:
+,*** TODO Communicate :unscheduled:
+,** TODO Administration :unscheduled:
 ,** TODO Review
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
@@ -8195,6 +8195,7 @@ Category | Scheduled | Effort
           (:property "Effort"))
          ;; (:name "Without effort"
          ;;  :effort< "0:01")
+         (:auto-category t)
          ))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
@@ -8207,14 +8208,17 @@ Category | Scheduled | Effort
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
       (org-super-agenda-groups
        '((;; Automatically named "Log"
           :log t)
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
-           :todo "PROJ"))
-         (:name "Without priority"
-          :priority>= "0")))))))
+           :todo "PROJ"
+           ;; Discard everything with a priority
+           :pred (lambda (item)
+                   (org-extras-get-priority (get-text-property 0 'org-hd-marker item)))))
+         (:auto-category t)))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 #+end_src
@@ -8226,15 +8230,36 @@ Category | Scheduled | Effort
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-cmp-user-defined
+       (lambda (a b)
+         (let* ((a-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker a)))
+                (a-priority
+                 (string-to-number
+                  (or a-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest)))))
+                (b-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker b)))
+                (b-priority
+                 (string-to-number
+                  (or b-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest))))))
+           (if (> a-priority b-priority)
+               1
+             -1))))
+      (org-agenda-sorting-strategy '((todo . (user-defined-up))))
       (org-super-agenda-groups
-       '((;; Automatically named "Log"
-          :log t)
+       '(( ;; Automatically named "Log"
+          :log
+          t)
          (:discard
-          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+          ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"
            :tag ("unscheduled")))
-         (:discard
-          (:scheduled t))
+         (:discard (:scheduled t))
          (:auto-category t)))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
@@ -10864,3 +10889,69 @@ Create a new roam node using the link at point. Pull the title used at the URL u
 * Footnotes
 
 [fn:1] [[github:zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]], [[https://sachachua.com/dotemacs/][Sacha Chua]], [[https://tecosaur.github.io/emacs-config/config.html][tecosaur]], [[https://sqrtminusone.xyz/configs/emacs][Pavel Korytov]]
+
+ Category: Emacs
+  Emacs                          1h                                             TODO [#4] Create or find emacs utility to discover orphaned, or n-connected, notes :hastodo:private::email:
+  Emacs                          30m                                            TODO [#2] Bypass password entry for =org-gcal= sync :hastodo:private::
+  Emacs                          1h                                             TODO [#4] Why is a new =:ID:= inserted when I create a new node? :hastodo:private::
+  Emacs                                                                         TODO [#4] Create or find 'undo send' package for email in emacs :hastodo:private::
+  Emacs                                                                         TODO [#4] Review and prune config :hastodo:private::
+
+ Category: Family
+  Family                         2h                                             TODO [#0] Write Austin and Alian a letter thanking them for hosting us abd for the whole trip. Say the things that are often unsaid. :hastodo:private::
+
+ Category: Food
+  Food                                                                          TODO [#2] Look into fermentation recipes; pick three :hastodo:private::
+  Food                                                                          TODO [#2] Look into hot sauce recipes; pick three :hastodo:private::
+  Food                                                                          TODO [#4] Plan three recipes to practice and schedule them :hastodo:private::someday:
+
+ Category: Home
+  Home                           1h                                             TODO [#2] Get rid of the flies in the front yard :hastodo:private::
+  Home                           15m                                            TODO [#4] List out all cookbooks :hastodo:private::
+  Home                           1h                                             TODO [#4] Find and download digital copies of cookbooks :hastodo:private::
+  Home                                                                          TODO [#1] Make a fire plan     :hastodo:private::
+  Home                                                                          TODO [#1] Make an earthquake plan :hastodo:private::
+
+ Category: Personal
+  Personal                                                                      TODO [#2] Cake pop ornaments for Christmas dessert :hastodo:private::
+  Personal                                                                      TODO [#2] Find discussions of how people use LLMs to be better at their jobs, etc :hastodo:private::
+  Personal                       4h                                             TODO [#1] Create theory of change :hastodo:private::someday:
+  Personal                                                                      TODO [#2] Yearbook for our family. Journal entry every night and collect them into what happened this month, then this year. :hastodo:private::email:
+  Personal                                                                      TODO https://readsomethingwonderful.com/ :hastodo:private::
+  Personal                                                                      TODO https://news.ycombinator.com/item?id=40348276 :hastodo:private::
+  Personal                                                                      TODO Talk about contractor for drywall and kitchen :hastodo:private::
+  Personal                       30m                                            TODO [#2] Emacs from reddit :hastodo:private::someday:
+  Personal                       2h                                             TODO [#2] Ideate on how to employ lessons from seven rules of power :hastodo:private::
+  Personal                                                                      TODO [#2] Look into mocktail recipes :hastodo:private::
+  Personal                                                                      TODO [#3] Bake cake pops       :hastodo:private::
+  Personal                                                                      TODO [#3] Add cake pop recipe to notes :hastodo:private::
+  Personal                       30m                                            TODO [#4] Compress my 5-15 year plan into a paragraph or a few bullet points so I can read it every morning to remind myself; or at least to have it available in my notes :hastodo:private::
+  Personal                       5m                                             TODO [#1] Set aside an hour and write about being 31. Reflect on the last decade. Think about the next one :hastodo:private::
+  Personal                                                                      TODO [#2] Talk to Cayla about our contract :hastodo:private::
+  Personal                       30m                                            TODO [#2] Pick three potential locations and bring them to Mom to discuss a trip :hastodo:private::
+  Personal                                                                      TODO What is a "hitch" in knot tying? :hastodo:private::
+  Personal                                                                      TODO Learn truckers knot       :hastodo:private::
+  Personal                                                                      TODO [#2] [[https://archive.org/details/TheAshleyBookOfKnots][The Ashley Book of Knots (1944)]] :hastodo:private::cool:
+  Personal                                                                      TODO Choose three other knots to learn :hastodo:private::
+  Personal                                                                      TODO Reading topic: how can parents prepare their daughters to interacting with awful people in the world? :hastodo:private::
+  Personal                                                                      TODO Reading topic: how can parents de-radicalize their sons, or prevent them from being radicalized in the first place? :hastodo:private::
+  Personal                                                                      TODO [#2] Get father's side family history :hastodo:private::
+  Personal                                                                      TODO [#2] Get mother's side family history :hastodo:private::
+  Personal                                                                      TODO [#2] Ask cayla, Denise, Chip for a family tree with names :hastodo:private::
+  Personal                                                                      TODO [#2] Ask Mom and Dad for Crystal Kyler, Weston, Wyatt and Karen's birthdays :hastodo:private::
+
+ Category: Pottery
+  Pottery                        1h                                             TODO [#2] Study ceramics; look up colleges, courses, etc and understand the history, culture, chemistry, all of it of ceramics. Continue learning practical but don't stop there. :hastodo:private::
+
+ Category: Study
+  Study                          2h                                             TODO [#4] Find illustrations and include them in recipes, notes, etc; check British museum images, etc :hastodo:private::
+  Study                          30m                                            TODO [#2] Create note for everyone featured in Framelines magazine and create TODOs to check out their work :hastodo:private::
+  Study                                                                         TODO [#2] Break vocabulary roam page into individual pages :hastodo:private::
+
+ Category: asana
+  asana                                                                         TODO Schedule car service :hastodo:private:keep_on_done::
+  asana                                                                         TODO Stop Cayla's faucet from spraying :hastodo:private:keep_on_done::
+  asana                                                                         TODO Order Cayla to sort through her personal email :hastodo:private:keep_on_done::
+  asana                                                                         TODO Meetups for photography? :hastodo:private:keep_on_done::
+  asana                                                                         TODO Make TODO list for things that need to be done upon returning from a trip :hastodo:private:keep_on_done::
+  asana                                                                         TODO Make TODO list for what needs to be done before leaving for a trip :hastodo:private:keep_on_done::
