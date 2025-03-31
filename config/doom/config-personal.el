@@ -3208,7 +3208,7 @@ Return nil if no attendee exists with that EMAIL."
    (lambda (node)
      (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
           ;; Exclude archives
-          (not (s-ends-with-p "archive" (org-node-get-file-path node)))
+          (not (s-ends-with-p "archive" (org-node-get-file node)))
           ;; Exclude flashcards
           (not (member "fc" (org-node-get-tags-local node))))))
   (org-node-format-candidate-fn
