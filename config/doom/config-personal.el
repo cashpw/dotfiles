@@ -5124,7 +5124,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-super-agenda-groups
        '((:discard
           (:scheduled future
-          :scheduled past))
+           :scheduled past))
          (:name "Schedule"
           :time-grid t
           :order 0
@@ -5136,10 +5136,10 @@ Intended for use with `org-super-agenda' `:transformer'. "
                  :scheduled past)))
          (:name "In Progress"
           :todo "INPROGRESS")
-         (:name "Chores"
-          :tag "chore"
-          :transformer (--> it
-                            (cashpw/org-agenda--simplify-line it)))
+         ;; (:name "Chores"
+         ;;  :tag "chore"
+         ;;  :transformer (--> it
+         ;;                    (cashpw/org-agenda--simplify-line it)))
          (:auto-map cashpw/org-super-agenda--get-priority
           :transformer cashpw/org-super-agenda--simplify-map)
          (;; Toss all other todos
