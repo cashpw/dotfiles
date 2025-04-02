@@ -3054,6 +3054,7 @@ Return nil if no attendee exists with that EMAIL."
        ("Study" . ("Study" "Flashcards"))
        ("Food" . ("Huel shake"))
        ("Sleep" . ("Sleep"))
+       ("Therapy". ("Therapy"))
        ("R&R" . ("R&R")))))
    :on-activate
    (lambda ()
