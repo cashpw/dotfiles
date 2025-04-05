@@ -6393,7 +6393,7 @@ See `org-clock-special-range' for KEY."
    (length
     (-intersection
      cashpw/org-mode-on-done--noop-filetags
-     (org-extras-filetags-in-buffer (buffer-name))))
+     (org-extras-get-inbuffer-option "filetags")))
    0))
 
 (defun cashpw/org-mode-on-done--keep-filetag-p ()
@@ -6401,7 +6401,7 @@ See `org-clock-special-range' for KEY."
   (> (length
       (-intersection
        cashpw/org-mode-on-done--keep-filetags
-       (org-extras-filetags-in-buffer (buffer-name))))
+       (org-extras-get-inbuffer-option "filetags")))
      0))
 
 (defun cashpw/org-mode-on-done--delete-filetag-p ()
@@ -6409,7 +6409,7 @@ See `org-clock-special-range' for KEY."
   (> (length
       (-intersection
        cashpw/org-mode-on-done--delete-filetags
-       (org-extras-filetags-in-buffer (buffer-name))))
+       (org-extras-get-inbuffer-option "filetags")))
      0))
 
 (add-hook 'cashpw/org-mode-on-done--noop-hook
