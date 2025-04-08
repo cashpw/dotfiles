@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-02 Wed 08:06]
+:LAST_MODIFIED: [2025-04-08 Tue 09:13]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -7472,7 +7472,10 @@ Intended for use with `org-super-agenda' `:transformer'. "
 (defun cashpw/org-agenda-view--today--files ()
   "Return list of files for today's agenda view."
   (let ((yyyy-mm-dd (format-time-string "%F" (current-time))))
-    (cashpw/rgrep (format "-l \"<%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir))))
+    (-distinct
+     (append
+      (cashpw/rgrep (format "-l \"<%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir))
+      (cashpw/rgrep (format "-l \":everyday:\" %s/*.org" cashpw/path--notes-dir))))))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -8407,7 +8410,6 @@ Clock in at CLOCK-IN-TIME and clock out at CLOCK-OUT-TIME."
   (org-clock-in nil clock-in-time)
   (org-clock-out nil nil clock-out-time))
 #+end_src
-
 
 **** Untracked time
 
@@ -10796,7 +10798,7 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
-            '(or (tags "unscheduled") (deadline 0) (scheduled 0))))))
+            '(or (tags "everyday") (deadline 0) (scheduled 0))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 #+end_src

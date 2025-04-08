@@ -5116,7 +5116,10 @@ Intended for use with `org-super-agenda' `:transformer'. "
 (defun cashpw/org-agenda-view--today--files ()
   "Return list of files for today's agenda view."
   (let ((yyyy-mm-dd (format-time-string "%F" (current-time))))
-    (cashpw/rgrep (format "-l \"<%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir))))
+    (-distinct
+     (append
+      (cashpw/rgrep (format "-l \"<%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir))
+      (cashpw/rgrep (format "-l \":everyday:\" %s/*.org" cashpw/path--notes-dir))))))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -7693,7 +7696,7 @@ Reference:https://stackoverflow.com/q/23622296"
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
-            '(or (tags "unscheduled") (deadline 0) (scheduled 0))))))
+            '(or (tags "everyday") (deadline 0) (scheduled 0))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 
