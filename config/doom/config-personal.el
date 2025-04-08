@@ -6710,6 +6710,8 @@ See `org-clock-special-range' for KEY."
 (deflink "google-doc"
          "https://docs.google.com/document/d/%s")
 
+(deflink "google-sheet"
+         "https://docs.google.com/spreadsheets/d/%s")
 (deflink "google-sheets"
          "https://docs.google.com/spreadsheets/d/%s")
 
