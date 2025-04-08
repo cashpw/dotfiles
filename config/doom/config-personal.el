@@ -5948,11 +5948,17 @@ Category | Scheduled | Effort
    (cashpw/org-agenda-files 'journal-this-year t)
    (cashpw/org-agenda-files 'people-private t)))
 
+(defun cashpw/org-set-inprogress-to-todo ()
+  "Set the current heading's todo status to TODO if it's currently INPROGRESS."
+  (when (string= "INPROGRESS" (org-get-todo-state))
+    (org-todo "TODO")))
+
 (after! org
   (setq
    ;; Prevent org-clock from double-checking /every/ agenda file for dangling clock during `org-clock-in'.
    ;; See https://github.com/doomemacs/doomemacs/issues/5317
-   org-clock-auto-clock-resolution nil))
+   org-clock-auto-clock-resolution nil)
+  (add-to-list 'org-clock-out-hook #'cashpw/org-set-inprogress-to-todo))
 
 (defun cashpw/org-clock-add-entry (clock-in-time clock-out-time)
   "Add single clock entry.
