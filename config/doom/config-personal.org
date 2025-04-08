@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-08 Tue 09:19]
+:LAST_MODIFIED: [2025-04-08 Tue 09:22]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -9284,16 +9284,15 @@ Priovded through [[id:91380f2e-823f-4ad0-9e14-617a021d86a3][=org-modules=]].
 ***** Google Sheets
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+;; Prefer singular
 (deflink "google-sheet"
-         "https://docs.google.com/spreadsheets/d/%s")
-(deflink "google-sheets"
          "https://docs.google.com/spreadsheets/d/%s")
 #+end_src
 
 ***** Google Slides
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(deflink "google-slides"
+(deflink "google-slide"
          "https://docs.google.com/presentation/d/%s")
 #+end_src
 

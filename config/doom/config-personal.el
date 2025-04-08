@@ -6710,12 +6710,11 @@ See `org-clock-special-range' for KEY."
 (deflink "google-doc"
          "https://docs.google.com/document/d/%s")
 
+;; Prefer singular
 (deflink "google-sheet"
          "https://docs.google.com/spreadsheets/d/%s")
-(deflink "google-sheets"
-         "https://docs.google.com/spreadsheets/d/%s")
 
-(deflink "google-slides"
+(deflink "google-slide"
          "https://docs.google.com/presentation/d/%s")
 
 (defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
