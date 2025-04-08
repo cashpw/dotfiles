@@ -1604,6 +1604,8 @@ TAGS which start with \"-\" are excluded."
   (setq
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
+   elfeed-sort-order 'ascending
+   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
   (map!
    :map elfeed-search-mode-map
@@ -1621,6 +1623,14 @@ TAGS which start with \"-\" are excluded."
     elfeed-search-mode-map
     "t"
     (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
+
+(defun cashpw/elfeed-search-compare-by-date (a b)
+  "Return non-nil if A is newer than B."
+  (let ((date-a (elfeed-entry-date a))
+        (date-b (elfeed-entry-date b)))
+    (if (= date-a date-b)
+        (string< (prin1-to-string b) (prin1-to-string a))
+      (> date-a date-b))))
 
 (defun cashpw/elfeed-search-for-tags (&optional tags unread-only)
   "Search for Elfeed entries tagged with TAGS."
@@ -1655,8 +1665,7 @@ TAGS which start with \"-\" are excluded."
           (format "%s=%s"
                   (when unread-only
                     "+unread ")
-                  (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
-                  )))
+                  (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed))))
     (elfeed-search-set-filter search-filter)
     (elfeed-search-update)))
 
