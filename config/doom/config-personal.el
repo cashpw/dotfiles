@@ -869,10 +869,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 
                             ;; Types
                             :null          "∅"
-                            :true          "𝕥"
-                            :false         "𝕗"
-                            ;; :false         "𝔽"
-                            :false         "⊥"
+                            ;; :true          "𝕥"
+                            ;; :false         "𝕗"
                             :int           "ℤ"
                             :float         "ℝ"
                             :str           "S"

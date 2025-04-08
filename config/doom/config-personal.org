@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-08 Tue 09:13]
+:LAST_MODIFIED: [2025-04-08 Tue 09:19]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1747,10 +1747,8 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 
                             ;; Types
                             :null          "∅"
-                            :true          "𝕥"
-                            :false         "𝕗"
-                            ;; :false         "𝔽"
-                            :false         "⊥"
+                            ;; :true          "𝕥"
+                            ;; :false         "𝕗"
                             :int           "ℤ"
                             :float         "ℝ"
                             :str           "S"
