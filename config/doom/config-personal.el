@@ -3846,6 +3846,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions '((?L org-extras-reschedule-overdue-todo-agenda)
                                     (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
+                                    (?y cashpw/org-agenda-done-yesterday)
                                     (?. cashpw/org-agenda-reschedule-to-today)))
 
 (after! org
@@ -5085,6 +5086,13 @@ Intended for use with `org-super-agenda' `:transformer'. "
         (org-extras-reschedule-overdue-todo)
       (org-mark-subtree)
       (kill-region))))
+
+(defun cashpw/org-agenda-done-yesterday ()
+  "Mark as done yesterday."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil
+    (org-todo-yesterday 'done)))
 
 (defun cashpw/org-reschedule-to-today-at-point ()
   "Reschedule heading at point to today. Keep duration and repeater."

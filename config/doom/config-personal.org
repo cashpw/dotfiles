@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-08 Tue 09:22]
+:LAST_MODIFIED: [2025-04-14 Mon 08:37]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6014,6 +6014,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  org-default-properties (append org-default-properties org-recipes--properties)
  org-agenda-bulk-custom-functions '((?L org-extras-reschedule-overdue-todo-agenda)
                                     (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
+                                    (?y cashpw/org-agenda-done-yesterday)
                                     (?. cashpw/org-agenda-reschedule-to-today)))
 #+end_src
 
@@ -7434,6 +7435,13 @@ Intended for use with `org-super-agenda' `:transformer'. "
         (org-extras-reschedule-overdue-todo)
       (org-mark-subtree)
       (kill-region))))
+
+(defun cashpw/org-agenda-done-yesterday ()
+  "Mark as done yesterday."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil
+    (org-todo-yesterday 'done)))
 
 (defun cashpw/org-reschedule-to-today-at-point ()
   "Reschedule heading at point to today. Keep duration and repeater."
