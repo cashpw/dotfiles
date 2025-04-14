@@ -1683,10 +1683,15 @@ TAGS which start with \"-\" are excluded."
 ;;   (setq
 ;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
 
-(use-package! commit-message
+(use-package!
+    commit-message
   :config
-  (add-hook! 'git-commit-setup-hook
-             'commit-message-insert-message))
+  (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
+  (add-hook 'git-commit-setup-hook 'commit-message-insert-message)
+  (add-hook
+   'git-commit-setup-hook
+   (defun cashpw/vc-start-in-insert-state ()
+     (evil-insert-state))))
 
 (use-package! gnuplot)
 
