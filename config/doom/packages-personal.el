@@ -120,6 +120,9 @@
 
 (package! elfeed-protocol)
 
+(package! commit-message
+  :recipe (:host github :repo "cashpw/commit-message"))
+
 (package! gnuplot)
 
 (package! llm-prompts

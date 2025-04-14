@@ -1683,80 +1683,10 @@ TAGS which start with \"-\" are excluded."
 ;;   (setq
 ;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
 
-(defgroup cashpw/source-control nil
-  "Source control."
-  :group 'cashpw)
-
-(defcustom cashpw/source-control--commit-categories '(("Fix" . (:symbol "🐛"
-                                                                :shortcode ":bug:"))
-                                                      ("UI" . (:symbol "💄"
-                                                               :shortcode ":lipstick:"))
-                                                      ("UX" . (:symbol "💄"
-                                                               :shortcode ":lipstick:"))
-                                                      ("Add" . (:symbol "✨"
-                                                                :shortcode ":sparkles:"))
-                                                      ("Feature" . (:symbol "✨"
-                                                                    :shortcode ":sparkles:"))
-                                                      ("Document" . (:symbol "📝"
-                                                                     :shortcode ":memo:"))
-                                                      ("Typo" . (:symbol "✏️"
-                                                                 :shortcode ":pencil2:"))
-                                                      ("Refactor" . (:symbol "♻"
-                                                                     :shortcode ":recycle:"))
-                                                      ("Rollout" . (:symbol "🚀"
-                                                                    :shortcode ":rocket:"))
-                                                      ("Launch" . (:symbol "🚀"
-                                                                   :shortcode ":rocket:"))
-                                                      ("Version" . (:symbol "🔖"
-                                                                    :shortcode ":bookmark:"))
-                                                      ("Release" . (:symbol "🔖"
-                                                                    :shortcode ":bookmark:"))
-                                                      ("Deploy" . (:symbol "🚀"
-                                                                   :shortcode ":rocket:"))
-                                                      ("Delete" . (:symbol "🔥"
-                                                                   :shortcode ":fire:"))
-                                                      ("Remove" . (:symbol "🔥"
-                                                                   :shortcode ":fire:"))
-                                                      ("Test" . (:symbol "✅"
-                                                                 :shortcode ":white_check_mark:")))
-  "Alist of commit categories and extras."
-  :group 'cashpw/source-control
-  :type 'string)
-
-(defun cashpw/source-control--read-commit-category ()
-  "Return commit noun as selected by user."
-  (let ((category (completing-read "Category: "
-                                   cashpw/source-control--commit-categories
-                                   ;; predicate
-                                   nil
-                                   ;; require-match
-                                   t)))
-    (assoc category
-           cashpw/source-control--commit-categories)))
-
-(defun cashpw/source-control--commit--section (title content)
-  "Return formatted section for a commit message."
-  (s-lex-format "## ${title}
-
-${content}"))
-
-(defun cashpw/source-control--commit--build-message ()
-  "Return commit message template."
-  (let* ((category (cashpw/source-control--read-commit-category))
-         (emoji (plist-get (cdr category) :symbol))
-         ;; (what-section (cashpw/source-control--commit--section "What does this change?"
-         ;;                                                       "1. TODO"))
-         ;; (why-section (cashpw/source-control--commit--section "Why make these changes?"
-         ;;                                                      "TODO"))
-         )
-    (s-lex-format "${emoji} ")))
-
-(defun cashpw/source-control--commit--insert-message ()
-  "Insert my commit message template."
-  (insert (cashpw/source-control--commit--build-message)))
-
-(add-hook! 'git-commit-setup-hook
-           'cashpw/source-control--commit--insert-message)
+(use-package! commit-message
+  :config
+  (add-hook! 'git-commit-setup-hook
+             'commit-message-insert-message))
 
 (use-package! gnuplot)
 
