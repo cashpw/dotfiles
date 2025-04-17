@@ -4745,16 +4745,12 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:0
 :END:
 
 #+begin_src emacs-lisp :results none
-(cashpw/org-gcal-fetch-sleep 2)
-#+end_src
-
-#+begin_src emacs-lisp :results none
 (outline-next-heading)
 (previous-line)
 (cashpw/org-clocktable-by-category-yesterday)
 (org-up-heading-safe)
 (search-forward-regexp \"begin_src\")
-(dotimes (i 12) (delete-line))
+(dotimes (i 8) (delete-line))
 #+end_src
 
 * Flashcards :noexport:"))))))))
