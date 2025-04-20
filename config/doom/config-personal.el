@@ -3626,65 +3626,42 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
 
 (defun cashpw/org--insert-holiday-reminders (year)
   "Insert TODO reminders for holidays."
-  (interactive
-   (let* ((year (calendar-read-sexp
-                 "Year?"
-                 (lambda (x) (> x 0))
-                 (calendar-extract-year (calendar-current-date)))))
-     (list
-      year)))
+  (interactive (let* ((year
+                       (calendar-read-sexp
+                        "Year?"
+                        (lambda (x) (> x 0))
+                        (calendar-extract-year (calendar-current-date)))))
+                 (list year)))
   (let ((all-holidays
          (s-split
           "\n"
           (progn
             (list-holidays
-             year
-             year
-             (append
-              holiday-general-holidays
-              holiday-christian-holidays))
+             year year
+             (append holiday-general-holidays holiday-christian-holidays))
             (with-current-buffer holiday-buffer
               (buffer-string))))))
-    (cl-labels ((insert-reminder
-                  (name schedule-time)
-                  (progn
-                    (org-insert-heading)
-                    (org-todo
-                     "TODO")
-                    (insert
-                     name)
-                    (org-schedule
-                     nil
-                     (format-time-string
-                      "%F %a"
-                      schedule-time)))))
+    (cl-labels
+        ((insert-reminder
+           (name schedule-time)
+           (progn
+             (org-insert-heading)
+             (org-todo "TODO")
+             (insert name)
+             (org-schedule nil (format-time-string "%F %a" schedule-time)))))
       (--map
        (cl-destructuring-bind
-           (date-string
-            holiday-name)
+           (date-string holiday-name)
            ;; Example Monday, January 1, 2024: New Year's Day
-           (s-split
-            ": "
-            it)
-         (let ((holiday-time (date-to-time
-                              date-string)))
+           (s-split ": " it)
+         (let ((holiday-time (date-to-time date-string)))
+           (insert-reminder holiday-name holiday-time)
            (insert-reminder
-            holiday-name
-            holiday-time)
+            (s-concat holiday-name " in 30 days")
+            (time-subtract holiday-time (days-to-time 30)))
            (insert-reminder
-            (s-concat
-             holiday-name
-             " in 30 days")
-            (time-subtract
-             holiday-time
-             (days-to-time 30)))
-           (insert-reminder
-            (s-concat
-             holiday-name
-             " in 90 days")
-            (time-subtract
-             holiday-time
-             (days-to-time 90)))))
+            (s-concat holiday-name " in 90 days")
+            (time-subtract holiday-time (days-to-time 90)))))
        all-holidays)))
   (kill-buffer holiday-buffer))
 
@@ -5802,7 +5779,7 @@ Category | Scheduled | Effort
          (:discard
           ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"
-           :tag ("unscheduled")))
+           :tag ("unscheduled" "everyday")))
          (:discard (:scheduled t))
          (:auto-category t)))))))
 

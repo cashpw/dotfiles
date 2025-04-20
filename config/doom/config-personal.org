@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-17 Thu 06:59]
+:LAST_MODIFIED: [2025-04-19 Sat 10:58]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -283,6 +283,63 @@ Reference: https://emacs.stackexchange.com/a/43985"
      daylight-savings-time-p
      utc-offset)))
 #+end_src
+
+**** Comparison
+
+#+begin_src emacs-lisp
+(defun cashpw/time-greater-than-p (a b)
+  "Return non-nil if time value A is greater than time value B."
+  (and (not (time-equal-p a b))
+       (not (time-less-p a b))))
+#+end_src
+
+#+RESULTS:
+: cashpw/time-greater-than-p
+
+*** Holidays
+
+#+begin_src emacs-lisp
+(defvar cashpw/holiday-mothers-day '(holiday-float 5 0 2 "Mother's Day"))
+#+end_src
+
+#+RESULTS:
+: cashpw/holiday-mothers-day
+
+#+begin_src emacs-lisp
+(defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
+  "Return next HOLIDAY occurrance time.
+
+The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next year's time."
+  (let* ((holiday-buffer-name "*get-next-holiday*")
+         (this-year (string-to-number (format-time-string "%Y" (current-time))))
+         (next-year (1+ this-year))
+         (holiday-strings
+          (progn
+            (list-holidays
+             (if force-next-year
+                 next-year
+               this-year)
+             next-year (list holiday))
+            (split-string (with-current-buffer holiday-buffer
+                            (buffer-string))
+                          "\n")))
+         (holiday-times
+          (mapcar
+           (lambda (holiday-string)
+             (date-to-time (car (split-string holiday-string ": "))))
+           holiday-strings)))
+    (kill-buffer holiday-buffer)
+    (car
+     (seq-filter
+      (lambda (holiday-time)
+        (cashpw/time-greater-than-p holiday-time (current-time)))
+      holiday-times))))
+
+;; (cashpw/holiday-get-next-time '(holiday-float 5 0 2 "Mother's Day"))
+#+end_src
+
+#+RESULTS:
+: cashpw/holiday-get-next-time
 
 ** Paths
 
@@ -5791,65 +5848,42 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org--insert-holiday-reminders (year)
   "Insert TODO reminders for holidays."
-  (interactive
-   (let* ((year (calendar-read-sexp
-                 "Year?"
-                 (lambda (x) (> x 0))
-                 (calendar-extract-year (calendar-current-date)))))
-     (list
-      year)))
+  (interactive (let* ((year
+                       (calendar-read-sexp
+                        "Year?"
+                        (lambda (x) (> x 0))
+                        (calendar-extract-year (calendar-current-date)))))
+                 (list year)))
   (let ((all-holidays
          (s-split
           "\n"
           (progn
             (list-holidays
-             year
-             year
-             (append
-              holiday-general-holidays
-              holiday-christian-holidays))
+             year year
+             (append holiday-general-holidays holiday-christian-holidays))
             (with-current-buffer holiday-buffer
               (buffer-string))))))
-    (cl-labels ((insert-reminder
-                  (name schedule-time)
-                  (progn
-                    (org-insert-heading)
-                    (org-todo
-                     "TODO")
-                    (insert
-                     name)
-                    (org-schedule
-                     nil
-                     (format-time-string
-                      "%F %a"
-                      schedule-time)))))
+    (cl-labels
+        ((insert-reminder
+           (name schedule-time)
+           (progn
+             (org-insert-heading)
+             (org-todo "TODO")
+             (insert name)
+             (org-schedule nil (format-time-string "%F %a" schedule-time)))))
       (--map
        (cl-destructuring-bind
-           (date-string
-            holiday-name)
+           (date-string holiday-name)
            ;; Example Monday, January 1, 2024: New Year's Day
-           (s-split
-            ": "
-            it)
-         (let ((holiday-time (date-to-time
-                              date-string)))
+           (s-split ": " it)
+         (let ((holiday-time (date-to-time date-string)))
+           (insert-reminder holiday-name holiday-time)
            (insert-reminder
-            holiday-name
-            holiday-time)
+            (s-concat holiday-name " in 30 days")
+            (time-subtract holiday-time (days-to-time 30)))
            (insert-reminder
-            (s-concat
-             holiday-name
-             " in 30 days")
-            (time-subtract
-             holiday-time
-             (days-to-time 30)))
-           (insert-reminder
-            (s-concat
-             holiday-name
-             " in 90 days")
-            (time-subtract
-             holiday-time
-             (days-to-time 90)))))
+            (s-concat holiday-name " in 90 days")
+            (time-subtract holiday-time (days-to-time 90)))))
        all-holidays)))
   (kill-buffer holiday-buffer))
 #+end_src
@@ -8217,7 +8251,7 @@ Category | Scheduled | Effort
          (:discard
           ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"
-           :tag ("unscheduled")))
+           :tag ("unscheduled" "everyday")))
          (:discard (:scheduled t))
          (:auto-category t)))))))
 
