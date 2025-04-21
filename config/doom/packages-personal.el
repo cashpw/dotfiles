@@ -187,6 +187,8 @@
   :recipe (:host github
            :repo "cashpw/org-gallery"))
 
+(package! org-habit-stats)
+
 (package! repeat-todo
   :recipe (:host github
            :repo "cashpw/repeat-todo"))

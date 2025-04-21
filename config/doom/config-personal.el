@@ -2587,6 +2587,10 @@ Only parent headings of the current heading remain visible."
         (org-set-property (org-gallery--image-prop-source) image-url)
         ))))
 
+(use-package! org-habit-stats
+  :custom
+  (org-agenda-block-separator 9472))
+
 (use-package! repeat-todo
   :after org
   :config
@@ -2970,6 +2974,7 @@ Return nil if no attendee exists with that EMAIL."
          "Legs"
          "Mobility, Grip, Neck"
          "Cardio"
+         "Strength"
          "Stretch"
          "Stretch: Hamstrings"
          "Stretch: Hips"
@@ -5101,6 +5106,27 @@ Intended for use with `org-super-agenda' `:transformer'. "
            :todo nil))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
+
+(defun cashpw/org-agenda-view--habit (files habit-heading-regexp preceding-days)
+  "Return custom agenda command."
+  (let ((groups
+         `((:name "Habits" :and (:heading-regexp ,habit-heading-regexp :habit))
+           ( ;; Toss everything else
+            :discard
+            (:todo t :todo nil)))))
+    `((agenda
+       ""
+       ((org-agenda-overriding-header "")
+        (org-agenda-span 1)
+        (org-agenda-files ',files)
+        (org-agenda-prefix-format
+         '((agenda . "%-20(cashpw/org-agenda-category 30)")))
+        (org-agenda-sorting-strategy '((agenda . (alpha-up time-up))))
+        (org-agenda-hide-tags-regexp ".*")
+        (org-agenda-format-date "")
+        (org-habit-show-all-today t)
+        ;; (org-habit-show-habits-only-for-today nil)
+        (org-super-agenda-groups ',groups))))))
 
 (defun cashpw/org-agenda-view--plan--week ()
   "Return custom agenda command."

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-19 Sat 10:58]
+:LAST_MODIFIED: [2025-04-21 Mon 09:37]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4227,6 +4227,21 @@ Only parent headings of the current heading remain visible."
         ))))
 #+end_src
 
+**** =org-habit-stats=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-habit-stats)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-habit-stats
+  :custom
+  (org-agenda-block-separator 9472))
+#+end_src
 
 **** =repeat-todo=
 
@@ -4702,6 +4717,7 @@ Return nil if no attendee exists with that EMAIL."
          "Legs"
          "Mobility, Grip, Neck"
          "Cardio"
+         "Strength"
          "Stretch"
          "Stretch: Hamstrings"
          "Stretch: Hips"
@@ -7497,7 +7513,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
 (cashpw/org-agenda-custom-commands--maybe-update)
 #+end_src
 
-***** Habit retrospective
+***** Habits
+****** All
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (setq
@@ -7527,6 +7544,31 @@ Intended for use with `org-super-agenda' `:transformer'. "
            :todo nil))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+****** Specific
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--habit (files habit-heading-regexp preceding-days)
+  "Return custom agenda command."
+  (let ((groups
+         `((:name "Habits" :and (:heading-regexp ,habit-heading-regexp :habit))
+           ( ;; Toss everything else
+            :discard
+            (:todo t :todo nil)))))
+    `((agenda
+       ""
+       ((org-agenda-overriding-header "")
+        (org-agenda-span 1)
+        (org-agenda-files ',files)
+        (org-agenda-prefix-format
+         '((agenda . "%-20(cashpw/org-agenda-category 30)")))
+        (org-agenda-sorting-strategy '((agenda . (alpha-up time-up))))
+        (org-agenda-hide-tags-regexp ".*")
+        (org-agenda-format-date "")
+        (org-habit-show-all-today t)
+        ;; (org-habit-show-habits-only-for-today nil)
+        (org-super-agenda-groups ',groups))))))
 #+end_src
 
 ***** Plan
