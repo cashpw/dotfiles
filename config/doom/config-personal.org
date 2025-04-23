@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-23 Wed 11:04]
+:LAST_MODIFIED: [2025-04-23 Wed 13:44]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -7383,8 +7383,20 @@ Intended for use with `org-super-agenda-groups'."
   "Return LINE without frills."
   (-->
    line
-   (replace-regexp-in-string "TODO " "" it)
+   (cashpw/org-agenda--remove-priorities it)
+   (cashpw/org-agenda--remove-todo it)))
+
+(defun cashpw/org-agenda--remove-priorities (line)
+  "Return LINE without priorities."
+  (-->
+   line
    (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+
+(defun cashpw/org-agenda--remove-todo (line)
+  "Return LINE without todo."
+  (-->
+   line
+   (replace-regexp-in-string "TODO " "" it)))
 
 (defun cashpw/org-super-agenda--simplify-map (group)
   "Return GROUP after simplifying each line.
@@ -7449,6 +7461,15 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (t
        " "))
      " ")))
+#+end_src
+
+***** Priority
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-priority-offset ()
+  (if (org-extras-get-priority nil)
+      ""
+    "    "))
 #+end_src
 
 **** Custom functions
@@ -7645,8 +7666,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-agenda-show-all-dates t)
       (org-habit-show-habits-only-for-today nil)
       (org-super-agenda-groups
-       `(
-         (:name "Schedule"
+       `((:name "Schedule"
           :time-grid t
           :order 0
           :transformer (--> it
@@ -8297,6 +8317,7 @@ Category | Scheduled | Effort
 #+end_src
 
 ***** No priority
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-agenda-view--no-priority ()
   "Return custom agenda command."

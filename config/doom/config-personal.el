@@ -4968,8 +4968,20 @@ Intended for use with `org-super-agenda-groups'."
   "Return LINE without frills."
   (-->
    line
-   (replace-regexp-in-string "TODO " "" it)
+   (cashpw/org-agenda--remove-priorities it)
+   (cashpw/org-agenda--remove-todo it)))
+
+(defun cashpw/org-agenda--remove-priorities (line)
+  "Return LINE without priorities."
+  (-->
+   line
    (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+
+(defun cashpw/org-agenda--remove-todo (line)
+  "Return LINE without todo."
+  (-->
+   line
+   (replace-regexp-in-string "TODO " "" it)))
 
 (defun cashpw/org-super-agenda--simplify-map (group)
   "Return GROUP after simplifying each line.
@@ -5027,6 +5039,11 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (t
        " "))
      " ")))
+
+(defun cashpw/org-agenda-priority-offset ()
+  (if (org-extras-get-priority nil)
+      ""
+    "    "))
 
 (defun cashpw/org-agenda-reschedule-to-next-occurrence-or-kill ()
   "Reschedule to next occurrence if item at point repeats; else kill."
@@ -5193,8 +5210,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-agenda-show-all-dates t)
       (org-habit-show-habits-only-for-today nil)
       (org-super-agenda-groups
-       `(
-         (:name "Schedule"
+       `((:name "Schedule"
           :time-grid t
           :order 0
           :transformer (--> it
