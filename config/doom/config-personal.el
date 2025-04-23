@@ -2902,7 +2902,7 @@ Return nil if no attendee exists with that EMAIL."
         (cashpw/org-gcal--create-prep-meeting
          (plist-get event :summary) prepare-time)))))
 
-(defun cashpw/org-gcal-remove-tagged-events (tag)
+(defun cashpw/org-gcal-remove-tagged-entries (tag)
   "Remove all events tagged with TAG in current buffer."
   (org-map-entries
    (lambda ()
