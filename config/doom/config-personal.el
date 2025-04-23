@@ -934,6 +934,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    asana-tasks-org-file cashpw/path--personal-asana
    asana-token (secret-get "asana")))
 
+(defun hash-table-contains-p (key table)
+  "Return non-nil if TABLE contains KEY.
+
+Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
+  (let ((x '(:hash-table-contains-p)))
+    (not (eq x (gethash key table x)))))
+
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
     ;; Reddit
@@ -2859,10 +2866,15 @@ Return nil if no attendee exists with that EMAIL."
   :type '(repeat string)
   :group 'org-gcal)
 
+(defcustom cashpw/org-gcal-prepare-tag "prepare"
+  "Tag for identifying \"Prepare\" events."
+  :type 'string
+  :group 'org-gcal)
+
 (defun cashpw/org-gcal--create-prep-meeting (summary time)
   "Insert a preparation evnet."
   (cashpw/org-insert-todo
-   (s-lex-format "Prepare: ${summary}")
+   (s-lex-format "Prepare: ${summary} :${cashpw/org-gcal-prepare-tag}:")
    :priority 1
    :effort "5m"
    :start-time time
@@ -2871,7 +2883,7 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--maybe-create-prep-meeting
     (_calendar-id event _update-mode)
   "Insert a prep TODO if there are more than one attendees to the meeting."
-  (when (and (not (member "processed" (org-get-tags)))
+  (when (and (not (org-gcal-extras--processed-p))
              (sequencep event) (> (length (plist-get event :attendees)) 1)
              (--none-p
               (string-match-p it (plist-get event :summary))
@@ -2888,8 +2900,18 @@ Return nil if no attendee exists with that EMAIL."
                (org-time-subtract event-start-time (days-to-time 1)))))))
       (unless (cashpw/time-past-p prepare-time)
         (cashpw/org-gcal--create-prep-meeting
-         (plist-get event :summary)
-         prepare-time)))))
+         (plist-get event :summary) prepare-time)))))
+
+(defun cashpw/org-gcal-remove-tagged-events (tag)
+  "Remove all events tagged with TAG in current buffer."
+  (org-map-entries
+   (lambda ()
+     (org-cut-subtree)
+     (setq org-map-continue-from
+           (save-excursion
+             (beginning-of-line)
+             (point))))
+   (format "+%s" tag)))
 
 (defcustom cashpw/org-gcal--no-extract-todo-reminder-summaries
   '("Walk" "Clean house")
@@ -2897,13 +2919,19 @@ Return nil if no attendee exists with that EMAIL."
   :type '(repeat string)
   :group 'org-gcal)
 
+(defcustom cashpw/org-gcal-extract-todos-tag "extract_todos"
+  "Tag for identifying \"Extract TODOs\" events."
+  :type 'string
+  :group 'org-gcal)
+
+
 (defun cashpw/org-gcal--create-todo-extract-reminder
     (_calendar-id event _update-mode)
   "Insert a reminder to extract todos folling an EVENT."
   (let* ((event-summary (plist-get event :summary))
          (event-end-time (cashpw/org-gcal--end event)))
     (cashpw/org-insert-todo
-     (s-lex-format "Extract TODOs: ${event-summary}")
+     (s-lex-format "Extract TODOs: ${event-summary} :${cashpw/org-gcal-extract-todos-tag}:")
      :priority 2
      :effort "5m"
      :start-time event-end-time
@@ -2912,7 +2940,7 @@ Return nil if no attendee exists with that EMAIL."
 (defun cashpw/org-gcal--maybe-create-todo-extract-reminder
     (_calendar-id event _update-mode)
   "Insert a 1-on-1 prep heading todo if EVENT is for a 1-on-1 event."
-  (when (and (not (member "processed" (org-get-tags)))
+  (when (and (not (org-gcal-extras--processed-p))
              (sequencep event) (>= (length (plist-get event :attendees)) 2)
              (--none-p
               (string-match-p it (plist-get event :summary))
@@ -3078,23 +3106,33 @@ Return nil if no attendee exists with that EMAIL."
   (advice-remove 'org-generid-id-update-id-locations #'ignore)
   (advice-remove 'org-gcal-sync-buffer #'ignore))
 
+(defun cashpw/org-remove-past-scheduled-events ()
+  "Remove events scheduled in the past from current buffer."
+  (org-map-entries
+   (lambda ()
+     ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
+     (when (cashpw/time-past-p (org-get-scheduled-time (point)))
+       (org-cut-subtree)
+       (setq org-map-continue-from
+             (save-excursion
+               (beginning-of-line)
+               (point)))))))
+
 (defun cashpw/org-gcal-clear-and-fetch ()
   "Clear calendar buffer and fetch events."
   (interactive)
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
     (with-current-buffer (find-file-noselect calendar-path)
-      (if (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
-          (error "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again."))
-      (org-map-entries
-       (lambda ()
-         ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
-         (when (cashpw/time-past-p (org-get-scheduled-time (point)))
-           (org-cut-subtree)
-           (setq org-map-continue-from
-                 (save-excursion
-                   (beginning-of-line)
-                   (point)))))))
+      (when (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
+        (error
+         "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again."))
+      ;; Keep the buffer tidy
+      (cashpw/org-remove-past-scheduled-events)
+
+      ;; Delete extra TODOs. We'll re-create these in the fetch if they're still relevant.
+      (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-extract-todos-tag)
+      (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
 
 ;; Activate before loading `org-gcal' to prevent warning messages.
