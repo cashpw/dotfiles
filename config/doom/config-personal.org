@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-23 Wed 11:03]
+:LAST_MODIFIED: [2025-04-23 Wed 11:04]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -7515,8 +7515,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
   "Toggle collapse/expand in org-agenda view."
   (interactive)
   (if selective-display
-      (cashpw/org-agenda-expand)
-    (cashpw/org-agenda-collapse)))
+      (cashpw/org-agenda-view-expand)
+    (cashpw/org-agenda-view-collapse)))
 #+end_src
 
 ***** Today

@@ -5084,8 +5084,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
   "Toggle collapse/expand in org-agenda view."
   (interactive)
   (if selective-display
-      (cashpw/org-agenda-expand)
-    (cashpw/org-agenda-collapse)))
+      (cashpw/org-agenda-view-expand)
+    (cashpw/org-agenda-view-collapse)))
 
 (defun cashpw/org-agenda-view--today--files ()
   "Return list of files for today's agenda view."
