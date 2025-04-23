@@ -4996,6 +4996,19 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (cashpw/org-agenda--simplify-line it)
     (plist-get group :items))))
 
+(defun cashpw/org-super-agenda--remove-todo-map (group)
+  "Return GROUP after simplifying each line.
+
+GROUP is a plist of the form `(:name ... :items ...)'.
+
+Intended for use with `org-super-agenda' `:transformer'. "
+  (plist-put
+   group
+   :items
+   (--map
+    (cashpw/org-agenda--remove-todo it)
+    (plist-get group :items))))
+
 (defun cashpw/org-agenda--dim-line (line)
   "Dim color/brightness of LINE."
   (propertize
