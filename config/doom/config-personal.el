@@ -5070,6 +5070,23 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (org-agenda-with-point-at-orig-entry
       nil (cashpw/org-reschedule-to-today-at-point)))
 
+(defun cashpw/org-agenda-view-collapse ()
+  "Collapse org-agenda view sections."
+  (interactive)
+  (set-selective-display 1))
+
+(defun cashpw/org-agenda-view-expand ()
+  "Expand org-agenda view sections."
+  (interactive)
+  (set-selective-display nil))
+
+(defun cashpw/org-agenda-view-toggle-collapse ()
+  "Toggle collapse/expand in org-agenda view."
+  (interactive)
+  (if selective-display
+      (cashpw/org-agenda-expand)
+    (cashpw/org-agenda-collapse)))
+
 (defun cashpw/org-agenda-view--today--files ()
   "Return list of files for today's agenda view."
   (let ((yyyy-mm-dd (format-time-string "%F" (current-time))))
@@ -5916,6 +5933,7 @@ Category | Scheduled | Effort
   "")
 
 (after! org-agenda
+  (define-key org-agenda-mode-map (kbd "@") #'cashpw/org-agenda-view-toggle-collapse)
   ;; Override
   (define-key org-agenda-mode-map (kbd ".") #'cashpw/org-agenda-reschedule-to-today)
   (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-reschedule-to-next-occurrence-or-kill))
