@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-04-23 Wed 19:31]
+:LAST_MODIFIED: [2025-04-28 Mon 10:17]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2683,24 +2683,25 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 
   ;; Helpers for toggling often-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "T" nil)
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "T0"
-   '(lambda ()
-      "Toggle p0"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "Tr"
-   '(lambda ()
-      "Toggle Read!"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "Tw"
-   '(lambda ()
-      "Toggle waiting"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "waiting"))))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "T0"
+  ;;  '(lambda ()
+  ;;     "Toggle p0"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "p0")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tr"
+  ;;  '(lambda ()
+  ;;     "Toggle Read!"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "Read!")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tw"
+  ;;  '(lambda ()
+  ;;     "Toggle waiting"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "waiting")))
+  )
 #+end_src
 
 ** =pandoc=

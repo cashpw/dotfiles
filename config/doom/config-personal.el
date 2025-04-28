@@ -1542,24 +1542,25 @@ TAGS which start with \"-\" are excluded."
 
   ;; Helpers for toggling often-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "T" nil)
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "T0"
-   '(lambda ()
-      "Toggle p0"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "p0")))
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "Tr"
-   '(lambda ()
-      "Toggle Read!"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "Read!")))
-  (cashpw/evil-lambda-key
-   'normal notmuch-search-mode-map "Tw"
-   '(lambda ()
-      "Toggle waiting"
-      (interactive)
-      (cashpw/notmuch-search-toggle-tag "waiting"))))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "T0"
+  ;;  '(lambda ()
+  ;;     "Toggle p0"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "p0")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tr"
+  ;;  '(lambda ()
+  ;;     "Toggle Read!"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "Read!")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tw"
+  ;;  '(lambda ()
+  ;;     "Toggle waiting"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "waiting")))
+  )
 
 (defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
   "Converts the current buffer to org-mode in place."
