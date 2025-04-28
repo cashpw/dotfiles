@@ -1493,9 +1493,12 @@ TAGS which start with \"-\" are excluded."
 (map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
 (map!
- :map message-mode-map :localleader
- "e" #'org-mime-edit-mail-in-org-mode
- "@" #'gnus-alias-select-identity)
+ :map message-mode-map
+ :localleader
+ "e"
+ #'org-mime-edit-mail-in-org-mode
+ "@"
+ #'gnus-alias-select-identity)
 
 (after!
   notmuch
@@ -1513,18 +1516,13 @@ TAGS which start with \"-\" are excluded."
 
   ;; Reply-all should be the default.
   (evil-define-key
-    'normal
-    notmuch-show-mode-map
-    "r"
+    'normal notmuch-show-mode-map "r"
     (cmd! (notmuch-show-reply))) ;;(gnus-alias-select-identity)))
+  (evil-define-key 'normal notmuch-show-mode-map "R" #'notmuch-show-reply-sender)
   (evil-define-key
-    'normal notmuch-show-mode-map "R" #'notmuch-show-reply-sender )
+    'normal notmuch-search-mode-map "r" #'notmuch-search-reply-to-thread)
   (evil-define-key
-    'normal notmuch-search-mode-map "r"
-    #'notmuch-search-reply-to-thread)
-  (evil-define-key
-    'normal notmuch-search-mode-map "R"
-    #'notmuch-search-reply-to-thread-sender))
+    'normal notmuch-search-mode-map "R" #'notmuch-search-reply-to-thread-sender)
 
   ;; Easy archive for my most-used tags.
   (evil-define-key
