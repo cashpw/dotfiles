@@ -4777,7 +4777,7 @@ Return nil if no attendee exists with that EMAIL."
    :on-activate
    (lambda ()
      (setq cashpw/org-gcal--no-prep-reminder-summaries
-           '("Walk" "Clean house"))))
+           '("Walk" "Clean house" "Debrief"))))
   "Personal profile for `org-gcal'."
   :group 'cashpw
   :type 'sexp)
