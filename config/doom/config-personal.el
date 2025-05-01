@@ -926,6 +926,22 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (add-hook! 'json-mode-hook
            #'cashpw/json-mode--set-indent)
 
+(defmacro cashpw/icon-alias (name path)
+  "Specify an icon alias."
+  `(unless (file-exists-p ,path)
+     (error "Missing %s icon: %s" ,name ,path))
+  `(setq ,name ,path))
+
+(cashpw/icon-alias
+ cashpw/icons-hourglass-empty
+  (expand-file-name
+   "~/.local/share/icons/google-material/hourglass_bottom_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
+
+(cashpw/icon-alias
+ cashpw/icons-notifications
+  (expand-file-name
+   "~/.local/share/icons/google-material/notifications_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
+
 ;; (use-package! helm)
 ;; (use-package! exec-path-from-shell)
 (use-package! asana
@@ -1997,6 +2013,26 @@ INPUT:")
   (advice-add
    'org-encrypt-entries
    :override #'ignore))
+
+(use-package!
+    org-clock-act-on-overtime
+  :custom
+  (add-hook 'org-clock-act-on-overtime-hook #'cashpw/notify-overtime)
+  (add-hook 'org-clock-out-hook #'cashpw/notify-overtime--reset)
+  (org-clock-act-on-overtime-mode 'enable))
+
+(defvar cashpw/notify-overtime--have-notified nil
+  "Non-nil if we've already notified for the current overtime clock.")
+
+(defun cashpw/notify-overtime ()
+  "Notify that the current task is overtime."
+  (unless cashpw/notify-overtime--have-notified
+    (alert (format "Overtime: %s" org-clock-heading) :persistent t :icon cashpw/icons-hourglass-empty)
+    (setq cashpw/notify-overtime--have-notified t)))
+
+(defun cashpw/notify-overtime--reset ()
+  "Reset overtime notifier so we can notify again."
+  (setq cashpw/notify-overtime--have-notified nil))
 
 ;; (use-package! org-link-beautify
 ;;   :after org
@@ -6203,6 +6239,45 @@ See `org-clock-special-range' for KEY."
                seconds-in-day
                #'cashpw/clocktable-by-tag--update-default-properties))
 
+(defvar cashpw/feedback-loop--timer nil)
+
+(defcustom cashpw/feedback-loop--duration-minutes 30
+  "Minutes before triggering feedback loop alert."
+  :type 'number)
+
+(defun cashpw/feedback-loop--should-alert-p ()
+  "Return non-nil if we should show the alert."
+  (org-with-point-at org-clock-hd-marker
+    (not (string= (f-filename buffer-file-name) "calendar-personal.org"))))
+
+(defun cashpw/feedback-loop-alert ()
+  "Show feedback loop alert."
+  (when (cashpw/feedback-loop--should-alert-p)
+    (alert
+     org-clock-heading
+     :title (format "Feedback loop: %d minutes" cashpw/feedback-loop--duration-minutes)
+     :persistent t
+     :icon cashpw/icons-notifications)
+    (cashpw/feedback-loop--schedule-alert)))
+
+(defun cashpw/feedback-loop--schedule-alert ()
+  "Schedule feedback loop alert."
+  (setq cashpw/feedback-loop--timer
+        (run-at-time
+         (time-add
+          (current-time)
+          (* 60 cashpw/feedback-loop--duration-minutes))
+         nil
+         #'cashpw/feedback-loop-alert)))
+
+(defun cashpw/feedback-loop--unschedule-alert ()
+  "Schedule feedback loop alert."
+  (cancel-timer cashpw/feedback-loop--timer)
+  (setq cashpw/feedback-loop--timer nil))
+
+(add-hook 'org-clock-in-hook #'cashpw/feedback-loop--schedule-alert)
+(add-hook 'org-clock-out-hook #'cashpw/feedback-loop--unschedule-alert)
+
 (after! org
   (setq org-refile-targets '((nil :maxlevel . 9)
                              (org-agenda-files :maxlevel . 9))
@@ -7799,3 +7874,31 @@ The article is:
       (delete-region (point-min) (point-max))
       (insert response))
     (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
+
+(defgroup org-clock-feedback-loop nil
+  "Options related to org-clock feedback loop."
+  :tag "Org-clock feedback loop"
+  :group 'org)
+
+(defvar org-clock-feedback-loop--previous-alert-at
+  '()
+  "Alist of (heading . clock-time of last alert).")
+
+(defcustom org-clock-feedback-loop-duration-minutes
+  30
+  "Duration, in minutes, of a loop."
+  :type '(repeat string)
+  :group 'org-clock-feedback-loop)
+
+(defcustom org-clock-feedback-loop-headings-to-ignore
+  '()
+  "List of headings to not alert on."
+  :type '(repeat string)
+  :group 'org-clock-feedback-loop)
+
+(defun org-clock-feedback-loop-should-alert-p ()
+  "Return non-nil if we should alert."
+  (and
+   (not (member org-clock-heading org-clock-feedback-loop-headings-to-ignore))
+   (org-clock-get-clocked-time)
+   ))

@@ -145,6 +145,10 @@
 
 (add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
 
+(package! org-clock-act-on-overtime
+  :recipe (:host github
+           :repo "cashpw/org-clock-act-on-overtime"))
+
 ;; (package! org-link-beautify
 ;;   :recipe (:host nil
 ;;            :repo "https://repo.or.cz/org-link-beautify.git"
