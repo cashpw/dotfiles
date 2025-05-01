@@ -1885,7 +1885,13 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
   (setq
    asana-tasks-org-file cashpw/path--personal-asana
    asana-token (secret-get "asana")))
+#+end_src
 
+*** Bug fixes
+
+**** [[github:lmartel/emacs-asana/issues/26][Asana API callback-error: (void-function hash-table-contains-p)]]
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun hash-table-contains-p (key table)
   "Return non-nil if TABLE contains KEY.
 
@@ -1893,7 +1899,6 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 #+end_src
-
 ** Browser
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
