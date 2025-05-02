@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-01 Thu 14:13]
+:LAST_MODIFIED: [2025-05-02 Fri 15:19]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -8571,7 +8571,6 @@ Category | Scheduled | Effort
   (add-to-list 'org-clock-out-hook #'cashpw/org-set-inprogress-to-todo))
 #+end_src
 
-
 **** Manual clock entry
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -8857,7 +8856,6 @@ See `org-clock-special-range' for KEY."
 (add-hook 'org-clock-in-hook #'cashpw/feedback-loop--schedule-alert)
 (add-hook 'org-clock-out-hook #'cashpw/feedback-loop--unschedule-alert)
 #+end_src
-
 
 *** Behavior
 
