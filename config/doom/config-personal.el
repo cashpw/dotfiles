@@ -1804,8 +1804,8 @@ INPUT:")
 
  :config
  (setq-default
-  gptel-model 'gemini-2.5-pro-preview-03-25
-  ;; gptel-model 'gemini-2.5-flash-preview-04-17
+  ;; gptel-model 'gemini-2.5-pro-preview-03-25
+  gptel-model 'gemini-2.5-flash-preview-04-17
   gptel-backend
   (gptel-make-gemini
    "Gemini"
