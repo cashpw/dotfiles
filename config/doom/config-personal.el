@@ -590,11 +590,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    ("l")
    :desc "default"
    :n
-   "L"
+   "l"
    (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
    :desc "empty"
    :n
-   "l"
+   "L"
    (cmd! (cashpw/gptel-send ""))
    :desc "Council"
    :n
@@ -1804,7 +1804,8 @@ INPUT:")
 
  :config
  (setq-default
-  gptel-model 'gemini-2.0-flash-exp
+  gptel-model 'gemini-2.5-pro-preview-03-25
+  ;; gptel-model 'gemini-2.5-flash-preview-04-17
   gptel-backend
   (gptel-make-gemini
    "Gemini"
