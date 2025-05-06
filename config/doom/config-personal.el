@@ -6248,8 +6248,10 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/feedback-loop--should-alert-p ()
   "Return non-nil if we should show the alert."
-  (org-with-point-at org-clock-hd-marker
-    (not (string= (f-filename buffer-file-name) "calendar-personal.org"))))
+  (or
+   (not (member org-clock-heading '("Work")))
+   (org-with-point-at org-clock-hd-marker
+     (not (string= (f-filename buffer-file-name) "calendar-personal.org")))))
 
 (defun cashpw/feedback-loop-alert ()
   "Show feedback loop alert."

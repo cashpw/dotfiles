@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-03 Sat 10:28]
+:LAST_MODIFIED: [2025-05-05 Mon 15:51]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -8826,8 +8826,10 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/feedback-loop--should-alert-p ()
   "Return non-nil if we should show the alert."
-  (org-with-point-at org-clock-hd-marker
-    (not (string= (f-filename buffer-file-name) "calendar-personal.org"))))
+  (or
+   (not (member org-clock-heading '("Work")))
+   (org-with-point-at org-clock-hd-marker
+     (not (string= (f-filename buffer-file-name) "calendar-personal.org")))))
 
 (defun cashpw/feedback-loop-alert ()
   "Show feedback loop alert."
