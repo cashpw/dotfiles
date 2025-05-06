@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-06 Tue 10:09]
+:LAST_MODIFIED: [2025-05-06 Tue 16:38]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2575,36 +2575,7 @@ TAGS which start with \"-\" are excluded."
    ;; goto
    nil
    ;; keys
-   "tef")
-  ;; (let*
-  ;;     ((file cashpw/path--personal-todos)
-  ;;      (to-short
-  ;;       (let ((to-short
-  ;;              (cashpw/mail-get-short-address (message-field-value "To"))))
-  ;;         (if (member to-short cashpw/email-addresses--personal)
-  ;;             "me"
-  ;;           to-short)))
-  ;;      (from-short
-  ;;       (let ((from-short
-  ;;              (cashpw/mail-get-short-address (message-field-value "From"))))
-  ;;         (if (member from-short cashpw/email-addresses--personal)
-  ;;             "me"
-  ;;           from-short)))
-  ;;      (subject (message-field-value "Subject"))
-  ;;      (message-id
-  ;;       (replace-regexp-in-string
-  ;;        "<\\(.*\\)>" "\\1" (message-field-value "Message-ID")))
-  ;;      (headline-text
-  ;;       (s-lex-format
-  ;;        "[[notmuch:id:${message-id}][${subject} (${from-short} ➤ ${to-short})]]: Follow up :email:")))
-  ;;   (with-current-buffer (get-file-buffer file)
-  ;;     (goto-char (point-max))
-  ;;     (org-insert-heading-respect-content)
-  ;;     (org-todo "TODO")
-  ;;     (insert headline-text)
-  ;;     (org-extras-set-created)
-  ;;     (org-schedule nil)))
-  )
+   "tef"))
 
 (defun cashpw/email--close-mail-buffer ()
   "TODO"
@@ -2622,20 +2593,23 @@ TAGS which start with \"-\" are excluded."
   (remove-hook! 'org-capture-after-finalize-hook
     'cashpw/email--close-mail-buffer-and-clean-up-hook))
 
-(defun cashpw/email--close-mail-buffer-after-capture ()
+(defun cashpw/mail--close-mail-buffer-after-capture ()
   "TODO"
   (add-hook! 'org-capture-after-finalize-hook
              'cashpw/email--close-mail-buffer-and-clean-up-hook))
+
+(defun cashpw/mail--maybe-create-follow-up-todo ()
+  "Conditionally create follow-up todo based on user choice."
+  (when (y-or-n-p "Create follow-up TODO?")
+    (cashpw/mail--close-mail-buffer-after-capture)
+    (cashpw/mail-create-follow-up-todo)))
 
 (defun cashpw/message-send-and-exit ()
   (interactive)
   (org-mime-htmlize)
   (notmuch-mua-send)
-  (if (y-or-n-p "Create follow-up TODO?")
-      (progn
-        (cashpw/email--close-mail-buffer-after-capture)
-        (cashpw/mail-create-follow-up-todo))
-    (kill-buffer (current-buffer))))
+  (cashpw/mail--maybe-create-follow-up-todo)
+  (kill-buffer (current-buffer)))
 #+end_src
 
 *** Sending email
@@ -2702,7 +2676,6 @@ I need to use a different =send-mail-function= when sending email at work. I ove
 *** Keybindings
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 (map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
 
 (map!
@@ -2846,15 +2819,12 @@ https://pandoc.org/
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
   (map!
    :map elfeed-search-mode-map
-   :n
-   "u"
-   #'elfeed-update
-   :n
-   "f"
-   (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
-   :nv
-   "a"
-   #'elfeed-search-untag-all-unread)
+   :n "u" #'elfeed-update
+   :n "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+   (:prefix ("o" . "Order")
+    :desc "ascending" :n "a" (cmd! (setq elfeed-sort-order 'ascending))
+    :desc "descending" :n "d" (cmd! (setq elfeed-sort-order 'descending)))
+   :nv "a" #'elfeed-search-untag-all-unread)
   (evil-define-key
     'normal
     elfeed-search-mode-map
@@ -9320,8 +9290,17 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
   (unless (org-extras-get-priority (point))
     (org-priority)))
 
+(defun cashpw/org--prompt-for-effort-while-missing ()
+  "Prompt user for an effort until they provide a non-empty value."
+  (while
+      (or
+       (not (org-entry-get (point) "Effort"))
+       ;; The default case (clicking <enter> without typing an effort) sets :EFFORT: to an empty string.
+       (string= (org-entry-get (point) "Effort") ""))
+    (org-set-effort)))
+
 (defun cashpw/org--prompt-for-category-when-missing ()
-  "Prompt for Effort if it's missing."
+  "Prompt for category if it's missing."
   (let ((buffer-category
          (save-excursion
            (widen)
@@ -9351,20 +9330,13 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
        (("Todo"
          :keys "t"
          :children
-         (
-          ("Todo"
+         (("Todo"
            :keys "t"
            :file cashpw/path--personal-todos
            :before-finalize
            (lambda ()
              (cashpw/org--prompt-for-priority-when-missing)
-             ;; Demand an effort
-             (while
-                 (or
-                  (not (org-entry-get (point) "Effort"))
-                  ;; The default case (clicking <enter> without typing an effort) sets :EFFORT: to an empty string.
-                  (string= (org-entry-get (point) "Effort") ""))
-               (org-set-effort))
+             (cashpw/org--prompt-for-effort-while-missing)
              (cashpw/org--prompt-for-category-when-missing))
            :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
           ("Roam"
@@ -9373,26 +9345,52 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
            :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
           ("Email"
            :keys "e"
+           :message-subject
+           (lambda ()
+             (truncate-string-to-width
+              (or cashpw/email--subject (message-field-value "Subject")) 30))
+           :message-from-to
+           (lambda ()
+             (let* ((long-to
+                     (or cashpw/email--long-to (message-field-value "To")))
+                    (short-to (cashpw/mail-get-short-address long-to))
+                    (long-from
+                     (or cashpw/email--long-from (message-field-value "From")))
+                    (short-from (cashpw/mail-get-short-address long-from)))
+               (if (and (member short-to cashpw/email-addresses--personal)
+                        (member short-from cashpw/email-addresses--personal))
+                   ""
+                 (format " %s→%s" short-from short-to))))
            :file cashpw/path--personal-todos
-           :from-to "%(or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"\") (and (string= \"%:toaddress\" \"cash@cashpw.com\") (string= \"%:fromaddress\" \"cash@cashpw.com\") \"\") (format \" (%s ➤ %s)\" (or (and (string= \"%:fromaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%fromaddress\" \"cash@cashpw.com\") \"me\") \"%:fromaddress\") (or (and (string= \"%:toaddress\" \"cashbweaver@gmail.com\") \"me\") (and (string= \"%toaddress\" \"cash@cashpw.com\") \"me\") \"%:toaddress\")))"
            :children
-           (("Todo"
-             :keys "E"
-             :after-finalize (lambda () (message "buffer name: %s" (buffer-name)))
+           (("Follow-up"
+             :keys "e"
+             :before-finalize
+             (lambda ()
+               (let ((tomorrow (time-add (current-time) (days-to-time 1))))
+                 (org-schedule nil tomorrow)))
+             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
+             :immediate-finish t
              :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
             ("Todo today"
              :keys "e"
-             :before-finalize (lambda ()
-                                (org-schedule nil (current-time)))
-             :after-finalize (lambda ()
-                               (notmuch-bury-or-kill-this-buffer))
+             :before-finalize (lambda () (org-schedule nil (current-time)))
+             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
              :immediate-finish t
              :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%:subject%{from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
+              ":PROPERTIES:"
+              ":Created: %U"
+              ":END:"))
+            ("Todo (unscheduled)"
+             :keys "E"
+             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
+             :template
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))))))))
