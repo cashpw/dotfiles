@@ -6342,11 +6342,6 @@ See `org-clock-special-range' for KEY."
                             ("HOLD" . +org-todo-onhold)
                             ("PROJ" . +org-todo-project))))
 
-;; (after! org
-;;   (add-hook!
-;;    'org-after-todo-state-change-hook
-;;    'save-buffer))
-
 (defcustom cashpw/org-mode-on-inprogress--clock-in-paths
   nil
   "TODOs marked as INPROGRESS in these files will trigger a clock in.")
@@ -6379,9 +6374,7 @@ See `org-clock-special-range' for KEY."
                                                   ;;        (org-roam-db-location (expand-file-name "org-roam.db"
                                                   ;;                                                org-roam-directory)))
                                                   ;;   (cashpw/org-roam-files-with-tag "person"))
-                                                  ))
-  (add-hook! 'org-after-todo-state-change-hook
-             'cashpw/org-mode-when-inprogress))
+                                                  )))
 
 (after! org
   :config
@@ -6585,6 +6578,9 @@ See `org-clock-special-range' for KEY."
 (after! org
   :config
   (add-hook! 'org-after-todo-state-change-hook
+             ;; run-on-todo-state-change must be first
+             'run-on-todo-state-change
+             'cashpw/org-mode-when-inprogress
              'cashpw/org-mode-when-done))
 
 (after! org
