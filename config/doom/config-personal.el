@@ -822,6 +822,46 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
  '+popup-close-on-escape-h
  :override #'ignore)
 
+(defun +workspaces-switch-to-project-h (&optional dir)
+  "Creates a workspace dedicated to a new project. If one already exists, switch
+to it. If in the main workspace and it's empty, recycle that workspace, without
+renaming it.
+
+Afterwords, runs `+workspaces-switch-project-function'. By default, this prompts
+the user to open a file in the new project.
+
+This be hooked to `projectile-after-switch-project-hook'."
+  (let* ((default-directory (or dir default-directory))
+         (pname (doom-project-name))
+         (proot (file-truename default-directory))
+         ;; HACK: Clear projectile-project-root or cached roots could interfere
+         ;;   with project switching (see #3166).
+         projectile-project-root)
+    (when persp-mode
+      (if (and (not (null +workspaces-on-switch-project-behavior))
+               (or (eq +workspaces-on-switch-project-behavior t)
+                   (+workspace--protected-p (safe-persp-name (get-current-persp)))
+                   (+workspace-buffer-list)))
+          (let* ((persp (or (+workspace-get pname t)
+                            (+workspace-new pname))))
+            (+workspace-switch pname)
+            (with-current-buffer (doom-fallback-buffer)
+              (setq-local default-directory proot)
+              (hack-dir-local-variables-non-file-buffer))
+            (unless current-prefix-arg
+              (funcall +workspaces-switch-project-function proot))
+            (+workspace-message
+             (format "Switched to '%s' in new workspace" pname)
+             'success))
+        (with-current-buffer (doom-fallback-buffer)
+          (setq-local default-directory proot)
+          (hack-dir-local-variables-non-file-buffer)
+          (message "Switched to '%s'" pname))
+        (with-demoted-errors "Workspace error: %s"
+          (+workspace-rename (+workspace-current-name) pname))
+        (unless current-prefix-arg
+          (funcall +workspaces-switch-project-function proot))))))
+
 ;; (use-package! svg-tag-mode
 ;;   :config
 ;;   (setq
