@@ -1646,6 +1646,7 @@ TAGS which start with \"-\" are excluded."
    :map elfeed-search-mode-map
    :n "u" #'elfeed-update
    :n "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+   :n "+" #'cashpw/elfeed-search-set-tag
    (:prefix ("o" . "Order")
     :desc "ascending" :n "a" (cmd! (setq elfeed-sort-order 'ascending))
     :desc "descending" :n "d" (cmd! (setq elfeed-sort-order 'descending)))
@@ -1663,6 +1664,25 @@ TAGS which start with \"-\" are excluded."
     (if (= date-a date-b)
         (string< (prin1-to-string b) (prin1-to-string a))
       (> date-a date-b))))
+
+(setq cashpw/reading-list-tags
+      (string-split
+       (shell-command-to-string
+        (format "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'" cashpw/path--reading-list))
+       ":"
+       'omit-nulls))
+
+(defun cashpw/elfeed-search-set-tag (tags)
+  "Set tags on elfeed entries in search view."
+  (interactive
+   (list
+    (completing-read-multiple "Tag(s): "
+                              (append
+                               (elfeed-db-get-all-tags)
+                               cashpw/reading-list-tags))))
+  (let ((elfeed-search-remain-on-entry t))
+    (dolist (tag tags)
+      (elfeed-search-tag-all (intern tag)))))
 
 (defun cashpw/elfeed-search-for-tags (&optional tags unread-only)
   "Search for Elfeed entries tagged with TAGS."
@@ -1692,13 +1712,11 @@ TAGS which start with \"-\" are excluded."
                     (push (elfeed-feed-title value) feed-titles)
                     value)
                   elfeed-db-feeds)
-                 (reverse (delete nil feed-titles))))))
-         (search-filter
-          (format "%s=%s"
-                  (when unread-only
-                    "+unread ")
-                  (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed))))
-    (elfeed-search-set-filter search-filter)
+                 (reverse (delete nil feed-titles)))))))
+    (elfeed-search-set-filter (format "=%s%s"
+                                      (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
+                                      (when unread-only
+                                        " +unread")))
     (elfeed-search-update)))
 
 (use-package! elfeed-protocol
@@ -1731,73 +1749,21 @@ TAGS which start with \"-\" are excluded."
 
 (use-package! llm-prompts)
 
-(defvar llm-prompts-prompt--extract-wisdom-yt
-  "# IDENTITY and PURPOSE
+;; Based on https://github.com/danielmiessler/fabric/blob/main/patterns/extract_article_wisdom/system.md
+(defvar llm-prompts-prompt--summarize
+  "Please carefully review the following text with the aim of providing accurate and representative responses to the following requirements, in order:
 
-You extract surprising, insightful, and interesting information from text content. You are interested in insights related to the purpose and meaning of life, human flourishing, the role of technology in the future of humanity, artificial intelligence and its affect on humans, memes, learning, reading, books, continuous improvement, and similar topics.
-
-Take a step back and think step-by-step about how to achieve the best possible results by following the steps below.
-
-# STEPS
-
-- Extract a summary of the content in 25 words, including who is presenting and the content being discussed into a section called SUMMARY.
-
-- Extract 20 to 50 of the most surprising, insightful, and/or interesting ideas from the input in a section called IDEAS:. If there are less than 50 then collect all of them. Make sure you extract at least 20.
-
-- Extract 10 to 20 of the best insights from the input and from a combination of the raw input and the IDEAS above into a section called INSIGHTS. These INSIGHTS should be fewer, more refined, more insightful, and more abstracted versions of the best ideas in the content.
-
-- Extract 15 to 30 of the most surprising, insightful, and/or interesting quotes from the input into a section called QUOTES:. Use the exact quote text from the input.
-
-- Extract 15 to 30 of the most practical and useful personal habits of the speakers, or mentioned by the speakers, in the content into a section called HABITS. Examples include but aren't limited to: sleep schedule, reading habits, things they always do, things they always avoid, productivity tips, diet, exercise, etc.
-
-- Extract 15 to 30 of the most surprising, insightful, and/or interesting valid facts about the greater world that were mentioned in the content into a section called FACTS:.
-
-- Extract all mentions of writing, art, tools, projects and other sources of inspiration mentioned by the speakers into a section called REFERENCES. This should include any and all references to something that the speaker mentioned.
-
-- Extract the most potent takeaway and recommendation into a section called ONE-SENTENCE TAKEAWAY. This should be a 15-word sentence that captures the most important essence of the content.
-
-- Extract the 15 to 30 of the most surprising, insightful, and/or interesting recommendations that can be collected from the content into a section called RECOMMENDATIONS.
-
-# OUTPUT INSTRUCTIONS
-
-- Only output Markdown.
-
-- Write the IDEAS bullets as exactly 16 words.
-
-- Write the RECOMMENDATIONS bullets as exactly 16 words.
-
-- Write the HABITS bullets as exactly 16 words.
-
-- Write the FACTS bullets as exactly 16 words.
-
-- Write the INSIGHTS bullets as exactly 16 words.
-
-- Extract at least 25 IDEAS from the content.
-
-- Extract at least 10 INSIGHTS from the content.
-
-- Extract at least 20 items for the other output sections.
-
-- Do not give warnings or notes; only output the requested sections.
-
-- You use bulleted lists for output, not numbered lists.
-
-- Do not repeat ideas, quotes, facts, or resources.
-
-- Do not start items with the same opening words.
-
-- Ensure you follow ALL these instructions when creating your output.
-
-# INPUT
-
-INPUT:")
+1. In a section titled \"Speakers\": Identify the author, or authors.
+2. In a section titled \"Thesis\": Paraphrase the thesis in 50 words or less.
+3. In a section titled \"Summary\": Summarize the content in 200 words or less.
+4. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.")
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
   (format "%s
 
 %s"
-          llm-prompts-prompt--extract-wisdom-yt
+          llm-prompts-prompt--summarize
           (shell-command-to-string
            (format "~/third_party/fabric/fabric --transcript --youtube=%s" youtube-url))))
 
