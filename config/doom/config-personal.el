@@ -997,6 +997,8 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
+
+
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
     ;; Reddit

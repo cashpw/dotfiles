@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-06 Tue 19:04]
+:LAST_MODIFIED: [2025-05-08 Thu 10:08]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1966,6 +1966,20 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 #+end_src
+** Games
+*** Go :disabled:
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! el-go
+;;   :recipe (:host github :repo "eschulte/el-go"))
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+#+end_src
+
 ** Browser
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
