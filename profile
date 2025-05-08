@@ -41,9 +41,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 #fi
 
 if is_work_laptop; then
-  echo "foo"
   /usr/bin/setxkbmap -option "ctrl:swapcaps"
-  systemctl --user start cashbweaver-gdrive.service
+  #systemctl --user start cashbweaver-gdrive.service
   #eval "$(ssh-agent -s)"
   #ssh-add ~/.ssh/cashbweaver
 fi
