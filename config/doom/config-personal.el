@@ -1782,8 +1782,8 @@ TAGS which start with \"-\" are excluded."
 
  :config
  (setq-default
-  ;; gptel-model 'gemini-2.5-pro-preview-03-25
-  gptel-model 'gemini-2.5-flash-preview-04-17
+  gptel-model 'gemini-2.5-pro-preview-05-06
+  ;; gptel-model 'gemini-2.5-flash-preview-04-17
   gptel-backend
   (gptel-make-gemini
    "Gemini"
