@@ -286,7 +286,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 **** Comparison
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/time-greater-than-p (a b)
   "Return non-nil if time value A is greater than time value B."
   (and (not (time-equal-p a b))
@@ -298,14 +298,14 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 *** Holidays
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defvar cashpw/holiday-mothers-day '(holiday-float 5 0 2 "Mother's Day"))
 #+end_src
 
 #+RESULTS:
 : cashpw/holiday-mothers-day
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
   "Return next HOLIDAY occurrance time.
 

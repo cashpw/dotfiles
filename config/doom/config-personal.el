@@ -193,6 +193,44 @@ Reference: https://emacs.stackexchange.com/a/43985"
      daylight-savings-time-p
      utc-offset)))
 
+(defun cashpw/time-greater-than-p (a b)
+  "Return non-nil if time value A is greater than time value B."
+  (and (not (time-equal-p a b))
+       (not (time-less-p a b))))
+
+(defvar cashpw/holiday-mothers-day '(holiday-float 5 0 2 "Mother's Day"))
+
+(defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
+  "Return next HOLIDAY occurrance time.
+
+The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next year's time."
+  (let* ((holiday-buffer-name "*get-next-holiday*")
+         (this-year (string-to-number (format-time-string "%Y" (current-time))))
+         (next-year (1+ this-year))
+         (holiday-strings
+          (progn
+            (list-holidays
+             (if force-next-year
+                 next-year
+               this-year)
+             next-year (list holiday))
+            (split-string (with-current-buffer holiday-buffer
+                            (buffer-string))
+                          "\n")))
+         (holiday-times
+          (mapcar
+           (lambda (holiday-string)
+             (date-to-time (car (split-string holiday-string ": "))))
+           holiday-strings)))
+    (kill-buffer holiday-buffer)
+    (car
+     (seq-filter
+      (lambda (holiday-time)
+        (cashpw/time-greater-than-p holiday-time (current-time)))
+      holiday-times))))
+
+;; (cashpw/holiday-get-next-time '(holiday-float 5 0 2 "Mother's Day"))
+
 (defvar cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
   "Projects directory.")
