@@ -7918,31 +7918,3 @@ The article is:
       (delete-region (point-min) (point-max))
       (insert response))
     (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
-
-(defgroup org-clock-feedback-loop nil
-  "Options related to org-clock feedback loop."
-  :tag "Org-clock feedback loop"
-  :group 'org)
-
-(defvar org-clock-feedback-loop--previous-alert-at
-  '()
-  "Alist of (heading . clock-time of last alert).")
-
-(defcustom org-clock-feedback-loop-duration-minutes
-  30
-  "Duration, in minutes, of a loop."
-  :type '(repeat string)
-  :group 'org-clock-feedback-loop)
-
-(defcustom org-clock-feedback-loop-headings-to-ignore
-  '()
-  "List of headings to not alert on."
-  :type '(repeat string)
-  :group 'org-clock-feedback-loop)
-
-(defun org-clock-feedback-loop-should-alert-p ()
-  "Return non-nil if we should alert."
-  (and
-   (not (member org-clock-heading org-clock-feedback-loop-headings-to-ignore))
-   (org-clock-get-clocked-time)
-   ))
