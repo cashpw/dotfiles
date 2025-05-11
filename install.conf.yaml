@@ -8,6 +8,7 @@
   - ~/.fonts
   - ~/.scripts
   - ~/.config
+  - ~/.local/share/icons/google-material
 
 - link:
     ~/.config/:
