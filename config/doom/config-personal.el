@@ -2044,7 +2044,11 @@ TAGS which start with \"-\" are excluded."
 (defun cashpw/notify-overtime ()
   "Notify that the current task is overtime."
   (unless cashpw/notify-overtime--have-notified
-    (alert (format "Overtime: %s" org-clock-heading) :persistent t :icon cashpw/icons-hourglass-empty)
+    (alert
+     (format "%s" org-clock-heading)
+     :title "Over time!"
+     :persistent t
+     :icon cashpw/icons-hourglass-empty)
     (setq cashpw/notify-overtime--have-notified t)))
 
 (defun cashpw/notify-overtime--reset ()

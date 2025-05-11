@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-11 Sun 12:32]
+:LAST_MODIFIED: [2025-05-11 Sun 12:43]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3424,7 +3424,11 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 (defun cashpw/notify-overtime ()
   "Notify that the current task is overtime."
   (unless cashpw/notify-overtime--have-notified
-    (alert (format "Overtime: %s" org-clock-heading) :persistent t :icon cashpw/icons-hourglass-empty)
+    (alert
+     (format "%s" org-clock-heading)
+     :title "Over time!"
+     :persistent t
+     :icon cashpw/icons-hourglass-empty)
     (setq cashpw/notify-overtime--have-notified t)))
 
 (defun cashpw/notify-overtime--reset ()
