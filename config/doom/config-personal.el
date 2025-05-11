@@ -1069,17 +1069,26 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 
 (defun cashpw/feh-gallery (image-paths)
   "Open a feh gallery of IMAGE-PATHS."
-  (shell-command (concat "feh "
-                         "--fullscreen "
-                         (string-join image-paths " "))))
+  (shell-command (concat "feh " "--fullscreen " (string-join image-paths " "))))
 
 (defun cashpw/org-get-link-image-paths-in-buffer ()
   "Return list of image paths from links in current buffer."
-  (org-element-map (org-element-parse-buffer) 'link
+  (org-element-map
+      (org-element-parse-buffer) 'link
     (lambda (link)
-      (when (string= (org-element-property :type link) "file")
-        (concat (cashpw/maybe-add-trailing-forward-slash default-directory)
-                (org-element-property :path link))))))
+      (cond
+       ((string= (org-element-property :type link) "file")
+        (concat
+         (cashpw/maybe-add-trailing-forward-slash default-directory)
+         (org-element-property :path link)))
+       ((string= (org-element-property :type link) "attachment")
+        (concat
+         (cashpw/maybe-add-trailing-forward-slash
+          (save-excursion
+            (goto-char (org-element-property :begin link))
+            (org-agenda-with-point-at-orig-entry nil
+              (org-attach-dir))))
+         (org-element-property :path link)))))))
 
 (defun cashpw/feh-gallery-of-linked-images-in-buffer ()
   "Open a feh gallery of all images in the current buffer."
@@ -2045,7 +2054,7 @@ TAGS which start with \"-\" are excluded."
   "Notify that the current task is overtime."
   (unless cashpw/notify-overtime--have-notified
     (alert
-     (format "%s" org-clock-heading)
+     org-clock-heading
      :title "Over time!"
      :persistent t
      :icon cashpw/icons-hourglass-empty)
