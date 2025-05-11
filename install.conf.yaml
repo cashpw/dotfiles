@@ -16,6 +16,9 @@
     ~/.scripts/:
       glob: true
       path: scripts/*
+    ~/.local/share/icons/google-material/:
+      glob: true
+      path: local/share/icons/google-material/*
     ~/.Xresources:
     ~/.Xresources.base:
     ~/.xinitrc:
