@@ -45,3 +45,6 @@
     command: bash check_programs.sh
     description: Checking for expected programs.
     stdout: true
+  -
+    command: bash install_zotra.sh
+    description: Installing zotra

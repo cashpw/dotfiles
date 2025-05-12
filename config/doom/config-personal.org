@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-11 Sun 15:46]
+:LAST_MODIFIED: [2025-05-12 Mon 09:41]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3405,6 +3405,24 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
   (advice-add
    'org-encrypt-entries
    :override #'ignore))
+#+end_src
+
+**** =zotra=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! zotra)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! zotra
+  :custom
+  (zotra-backend 'zotra-server)
+  (zotra-default-bibliography cashpw/path--notes-bibliography)
+  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/")))
 #+end_src
 
 **** =org-clock-act-on-overtime=
@@ -10163,10 +10181,12 @@ See [[*Mail][Mail]].
 *** TODO Citations
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(setq
- cashpw/path--roam-bibliography (format "%s/proj/notes/bibliography.bib"
+(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
                                         cashpw/path--home-dir)
- cashpw/bibliographies `(,cashpw/path--roam-bibliography))
+  "Path to bibliograpy in notes.")
+
+(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
+  "List of my bibliographies.")
 #+end_src
 
 **** Config

@@ -2,10 +2,13 @@ amixer
 dbus-launch
 doom
 emacs
+fzf
 google-chrome
 i3
 i3blocks
 maim
+node
+npm
 nvim
 pipenv
 playerctl
@@ -16,4 +19,3 @@ spotify
 unzip
 xclip
 zip
-fzf

@@ -148,6 +148,8 @@
 
 (add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
 
+(package! zotra)
+
 (package! org-clock-act-on-overtime
   :recipe (:host github
            :repo "cashpw/org-clock-act-on-overtime"))

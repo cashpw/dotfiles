@@ -32,4 +32,5 @@ alias transcript='fabric --transcript --youtube '
 alias rson='redshift -O 3700 -l 37.63:-122.41 -b 1.0:0.7'
 alias rsdark='redshift -O 3700 -l 37.63:-122.41 -b 0.7:0.7'
 alias rsoff='redshift -x'
-
+## Zotra
+alias zotra='node ~/.local/share/zotra-server/bin/index.js'

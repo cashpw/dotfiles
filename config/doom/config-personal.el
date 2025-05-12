@@ -2040,6 +2040,12 @@ TAGS which start with \"-\" are excluded."
    'org-encrypt-entries
    :override #'ignore))
 
+(use-package! zotra
+  :custom
+  (zotra-backend 'zotra-server)
+  (zotra-default-bibliography cashpw/path--notes-bibliography)
+  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/")))
+
 (use-package!
     org-clock-act-on-overtime
   :custom
@@ -7415,10 +7421,12 @@ Reference: https://superuser.com/a/604264"
    (point-min)
    (point-max)))
 
-(setq
- cashpw/path--roam-bibliography (format "%s/proj/notes/bibliography.bib"
+(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
                                         cashpw/path--home-dir)
- cashpw/bibliographies `(,cashpw/path--roam-bibliography))
+  "Path to bibliograpy in notes.")
+
+(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
+  "List of my bibliographies.")
 
 (after! citar
   :when (modulep! :completion vertico)
