@@ -6768,6 +6768,23 @@ See `org-clock-special-range' for KEY."
            ,(lambda ()
               (goto-char (point-min))
               (org-fc-type-cloze-init 'deletion)))
+          ("Photo"
+           :keys "p"
+           :template
+           ("* %^{Name of card} :photo:"
+            ":PROPERTIES:"
+            ":CREATED: %U"
+            ":END:"
+            ""
+            "%?"
+            ""
+            "** TODO Back"
+            ""
+            "TODO")
+           :prepare-finalize
+           ,(lambda ()
+              (goto-char (point-min))
+              (org-fc-type-double-init)))
           ("Double"
            :keys "d"
            :template
