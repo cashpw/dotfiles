@@ -3,7 +3,7 @@
     frame_width = 1
     frame_color = "#788388"
     
-    #font = Noto Sans 10
+    font = Noto Sans 10
     
     # Allow a small subset of html markup:
     #   <b>bold</b>
@@ -25,7 +25,8 @@
     #   %I  iconname (without its path)
     #   %p  progress value if set ([  0%] to [100%]) or nothing
     # Markup is allowed
-    format = "%s %p\n%b"
+    #format = "%s %p\n%b"
+    format = "<span font="Noto Sans 12">%s</span>\n<span font="Noto Sans 10">%b</span>"
     
     # Sort messages by urgency.
     sort = yes

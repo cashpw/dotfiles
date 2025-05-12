@@ -8,6 +8,7 @@
   - ~/.fonts
   - ~/.scripts
   - ~/.config
+  - ~/.local/share/zotra-server
   - ~/.local/share/icons/google-material
 
 - link:
@@ -17,6 +18,9 @@
     ~/.scripts/:
       glob: true
       path: scripts/*
+    ~/.local/share/zotra-server/:
+      glob: true
+      path: local/share/zotra-server/*
     ~/.local/share/icons/google-material/:
       glob: true
       path: local/share/icons/google-material/*
