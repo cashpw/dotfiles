@@ -259,6 +259,13 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
   (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
   "Reading list.")
 
+(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
+                                        cashpw/path--home-dir)
+  "Path to bibliograpy in notes.")
+
+(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
+  "List of my bibliographies.")
+
 (setenv "GPG_AGENT_INFO")
 
 (use-package!
@@ -7420,13 +7427,6 @@ Reference: https://superuser.com/a/604264"
   (cashpw/replace-smart-quotes
    (point-min)
    (point-max)))
-
-(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
-                                        cashpw/path--home-dir)
-  "Path to bibliograpy in notes.")
-
-(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
-  "List of my bibliographies.")
 
 (after! citar
   :when (modulep! :completion vertico)

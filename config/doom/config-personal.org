@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-12 Mon 09:41]
+:LAST_MODIFIED: [2025-05-12 Mon 10:14]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -371,6 +371,13 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
 (defvar cashpw/path--reading-list
   (s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
   "Reading list.")
+
+(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
+                                        cashpw/path--home-dir)
+  "Path to bibliograpy in notes.")
+
+(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
+  "List of my bibliographies.")
 #+end_src
 
 ** Secrets
@@ -10179,15 +10186,6 @@ Reference: https://superuser.com/a/604264"
 See [[*Mail][Mail]].
 
 *** TODO Citations
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
-                                        cashpw/path--home-dir)
-  "Path to bibliograpy in notes.")
-
-(defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
-  "List of my bibliographies.")
-#+end_src
 
 **** Config
 
