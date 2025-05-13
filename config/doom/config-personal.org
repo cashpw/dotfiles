@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-12 Mon 10:14]
+:LAST_MODIFIED: [2025-05-13 Tue 13:36]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1553,7 +1553,8 @@ biblio            ; Writes a PhD for you (citation needed)
 (lsp               ; M-x vscode
  ;; Prefer `eglot' because corporate tools also use Eglot.
  +eglot)
-magit             ; a git porcelain for Emacs
+(magit
+ +forge)             ; a git porcelain for Emacs
 ;;make              ; run make tasks from Emacs
 ;;pass              ; password manager for nerds
 pdf               ; pdf enhancements

@@ -124,7 +124,8 @@
  (lsp               ; M-x vscode
   ;; Prefer `eglot' because corporate tools also use Eglot.
   +eglot)
- magit             ; a git porcelain for Emacs
+ (magit
+  +forge)             ; a git porcelain for Emacs
  ;;make              ; run make tasks from Emacs
  ;;pass              ; password manager for nerds
  pdf               ; pdf enhancements
