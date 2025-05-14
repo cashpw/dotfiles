@@ -318,8 +318,6 @@ assign [class="firefox-esr"] 9
 #         Autolaunch
 ################################################################################
 
-#set $scripts_path "/home/cashweaver/.scripts"
 exec rxvt-unicode
-exec ~/third_party/Zotero_linux-x86_64/zotero
 exec firefox-esr
 exec --no-startup-id redshift -O 3000
