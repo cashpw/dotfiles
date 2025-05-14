@@ -1042,7 +1042,11 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
-
+(use-package el-go
+  :custom
+  ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
+  (go-board-black-piece "○")
+  (go-board-white-piece "●"))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
