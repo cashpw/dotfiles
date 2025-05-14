@@ -1809,10 +1809,13 @@ TAGS which start with \"-\" are excluded."
 (defvar llm-prompts-prompt--summarize
   "Please carefully review the following text with the aim of providing accurate and representative responses to the following requirements, in order:
 
-1. In a section titled \"Speakers\": Identify the author, or authors.
+1. In a section titled \"Speakers\": Identify the speaker, or speakers, in a bullet-point list.
 2. In a section titled \"Thesis\": Paraphrase the thesis in 50 words or less.
 3. In a section titled \"Summary\": Summarize the content in 200 words or less.
-4. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.")
+4. In a section titled \"References\": List all of the books, articles, and other referenced sources.
+5. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.
+6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
+  "LLM prompt to summarize content.")
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
@@ -1824,51 +1827,57 @@ TAGS which start with \"-\" are excluded."
            (format "~/third_party/fabric/fabric --transcript --youtube=%s" youtube-url))))
 
 (use-package!
- gptel
- :custom (gptel-default-mode 'org-mode) (gptel-track-media t)
- ;; (gptel-directives
- ;;  `((default . ,cashpw/llm--default-prompt)
- ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
- ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
- ;;    (writing . ,cashpw/llm--writing-prompt)
- ;;    (programming . ,cashpw/llm--programming-prompt)
- ;;    (chat . ,cashpw/llm--chat-prompt)))
+    gptel
+  :custom (gptel-default-mode 'org-mode) (gptel-track-media t)
+  ;; (gptel-directives
+  ;;  `((default . ,cashpw/llm--default-prompt)
+  ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
+  ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
+  ;;    (writing . ,cashpw/llm--writing-prompt)
+  ;;    (programming . ,cashpw/llm--programming-prompt)
+  ;;    (chat . ,cashpw/llm--chat-prompt)))
 
- :config
- (setq-default
-  gptel-model 'gemini-2.5-pro-preview-05-06
-  ;; gptel-model 'gemini-2.5-flash-preview-04-17
-  gptel-backend
-  (gptel-make-gemini
-   "Gemini"
-   :key
-   (secret-get
-    (if (cashpw/machine-p 'work-cloudtop)
-        "corporate-gemini"
-      "personal-gemini"))
-   :stream t))
+  :config
+  (setq-default
+   gptel-model 'gemini-2.5-pro-preview-05-06
+   ;; gptel-model 'gemini-2.5-flash-preview-04-17
+   gptel-backend
+   (gptel-make-gemini
+       "Gemini"
+     :key
+     (secret-get
+      (if (cashpw/machine-p 'work-cloudtop)
+          "corporate-gemini"
+        "personal-gemini"))
+     :stream t))
 
- (defun cashpw/gptel-send (prompt)
-   "Invoke `gptel-send' with specific PROMPT."
-   (interactive (list (llm-prompts-select)))
-   (let ((gptel--system-message prompt))
-     (gptel-send)))
+  (defun cashpw/gptel-context-add-file-glob (pattern)
+    "Add glob of files matched by PATTERN."
+    (interactive "sPattern: ")
+    (dolist (file (f-glob pattern))
+      (gptel-context-add-file file)))
 
- (defun cashpw/gptel-send--buffer (system-message)
-   "TODO."
-   (interactive)
-   (let* ((prompt
-           (if (use-region-p)
-               (buffer-substring (region-beginning) (region-end))
-             (buffer-substring (point-min) (point))))
-          (gptel--system-message "")
-          (empty-prefix-alist '((org-mode . "")))
-          (gptel-prompt-prefix-alist empty-prefix-alist))
-     (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
-     (with-current-buffer "*LLM*"
-       (setq-local gptel--system-message "")
-       (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
-       (gptel-send)))))
+  (defun cashpw/gptel-send (prompt)
+    "Invoke `gptel-send' with specific PROMPT."
+    (interactive (list (llm-prompts-select)))
+    (let ((gptel--system-message prompt))
+      (gptel-send)))
+
+  (defun cashpw/gptel-send--buffer (system-message)
+    "TODO."
+    (interactive)
+    (let* ((prompt
+            (if (use-region-p)
+                (buffer-substring (region-beginning) (region-end))
+              (buffer-substring (point-min) (point))))
+           (gptel--system-message "")
+           (empty-prefix-alist '((org-mode . "")))
+           (gptel-prompt-prefix-alist empty-prefix-alist))
+      (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
+      (with-current-buffer "*LLM*"
+        (setq-local gptel--system-message "")
+        (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
+        (gptel-send)))))
 
 (after!
  (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
