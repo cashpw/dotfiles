@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-13 Tue 13:36]
+:LAST_MODIFIED: [2025-05-14 Wed 05:13]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3431,7 +3431,7 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
    :override #'ignore))
 #+end_src
 
-**** =zotra=
+**** =zotra=, bibliography
 
 ***** Package
 
