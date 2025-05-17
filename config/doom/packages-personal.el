@@ -104,10 +104,10 @@
 (package! asana
   :recipe (:host github :repo "cashpw/asana.el"))
 
-(package! el-go
-  :recipe (:host github
-           :repo "cashpw/el-go"
-           :branch "fix/missing-backends"))
+;; (package! el-go
+;;   :recipe (:host github
+;;            :repo "cashpw/el-go"
+;;            :branch "fix/missing-backends"))
 
 ;; (package! w3m)
 
@@ -239,9 +239,6 @@
 (package! org-node
   :recipe (:host github
            :repo "meedstrom/org-node"))
-
-(package! org-node-fakeroam
-  :recipe (:host github :repo "meedstrom/org-node-fakeroam"))
 
 (package! org-roam-ui)
 

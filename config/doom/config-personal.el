@@ -1042,11 +1042,11 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
-(use-package el-go
-  :custom
-  ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
-  (go-board-black-piece "○")
-  (go-board-white-piece "●"))
+;; (use-package el-go
+;;   :custom
+;;   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
+;;   (go-board-black-piece "○")
+;;   (go-board-white-piece "●"))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
@@ -2064,7 +2064,60 @@ TAGS which start with \"-\" are excluded."
   :custom
   (zotra-backend 'zotra-server)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
-  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/")))
+  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
+
+  (bibtex-dialect 'biblatex)
+  (bibtex-entry-format '(opts-or-alts
+                         ;; required-fields
+                         numerical-fields))
+  (bibtex-autokey-year-length 4)
+  (bibtex-autokey-name-year-separator "")
+  (bibtex-autokey-year-title-separator "")
+  (bibtex-autokey-titleword-separator "")
+  (bibtex-autokey-titlewords 5)
+  (bibtex-autokey-titlewords-stretch 1)
+  (bibtex-autokey-titleword-length 'infty)
+  (bibtex-autokey-titleword-ignore '("A"
+                                     "An"
+                                     "On"
+                                     "The"
+                                     "Eine?"
+                                     "Der"
+                                     "Die"
+                                     "Das"
+                                     ;; "[^[:upper:]].*"
+                                     ".*[^[:upper:][:lower:]0-9].*"))
+  (bibtex-autokey-titleword-case-convert-function (lambda (str)
+                                                    (titlecase--string str nil))))
+
+(defun cashpw/bibtex-generate-autokey ()
+  "Generate automatically a key for a BibTeX entry.
+Use the author/editor, the year and the title field.
+The algorithm works as follows."
+  (let* ((journal (bibtex-autokey-get-field "journal"))
+         (names (bibtex-autokey-get-names))
+         (title (bibtex-autokey-get-title))
+         (year (bibtex-autokey-get-year))
+         (autokey (cond
+                   ((and
+                     (not (string-empty-p names))
+                     (not (string-empty-p title))
+                     (not (string-empty-p year)))
+                    (s-lex-format "${names}${title}${year}"))
+                   ((and
+                     (not (string-empty-p journal))
+                     (not (string-empty-p title))
+                     (not (string-empty-p year)))
+                    (s-lex-format "${journal}${title}${year}"))
+                   (t
+                    (s-lex-format "${names}${title}${year}")))))
+    (if bibtex-autokey-before-presentation-function
+        (funcall bibtex-autokey-before-presentation-function autokey)
+      autokey)))
+
+  (advice-add
+   'bibtex-generate-autokey
+   :override 'cashpw/bibtex-generate-autokey)
 
 (use-package!
     org-clock-act-on-overtime
@@ -3278,11 +3331,12 @@ Return nil if no attendee exists with that EMAIL."
     org-node
   :demand t
   :after org-roam
-  :hook ((org-mode . org-node-cache-mode))
   :custom
-  (org-node-creation-fn #'org-node-fakeroam-new-via-roam-capture)
+  (org-mem-watch-dirs `(,cashpw/path--notes-dir))
+  (org-mem-do-sync-with-org-id t)
+  (org-node-creation-fn #'org-node-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam-actual)
-  (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
+  (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
   (org-node-filter-fn
    (lambda (node)
      (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
@@ -3290,66 +3344,14 @@ Return nil if no attendee exists with that EMAIL."
           (not (s-ends-with-p "archive" (org-node-get-file node)))
           ;; Exclude flashcards
           (not (member "fc" (org-node-get-tags-local node))))))
-  (org-node-format-candidate-fn
-   (lambda (node title)
-     (if (org-node-get-is-subtree node)
-         (let ((ancestors
-                (cons
-                 (org-node-get-file-title-or-basename node)
-                 (org-node-get-olp node)))
-               (result nil))
-           (dolist (anc ancestors)
-             (push (propertize anc 'face 'shadow) result)
-             (push " > " result))
-           (push title result)
-           (string-join (nreverse result)))
-       title)))
+
   :config
+  (org-mem-updater-mode)
+  (org-node-cache-mode)
+  (org-node-roam-accelerator-mode)
   (org-node-complete-at-point-mode)
   (advice-add 'org-roam-node-find :override 'org-node-find)
   (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  ;; (defun cashpw/org-node-complete-at-point ()
-  ;;   "Complete symbol at point as an org ID"
-  ;;   (when (and (eq major-mode 'org-mode)
-  ;;              (thing-at-point 'word)
-  ;;              (not (org-in-src-block-p))
-  ;;              (not (save-match-data (org-in-regexp org-link-any-re))))
-  ;;     (let ((bounds (bounds-of-thing-at-point 'word))
-  ;;           (top-level-keys
-  ;;            (seq-filter
-  ;;             (lambda (key)
-  ;;               (let ((node (gethash key org-node-collection)))
-  ;;                 (and (not (s-starts-with-p "[cite:" key)))))
-  ;;             (hash-table-keys org-node-collection))))
-  ;;       (list
-  ;;        (car bounds) (cdr bounds) top-level-keys
-  ;;        :exit-function
-  ;;        (lambda (str _status)
-  ;;          (let ((node (gethash str org-node-collection)))
-  ;;            (delete-char (- (length str)))
-  ;;            (insert
-  ;;             "[[id:" (org-node-get-id node) "]["
-  ;;             (or (and node
-  ;;                      (let ((aliases (org-node-get-aliases node)))
-  ;;                        (message "aliases: %s; str: %s" aliases str)
-  ;;                        (--first (string-search it str) aliases)))
-  ;;                 (and node (org-node-get-title node)) str)
-  ;;             "]]")))
-  ;;        ;; Proceed with the next completion function if the returned titles
-  ;;        ;; do not match. This allows the default Org capfs or custom capfs
-  ;;        ;; of lower priority to run.
-  ;;        :exclusive 'no))))
-  ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
-  )
-
-(use-package! org-node-fakeroam
-  :after (:all org-roam org-node)
-  :config
-  (org-roam-db-autosync-mode 0)
-  (org-node-fakeroam-jit-backlinks-mode) ;; no use roam db to build buffer
-  (org-node-fakeroam-fast-render-mode) ;; build the buffer fast
-  (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
   )
 
 (use-package!

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-14 Wed 05:13]
+:LAST_MODIFIED: [2025-05-17 Sat 10:23]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1114,6 +1114,8 @@ Doom Emacs provides =alert=.
    ("o")
    :desc "Elfeed"
    :n "e" #'elfeed
+   ;; Override DOOM keybinding
+   :n "b" #'cashpw/eww
    (:prefix
     ("n")
     :desc "Commonplace"
@@ -1975,20 +1977,20 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
     (not (eq x (gethash key table x)))))
 #+end_src
 ** Games
-*** Go :disabled:
+*** Go
 **** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! el-go
+(package! go
   :recipe (:host github
            :repo "cashpw/el-go"
-           :branch "fix/missing-backends"))
+           :branch "feat/missing-backends")
 #+end_src
 
 **** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package el-go
+(use-package go
   :custom
   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
   (go-board-black-piece "○")
@@ -2030,11 +2032,193 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 #+RESULTS:
 : browse-url-firefox
 
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(cl-defstruct (browser-search-engine)
+  "A search engine."
+  (name nil :type 'string :documentation "Human-readable name.")
+  (id nil :type 'string :documentation "Unique id.")
+  (keys nil :type '(repeat string) :documentation "List of keys; shortcodes for selecting the search engine.")
+  (prefix nil :type 'string :documentation "URL search perfix; for example: http://www.google.com/search?q="))
+
+(setq cashpw/browser-search-engines
+      `(,(make-browser-search-engine
+          :name
+          "DuckDuckGo"
+          :id "duckduckgo"
+          :keys '("@ddg" "@duckduckgo")
+          :prefix "https://duckduckgo.com/html/?q=")
+        ,(make-browser-search-engine
+          :name
+          "Wikipedia"
+          :id "wikipedia"
+          :keys '("@wikipedia")
+          :prefix "https://en.wikipedia.org/w/index.php?search=")
+        ;; Disabled because Google requires Javascript
+        ;; (:name "Google"
+        ;;  :keys '("@google")
+        ;;  :search-prefix "https://www.google.com/search?q=")
+        ))
+
+(defun cashpw/browser-get-search-prefix-alist ()
+  "Return alist of search prefixes."
+  (-flatten
+   (mapcar
+    (lambda (search-engine)
+      (mapcar
+       (lambda (key)
+         `(,key . ,(plist-get search-engine :search-prefix)))
+       (plist-get search-engine :keys)))
+    cashpw/browser-search-engines)))
+
+(defun cashpw/browser-select-url ()
+  "Select URL from history and search engines."
+  (let* ((search-prefix-alist (cashpw/browser-get-search-prefix-alist))
+         (history-alist
+          (--map
+           `(,it . ,it)
+           (lru-cache-table cashpw/browser-history)))
+         (selection (completing-read "URL/Query: "
+                                     (append
+                                      search-prefix-alist
+                                      history-alist)
+                                     nil
+                                     'require-match)))
+    (when (s-starts-with-p "@" selection))
+
+
+    ))
+
+(defun cashpw/browser-get-search-prefix ()
+  "Return selected search prefix."
+  (when (= (length cashpw/browser-search-engines) 0)
+    (error "Must have at least one search engine"))
+  (if (= 1 (length cashpw/browser-search-engines))
+      (plist-get (nth 0 cashpw/browser-search-engines) :search-prefix)
+    (let* ((search-prefixes (cashpw/browser-get-search-prefix-alist)))
+      (cdr
+       (assoc
+        (completing-read "Search engine: " search-prefixes
+                         nil
+                         'require-match)
+        search-prefixes)))))
+
+(defun cashpw/eww ()
+  "Open EWW."
+  (interactive)
+  (let* ((eww-search-prefix (cashpw/browser-get-search-prefix))
+         (url
+          (read-string "Query: ")
+          ))
+    (eww)))
+#+end_src
+*** Search engines
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(cl-defstruct (browser-search-engine)
+  "A search engine."
+  (name nil :type 'string :documentation "Human-readable name.")
+  (id nil :type 'string :documentation "Unique id.")
+  (keys nil :type '(repeat string) :documentation "List of keys; shortcodes for selecting the search engine.")
+  (prefix nil :type 'string :documentation "URL search perfix; for example: http://www.google.com/search?q="))
+
+(setq cashpw/browser-search-engines
+      `(,(make-browser-search-engine
+          :name
+          "DuckDuckGo"
+          :id "duckduckgo"
+          :keys '("@ddg" "@duckduckgo")
+          :prefix "https://duckduckgo.com/html/?q=")
+        ,(make-browser-search-engine
+          :name
+          "Wikipedia"
+          :id "wikipedia"
+          :keys '("@wikipedia")
+          :prefix "https://en.wikipedia.org/w/index.php?search=")
+        ;; Disabled because Google requires Javascript
+        ;; (:name "Google"
+        ;;  :keys '("@google")
+        ;;  :search-prefix "https://www.google.com/search?q=")
+        ))
+
+(defun cashpw/browser-search-engine-alist ()
+  "Return alist of search engines, keyed by keys."
+  (-flatten
+   (mapcar
+    (lambda (search-engine)
+      (mapcar
+       (lambda (key)
+         `(,key . ,search-engine))
+       (browser-search-engine-keys search-engine)))
+    cashpw/browser-search-engines)))
+#+end_src
+
 *** EmacsWebWowser (eww)
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (after! eww
-;;   (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+(after! eww (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+
+(defun cashpw/eww ()
+  "Open EWW."
+  (interactive)
+  (eww (cashpw/browser-select-url)))
+
+(defun cashpw/browser-select-url ()
+  "Return selected url based on history and search engines."
+  (let* ((options
+          (append
+           (cashpw/browser-search-engine-alist)
+           (--map
+            `(,it . ,it)
+            (hash-table-keys (lru-cache-table cashpw/browser-url-history)))))
+         (selection
+          (completing-read "URL/Search: " options nil 'require-match)))
+    (if (s-starts-with-p "@" selection)
+        (let* ((search-engine (cdr (assoc selection options)))
+               (search-engine-id (browser-search-engine-id search-engine))
+               (query-history
+                (cond
+                 ((string= search-engine-id "wikipedia")
+                  cashpw/browser-wikipedia-history)
+                 ((string= search-engine-id "duckduckgo")
+                  cashpw/browser-duckduckgo-history)))
+               (query
+                (completing-read
+                 "Query: " (hash-table-keys (lru-cache-table query-history)))))
+          (unless (member
+                   query (hash-table-keys (lru-cache-table query-history)))
+            (lru-put query t query-history))
+          (concat
+           (browser-search-engine-prefix search-engine)
+           (mapconcat #'url-hexify-string (split-string query) "+")))
+      selection)))
 #+end_src
+
+**** History
+***** URLs
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/browser-url-history (lru-create :size 100 :test #'equal))
+
+(defcustom cashpw/browser-url-history-exclude-patterns '()
+  "Patterns ")
+
+(defun cashpw/browser-history-update ()
+  "Add current buffer's url to history."
+  (let ((url (plist-get eww-data :url)))
+    (unless (--any
+             (string-match it url)
+             cashpw/browser-url-history-exclude-patterns)
+      (lru-put url t cashpw/browser-history))))
+
+(add-hook 'eww-after-render-hook 'cashpw/browser-history-update)
+#+end_src
+
+***** Queries
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/browser-wikipedia-history (lru-create :size 50 :test #'equal))
+(defvar cashpw/browser-duckduckgo-history (lru-create :size 50 :test #'equal))
+#+end_src
+
+
 *** WWWを見る (w3m) :disabled:
 
 #+begin_src emacs-lisp :tangle packages-personal.el
@@ -3442,11 +3626,73 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! zotra
+(use-package!
+    zotra
   :custom
   (zotra-backend 'zotra-server)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
-  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/")))
+  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
+  (zotra-after-get-bibtex-entry-hook nil)
+
+  (bibtex-dialect 'biblatex)
+  (bibtex-entry-format
+   '(opts-or-alts
+     ;; required-fields
+     numerical-fields))
+  (bibtex-autokey-edit-before-use nil)
+  (bibtex-autokey-year-length 4)
+  (bibtex-autokey-name-year-separator "")
+  (bibtex-autokey-year-title-separator "")
+  (bibtex-autokey-titleword-separator "")
+  (bibtex-autokey-titlewords 5)
+  (bibtex-autokey-titlewords-stretch 1)
+  (bibtex-autokey-titleword-length 'infty)
+  (bibtex-autokey-titleword-ignore
+   '("A" "An" "On" "The" "Eine?" "Der" "Die" "Das"
+     ;; "[^[:upper:]].*"
+     ".*[^[:upper:][:lower:]0-9].*"))
+  (bibtex-autokey-name-case-convert-function #'identity)
+  (bibtex-autokey-titleword-case-convert-function
+   (lambda (str) (titlecase--string str nil)))
+
+  :config
+  (add-hook
+   'zotra-after-get-bibtex-entry-hook 'cashpw/bibtex-clean-entry-override-key))
+
+(defun cashpw/bibtex-clean-entry-override-key ()
+  "Invoke `bibtex-clean-entry' with key override."
+  (bibtex-clean-entry (bibtex-generate-autokey)))
+
+(defun cashpw/bibtex-generate-autokey ()
+  "Generate automatically a key for a BibTeX entry.
+Use the author/editor, the year and the title field.
+The algorithm works as follows."
+  (let* ((journal (bibtex-autokey-get-field "journal"))
+         (names (bibtex-autokey-get-names))
+         (title (bibtex-autokey-get-title))
+         (year (bibtex-autokey-get-year))
+         (autokey
+          (cond
+           ((and (not (string-empty-p names))
+                 (not (string-empty-p title))
+                 (not (string-empty-p year)))
+            (s-lex-format "${names}_${title}_${year}"))
+           ((and (not (string-empty-p journal))
+                 (not (string-empty-p title))
+                 (not (string-empty-p year)))
+            (s-lex-format "${journal}_${title}_${year}"))
+           (t
+            (s-lex-format "${names}_${title}_${year}")))))
+    (if bibtex-autokey-before-presentation-function
+        (funcall bibtex-autokey-before-presentation-function autokey)
+      autokey)))
+
+(advice-add 'bibtex-generate-autokey :override 'cashpw/bibtex-generate-autokey)
+
+(defun cashpw/zotra-add-entry-from-eww ()
+  "Add an entry for the current page's url."
+  (interactive)
+  (zotra-add-entry (plist-get eww-data :url)))
 #+end_src
 
 **** =org-clock-act-on-overtime=
@@ -5248,11 +5494,12 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
     org-node
   :demand t
   :after org-roam
-  :hook ((org-mode . org-node-cache-mode))
   :custom
-  (org-node-creation-fn #'org-node-fakeroam-new-via-roam-capture)
+  (org-mem-watch-dirs `(,cashpw/path--notes-dir))
+  (org-mem-do-sync-with-org-id t)
+  (org-node-creation-fn #'org-node-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam-actual)
-  (org-node-extra-id-dirs `(,cashpw/path--notes-dir))
+  (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
   (org-node-filter-fn
    (lambda (node)
      (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
@@ -5260,82 +5507,16 @@ I use =org-node= as a speed-up layer on top of =org-roam= because only complaint
           (not (s-ends-with-p "archive" (org-node-get-file node)))
           ;; Exclude flashcards
           (not (member "fc" (org-node-get-tags-local node))))))
-  (org-node-format-candidate-fn
-   (lambda (node title)
-     (if (org-node-get-is-subtree node)
-         (let ((ancestors
-                (cons
-                 (org-node-get-file-title-or-basename node)
-                 (org-node-get-olp node)))
-               (result nil))
-           (dolist (anc ancestors)
-             (push (propertize anc 'face 'shadow) result)
-             (push " > " result))
-           (push title result)
-           (string-join (nreverse result)))
-       title)))
+
   :config
+  (org-mem-updater-mode)
+  (org-node-cache-mode)
+  (org-node-roam-accelerator-mode)
   (org-node-complete-at-point-mode)
   (advice-add 'org-roam-node-find :override 'org-node-find)
   (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  ;; (defun cashpw/org-node-complete-at-point ()
-  ;;   "Complete symbol at point as an org ID"
-  ;;   (when (and (eq major-mode 'org-mode)
-  ;;              (thing-at-point 'word)
-  ;;              (not (org-in-src-block-p))
-  ;;              (not (save-match-data (org-in-regexp org-link-any-re))))
-  ;;     (let ((bounds (bounds-of-thing-at-point 'word))
-  ;;           (top-level-keys
-  ;;            (seq-filter
-  ;;             (lambda (key)
-  ;;               (let ((node (gethash key org-node-collection)))
-  ;;                 (and (not (s-starts-with-p "[cite:" key)))))
-  ;;             (hash-table-keys org-node-collection))))
-  ;;       (list
-  ;;        (car bounds) (cdr bounds) top-level-keys
-  ;;        :exit-function
-  ;;        (lambda (str _status)
-  ;;          (let ((node (gethash str org-node-collection)))
-  ;;            (delete-char (- (length str)))
-  ;;            (insert
-  ;;             "[[id:" (org-node-get-id node) "]["
-  ;;             (or (and node
-  ;;                      (let ((aliases (org-node-get-aliases node)))
-  ;;                        (message "aliases: %s; str: %s" aliases str)
-  ;;                        (--first (string-search it str) aliases)))
-  ;;                 (and node (org-node-get-title node)) str)
-  ;;             "]]")))
-  ;;        ;; Proceed with the next completion function if the returned titles
-  ;;        ;; do not match. This allows the default Org capfs or custom capfs
-  ;;        ;; of lower priority to run.
-  ;;        :exclusive 'no))))
-  ;; (add-hook 'completion-at-point-functions #'cashpw/org-node-complete-at-point))
   )
 #+end_src
-
-**** =org-node-fakeroam=
-
-***** Package
-
-#+begin_src emacs-lisp :tangle packages-personal.el
-(package! org-node-fakeroam
-  :recipe (:host github :repo "meedstrom/org-node-fakeroam"))
-#+end_src
-
-***** Config
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! org-node-fakeroam
-  :after (:all org-roam org-node)
-  :config
-  (org-roam-db-autosync-mode 0)
-  (org-node-fakeroam-jit-backlinks-mode) ;; no use roam db to build buffer
-  (org-node-fakeroam-fast-render-mode) ;; build the buffer fast
-  (org-node-fakeroam-redisplay-mode) ;; always show local backlinks
-  )
-#+end_src
-
 
 **** =org-roam-ui=
 
@@ -10248,7 +10429,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 #+end_src
 
 *** Keybindings
-**** [#0] =org=
+**** =org=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org
@@ -10262,10 +10443,17 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    "M-[ d" #'org-shiftleft)
 
   (map!
+   :map eww-mode-map
+   :localleader
+   (:prefix ("@" . "Citation")
+    :n "e" #'cashpw/zotra-add-entry-from-eww))
+
+  (map!
    :map org-mode-map
    :localleader
    :nv "@" nil
    (:prefix ("@" . "Citation")
+    :n "a" #'zotra-add-entry
     :n "@" #'org-cite-insert)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
@@ -11063,7 +11251,7 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 
       ;; Join line-break-hyphenated words (for example: "back- ground")
       (goto-char 0)
-      (replace-regexp "\\([A-Za-z]\\)- \\([A-Za-z]\\)" "\\1\\2"))))
+      (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2"))))
 #+end_src
 
 
@@ -11202,6 +11390,84 @@ The article is:
 
 #+RESULTS:
 : cashpw/llm-get-tags-for-url
+
+** LRU cache
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; https://stackoverflow.com/a/6672703
+
+(defstruct lru-cache max-size size newest oldest table)
+
+(defstruct lru-item key value next prev)
+
+(defun lru--remove-item (item lru)
+  (let ((next (lru-item-next item))
+        (prev (lru-item-prev item)))
+    (if next
+        (setf (lru-item-prev next) prev)
+      (setf (lru-cache-newest lru) prev))
+    (if prev
+        (setf (lru-item-next prev) next)
+      (setf (lru-cache-oldest lru) next))))
+
+(defun lru--insert-item (item lru)
+  (let ((newest (lru-cache-newest lru)))
+    (setf
+     (lru-item-next item) nil
+     (lru-item-prev item) newest)
+    (if newest
+        (setf (lru-item-next newest) item)
+      (setf (lru-cache-oldest lru) item))
+    (setf (lru-cache-newest lru) item)))
+
+;;; Public interface starts here.
+
+(defun*
+  lru-create (&key (size 65) (test 'eql))
+  "Create a new least-recently-used cache and return it.
+Takes keyword arguments
+:SIZE the maximum number of entries (default: 65).
+:TEST a hash table test (default 'EQL)."
+  (make-lru-cache
+   :max-size size
+   :size 0
+   :newest nil
+   :oldest nil
+   :table (make-hash-table :size size :test test)))
+
+(defun lru-get (key lru &optional default)
+  "Look up KEY in least-recently-used cache LRU and return
+its associated value.
+If KEY is not found, return DEFAULT which defaults to nil."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (if item
+        (progn
+          (lru--remove-item item lru)
+          (lru--insert-item item lru)
+          (lru-item-value item))
+      default)))
+
+(defun lru-remove (key lru)
+  "Remove KEY from least-recently-used cache LRU."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (when item
+      (remhash (lru-item-key item) (lru-cache-table lru))
+      (lru--remove-item item lru)
+      (decf (lru-cache-size lru)))))
+
+(defun lru-put (key value lru)
+  "Associate KEY with VALUE in least-recently-used cache LRU.
+If KEY is already present in LRU, replace its current value with VALUE."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (if item
+        (setf (lru-item-value item) value)
+      (when (eql (lru-cache-size lru) (lru-cache-max-size lru))
+        (lru-remove (lru-item-key (lru-cache-oldest lru)) lru))
+      (let ((newitem (make-lru-item :key key :value value)))
+        (lru--insert-item newitem lru)
+        (puthash key newitem (lru-cache-table lru))
+        (incf (lru-cache-size lru))))))
+#+end_src
 
 * Wishlist
 :PROPERTIES:
