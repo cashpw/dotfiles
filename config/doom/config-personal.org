@@ -2032,86 +2032,8 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 #+RESULTS:
 : browse-url-firefox
 
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(cl-defstruct (browser-search-engine)
-  "A search engine."
-  (name nil :type 'string :documentation "Human-readable name.")
-  (id nil :type 'string :documentation "Unique id.")
-  (keys nil :type '(repeat string) :documentation "List of keys; shortcodes for selecting the search engine.")
-  (prefix nil :type 'string :documentation "URL search perfix; for example: http://www.google.com/search?q="))
-
-(setq cashpw/browser-search-engines
-      `(,(make-browser-search-engine
-          :name
-          "DuckDuckGo"
-          :id "duckduckgo"
-          :keys '("@ddg" "@duckduckgo")
-          :prefix "https://duckduckgo.com/html/?q=")
-        ,(make-browser-search-engine
-          :name
-          "Wikipedia"
-          :id "wikipedia"
-          :keys '("@wikipedia")
-          :prefix "https://en.wikipedia.org/w/index.php?search=")
-        ;; Disabled because Google requires Javascript
-        ;; (:name "Google"
-        ;;  :keys '("@google")
-        ;;  :search-prefix "https://www.google.com/search?q=")
-        ))
-
-(defun cashpw/browser-get-search-prefix-alist ()
-  "Return alist of search prefixes."
-  (-flatten
-   (mapcar
-    (lambda (search-engine)
-      (mapcar
-       (lambda (key)
-         `(,key . ,(plist-get search-engine :search-prefix)))
-       (plist-get search-engine :keys)))
-    cashpw/browser-search-engines)))
-
-(defun cashpw/browser-select-url ()
-  "Select URL from history and search engines."
-  (let* ((search-prefix-alist (cashpw/browser-get-search-prefix-alist))
-         (history-alist
-          (--map
-           `(,it . ,it)
-           (lru-cache-table cashpw/browser-history)))
-         (selection (completing-read "URL/Query: "
-                                     (append
-                                      search-prefix-alist
-                                      history-alist)
-                                     nil
-                                     'require-match)))
-    (when (s-starts-with-p "@" selection))
-
-
-    ))
-
-(defun cashpw/browser-get-search-prefix ()
-  "Return selected search prefix."
-  (when (= (length cashpw/browser-search-engines) 0)
-    (error "Must have at least one search engine"))
-  (if (= 1 (length cashpw/browser-search-engines))
-      (plist-get (nth 0 cashpw/browser-search-engines) :search-prefix)
-    (let* ((search-prefixes (cashpw/browser-get-search-prefix-alist)))
-      (cdr
-       (assoc
-        (completing-read "Search engine: " search-prefixes
-                         nil
-                         'require-match)
-        search-prefixes)))))
-
-(defun cashpw/eww ()
-  "Open EWW."
-  (interactive)
-  (let* ((eww-search-prefix (cashpw/browser-get-search-prefix))
-         (url
-          (read-string "Query: ")
-          ))
-    (eww)))
-#+end_src
 *** Search engines
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (cl-defstruct (browser-search-engine)
   "A search engine."
@@ -2178,10 +2100,14 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
                  ((string= search-engine-id "wikipedia")
                   cashpw/browser-wikipedia-history)
                  ((string= search-engine-id "duckduckgo")
-                  cashpw/browser-duckduckgo-history)))
+                  cashpw/browser-duckduckgo-history)
+                 (error
+                  "Must select an existing browser query history")))
                (query
                 (completing-read
-                 "Query: " (hash-table-keys (lru-cache-table query-history)))))
+                 "Query: "
+                 (append
+                  '() (hash-table-keys (lru-cache-table query-history))))))
           (unless (member
                    query (hash-table-keys (lru-cache-table query-history)))
             (lru-put query t query-history))
@@ -2197,8 +2123,9 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defvar cashpw/browser-url-history (lru-create :size 100 :test #'equal))
 
-(defcustom cashpw/browser-url-history-exclude-patterns '()
-  "Patterns ")
+(defcustom cashpw/browser-url-history-exclude-patterns
+  '("^http:\\/\\/\\(www\\.\\)?duckduckgo.com")
+  "Patterns to exclude from URL history.")
 
 (defun cashpw/browser-history-update ()
   "Add current buffer's url to history."
@@ -2206,7 +2133,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
     (unless (--any
              (string-match it url)
              cashpw/browser-url-history-exclude-patterns)
-      (lru-put url t cashpw/browser-history))))
+      (lru-put url t cashpw/browser-url-history))))
 
 (add-hook 'eww-after-render-hook 'cashpw/browser-history-update)
 #+end_src

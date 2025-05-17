@@ -104,10 +104,10 @@
 (package! asana
   :recipe (:host github :repo "cashpw/asana.el"))
 
-;; (package! el-go
-;;   :recipe (:host github
-;;            :repo "cashpw/el-go"
-;;            :branch "fix/missing-backends"))
+(package! go
+  :recipe (:host github
+           :repo "cashpw/el-go"
+           :branch "feat/missing-backends")
 
 ;; (package! w3m)
 

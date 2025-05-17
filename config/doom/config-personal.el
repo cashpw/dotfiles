@@ -714,6 +714,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    ("o")
    :desc "Elfeed"
    :n "e" #'elfeed
+   ;; Override DOOM keybinding
+   :n "b" #'cashpw/eww
    (:prefix
     ("n")
     :desc "Commonplace"
@@ -1042,11 +1044,11 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
-;; (use-package el-go
-;;   :custom
-;;   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
-;;   (go-board-black-piece "○")
-;;   (go-board-white-piece "●"))
+(use-package go
+  :custom
+  ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
+  (go-board-black-piece "○")
+  (go-board-white-piece "●"))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
@@ -1071,8 +1073,102 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
  browse-url-browser-function 'eww-browse-url)
 
-;; (after! eww
-;;   (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+(cl-defstruct (browser-search-engine)
+  "A search engine."
+  (name nil :type 'string :documentation "Human-readable name.")
+  (id nil :type 'string :documentation "Unique id.")
+  (keys nil :type '(repeat string) :documentation "List of keys; shortcodes for selecting the search engine.")
+  (prefix nil :type 'string :documentation "URL search perfix; for example: http://www.google.com/search?q="))
+
+(setq cashpw/browser-search-engines
+      `(,(make-browser-search-engine
+          :name
+          "DuckDuckGo"
+          :id "duckduckgo"
+          :keys '("@ddg" "@duckduckgo")
+          :prefix "https://duckduckgo.com/html/?q=")
+        ,(make-browser-search-engine
+          :name
+          "Wikipedia"
+          :id "wikipedia"
+          :keys '("@wikipedia")
+          :prefix "https://en.wikipedia.org/w/index.php?search=")
+        ;; Disabled because Google requires Javascript
+        ;; (:name "Google"
+        ;;  :keys '("@google")
+        ;;  :search-prefix "https://www.google.com/search?q=")
+        ))
+
+(defun cashpw/browser-search-engine-alist ()
+  "Return alist of search engines, keyed by keys."
+  (-flatten
+   (mapcar
+    (lambda (search-engine)
+      (mapcar
+       (lambda (key)
+         `(,key . ,search-engine))
+       (browser-search-engine-keys search-engine)))
+    cashpw/browser-search-engines)))
+
+(after! eww (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+
+(defun cashpw/eww ()
+  "Open EWW."
+  (interactive)
+  (eww (cashpw/browser-select-url)))
+
+(defun cashpw/browser-select-url ()
+  "Return selected url based on history and search engines."
+  (let* ((options
+          (append
+           (cashpw/browser-search-engine-alist)
+           (--map
+            `(,it . ,it)
+            (hash-table-keys (lru-cache-table cashpw/browser-url-history)))))
+         (selection
+          (completing-read "URL/Search: " options nil 'require-match)))
+    (if (s-starts-with-p "@" selection)
+        (let* ((search-engine (cdr (assoc selection options)))
+               (search-engine-id (browser-search-engine-id search-engine))
+               (query-history
+                (cond
+                 ((string= search-engine-id "wikipedia")
+                  cashpw/browser-wikipedia-history)
+                 ((string= search-engine-id "duckduckgo")
+                  cashpw/browser-duckduckgo-history)
+                 (error
+                  "Must select an existing browser query history")))
+               (query
+                (completing-read
+                 "Query: "
+                 (append
+                  '() (hash-table-keys (lru-cache-table query-history))))))
+          (unless (member
+                   query (hash-table-keys (lru-cache-table query-history)))
+            (lru-put query t query-history))
+          (concat
+           (browser-search-engine-prefix search-engine)
+           (mapconcat #'url-hexify-string (split-string query) "+")))
+      selection)))
+
+(defvar cashpw/browser-url-history (lru-create :size 100 :test #'equal))
+
+(defcustom cashpw/browser-url-history-exclude-patterns
+  '("^http:\\/\\/\\(www\\.\\)?duckduckgo.com")
+  "Patterns to exclude from URL history.")
+
+(defun cashpw/browser-history-update ()
+  "Add current buffer's url to history."
+  (let ((url (plist-get eww-data :url)))
+    (unless (--any
+             (string-match it url)
+             cashpw/browser-url-history-exclude-patterns)
+      (lru-put url t cashpw/browser-url-history))))
+
+(add-hook 'eww-after-render-hook 'cashpw/browser-history-update)
+
+(defvar cashpw/browser-wikipedia-history (lru-create :size 50 :test #'equal))
+(defvar cashpw/browser-duckduckgo-history (lru-create :size 50 :test #'equal))
 
 ;; (use-package! w3m
 ;;   :config
@@ -2060,16 +2156,20 @@ TAGS which start with \"-\" are excluded."
    'org-encrypt-entries
    :override #'ignore))
 
-(use-package! zotra
+(use-package!
+    zotra
   :custom
   (zotra-backend 'zotra-server)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
   (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
+  (zotra-after-get-bibtex-entry-hook nil)
 
   (bibtex-dialect 'biblatex)
-  (bibtex-entry-format '(opts-or-alts
-                         ;; required-fields
-                         numerical-fields))
+  (bibtex-entry-format
+   '(opts-or-alts
+     ;; required-fields
+     numerical-fields))
+  (bibtex-autokey-edit-before-use nil)
   (bibtex-autokey-year-length 4)
   (bibtex-autokey-name-year-separator "")
   (bibtex-autokey-year-title-separator "")
@@ -2077,18 +2177,21 @@ TAGS which start with \"-\" are excluded."
   (bibtex-autokey-titlewords 5)
   (bibtex-autokey-titlewords-stretch 1)
   (bibtex-autokey-titleword-length 'infty)
-  (bibtex-autokey-titleword-ignore '("A"
-                                     "An"
-                                     "On"
-                                     "The"
-                                     "Eine?"
-                                     "Der"
-                                     "Die"
-                                     "Das"
-                                     ;; "[^[:upper:]].*"
-                                     ".*[^[:upper:][:lower:]0-9].*"))
-  (bibtex-autokey-titleword-case-convert-function (lambda (str)
-                                                    (titlecase--string str nil))))
+  (bibtex-autokey-titleword-ignore
+   '("A" "An" "On" "The" "Eine?" "Der" "Die" "Das"
+     ;; "[^[:upper:]].*"
+     ".*[^[:upper:][:lower:]0-9].*"))
+  (bibtex-autokey-name-case-convert-function #'identity)
+  (bibtex-autokey-titleword-case-convert-function
+   (lambda (str) (titlecase--string str nil)))
+
+  :config
+  (add-hook
+   'zotra-after-get-bibtex-entry-hook 'cashpw/bibtex-clean-entry-override-key))
+
+(defun cashpw/bibtex-clean-entry-override-key ()
+  "Invoke `bibtex-clean-entry' with key override."
+  (bibtex-clean-entry (bibtex-generate-autokey)))
 
 (defun cashpw/bibtex-generate-autokey ()
   "Generate automatically a key for a BibTeX entry.
@@ -2098,26 +2201,28 @@ The algorithm works as follows."
          (names (bibtex-autokey-get-names))
          (title (bibtex-autokey-get-title))
          (year (bibtex-autokey-get-year))
-         (autokey (cond
-                   ((and
-                     (not (string-empty-p names))
-                     (not (string-empty-p title))
-                     (not (string-empty-p year)))
-                    (s-lex-format "${names}${title}${year}"))
-                   ((and
-                     (not (string-empty-p journal))
-                     (not (string-empty-p title))
-                     (not (string-empty-p year)))
-                    (s-lex-format "${journal}${title}${year}"))
-                   (t
-                    (s-lex-format "${names}${title}${year}")))))
+         (autokey
+          (cond
+           ((and (not (string-empty-p names))
+                 (not (string-empty-p title))
+                 (not (string-empty-p year)))
+            (s-lex-format "${names}_${title}_${year}"))
+           ((and (not (string-empty-p journal))
+                 (not (string-empty-p title))
+                 (not (string-empty-p year)))
+            (s-lex-format "${journal}_${title}_${year}"))
+           (t
+            (s-lex-format "${names}_${title}_${year}")))))
     (if bibtex-autokey-before-presentation-function
         (funcall bibtex-autokey-before-presentation-function autokey)
       autokey)))
 
-  (advice-add
-   'bibtex-generate-autokey
-   :override 'cashpw/bibtex-generate-autokey)
+(advice-add 'bibtex-generate-autokey :override 'cashpw/bibtex-generate-autokey)
+
+(defun cashpw/zotra-add-entry-from-eww ()
+  "Add an entry for the current page's url."
+  (interactive)
+  (zotra-add-entry (plist-get eww-data :url)))
 
 (use-package!
     org-clock-act-on-overtime
@@ -7491,10 +7596,17 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    "M-[ d" #'org-shiftleft)
 
   (map!
+   :map eww-mode-map
+   :localleader
+   (:prefix ("@" . "Citation")
+    :n "e" #'cashpw/zotra-add-entry-from-eww))
+
+  (map!
    :map org-mode-map
    :localleader
    :nv "@" nil
    (:prefix ("@" . "Citation")
+    :n "a" #'zotra-add-entry
     :n "@" #'org-cite-insert)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
@@ -7855,7 +7967,7 @@ Reference:https://stackoverflow.com/q/23622296"
 
       ;; Join line-break-hyphenated words (for example: "back- ground")
       (goto-char 0)
-      (replace-regexp "\\([A-Za-z]\\)- \\([A-Za-z]\\)" "\\1\\2"))))
+      (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2"))))
 
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
@@ -7971,3 +8083,77 @@ The article is:
       (delete-region (point-min) (point-max))
       (insert response))
     (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
+
+;; https://stackoverflow.com/a/6672703
+
+(defstruct lru-cache max-size size newest oldest table)
+
+(defstruct lru-item key value next prev)
+
+(defun lru--remove-item (item lru)
+  (let ((next (lru-item-next item))
+        (prev (lru-item-prev item)))
+    (if next
+        (setf (lru-item-prev next) prev)
+      (setf (lru-cache-newest lru) prev))
+    (if prev
+        (setf (lru-item-next prev) next)
+      (setf (lru-cache-oldest lru) next))))
+
+(defun lru--insert-item (item lru)
+  (let ((newest (lru-cache-newest lru)))
+    (setf
+     (lru-item-next item) nil
+     (lru-item-prev item) newest)
+    (if newest
+        (setf (lru-item-next newest) item)
+      (setf (lru-cache-oldest lru) item))
+    (setf (lru-cache-newest lru) item)))
+
+;;; Public interface starts here.
+
+(defun*
+  lru-create (&key (size 65) (test 'eql))
+  "Create a new least-recently-used cache and return it.
+Takes keyword arguments
+:SIZE the maximum number of entries (default: 65).
+:TEST a hash table test (default 'EQL)."
+  (make-lru-cache
+   :max-size size
+   :size 0
+   :newest nil
+   :oldest nil
+   :table (make-hash-table :size size :test test)))
+
+(defun lru-get (key lru &optional default)
+  "Look up KEY in least-recently-used cache LRU and return
+its associated value.
+If KEY is not found, return DEFAULT which defaults to nil."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (if item
+        (progn
+          (lru--remove-item item lru)
+          (lru--insert-item item lru)
+          (lru-item-value item))
+      default)))
+
+(defun lru-remove (key lru)
+  "Remove KEY from least-recently-used cache LRU."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (when item
+      (remhash (lru-item-key item) (lru-cache-table lru))
+      (lru--remove-item item lru)
+      (decf (lru-cache-size lru)))))
+
+(defun lru-put (key value lru)
+  "Associate KEY with VALUE in least-recently-used cache LRU.
+If KEY is already present in LRU, replace its current value with VALUE."
+  (let ((item (gethash key (lru-cache-table lru))))
+    (if item
+        (setf (lru-item-value item) value)
+      (when (eql (lru-cache-size lru) (lru-cache-max-size lru))
+        (lru-remove (lru-item-key (lru-cache-oldest lru)) lru))
+      (let ((newitem (make-lru-item :key key :value value)))
+        (lru--insert-item newitem lru)
+        (puthash key newitem (lru-cache-table lru))
+        (incf (lru-cache-size lru))))))
