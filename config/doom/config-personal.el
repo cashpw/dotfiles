@@ -1111,13 +1111,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
             :id 'duckduckgo
             :keys '("@ddg" "@duckduckgo")
             :prefix "https://html.duckduckgo.com/html/?q="
-            :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200))
+            :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200 :save-delay 5))
           ,(make-browser-search-engine
             :name "Wikipedia"
             :id 'wikipedia
             :keys '("@wikipedia")
             :prefix "https://en.wikipedia.org/w/index.php?search="
-            :query-cache (plru-repository "wikipedia-query-cache" :max-size 200))
+            :query-cache (plru-repository "wikipedia-query-cache" :max-size 200 :save-delay 5))
           ;; Disabled because Google requires Javascript
           ;; (:name "Google"
           ;;  :keys '("@google")
@@ -1203,7 +1203,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 
 (let ((plru-directory cashpw/path--browser-history-dir))
   (defconst cashpw/browser-url-history
-    (plru-repository "browser-url-history" :max-size 200)))
+    (plru-repository "browser-url-history" :max-size 200 :save-delay 5)))
 
 (defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
@@ -3441,7 +3441,11 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
 
-;; Activate before loading `org-gcal' to prevent warning messages.
+(setq
+;; Set dummy values before requiring org-gcal to prevent warning message
+ org-gcal-client-id "foo"
+ org-gcal-client-secret "foo")
+
 (after! org-gcal-extras
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (use-package! org-gcal
