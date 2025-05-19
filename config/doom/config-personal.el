@@ -239,6 +239,10 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
   (s-lex-format "${cashpw/path--proj-dir}/notes")
   "Personal org-roam notes directory.")
 
+(defvar cashpw/path--browser-history-dir
+  (file-name-concat cashpw/path--notes-dir "browser-history/")
+   "Personal org-roam notes directory.")
+
 (defvar cashpw/path--personal-todos
   (s-lex-format "${cashpw/path--notes-dir}/todos.org")
   "Personal TODOs file.")
@@ -1100,24 +1104,25 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
    :documentation "Size limit for query history.")
   (query-cache nil :type 'sexp :documentation "`plru' of recent queries."))
 
-(setq cashpw/browser-search-engines
-      `(,(make-browser-search-engine
-          :name "DuckDuckGo"
-          :id 'duckduckgo
-          :keys '("@ddg" "@duckduckgo")
-          :prefix "https://html.duckduckgo.com/html/?q="
-          :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200))
-        ,(make-browser-search-engine
-          :name "Wikipedia"
-          :id 'wikipedia
-          :keys '("@wikipedia")
-          :prefix "https://en.wikipedia.org/w/index.php?search="
-          :query-cache (plru-repository "wikipedia-query-cache" :max-size 200))
-        ;; Disabled because Google requires Javascript
-        ;; (:name "Google"
-        ;;  :keys '("@google")
-        ;;  :search-prefix "https://www.google.com/search?q=")
-        ))
+(let ((plru-directory cashpw/path--browser-history-dir))
+  (setq cashpw/browser-search-engines
+        `(,(make-browser-search-engine
+            :name "DuckDuckGo"
+            :id 'duckduckgo
+            :keys '("@ddg" "@duckduckgo")
+            :prefix "https://html.duckduckgo.com/html/?q="
+            :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200))
+          ,(make-browser-search-engine
+            :name "Wikipedia"
+            :id 'wikipedia
+            :keys '("@wikipedia")
+            :prefix "https://en.wikipedia.org/w/index.php?search="
+            :query-cache (plru-repository "wikipedia-query-cache" :max-size 200))
+          ;; Disabled because Google requires Javascript
+          ;; (:name "Google"
+          ;;  :keys '("@google")
+          ;;  :search-prefix "https://www.google.com/search?q=")
+          )))
 
 (defun cashpw/browser-search-engines-get-by-key (key)
   "Return search engine with KEY; else nil."
@@ -1196,8 +1201,9 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
       ;; Allow literal URLs
       selection)))
 
-(defconst cashpw/browser-url-history
-  (plru-repository "browser-url-history" :max-size 200))
+(let ((plru-directory cashpw/path--browser-history-dir))
+  (defconst cashpw/browser-url-history
+    (plru-repository "browser-url-history" :max-size 200)))
 
 (defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
