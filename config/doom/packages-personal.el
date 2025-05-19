@@ -34,6 +34,12 @@
   :recipe (:host github
            :repo "cashpw/increment-ordinal"))
 
+(package! pcache)
+
+(package! plru
+  :recipe (:host github
+           :repo "cashpw/plru"))
+
 (package! titlecase)
 
 (package! whisper
@@ -104,10 +110,10 @@
 (package! asana
   :recipe (:host github :repo "cashpw/asana.el"))
 
-(package! go
-  :recipe (:host github
-           :repo "cashpw/el-go"
-           :branch "feat/missing-backends")
+;; (package! go
+;;   :recipe (:host github
+;;            :repo "cashpw/el-go"
+;;            :branch "feat/missing-backends"))
 
 ;; (package! w3m)
 

@@ -479,6 +479,14 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       (org-edit-headline
        (increment-ordinals-in-string headline)))))
 
+(use-package! pcache
+  :custom
+  (pcache-directory (file-name-concat doom-profile-cache-dir "pcache/")))
+
+(use-package! plru
+  :custom
+  (plru-directory (file-name-concat doom-profile-cache-dir "plru/")))
+
 (use-package! titlecase)
 
 (use-package! whisper
@@ -1044,11 +1052,11 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
-(use-package go
-  :custom
-  ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
-  (go-board-black-piece "○")
-  (go-board-white-piece "●"))
+;; (use-package go
+;;   :custom
+;;   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
+;;   (go-board-black-piece "○")
+;;   (go-board-white-piece "●"))
 
 (defcustom cashpw/url-patterns-to-open-in-external-browser
   '(
@@ -1077,38 +1085,63 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   "A search engine."
   (name nil :type 'string :documentation "Human-readable name.")
   (id nil :type 'string :documentation "Unique id.")
-  (keys nil :type '(repeat string) :documentation "List of keys; shortcodes for selecting the search engine.")
-  (prefix nil :type 'string :documentation "URL search perfix; for example: http://www.google.com/search?q="))
+  (keys
+   nil
+   :type '(repeat string)
+   :documentation "List of keys; shortcodes for selecting the search engine.")
+  (prefix
+   nil
+   :type 'string
+   :documentation "URL search perfix; for example: http://www.google.com/search?q=")
+  (query-limit
+   nil
+   :type 'number
+   :initform 50
+   :documentation "Size limit for query history.")
+  (query-cache nil :type 'sexp :documentation "`plru' of recent queries."))
 
 (setq cashpw/browser-search-engines
       `(,(make-browser-search-engine
-          :name
-          "DuckDuckGo"
-          :id "duckduckgo"
+          :name "DuckDuckGo"
+          :id 'duckduckgo
           :keys '("@ddg" "@duckduckgo")
-          :prefix "https://duckduckgo.com/html/?q=")
+          :prefix "https://html.duckduckgo.com/html/?q="
+          :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200))
         ,(make-browser-search-engine
-          :name
-          "Wikipedia"
-          :id "wikipedia"
+          :name "Wikipedia"
+          :id 'wikipedia
           :keys '("@wikipedia")
-          :prefix "https://en.wikipedia.org/w/index.php?search=")
+          :prefix "https://en.wikipedia.org/w/index.php?search="
+          :query-cache (plru-repository "wikipedia-query-cache" :max-size 200))
         ;; Disabled because Google requires Javascript
         ;; (:name "Google"
         ;;  :keys '("@google")
         ;;  :search-prefix "https://www.google.com/search?q=")
         ))
 
-(defun cashpw/browser-search-engine-alist ()
-  "Return alist of search engines, keyed by keys."
+(defun cashpw/browser-search-engines-get-by-key (key)
+  "Return search engine with KEY; else nil."
+  (--first
+   (member key (browser-search-engine-keys it))
+   cashpw/browser-search-engines))
+
+(defun cashpw/browser-search-engines-keys ()
+  "Return search engine with KEY; else nil."
   (-flatten
-   (mapcar
-    (lambda (search-engine)
-      (mapcar
-       (lambda (key)
-         `(,key . ,search-engine))
-       (browser-search-engine-keys search-engine)))
+   (-map
+    #'browser-search-engine-keys
     cashpw/browser-search-engines)))
+
+(defun browser-search-engine-put-query (search-engine query)
+  "Add QUERY to the SEARCH-ENGINE's cache."
+  (plru-put (browser-search-engine-query-cache search-engine) (intern query) t))
+
+(defun browser-serach-engine-get-queries (search-engine query)
+  "Return SEARCH-ENGINE's cached queries in most-to-least recent order."
+  (mapcar
+   #'symbol-string
+   (plru-entry-keys-most-to-least-recent
+    (browser-search-engine-query-cache search-engine))))
 
 (after! eww (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
 
@@ -1117,58 +1150,74 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (interactive)
   (eww (cashpw/browser-select-url)))
 
+(defun cashpw/browser-select-url--handle-url-history (url)
+  "Return a function to handle a URL."
+  (plru-put cashpw/browser-url-history (symbol-name url) t)
+  (symbol-name url))
+
+(defun cashpw/browser-select-url--handle-query (key)
+  "Return a function to handle a query for search engine by KEY."
+  (let* ((search-engine (cashpw/browser-search-engines-get-by-key key))
+         (query-cache (browser-search-engine-query-cache search-engine))
+         (query
+          (completing-read
+           "Query: "
+           (mapcar
+            #'symbol-name (plru-entry-keys-most-to-least-recent query-cache)))))
+    (browser-search-engine-put-query search-engine query)
+    (concat
+     (browser-search-engine-prefix search-engine)
+     (mapconcat #'url-hexify-string (split-string query) "+"))))
+
 (defun cashpw/browser-select-url ()
   "Return selected url based on history and search engines."
   (let* ((options
           (append
-           (cashpw/browser-search-engine-alist)
            (--map
-            `(,it . ,it)
-            (hash-table-keys (lru-cache-table cashpw/browser-url-history)))))
-         (selection
-          (completing-read "URL/Search: " options nil 'require-match)))
-    (if (s-starts-with-p "@" selection)
-        (let* ((search-engine (cdr (assoc selection options)))
-               (search-engine-id (browser-search-engine-id search-engine))
-               (query-history
-                (cond
-                 ((string= search-engine-id "wikipedia")
-                  cashpw/browser-wikipedia-history)
-                 ((string= search-engine-id "duckduckgo")
-                  cashpw/browser-duckduckgo-history)
-                 (error
-                  "Must select an existing browser query history")))
-               (query
-                (completing-read
-                 "Query: "
-                 (append
-                  '() (hash-table-keys (lru-cache-table query-history))))))
-          (unless (member
-                   query (hash-table-keys (lru-cache-table query-history)))
-            (lru-put query t query-history))
-          (concat
-           (browser-search-engine-prefix search-engine)
-           (mapconcat #'url-hexify-string (split-string query) "+")))
+            (cons
+             (symbol-name it)
+             `(:fn
+               cashpw/browser-select-url--handle-url-history
+               :args (,(symbol-name it))))
+            (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))
+           (let ((keys
+                  (-flatten
+                   (-map
+                    #'browser-search-engine-keys
+                    cashpw/browser-search-engines))))
+             (--map
+              (cons
+               it `(:fn cashpw/browser-select-url--handle-query :args (,it)))
+              keys))))
+         (selection (completing-read "URL/Search: " options nil)))
+    (if (assoc selection options)
+        (let ((fn-plist (cdr (assoc selection options))))
+          (apply (plist-get fn-plist :fn) (plist-get fn-plist :args)))
+      ;; Allow literal URLs
       selection)))
 
-(defvar cashpw/browser-url-history (lru-create :size 100 :test #'equal))
+(defconst cashpw/browser-url-history
+  (plru-repository "browser-url-history" :max-size 200))
 
-(defcustom cashpw/browser-url-history-exclude-patterns
-  '("^http:\\/\\/\\(www\\.\\)?duckduckgo.com")
+(defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
+(dolist (search-prefix
+         (mapcar #'browser-search-engine-prefix cashpw/browser-search-engines))
+  (add-to-list
+   'cashpw/browser-url-history-exclude-patterns (regexp-quote search-prefix)))
 
-(defun cashpw/browser-history-update ()
+(defun cashpw/browser-url-history-put-url (url)
+  "Put URL into history."
+  (unless (--any
+           (string-match it url) cashpw/browser-url-history-exclude-patterns)
+    (plru-put cashpw/browser-url-history (intern url) url)))
+
+(defun cashpw/browser-url-history-put-eww-url ()
   "Add current buffer's url to history."
-  (let ((url (plist-get eww-data :url)))
-    (unless (--any
-             (string-match it url)
-             cashpw/browser-url-history-exclude-patterns)
-      (lru-put url t cashpw/browser-url-history))))
+  (cashpw/browser-url-history-put-url
+   (plist-get eww-data :url)))
 
-(add-hook 'eww-after-render-hook 'cashpw/browser-history-update)
-
-(defvar cashpw/browser-wikipedia-history (lru-create :size 50 :test #'equal))
-(defvar cashpw/browser-duckduckgo-history (lru-create :size 50 :test #'equal))
+(add-hook 'eww-after-render-hook 'cashpw/browser-url-history-put-eww-url)
 
 ;; (use-package! w3m
 ;;   :config
@@ -8083,77 +8132,3 @@ The article is:
       (delete-region (point-min) (point-max))
       (insert response))
     (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
-
-;; https://stackoverflow.com/a/6672703
-
-(defstruct lru-cache max-size size newest oldest table)
-
-(defstruct lru-item key value next prev)
-
-(defun lru--remove-item (item lru)
-  (let ((next (lru-item-next item))
-        (prev (lru-item-prev item)))
-    (if next
-        (setf (lru-item-prev next) prev)
-      (setf (lru-cache-newest lru) prev))
-    (if prev
-        (setf (lru-item-next prev) next)
-      (setf (lru-cache-oldest lru) next))))
-
-(defun lru--insert-item (item lru)
-  (let ((newest (lru-cache-newest lru)))
-    (setf
-     (lru-item-next item) nil
-     (lru-item-prev item) newest)
-    (if newest
-        (setf (lru-item-next newest) item)
-      (setf (lru-cache-oldest lru) item))
-    (setf (lru-cache-newest lru) item)))
-
-;;; Public interface starts here.
-
-(defun*
-  lru-create (&key (size 65) (test 'eql))
-  "Create a new least-recently-used cache and return it.
-Takes keyword arguments
-:SIZE the maximum number of entries (default: 65).
-:TEST a hash table test (default 'EQL)."
-  (make-lru-cache
-   :max-size size
-   :size 0
-   :newest nil
-   :oldest nil
-   :table (make-hash-table :size size :test test)))
-
-(defun lru-get (key lru &optional default)
-  "Look up KEY in least-recently-used cache LRU and return
-its associated value.
-If KEY is not found, return DEFAULT which defaults to nil."
-  (let ((item (gethash key (lru-cache-table lru))))
-    (if item
-        (progn
-          (lru--remove-item item lru)
-          (lru--insert-item item lru)
-          (lru-item-value item))
-      default)))
-
-(defun lru-remove (key lru)
-  "Remove KEY from least-recently-used cache LRU."
-  (let ((item (gethash key (lru-cache-table lru))))
-    (when item
-      (remhash (lru-item-key item) (lru-cache-table lru))
-      (lru--remove-item item lru)
-      (decf (lru-cache-size lru)))))
-
-(defun lru-put (key value lru)
-  "Associate KEY with VALUE in least-recently-used cache LRU.
-If KEY is already present in LRU, replace its current value with VALUE."
-  (let ((item (gethash key (lru-cache-table lru))))
-    (if item
-        (setf (lru-item-value item) value)
-      (when (eql (lru-cache-size lru) (lru-cache-max-size lru))
-        (lru-remove (lru-item-key (lru-cache-oldest lru)) lru))
-      (let ((newitem (make-lru-item :key key :value value)))
-        (lru--insert-item newitem lru)
-        (puthash key newitem (lru-cache-table lru))
-        (incf (lru-cache-size lru))))))
