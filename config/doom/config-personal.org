@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-19 Mon 07:30]
+:LAST_MODIFIED: [2025-05-19 Mon 10:57]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -4669,6 +4669,11 @@ Doom emacs provides =org-gcal=.
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+;; Set dummy values before requiring org-gcal to prevent warning message
+ org-gcal-client-id "foo"
+ org-gcal-client-secret "foo")
+
 (use-package! org-gcal-extras)
 #+end_src
 
@@ -5254,11 +5259,6 @@ Return nil if no attendee exists with that EMAIL."
 ***** =use-package=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(setq
-;; Set dummy values before requiring org-gcal to prevent warning message
- org-gcal-client-id "foo"
- org-gcal-client-secret "foo")
-
 (after! org-gcal-extras
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (use-package! org-gcal
