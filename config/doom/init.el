@@ -125,7 +125,8 @@
   ;; Prefer `eglot' because corporate tools also use Eglot.
   +eglot)
  (magit
-  +forge)             ; a git porcelain for Emacs
+  ;; +forge
+  )             ; a git porcelain for Emacs
  ;;make              ; run make tasks from Emacs
  ;;pass              ; password manager for nerds
  pdf               ; pdf enhancements
