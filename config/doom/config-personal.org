@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-18 Sun 22:11]
+:LAST_MODIFIED: [2025-05-19 Mon 07:30]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -10453,8 +10453,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
   (map!
    :map eww-mode-map
    :localleader
-   (:prefix ("@" . "Citation")
-    :n "e" #'cashpw/zotra-add-entry-from-eww))
+    :n "@" #'cashpw/zotra-add-entry-from-eww)
 
   (map!
    :map org-mode-map

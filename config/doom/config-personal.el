@@ -7657,8 +7657,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
   (map!
    :map eww-mode-map
    :localleader
-   (:prefix ("@" . "Citation")
-    :n "e" #'cashpw/zotra-add-entry-from-eww))
+    :n "@" #'cashpw/zotra-add-entry-from-eww)
 
   (map!
    :map org-mode-map
