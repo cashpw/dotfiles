@@ -676,7 +676,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                    (org-timestamp '(16) t)
                    (buffer-string))))
         (insert
-         (llm-prompts-prompt-extract-wisdom-yt (read-string "YouTube URL: ")))
+         (llm-prompts-prompt-extract-wisdom-yt
+          (read-string "YouTube URL: "
+                       (ignore-errors
+                         (current-kill 0 t)))))
         (cashpw/gptel-send ""))
       (display-buffer buffer)))
    (:prefix
