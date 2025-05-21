@@ -9,6 +9,10 @@
 ;; Fix error: "File mode specification error: (error Problem in magic-mode-alist with element ess-SAS-listing-mode-p)".
 ;; (use-package! ess-site)
 
+;; Set dummy values before requiring org-gcal to prevent warning message
+(defvar org-gcal-client-id "foo")
+(defvar org-gcal-client-secret "foo")
+
 (setq
  user-full-name "Cash Prokop-Weaver"
  user-mail-address "cashbweaver@gmail.com")
@@ -3443,11 +3447,6 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-extract-todos-tag)
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
-
-(setq
-;; Set dummy values before requiring org-gcal to prevent warning message
- org-gcal-client-id "foo"
- org-gcal-client-secret "foo")
 
 (after! org-gcal-extras
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
