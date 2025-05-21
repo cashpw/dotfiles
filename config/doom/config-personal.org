@@ -8352,12 +8352,16 @@ items if they have an hour specification like [h]h:mm."
 (defun cashpw/org-select-and-go-to-todo (files)
   (let*
       ((separator "¥")
-       (space-separated-list-of-files (s-join " " files))
        (todos-with-file
-        (cashpw/pcregrep
-         (s-lex-format
-          ;; Ignore headings with SCHEDULED or HEADLINE
-          "--multiline --line-number --with-filename '^\\** (TODO|INPROGRESS).*\\n^(?!SCHEDULED:)(?!DEADLINE:)' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:")))
+        (-flatten
+         (-map
+          (lambda (file-sublist)
+            (let ((space-separated-list-of-files (s-join " " file-sublist)))
+              (cashpw/pcregrep
+               (s-lex-format
+                ;; Ignore headings with SCHEDULED or DEADLINE
+                "--multiline --line-number --with-filename '^\\* (TODO|INPROGRESS).*(\\n^(?!SCHEDULED:)(?!DEADLINE:))?' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:"))))
+          (-partition-all 50 files))))
        (match-alist
         (mapcar
          (lambda (todo-with-file)
