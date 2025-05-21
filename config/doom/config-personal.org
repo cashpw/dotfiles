@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-19 Mon 10:57]
+:LAST_MODIFIED: [2025-05-21 Wed 07:35]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -9004,7 +9004,7 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-clocktable-files-for-yyyy-mm-dd (yyyy-mm-dd)
   "Return list of files with clock entries for YYYY-MM-DD."
-  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir)))
+  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org*" yyyy-mm-dd cashpw/path--notes-dir)))
 #+end_src
 
 ***** =clocktable-by-category=

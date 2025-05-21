@@ -6414,7 +6414,7 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-clocktable-files-for-yyyy-mm-dd (yyyy-mm-dd)
   "Return list of files with clock entries for YYYY-MM-DD."
-  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir)))
+  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org*" yyyy-mm-dd cashpw/path--notes-dir)))
 
 (defun cashpw/clocktable-by-category--properties (time)
   "Return clocktable-by-category properties."
