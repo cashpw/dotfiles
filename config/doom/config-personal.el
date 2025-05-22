@@ -803,6 +803,32 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                          (message "Garbage collection: Ran for %.06fsec"
                                   (k-time (garbage-collect))))))
 
+(defconst cashpw/location-latitude 37.2
+  "Current latitude.")
+(defconst cashpw/location-longitude -121.8
+  "Current latitude.")
+(defconst cashpw/location-name "San Jose, CA"
+  "Human-readable name for current location.")
+
+(defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
+  "API key for OpenWeatherMap.")
+
+(use-package! sunshine
+  :custom
+  (sunshine-location "95125,USA")
+  (sunshine-appid cashpw/openweather-api-key))
+
+(defun sunshine-make-url (location units appid)
+  "Make a URL for retrieving the weather for LOCATION in UNITS.
+
+Requires your OpenWeatherMap APPID."
+  (concat "http://api.openweathermap.org/data/2.5/forecast?"
+          "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
+          "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
+          "&APPID=" appid
+"&units=" (url-encode-url (symbol-name units))
+          "&cnt=5"))
+
 (when (cashpw/machine-p 'personal-phone)
   (advice-add 'doom/increase-font-size :override #'ignore)
   (advice-add 'doom/reset-font-size :override #'ignore))

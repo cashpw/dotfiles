@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-21 Wed 07:35]
+:LAST_MODIFIED: [2025-05-21 Wed 10:09]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1243,6 +1243,54 @@ https://akrl.sdf.org/#orgc15a10d
                          (message "Garbage collection: Ran for %.06fsec"
                                   (k-time (garbage-collect))))))
 #+end_src
+
+** Location
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defconst cashpw/location-latitude 37.2
+  "Current latitude.")
+(defconst cashpw/location-longitude -121.8
+  "Current latitude.")
+(defconst cashpw/location-name "San Jose, CA"
+  "Human-readable name for current location.")
+#+end_src
+
+** Weather
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
+  "API key for OpenWeatherMap.")
+#+end_src
+
+
+*** Packages
+**** =sunshine=
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! sunshine)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! sunshine
+  :custom
+  (sunshine-location "95125,USA")
+  (sunshine-appid cashpw/openweather-api-key))
+
+(defun sunshine-make-url (location units appid)
+  "Make a URL for retrieving the weather for LOCATION in UNITS.
+
+Requires your OpenWeatherMap APPID."
+  (concat "http://api.openweathermap.org/data/2.5/forecast?"
+          "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
+          "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
+          "&APPID=" appid
+"&units=" (url-encode-url (symbol-name units))
+          "&cnt=5"))
+#+end_src
+
 
 * Machines
 

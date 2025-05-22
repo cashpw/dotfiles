@@ -52,6 +52,8 @@
   :recipe (:host github
            :repo "cashpw/scheduled-alert"))
 
+(package! sunshine)
+
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages.el
 
