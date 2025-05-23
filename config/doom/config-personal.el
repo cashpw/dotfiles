@@ -2003,7 +2003,7 @@ TAGS which start with \"-\" are excluded."
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers, in a bullet-point list.
 2. In a section titled \"Thesis\": Paraphrase the thesis in 50 words or less.
-3. In a section titled \"Summary\": Summarize the content in 200 words or less.
+3. In a section titled \"Summary\": Summarize the content in 300 words or less. Prefer bullet-point lists where appropriate.
 4. In a section titled \"References\": List all of the books, articles, and other referenced sources.
 5. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.
 6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
