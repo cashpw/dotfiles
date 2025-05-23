@@ -3,6 +3,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(helm-minibuffer-history-key "M-p")
  '(ignored-local-variable-values '((flycheck-mode . t)))
  '(safe-local-variable-values
    '((eval progn
@@ -95,7 +96,8 @@
       `(,(format "%sunread.org" org-roam-directory)
         ,(format "%sunread.org_archive" org-roam-directory)))))
  '(warning-suppress-types
-   '((org-element org-element-parser)
+   '((emacs)
+     (org-element org-element-parser)
      (defvaralias)
      (lexical-binding))))
 (custom-set-faces

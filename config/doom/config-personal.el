@@ -1190,8 +1190,8 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 
 (defun cashpw/browser-select-url--handle-url-history (url)
   "Return a function to handle a URL."
-  (plru-put cashpw/browser-url-history (symbol-name url) t)
-  (symbol-name url))
+  (plru-put cashpw/browser-url-history url t)
+  url)
 
 (defun cashpw/browser-select-url--handle-query (key)
   "Return a function to handle a query for search engine by KEY."
@@ -1213,10 +1213,14 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
           (append
            (--map
             (cons
-             (symbol-name it)
+             ;; (symbol-name it)
+             it
              `(:fn
                cashpw/browser-select-url--handle-url-history
-               :args (,(symbol-name it))))
+               :args (
+                      ,it
+                      ;; ,(symbol-name it)
+                      )))
             (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))
            (let ((keys
                   (-flatten
@@ -1249,7 +1253,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   "Put URL into history."
   (unless (--any
            (string-match it url) cashpw/browser-url-history-exclude-patterns)
-    (plru-put cashpw/browser-url-history (intern url) url)))
+    (plru-put cashpw/browser-url-history url t)))
 
 (defun cashpw/browser-url-history-put-eww-url ()
   "Add current buffer's url to history."
@@ -2290,17 +2294,20 @@ The algorithm works as follows."
          (title (bibtex-autokey-get-title))
          (year (bibtex-autokey-get-year))
          (autokey
-          (cond
-           ((and (not (string-empty-p names))
-                 (not (string-empty-p title))
-                 (not (string-empty-p year)))
-            (s-lex-format "${names}_${title}_${year}"))
-           ((and (not (string-empty-p journal))
-                 (not (string-empty-p title))
-                 (not (string-empty-p year)))
-            (s-lex-format "${journal}_${title}_${year}"))
-           (t
-            (s-lex-format "${names}_${title}_${year}")))))
+          (substring
+           (concat
+            (cond
+             ((not (string-empty-p names))
+              (s-lex-format "${names}_"))
+             ((not (string-empty-p journal))
+              (s-lex-format "${journal}_")))
+            (if (string-empty-p title)
+                ""
+              (s-lex-format "${title}_"))
+            (if (string-empty-p year)
+                ""
+              (s-lex-format "${year}_")))
+           0 -1)))
     (if bibtex-autokey-before-presentation-function
         (funcall bibtex-autokey-before-presentation-function autokey)
       autokey)))
@@ -4225,64 +4232,64 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
 
 (after!
- doct-org-roam
- (setq
-  ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
-  ;; and specifying the tag with a variable, because this didn't produce the right output.
-  ;; I didn't have time to dive in an understand why.
-  org-roam-capture-templates
-  (doct-org-roam
-   `((:group
-      "org-roam"
-      :type plain
-      :template "%?"
-      :file "${slug}.org"
-      :unnarrowed t
-      :before-finalize
-      (lambda ()
-        (save-excursion
-          (let ((id (org-entry-get (point-min) "ID")))
-            (goto-char (point-min))
-            (org-set-property
-             "DIR"
-             (format "attachments/%s/%s"
-                     (substring id 0 2)
-                     (substring id 2))))))
-      :children
-      (("Concept"
-        :keys "c"
-        :head
-        (
-         "#+title: ${title}
+  doct-org-roam
+  (setq
+   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+   ;; and specifying the tag with a variable, because this didn't produce the right output.
+   ;; I didn't have time to dive in an understand why.
+   org-roam-capture-templates
+   (doct-org-roam
+    `((:group
+       "org-roam"
+       :type plain
+       :template "%?"
+       :file "${slug}.org"
+       :unnarrowed t
+       :before-finalize
+       (lambda ()
+         (save-excursion
+           (let ((id (org-entry-get (point-min) "ID")))
+             (goto-char (point-min))
+             (org-set-property
+              "DIR"
+              (format "attachments/%s/%s"
+                      (substring id 0 2)
+                      (substring id 2))))))
+       :children
+       (("Concept"
+         :keys "c"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:"))
-       ("On X"
-        :keys "o"
-        :head
-        (
-         "#+title: ${title}
+        ("On X"
+         :keys "o"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:
 
 An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
-       ("American sign language (ASL)"
-        :keys "a"
-        :prepare-finalize
-        (lambda ()
-          (org-with-point-at
-           (org-find-exact-headline-in-buffer "ASL") (org-fc-type-double-init))
-          (org-with-point-at (point-min) (org-attach))
-          (let ((attachment-file-name
-                 (nth 0 (directory-files (org-attach-dir) nil "mp4"))))
-            (save-excursion
-              (cashpw/replace-regexp-in-buffer
-               "ATTACH_\\(.*\\)_END_ATTACH"
-               (format "[[attachment:%s][\\1]]" attachment-file-name)))))
-        :head
-        (
-         "#+title: ${title} (ASL)
+        ("American sign language (ASL)"
+         :keys "a"
+         :prepare-finalize
+         (lambda ()
+           (org-with-point-at
+               (org-find-exact-headline-in-buffer "ASL") (org-fc-type-double-init))
+           (org-with-point-at (point-min) (org-attach))
+           (let ((attachment-file-name
+                  (nth 0 (directory-files (org-attach-dir) nil "mp4"))))
+             (save-excursion
+               (cashpw/replace-regexp-in-buffer
+                "ATTACH_\\(.*\\)_END_ATTACH"
+                (format "[[attachment:%s][\\1]]" attachment-file-name)))))
+         :head
+         (
+          "#+title: ${title} (ASL)
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:
@@ -4303,12 +4310,57 @@ ${title}
 
 * Bibliography
 #+print_bibliography:"))
-       ("Project"
-        :keys "P"
-        :file "proj--${slug}.org"
-        :head
-        (
-         "#+title: ${title}
+        ("Decision"
+         :keys "d"
+         :file "decision--${slug}.org"
+         :head
+         ("#+title: Decision: ${title}
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+filetags: :decision:private:
+
+* TODO Background
+* TODO Overall decision
+
+The current, overall, decision taking all considerations into account.
+
+* PROJ Consideration [%<%Y-%m-%d %a>]
+
+** TODO Do I have enough ([[id:bceac98c-163f-4208-8ef5-75f98640553b][40-70%]]) information?
+** TODO Options
+
+1. Option 1
+2. Option 2
+3. Option 3
+
+** TODO Comparison
+
+|             | Option 1 | Option 2 | Option 3 |
+|-------------+----------+----------+----------|
+| Dimension 1 | 🟩 Great | 🟨 Good  | 🟥 Bad   |
+| Dimension 2 | 🟥 Bad   | 🟨 Good  | 🟥 Good  |
+
+** TODO Decision
+
+Option 2
+
+* TODO Admin
+** TODO Review
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1m\")
+
+Review current state of the project and update any tracking documentation.
+** TODO Communicate
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1m\")
+
+Communicate project status, blockers, etc, to relevant stakeholders.
+* Flashcards :noexport:
+"))
+        ("Project"
+         :keys "P"
+         :file "proj--${slug}.org"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :project:private:
@@ -4329,24 +4381,24 @@ Review current state of the project and update any tracking documentation.
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
 
 Communicate project status, blockers, etc, to relevant stakeholders.
-* Flashcards
+* Flashcards :noexport:
 "))
-       ("Person"
-        :keys "p"
-        :head
-        (
-         "#+title: ${title}
+        ("Person"
+         :keys "p"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :person:
 * Flashcards :noexport:"))
 
 
-       ("Photographer"
-        :keys "h"
-        :head
-        (
-         "#+title: ${title}
+        ("Photographer"
+         :keys "h"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :person:
@@ -4355,11 +4407,11 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * TODO [#2] Add photos :noexport:
 * Flashcards :noexport:"))
 
-       ("Friend (person)"
-        :keys "f"
-        :head
-        (
-         "#+title: ${title}
+        ("Friend (person)"
+         :keys "f"
+         :head
+         (
+          "#+title: ${title}
 #+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
@@ -4371,27 +4423,27 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * Events
 * Reminders
 * Notes"))
-       ("Verse"
-        :keys "v"
-        :head
-        (
-         "#+title: ${title}
+        ("Verse"
+         :keys "v"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :verse:"))
-       ("Quote"
-        :keys "u"
-        :head
-        (
-         "#+title: ${title}
+        ("Quote"
+         :keys "u"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :quote:"))
-       ("Recipe"
-        :keys "r"
-        :head
-        (
-         "#+title: ${title}
+        ("Recipe"
+         :keys "r"
+         :head
+         (
+          "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :recipe:
@@ -7147,6 +7199,10 @@ All args are passed to `org-roam-node-read'."
 
 (deflink "twitter"
          "https://twitter.com")
+
+(deflink "stock"
+         "https://www.google.com/finance/quote/%s"
+         (lambda (link _) (concat "$" (upcase link))))
 
 ;; (use-package! org-transclusion
 ;;   :after org
