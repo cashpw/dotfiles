@@ -653,6 +653,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :n
    "l"
    (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
+   :n "k" #'cashpw/gptel--kill-curl-process
    :desc "empty"
    :n
    "L"
@@ -2054,37 +2055,27 @@ TAGS which start with \"-\" are excluded."
     (interactive (list (llm-prompts-select)))
     (let ((gptel--system-message prompt))
       (gptel-send)))
+  )
 
-  (defun cashpw/gptel-send--buffer (system-message)
-    "TODO."
-    (interactive)
-    (let* ((prompt
-            (if (use-region-p)
-                (buffer-substring (region-beginning) (region-end))
-              (buffer-substring (point-min) (point))))
-           (gptel--system-message "")
-           (empty-prefix-alist '((org-mode . "")))
-           (gptel-prompt-prefix-alist empty-prefix-alist))
-      (gptel "*LLM*" nil (format "%s %s" system-message prompt) t)
-      (with-current-buffer "*LLM*"
-        (setq-local gptel--system-message "")
-        (setq-local gptel-prompt-prefix-alist empty-prefix-alist)
-        (gptel-send)))))
+(defun cashpw/gptel-kill-curl-process ()
+  "Kill any running gptel curl process."
+  (interactive)
+  (kill-process "gptel-curl"))
 
 (after!
- (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
+  (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
 
- (defun cashpw/whisper-run-and-cue-gptel ()
-   (interactive)
-   (setq cashpw/gptel-after-whisper t)
-   (whisper-run))
+  (defun cashpw/whisper-run-and-cue-gptel ()
+    (interactive)
+    (setq cashpw/gptel-after-whisper t)
+    (whisper-run))
 
- (defun cashpw/maybe-gptel-after-whisper ()
-   (when cashpw/gptel-after-whisper
-     (gptel-send)
-     (setq cashpw/gptel-after-whisper nil)))
+  (defun cashpw/maybe-gptel-after-whisper ()
+    (when cashpw/gptel-after-whisper
+      (gptel-send)
+      (setq cashpw/gptel-after-whisper nil)))
 
- (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+  (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
 
 (setq
  company-idle-delay 1
@@ -4088,6 +4079,56 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   (interactive)
   (org-element-cache-reset 'all))
 
+(defun cashpw/narrow-between-text (start-text end-text)
+  "Narrow between START-TEXT and END-TEXT around point."
+  (let ((start (save-excursion (search-backward start-text)))
+        (end (save-excursion (search-forward end-text))))
+    (narrow-to-region start end)))
+
+(defmacro cashpw/org-with-narrow-between-text (start-text end-text &rest body)
+  "Execute BODY with current buffer narrowed between START-TEXT and END-TEXT around point."
+  `(save-restriction
+    (cashpw/narrow-between-text ,start-text ,end-text)
+    ,@body))
+
+(defun cashpw/org-join-lines-in-quote ()
+  "Join lines in current quote block which are not separated by an empty line."
+  (interactive)
+  (cashpw/org-with-narrow-between-text
+   "#+begin_quote"
+   "#+end_quote"
+   ;; Go to #+begin_quote
+   (goto-char 0)
+   ;; Go to first line of quote
+   (evil-next-line)
+   ;; Go to second line of quote
+   (evil-next-line)
+   ;; Join each empty-line-delineated paragraph
+   (while (not
+           (string-equal-ignore-case
+            (org-current-line-string) "#+end_quote"))
+     ;; 2. While 'next line isn't empty': (evil-join)
+     (while (and (not
+                  (string-equal-ignore-case
+                   (org-current-line-string) "#+end_quote"))
+                 (not (string-empty-p (org-current-line-string))))
+       (join-line)
+       (evil-next-line))
+     (evil-next-line)
+     (evil-next-line))
+
+   ;; Join line-break-hyphenated words (for example: "back- ground")
+   (goto-char 0)
+   (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2")))
+
+(defun cashpw/org-remove-square-brackets-in-quote ()
+  "Join lines in current quote block which are not separated by an empty line."
+  (interactive)
+  (cashpw/org-with-narrow-between-text
+   "#+begin_quote"
+   "#+end_quote"
+   (cashpw/replace-regexp-in-buffer "\\( \\)?\\[[^\\]]*\\]\\(,\\)?" "")))
+
 (setq
  org-image-max-width 'window
  org-id-locations-file-relative nil
@@ -4344,7 +4385,7 @@ The current, overall, decision taking all considerations into account.
 
 Option 2
 
-* TODO Admin
+* PROJ Admin
 ** TODO Review
 SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1m\")
 
@@ -6797,6 +6838,7 @@ See `org-clock-special-range' for KEY."
   '("keep_on_done"
     "journal"
     "person"
+    "decision"
     "project")
   "Filetags for which we should keep on done."
   :group 'cashpw/org-mode-on-done
@@ -8079,41 +8121,6 @@ Reference:https://stackoverflow.com/q/23622296"
 ;; (use-package! org-window-habit
   ;; :config
   ;; (org-window-habit-mode +1))
-
-(defun cashpw/narrow-between-text (start-text end-text)
-  (let ((start (save-excursion (search-backward start-text)))
-        (end (save-excursion (search-forward end-text))))
-    (narrow-to-region start end)))
-
-(defun cashpw/org-join-quote-lines ()
-  "Join lines in current quote block which are not separated by an empty line."
-  (interactive)
-  (save-restriction
-    (cashpw/narrow-between-text "#+begin_quote" "#+end_quote")
-    (save-excursion
-      ;; Go to #+begin_quote
-      (goto-char 0)
-      ;; Go to first line of quote
-      (evil-next-line)
-      ;; Go to second line of quote
-      (evil-next-line)
-      ;; Join each empty-line-delineated paragraph
-      (while (not
-              (string-equal-ignore-case
-               (org-current-line-string) "#+end_quote"))
-        ;; 2. While 'next line isn't empty': (evil-join)
-        (while (and (not
-                     (string-equal-ignore-case
-                      (org-current-line-string) "#+end_quote"))
-                    (not (string-empty-p (org-current-line-string))))
-          (join-line)
-          (evil-next-line))
-        (evil-next-line)
-        (evil-next-line))
-
-      ;; Join line-break-hyphenated words (for example: "back- ground")
-      (goto-char 0)
-      (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2"))))
 
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
