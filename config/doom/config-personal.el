@@ -653,7 +653,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :n
    "l"
    (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
-   :n "k" #'cashpw/gptel--kill-curl-process
+   :n "k" #'cashpw/gptel-kill-curl-process
    :desc "empty"
    :n
    "L"
@@ -735,7 +735,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :desc "Elfeed"
    :n "e" #'elfeed
    ;; Override DOOM keybinding
-   :n "b" #'cashpw/eww
+   :n "b" #'cashpw/browse-select-url
    (:prefix
     ("n")
     :desc "Commonplace"
@@ -1119,125 +1119,71 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
  browse-url-browser-function 'eww-browse-url)
 
-(cl-defstruct (browser-search-engine)
-  "A search engine."
-  (name nil :type 'string :documentation "Human-readable name.")
-  (id nil :type 'string :documentation "Unique id.")
-  (keys
-   nil
-   :type '(repeat string)
-   :documentation "List of keys; shortcodes for selecting the search engine.")
-  (prefix
-   nil
-   :type 'string
-   :documentation "URL search perfix; for example: http://www.google.com/search?q=")
-  (query-limit
-   nil
-   :type 'number
-   :initform 50
-   :documentation "Size limit for query history.")
-  (query-cache nil :type 'sexp :documentation "`plru' of recent queries."))
+(defun cashpw/browse-select-url ()
+  "Return selected url based on history and search engines."
+  (interactive)
+  (let* ((url-history-options
+          (-map
+           (lambda (url)
+             (cons
+              url
+              `(lambda ()
+                 (plru-put cashpw/browser-url-history ,url t)
+                 (funcall browse-url-browser-function ,url))))
+           (plru-entry-keys-most-to-least-recent cashpw/browser-url-history)))
+         (search-engine-options
+          (let ((search-engines-key-to-engine
+                 (-flatten-n
+                  1
+                  (-map
+                   #'-list
+                   (-map
+                    (lambda (engine)
+                      (-map
+                       (lambda (key) (cons key engine)) (oref engine keys)))
+                    cashpw/browser-search-engines)))))
+            (--map
+             (let ((key (car it))
+                   (engine (cdr it)))
+               (cons key `(lambda () (search-engine-browse-url ,engine))))
+             search-engines-key-to-engine)))
+         (options
+          ;; List of the form (selector . handler-fn)
+          ;; 
+          ;; handler-fn is invoked when selector is selected
+          (append url-history-options search-engine-options))
+         (selection (completing-read "URL/Search: " options)))
+    (if (assoc selection options)
+        (funcall (cdr (assoc selection options)))
+      ;; Allow literal URLs
+      (funcall browse-url-browser-function selection))))
 
-(let ((plru-directory cashpw/path--browser-history-dir))
-  (setq cashpw/browser-search-engines
-        `(,(make-browser-search-engine
-            :name "DuckDuckGo"
-            :id 'duckduckgo
-            :keys '("@ddg" "@duckduckgo")
-            :prefix "https://html.duckduckgo.com/html/?q="
-            :query-cache (plru-repository "duckduckgo-query-cache" :max-size 200 :save-delay 5))
-          ,(make-browser-search-engine
-            :name "Wikipedia"
-            :id 'wikipedia
-            :keys '("@wikipedia")
-            :prefix "https://en.wikipedia.org/w/index.php?search="
-            :query-cache (plru-repository "wikipedia-query-cache" :max-size 200 :save-delay 5))
-          ;; Disabled because Google requires Javascript
-          ;; (:name "Google"
-          ;;  :keys '("@google")
-          ;;  :search-prefix "https://www.google.com/search?q=")
-          )))
-
-(defun cashpw/browser-search-engines-get-by-key (key)
-  "Return search engine with KEY; else nil."
-  (--first
-   (member key (browser-search-engine-keys it))
-   cashpw/browser-search-engines))
-
-(defun cashpw/browser-search-engines-keys ()
-  "Return search engine with KEY; else nil."
-  (-flatten
-   (-map
-    #'browser-search-engine-keys
-    cashpw/browser-search-engines)))
-
-(defun browser-search-engine-put-query (search-engine query)
-  "Add QUERY to the SEARCH-ENGINE's cache."
-  (plru-put (browser-search-engine-query-cache search-engine) (intern query) t))
-
-(defun browser-serach-engine-get-queries (search-engine query)
-  "Return SEARCH-ENGINE's cached queries in most-to-least recent order."
-  (mapcar
-   #'symbol-string
-   (plru-entry-keys-most-to-least-recent
-    (browser-search-engine-query-cache search-engine))))
+(setq
+ cashpw/browser-search-engines
+ `(;; Google is excluded because it requires Javascript; it doesn't work with EWW.
+   ,(search-engine
+     :name "DuckDuckGo"
+     :id 'duckduckgo
+     :keys '("@ddg" "@duckduckgo")
+     :url "https://html.duckduckgo.com/html/?q=%s"
+     :cache-size 200
+     :cache-directory cashpw/path--browser-history-dir)
+   ,(search-engine
+     :name "IMDb"
+     :id 'imdb
+     :keys '("@imdb")
+     :url "https://www.imdb.com/find/?q=%s"
+     :cache-size 200
+     :cache-directory cashpw/path--browser-history-dir)
+   ,(search-engine
+     :name "Wikipedia"
+     :id 'wikipedia
+     :keys '("@wikipedia")
+     :url "https://en.wikipedia.org/w/index.php?search=%s"
+     :cache-size 200
+     :cache-directory cashpw/path--browser-history-dir)))
 
 (after! eww (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
-
-(defun cashpw/eww ()
-  "Open EWW."
-  (interactive)
-  (eww (cashpw/browser-select-url)))
-
-(defun cashpw/browser-select-url--handle-url-history (url)
-  "Return a function to handle a URL."
-  (plru-put cashpw/browser-url-history url t)
-  url)
-
-(defun cashpw/browser-select-url--handle-query (key)
-  "Return a function to handle a query for search engine by KEY."
-  (let* ((search-engine (cashpw/browser-search-engines-get-by-key key))
-         (query-cache (browser-search-engine-query-cache search-engine))
-         (query
-          (completing-read
-           "Query: "
-           (mapcar
-            #'symbol-name (plru-entry-keys-most-to-least-recent query-cache)))))
-    (browser-search-engine-put-query search-engine query)
-    (concat
-     (browser-search-engine-prefix search-engine)
-     (mapconcat #'url-hexify-string (split-string query) "+"))))
-
-(defun cashpw/browser-select-url ()
-  "Return selected url based on history and search engines."
-  (let* ((options
-          (append
-           (--map
-            (cons
-             ;; (symbol-name it)
-             it
-             `(:fn
-               cashpw/browser-select-url--handle-url-history
-               :args (
-                      ,it
-                      ;; ,(symbol-name it)
-                      )))
-            (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))
-           (let ((keys
-                  (-flatten
-                   (-map
-                    #'browser-search-engine-keys
-                    cashpw/browser-search-engines))))
-             (--map
-              (cons
-               it `(:fn cashpw/browser-select-url--handle-query :args (,it)))
-              keys))))
-         (selection (completing-read "URL/Search: " options nil)))
-    (if (assoc selection options)
-        (let ((fn-plist (cdr (assoc selection options))))
-          (apply (plist-get fn-plist :fn) (plist-get fn-plist :args)))
-      ;; Allow literal URLs
-      selection)))
 
 (let ((plru-directory cashpw/path--browser-history-dir))
   (defconst cashpw/browser-url-history
