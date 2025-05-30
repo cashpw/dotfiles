@@ -601,16 +601,25 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     "n"
     (cmd!
      (cashpw/org-select-and-go-to-todo
-      (seq-difference
-       (cashpw/org-agenda-files 'notes-with-todo)
-       (append
-        (cashpw/org-roam-files-with-tag "journal")
-        `(,cashpw/path--reading-list
-          ,cashpw/path--personal-todos ,cashpw/path--personal-calendar)))))
+      (-difference
+       (cl-loop
+        for file in (org-mem-all-files)
+        unless (or
+                (s-ends-with-p "archive" file)
+                (member (f-expand file)
+                        (list
+                         (f-expand cashpw/path--personal-calendar)
+                         (f-expand cashpw/path--personal-todos)
+                         (f-expand cashpw/path--reading-list))))
+        when (seq-find (lambda (entry)
+                         (member (org-mem-entry-todo-state entry) org-not-done-keywords))
+                       (org-mem-entries-in file))
+        collect (f-expand file))
+        (cashpw/org-roam-files-with-tag "journal"))))
     :desc "Reading List"
     :n
     "r"
-    (cmd! (cashpw/org-select-and-go-to-todo `(,cashpw/path--reading-list))))
+    (cmd! (cashpw/org-select-and-go-to-todo (list cashpw/path--reading-list))))
    (:prefix
     ("r" . "Review")
     :desc "Clock check"
@@ -1158,43 +1167,67 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
       ;; Allow literal URLs
       (funcall browse-url-browser-function selection))))
 
-(setq
- cashpw/browser-search-engines
- `(;; Google is excluded because it requires Javascript; it doesn't work with EWW.
-   ,(search-engine
-     :name "DuckDuckGo"
-     :id 'duckduckgo
-     :keys '("@ddg" "@duckduckgo")
-     :url "https://html.duckduckgo.com/html/?q=%s"
-     :cache-size 200
-     :cache-directory cashpw/path--browser-history-dir)
-   ,(search-engine
-     :name "IMDb"
-     :id 'imdb
-     :keys '("@imdb")
-     :url "https://www.imdb.com/find/?q=%s"
-     :cache-size 200
-     :cache-directory cashpw/path--browser-history-dir)
-   ,(search-engine
-     :name "Wikipedia"
-     :id 'wikipedia
-     :keys '("@wikipedia")
-     :url "https://en.wikipedia.org/w/index.php?search=%s"
-     :cache-size 200
-     :cache-directory cashpw/path--browser-history-dir)))
+(use-package!
+    search-engine
+  :custom
+  (search-engine-cache-name-fn
+   (defun cashpw/search-engine-cache-name (search-engine)
+     "Return a unique name for the search engine cache."
+     (format "%s-%s-query-cache"
+             (symbol-name (oref search-engine id))
+             (format "%s-%s" emacs-version
+                     plru-internal-version-constant))))
+  :config
+  (setq cashpw/browser-search-engines
+        `(
+          ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
+          ,(search-engine
+            :name "DuckDuckGo"
+            :id 'duckduckgo
+            :keys '("@ddg" "@duckduckgo")
+            :url "https://html.duckduckgo.com/html/?q=%s"
+            :cache-size 200
+            :cache-directory cashpw/path--browser-history-dir)
+          ,(search-engine
+            :name "IMDb"
+            :id 'imdb
+            :keys '("@imdb")
+            :url "https://www.imdb.com/find/?q=%s"
+            :cache-size 200
+            :cache-directory cashpw/path--browser-history-dir)
+          ,(search-engine
+            :name "Wikipedia"
+            :id 'wikipedia
+            :keys '("@wikipedia")
+            :url "https://en.wikipedia.org/w/index.php?search=%s"
+            :cache-size 200
+            :cache-directory cashpw/path--browser-history-dir))))
 
-(after! eww (define-key eww-mode-map (kbd "y") 'org-eww-copy-for-org-mode))
+(after! shr
+  (set-face-attribute 'shr-h1 nil :height 2.0 :weight 'bold)
+  (set-face-attribute 'shr-h2 nil :height 1.8 :weight 'bold)
+  (set-face-attribute 'shr-h3 nil :height 1.6 :weight 'bold)
+  (set-face-attribute 'shr-h4 nil :height 1.4 :weight 'bold)
+  (set-face-attribute 'shr-h5 nil :height 1.2 :weight 'bold)
+  (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold))
 
 (let ((plru-directory cashpw/path--browser-history-dir))
   (defconst cashpw/browser-url-history
-    (plru-repository "browser-url-history" :max-size 200 :save-delay 5)))
+    (plru-repository (format "browser-url-history-%s-%s"
+                             emacs-version
+                             plru-internal-version-constant)
+                     :max-size 200 :save-delay 5)))
 
 (defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
-(dolist (search-prefix
-         (mapcar #'browser-search-engine-prefix cashpw/browser-search-engines))
-  (add-to-list
-   'cashpw/browser-url-history-exclude-patterns (regexp-quote search-prefix)))
+
+(after! search-engine
+  (let ((search-engine-urls
+         (--map
+          (string-replace "%s" "" (oref it url))
+          cashpw/browser-search-engines)))
+    (dolist (url search-engine-urls)
+      (add-to-list 'cashpw/browser-url-history-exclude-patterns (regexp-quote url)))))
 
 (defun cashpw/browser-url-history-put-url (url)
   "Put URL into history."
@@ -1242,7 +1275,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (cashpw/feh-gallery (cashpw/org-get-link-image-paths-in-buffer)))
 
 (use-package! nov
-  :custom
+  :config
   (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode)))
 
 (setq
@@ -1978,17 +2011,17 @@ TAGS which start with \"-\" are excluded."
 
   :config
   (setq-default
+   gptel-backend (gptel-make-gemini
+                     "Gemini"
+                   :key
+                   (secret-get
+                    (if (cashpw/machine-p 'work-cloudtop)
+                        "corporate-gemini"
+                      "personal-gemini"))
+                   :stream t)
    gptel-model 'gemini-2.5-pro-preview-05-06
-   ;; gptel-model 'gemini-2.5-flash-preview-04-17
-   gptel-backend
-   (gptel-make-gemini
-       "Gemini"
-     :key
-     (secret-get
-      (if (cashpw/machine-p 'work-cloudtop)
-          "corporate-gemini"
-        "personal-gemini"))
-     :stream t))
+   gptel-quick-backend gptel-backend
+   gptel-quick-model 'gemini-2.5-flash-preview-05-20)
 
   (defun cashpw/gptel-context-add-file-glob (pattern)
     "Add glob of files matched by PATTERN."
@@ -3464,15 +3497,21 @@ Return nil if no attendee exists with that EMAIL."
   :after org)
 
 (use-package!
+    org-mem
+  :custom
+  (org-mem-watch-dirs `(,cashpw/path--notes-dir))
+  (org-mem-do-sync-with-org-id t)
+  (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
+  :config
+  (org-mem-updater-mode))
+
+(use-package!
     org-node
   :demand t
   :after org-roam
   :custom
-  (org-mem-watch-dirs `(,cashpw/path--notes-dir))
-  (org-mem-do-sync-with-org-id t)
   (org-node-creation-fn #'org-node-new-via-roam-capture)
   (org-node-slug-fn #'org-node-slugify-like-roam-actual)
-  (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
   (org-node-filter-fn
    (lambda (node)
      (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
@@ -3482,13 +3521,11 @@ Return nil if no attendee exists with that EMAIL."
           (not (member "fc" (org-node-get-tags-local node))))))
 
   :config
-  (org-mem-updater-mode)
   (org-node-cache-mode)
   (org-node-roam-accelerator-mode)
   (org-node-complete-at-point-mode)
   (advice-add 'org-roam-node-find :override 'org-node-find)
-  (advice-add 'org-roam-node-insert :override 'org-node-insert-link)
-  )
+  (advice-add 'org-roam-node-insert :override 'org-node-insert-link))
 
 (use-package!
     org-defblock
@@ -4073,7 +4110,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   (cashpw/org-with-narrow-between-text
    "#+begin_quote"
    "#+end_quote"
-   (cashpw/replace-regexp-in-buffer "\\( \\)?\\[[^\\]]*\\]\\(,\\)?" "")))
+   (cashpw/replace-regexp-in-buffer "\\( \\)?\\[[^]]*\\]\\(,\\)?" "")))
 
 (setq
  org-image-max-width 'window
@@ -4756,7 +4793,7 @@ Work in progress"
   '()
   "File paths which won't hold flashcards.")
 
-(defun cashpw/org--add-heading-if-missing (heading-text &optional todo priority tags)
+(defun cashpw/org--insert-heading-if-missing (heading-text &optional todo priority tags)
   "Insert heading with HEADING-TEXT if no such heading exists in current buffer.
 
 Optional:
@@ -4813,7 +4850,7 @@ Optional:
   (unless (--any-p
          (funcall it)
          cashpw/org-roam--skip-add-flashcard-fns)
-    (cashpw/org--add-heading-if-missing
+    (cashpw/org--insert-heading-if-missing
      "Flashcards"
      todo
      priority
@@ -5052,8 +5089,9 @@ This is an internal function."
    org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
                                                         :type plain
                                                         :template "%?"
-                                                        :file "%<%Y-%m-%d>.org"
+                                                        :file "journal--%<%Y-%m-%d>.org"
                                                         :unnarrowed t
+                                                        :immediate-finish t
                                                         :children (("Day"
                                                                     :keys "d"
                                                                     :head ("#+title: %<%Y-%m-%d>"
@@ -5068,9 +5106,11 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :Effort:   15m
 :END:
 
-** About me
+** Me
 
-** About Cayla
+*** Thought records
+
+** Cayla
 
 ** About the day
 
@@ -5340,7 +5380,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (propertize
    line
    'face
-   '(:foreground "DimGray")))
+   'shadow))
 
 (defcustom cashpw/org-agenda--dim-headline-regexps
   '("Stretch"
@@ -5444,12 +5484,24 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (cashpw/org-agenda-view-collapse)))
 
 (defun cashpw/org-agenda-view--today--files ()
-  "Return list of files for today's agenda view."
-  (let ((yyyy-mm-dd (format-time-string "%F" (current-time))))
-    (-distinct
-     (append
-      (cashpw/rgrep (format "-l \"<%s\" %s/*.org" yyyy-mm-dd cashpw/path--notes-dir))
-      (cashpw/rgrep (format "-l \":everyday:\" %s/*.org" cashpw/path--notes-dir))))))
+  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
+         (cl-loop
+          for file in (org-mem-all-files)
+          unless (s-ends-with-p "archive" file)
+          when (seq-find (lambda (entry)
+                           (or
+                            (member "everyday" (org-mem-entry-tags entry))
+                            (and
+                             (member (org-mem-entry-todo-state entry) org-not-done-keywords)
+                             (or
+                              (and
+                               (org-mem-entry-scheduled entry)
+                               (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
+                              (and
+                               (org-mem-entry-deadline entry)
+                               (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry)))))))
+                         (org-mem-entries-in file))
+          collect file)))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -5573,7 +5625,6 @@ Intended for use with `org-super-agenda' `:transformer'. "
 
 (defun cashpw/org-agenda-view--review--today-files-fn ()
   "Return list of files for review agenda views."
-
   (let* ((yyyy-mm-dd (format-time-string "%F" (current-time)))
          (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
          (clock-grep-string (format "CLOCK: \\[%s" yyyy-mm-dd)))
@@ -5590,15 +5641,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (cashpw/rgrep
        (format "-l \"%s\" %s/*.org_archive"
                clock-grep-string
-               cashpw/path--notes-dir)))))
-  ;; (append
-  ;;  ;; (cashpw/org-agenda-files 'notes-with-todos)
-  ;;  ;; (cashpw/org-archive-files-in-directory cashpw/path--notes-dir)
-  ;;  (cashpw/org-agenda-files 'personal t)
-  ;;  (cashpw/org-agenda-files 'calendar t)
-  ;;  (cashpw/org-agenda-files 'journal-this-year t)
-  ;;  (cashpw/org-agenda-files 'people-private t))
-  )
+               cashpw/path--notes-dir))))))
 
 (defun cashpw/org-agenda-view--review--logged ()
   "Return custom agenda command."
@@ -5894,6 +5937,7 @@ items if they have an hour specification like [h]h:mm."
   (let*
       ((separator "¥")
        (todos-with-file
+        ;; A list of <file><separator><line-number><separator><heading> entries
         (-flatten
          (-map
           (lambda (file-sublist)
@@ -5901,7 +5945,7 @@ items if they have an hour specification like [h]h:mm."
               (cashpw/pcregrep
                (s-lex-format
                 ;; Ignore headings with SCHEDULED or DEADLINE
-                "--multiline --line-number --with-filename '^\\* (TODO|INPROGRESS).*(\\n^(?!SCHEDULED:)(?!DEADLINE:))?' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:"))))
+                "--multiline --line-number --with-filename '^\\*[\\*]* (TODO|INPROGRESS) ([^\\n]*)\\n(?!SCHEDULED:)(?!DEADLINE:)' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:"))))
           (-partition-all 50 files))))
        (match-alist
         (mapcar
@@ -5909,12 +5953,24 @@ items if they have an hour specification like [h]h:mm."
            (cl-destructuring-bind (file line-number match)
                (s-split separator todo-with-file 'omit-nulls)
              (if (string-match org-complex-heading-regexp match)
-                 (let ((priority (or (match-string 3 match) "[#?]"))
-                       (heading (match-string 4 match)))
-                   `(,(format "%s %s: %s:%s" priority heading file line-number)
+                 (let* (
+                        (priority (or (match-string 3 match) "[#?]"))
+                        (priority-face (let ((face (or (cdr (assq (aref (substring priority 2 3) 0) org-modern-priority-faces))
+                                                       t)))
+                                         `(:inherit (,face org-modern-label))))
+                        (heading (match-string 4 match)))
+                   `(,(format "%s %s %s"
+                              (propertize
+                               (concat " #" (substring priority 2 3) " ")
+                               'face
+                               priority-face)
+                              heading
+                              (propertize
+                               (format "(%s:%s)" file line-number)
+                               'face
+                               'shadow))
                      .
-                     (:file
-                      ,file
+                     (:file ,file
                       :heading ,heading
                       :priority ,priority
                       :line-number ,(string-to-number line-number))))
@@ -5951,11 +6007,8 @@ items if they have an hour specification like [h]h:mm."
       (org-agenda-use-tag-inheritance nil)
       (org-agenda-prefix-format '((agenda . "%-20(org-get-title)")))
       (org-agenda-ignore-properties '(effort appt category stats))
-      (org-agenda-files (seq-difference (cashpw/org-agenda-files 'notes-with-todo)
-                                        `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")
-                                          ,cashpw/path--personal-calendar
-                                          ,cashpw/path--personal-todos
-                                          )))
+      (org-agenda-files
+       )
       (org-super-agenda-groups
        `((:discard
           (:scheduled t
@@ -5967,22 +6020,19 @@ items if they have an hour specification like [h]h:mm."
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
-(setq
- cashpw/readinglist-file-path (s-lex-format "${cashpw/path--notes-dir}/reading_list.org"))
-
 (defun cashpw/org-agenda-view--roam--readinglist ()
   "Return custom agenda command."
   `((alltodo
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-prefix-format '((todo . " %i ")))
-      (org-agenda-files `(,(s-lex-format "${cashpw/path--notes-dir}/reading_list.org")))
+      (org-agenda-files (list cashpw/path--reading-list))
       (org-agenda-dim-blocked-tasks nil)
       (org-super-agenda-groups
        (--map
         (cashpw/org-super-agenda--get-first-n-from-roam-tag 10
                                                             it)
-        (with-current-buffer (find-file-noselect cashpw/readinglist-file-path)
+        (with-current-buffer (find-file-noselect cashpw/path--reading-list)
           (org-extras-get-all-tags-in-file))))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
@@ -7120,7 +7170,91 @@ See `org-clock-special-range' for KEY."
            :prepare-finalize
            ,(lambda ()
               (goto-char (point-min))
-              (org-fc-type-text-input-init)))))))))))
+              (org-fc-type-text-input-init)))))))
+      (:group
+       "Journal"
+       :file ,(lambda ()
+                (format "%s/journal--%s.org"
+                        cashpw/path--notes-dir
+                        (format-time-string "%F" (current-time))))
+       :immediate-finish nil
+       :children
+       ("Journal"
+        :keys "j"
+        :children
+        (("Thought record"
+          :keys "t"
+          :olp ("Journal" "Me" "Thought records")
+          :record-situation
+          (lambda ()
+            (read-string "Situation/Trigger: "))
+          :record-pre-reflection-emotions
+          (lambda ()
+            (read-string "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
+          :record-automatic-thought
+          (lambda ()
+            (read-string "Automatic thought: "))
+          :record-alternative-thought
+          (lambda ()
+            (read-string "Alternative thought: "))
+          :record-distortions
+          (lambda ()
+            (let* ((distortions
+                    '(("All-or-nothing thinking" . "id:161a1843-d228-4e46-afd0-f587356ef03a")
+                      ("Mind reading" . "id:85eee943-87dc-4728-a03e-63a096ff8df5")
+                      ("Fortune-telling" . "id:522e7027-ebac-4c06-8de5-ab338aec390a")
+                      ("Labeling" . "id:f67f2787-f097-466f-a5c9-21cd8d6286ba")
+                      ("Emotional reasoning" . "id:7b9b6518-05eb-4d48-9265-459847052d4d")
+                      ("Should/Must" . "id:2a3b0da0-7d1f-4f36-a161-c9fb17d64dfa")
+                      ("Personalization" . "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
+                      ("Blaming" . "id:40d20f7b-3fe1-453c-968a-04d6a19d2c60")
+                      ("Always being right" . "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
+                      ("Magnification/Minimization" . "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
+                      ("Catastrophizing" . "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
+                      ("Overgeneralizing" . "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
+                      ("Disqualifying the positive" . "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
+                      ("Filtering" . "id:0b509a6f-0fc2-41a3-8770-4c1f9a881a04")))
+                   (selections (completing-read-multiple "Distortions: " distortions nil t))
+                   (link-list
+                    (string-join
+                     (--map
+                      (format "- %s
+"
+                              (org-link-make-string
+                               (format
+                                "id:%s"
+                                (alist-get it distortions nil nil #'string=))
+                               it))
+                      selections)
+                     "")))
+              link-list))
+          :record-post-reflection-emotions
+          (lambda ()
+            (read-string "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
+          :template "*** %U
+
+**** Situation/Trigger
+
+%{record-situation}
+
+**** Pre-reflection emotions
+
+%{record-pre-reflection-emotions}
+
+**** Automatic thought
+
+%{record-automatic-thought}
+
+**** Distortions
+
+%{record-distortions}
+**** Alternative thought(s)
+
+%{record-alternative-thought}
+
+**** Post-reflection emotions
+
+%{record-post-reflection-emotions}%?"))))))))
 
 (after! org
   (setq
@@ -7732,8 +7866,11 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
 
   (map!
    :map eww-mode-map
-   :localleader
-    :n "@" #'cashpw/zotra-add-entry-from-eww)
+   :n "yy" #'evil-yank
+   
+   (:localleader
+    :n "@" #'cashpw/zotra-add-entry-from-eww
+    :desc "jump to hedaing" "." #'+eww/jump-to-heading-on-page))
 
   (map!
    :map org-mode-map
@@ -8112,73 +8249,54 @@ Reference:https://stackoverflow.com/q/23622296"
 
 (use-package! font-lock-profiler)
 
-(require 'url)
+(defun eww--capture-headings-on-page ()
+  "Return an alist in the form \"LABEL . POINT\" for the current buffer."
+  (let ((heading-stack '())
+        headings match)
+    (save-excursion
+      (goto-char (point-min))
+      (while (setq match (text-property-search-forward 'outline-level))
+        (let* ((level (prop-match-value match))
+               (start-point-prop (prop-match-beginning match))
+               (end-point-prop (prop-match-end match))
+               (text (replace-regexp-in-string
+                      "\n" " "      ; NOTE 2021-07-25: newlines break completion
+                      (buffer-substring-no-properties
+                       start-point-prop end-point-prop))))
+          (cond
+           ((= level (length heading-stack))
+            (pop heading-stack)
+            (push text heading-stack))
+           ((< level (length heading-stack))
+            ;; There's an upward gap between headings (for example: h5, then h2)
+            (dotimes (_ (1+ (- (length heading-stack) level)))
+              (pop heading-stack))
+            (push text heading-stack))
+           ((> level (length heading-stack))
+            ;; There's a downward gap between headings (for example: h2, then h5)
+            (dotimes (_ (1- (- level (length heading-stack))))
+              (push nil heading-stack))
+            (push text heading-stack)))
+          (push (cons
+                 (concat
+                  (let ((preceeding-heading-stack (remove nil (cdr heading-stack))))
+                    (when preceeding-heading-stack
+                      (propertize
+                       (concat
+                        (string-join (reverse preceeding-heading-stack) "/")
+                        "/")
+                       'face 'shadow)))
+                  (car heading-stack))
+                 start-point-prop)
+                headings))))
+    headings))
 
-(defun cashpw/get-first-url-on-line ()
-  (interactive)
-  (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-         (match (string-match "http\\(s\\)?:\\/\\/[^] ]+" line)))
-    (match-string 0 line)))
-
-(defun cashpw/get-url-contents (url)
-  (let ((content
-         (with-current-buffer (url-retrieve-synchronously url)
-           (shr-render-region (point-min) (point-max))
-           (buffer-string))))
-    (string-join
-     (delq
-      nil
-      (mapcar (lambda (ch) (encode-coding-char ch 'utf-8 'unicode)) content)))))
-
-(defun cashpw/llm-get-tags-for-url (url valid-tags)
-  "Return list of tags for URL pulled from VALID-TAGS."
-  (when (or
-         (string-match-p "reddit.com" url)
-         (string-match-p "youtube.com" url)
-         (string-match-p "wsj.com" url)
-         (string-match-p "imgur.com" url))
-    (error "Cannot read content at %s due to policy." url))
-  (with-temp-buffer
-    (let* ((done nil)
-           (response nil)
-           (wait-duration 0)
-           (timeout-seconds 10)
-           (url
-            (cond
-             ;; Prefer hn.svelte.dev for better HTML
-             ((string-match-p "news\\.ycombinator\\.com" url)
-              (replace-regexp-in-string
-               "news\\.ycombinator\\.com\\/item\\?id="
-               "hn.svelte.dev/item/"
-               url))
-             (t
-              url)))
-           (content (cashpw/get-url-contents url)))
-      (insert
-       (format
-        "Which of the following tags are most applicable to the following article? Respond with only a comma-separated list of tags inspired from the list below. Print \"oops\" if the article resembles a notice that the website was inaccessible.
-
-The tags are: %s.
-
-The article is:
-
-%s"
-        (string-join valid-tags " ")
-        (if (> (length content) 10000)
-            (substring content 0 10000)
-          content)))
-      (gptel--sanitize-model)
-      (gptel-request
-          nil
-        :stream nil
-        :callback
-        (lambda (r _)
-          (setq
-           done t
-           response r)))
-      (while (and (not done) (< wait-duration timeout-seconds))
-        (sleep-for 1)
-        (cl-incf wait-duration))
-      (delete-region (point-min) (point-max))
-      (insert response))
-    (string-split (replace-regexp-in-string " " "" (buffer-string)) ",")))
+(defun +eww/jump-to-heading-on-page ()
+  "Jump to heading position on the page (whole buffer) using completion."
+  (interactive nil 'eww-mode)
+  (unless (derived-mode-p 'eww-mode)
+    (user-error "Not in an eww buffer!"))
+  (let* ((headings (eww--capture-headings-on-page))
+         (selection (completing-read "Jump to heading: " headings nil t)))
+    (goto-char (alist-get selection headings nil nil #'string=))
+    (recenter)))

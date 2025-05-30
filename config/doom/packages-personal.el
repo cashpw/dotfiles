@@ -117,6 +117,10 @@
 ;;            :repo "cashpw/el-go"
 ;;            :branch "feat/missing-backends"))
 
+(package! search-engine
+  :recipe (:host github
+           :repo "cashpw/search-engine.el"))
+
 ;; (package! w3m)
 
 (package! nov)
@@ -243,6 +247,8 @@
            :repo "cashpw/org-recipes"))
 
 (unpin! org-roam)
+
+(package! org-mem)
 
 (package! org-node
   :recipe (:host github

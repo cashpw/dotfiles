@@ -40,12 +40,11 @@
  doom                ; what makes DOOM look the way it does
  doom-dashboard      ; a nifty splash screen for Emacs
  doom-quit           ; DOOM quit-message prompts when you quit Emacs
- ;; (emoji              ; 🙂
- ;;  +ascii
- ;;  +github
- ;;  +unicode)
+ (emoji              ; 🙂
+  +ascii
+  +github
+  +unicode)
  hl-todo             ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
- ;;hydra
  indent-guides     ; highlighted indent columns
  (ligatures         ; ligatures and symbols to make your code pretty again
   +extra
@@ -57,10 +56,11 @@
  ophints             ; highlight the region an operation acts on
  (popup
   +defaults)   ; tame sudden yet inevitable temporary windows
+ ;;smooth-scroll
  ;;tabs              ; a tab bar for Emacs
  treemacs          ; a project drawer, like neotree but cooler
  unicode             ; extended unicode support for various languages
- ;; (vc-gutter +pretty)           ; vcs diff in the fringe
+ (vc-gutter +pretty)           ; vcs diff in the fringe
  vi-tilde-fringe     ; fringe tildes to mark beyond EOB
  ;;window-select     ; visually switch windows
  workspaces          ; tab emulation, persistence & separate workspaces
@@ -86,6 +86,7 @@
  (dired
   +dirvish)          ; making dired pretty [functional]
  electric            ; smarter, keyword-based electric-indent
+ eww
  ;;ibuffer           ; interactive buffer management
  undo                ; persistent, smarter undo for your inevitable mistakes
  vc                  ; version-control and Emacs, sitting in a tree
@@ -108,33 +109,33 @@
  :tools
  ;;ansible
  biblio            ; Writes a PhD for you (citation needed)
- ;;debugger          ; FIXME stepping through code, to help you add bugs
+ ;;collab
+ ;;debugger
  ;;direnv
  ;;docker
- ;; editorconfig      ; let someone else argue about tabs vs spaces
- ;;ein               ; tame Jupyter notebooks with emacs
+ ;;editorconfig
+ ;ein
  (eval +overlay)     ; run code, run (also, repls)
- ;;gist              ; interacting with github gists
  (lookup              ; navigate your code and its documentation
   +docsets
   +dictionary
   ;; Disabled because I can't figure out how to download wordnet on corp machines
   ;; +offline
   )
+ llm
  (lsp               ; M-x vscode
   ;; Prefer `eglot' because corporate tools also use Eglot.
   +eglot)
  (magit
   ;; +forge
   )             ; a git porcelain for Emacs
- ;;make              ; run make tasks from Emacs
- ;;pass              ; password manager for nerds
+ ;;make
+ ;;pass
  pdf               ; pdf enhancements
- ;;prodigy           ; FIXME managing external services & code builders
- ;;terraform         ; infrastructure as code
- ;;tmux              ; an API for interacting with tmux
+ ;;terraform
+ ;;tmux
  tree-sitter       ; syntax and parsing, sitting in a tree...
- ;;upload            ; map local to remote projects via ssh/ftp
+ ;;upload
 
  :os
  (:if IS-MAC macos)  ; improve compatibility with macOS
@@ -154,20 +155,25 @@
  ;; (dart
  ;;  +flutter
  ;;  +lsp)     ; paint ui and not much else
+ ;;dhall
  ;;elixir            ; erlang done right
  ;;elm               ; care for a cup of TEA?
  emacs-lisp          ; drown in parentheses
  ;;erlang            ; an elegant language for a more civilized age
  ess               ; emacs speaks statistics
+ ;;factor
  ;;faust             ; dsp, but you get to keep your soul
+ ;;fortran
  ;;fsharp            ; ML stands for Microsoft's Language
  ;;fstar             ; (dependent) types and (monadic) effects and Z3
  ;;gdscript          ; the language you waited for
  ;;(go +lsp)         ; the hipster dialect
+ ;;(graphql +lsp)
  ;;(haskell +dante)  ; a language that's lazier than I am
  ;;hy                ; readability of scheme w/ speed of python
  ;;idris             ; a language you can depend on
  ;;json              ; At least it ain't XML
+ ;;janet
  (java                                        ; the poster child for carpal tunnel syndrome
   +lsp
   +tree-sitter)
@@ -178,7 +184,6 @@
  ;;kotlin            ; a better, slicker Java(Script)
  ;;latex             ; writing papers in Emacs has never been so fun
  ;;lean
- ;;factor
  ;;ledger            ; an accounting system in Emacs
  ;;lua               ; one-based indices? one-based indices
  (markdown            ; writing docs for people to ignore
@@ -195,6 +200,7 @@
   +pandoc)
  ;;php               ; perl's insecure younger brother
  ;;plantuml          ; diagrams for confusing people more
+ graphviz
  ;;purescript        ; javascript, but functional
  (python
   +lsp
@@ -205,9 +211,9 @@
  ;;rest              ; Emacs as a REST client
  ;;rst               ; ReST in peace
  ;;(ruby +rails)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
- ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
+ ;;(rust +lsp)       ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
  ;;scala             ; java, but good
- ;;scheme            ; a fully conniving family of lisps
+ ;;(scheme +lsp)     ; a fully conniving family of lisps
  (sh                  ; she sells {ba,z,fi}sh shells on the C xor
   +lsp
   +tree-sitter)
@@ -221,6 +227,7 @@
  (yaml                ; JSON, but readable
   +lsp
   +tree-sitter)
+ ;;zig
 
  :email
  ;;(mu4e +gmail)
