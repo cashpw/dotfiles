@@ -1982,9 +1982,9 @@ TAGS which start with \"-\" are excluded."
   "Please carefully review the following text with the aim of providing accurate and representative responses to the following requirements, in order:
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers, in a bullet-point list.
-2. In a section titled \"Thesis\": Paraphrase the thesis in 50 words or less.
+2. In a section titled \"Thesis\": Identify and describe the thesis statement(s) in a bullet point list.
 3. In a section titled \"Summary\": Summarize the content in 300 words or less. Prefer bullet-point lists where appropriate.
-4. In a section titled \"References\": List all of the books, articles, and other referenced sources.
+4. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
 5. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.
 6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
   "LLM prompt to summarize content.")
@@ -2000,28 +2000,55 @@ TAGS which start with \"-\" are excluded."
 
 (use-package!
     gptel
-  :custom (gptel-default-mode 'org-mode) (gptel-track-media t)
-  ;; (gptel-directives
-  ;;  `((default . ,cashpw/llm--default-prompt)
-  ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
-  ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
-  ;;    (writing . ,cashpw/llm--writing-prompt)
-  ;;    (programming . ,cashpw/llm--programming-prompt)
-  ;;    (chat . ,cashpw/llm--chat-prompt)))
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-track-media t)
+  (gptel-show-progress-in-mode-line t)
+  (gptel-mode-line--indicator-querying " ")
+  (gptel-mode-line--indicator-responding "💬 ")
 
   :config
   (setq-default
-   gptel-backend (gptel-make-gemini
-                     "Gemini"
-                   :key
-                   (secret-get
-                    (if (cashpw/machine-p 'work-cloudtop)
-                        "corporate-gemini"
-                      "personal-gemini"))
-                   :stream t)
+   gptel-backend
+   (gptel-make-gemini
+       "Gemini"
+     :key
+     (secret-get
+      (if (cashpw/machine-p 'work-cloudtop)
+          "corporate-gemini"
+        "personal-gemini"))
+     :stream t)
    gptel-model 'gemini-2.5-pro-preview-05-06
    gptel-quick-backend gptel-backend
    gptel-quick-model 'gemini-2.5-flash-preview-05-20)
+
+  (defun gptel-mode-line--indicator (mode)
+    "Return indicator string for MODE."
+    (pcase mode
+      ('querying gptel-mode-line--indicator-querying)
+      ('responding gptel-mode-line--indicator-responding)
+      (t "")))
+  (defun gptel-mode-line (command mode)
+    "Update mode line to COMMAND (show|hide) indicator for MODE."
+    (when gptel-show-progress-in-mode-line
+      (let ((indicator (list t (gptel-mode-line--indicator mode))))
+        (pcase command
+          ('show (cl-pushnew indicator global-mode-string :test #'equal))
+          ('hide
+           (setf global-mode-string (remove indicator global-mode-string)))))
+      (force-mode-line-update t)))
+  (defun gptel-mode-line--hide-all (&rest _)
+    (gptel-mode-line 'hide 'querying)
+    (gptel-mode-line 'hide 'responding))
+  (defun gptel-mode-line--show-querying ()
+    (gptel-mode-line--hide-all)
+    (gptel-mode-line 'show 'querying))
+  (defun gptel-mode-line--show-responding ()
+    (gptel-mode-line--hide-all)
+    (gptel-mode-line 'show 'responding))
+  (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
+  (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
+  (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
 
   (defun cashpw/gptel-context-add-file-glob (pattern)
     "Add glob of files matched by PATTERN."
@@ -2033,8 +2060,7 @@ TAGS which start with \"-\" are excluded."
     "Invoke `gptel-send' with specific PROMPT."
     (interactive (list (llm-prompts-select)))
     (let ((gptel--system-message prompt))
-      (gptel-send)))
-  )
+      (gptel-send))))
 
 (defun cashpw/gptel-kill-curl-process ()
   "Kill any running gptel curl process."
