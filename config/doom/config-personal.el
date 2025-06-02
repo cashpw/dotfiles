@@ -1139,7 +1139,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
               `(lambda ()
                  (plru-put cashpw/browser-url-history ,url t)
                  (funcall browse-url-browser-function ,url))))
-           (plru-entry-keys-most-to-least-recent cashpw/browser-url-history)))
+           (mapcar #'symbol-name (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))))
          (search-engine-options
           (let ((search-engines-key-to-engine
                  (-flatten-n
@@ -1212,7 +1212,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold))
 
 (let ((plru-directory cashpw/path--browser-history-dir))
-  (defconst cashpw/browser-url-history
+  (setq cashpw/browser-url-history
     (plru-repository (format "browser-url-history-%s-%s"
                              emacs-version
                              plru-internal-version-constant)
@@ -1233,7 +1233,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   "Put URL into history."
   (unless (--any
            (string-match it url) cashpw/browser-url-history-exclude-patterns)
-    (plru-put cashpw/browser-url-history url t)))
+    (plru-put cashpw/browser-url-history (intern url) t)))
 
 (defun cashpw/browser-url-history-put-eww-url ()
   "Add current buffer's url to history."
@@ -2222,6 +2222,7 @@ TAGS which start with \"-\" are excluded."
     zotra
   :custom
   (zotra-backend 'zotra-server)
+  (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
   (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
   (zotra-after-get-bibtex-entry-hook nil)
@@ -5484,24 +5485,34 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (cashpw/org-agenda-view-collapse)))
 
 (defun cashpw/org-agenda-view--today--files ()
-  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
-         (cl-loop
-          for file in (org-mem-all-files)
-          unless (s-ends-with-p "archive" file)
-          when (seq-find (lambda (entry)
-                           (or
-                            (member "everyday" (org-mem-entry-tags entry))
-                            (and
-                             (member (org-mem-entry-todo-state entry) org-not-done-keywords)
-                             (or
-                              (and
-                               (org-mem-entry-scheduled entry)
-                               (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
-                              (and
-                               (org-mem-entry-deadline entry)
-                               (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry)))))))
-                         (org-mem-entries-in file))
-          collect file)))
+  (seq-uniq
+   (cashpw/rgrep
+    (format
+     "-l \"\\(SCHEDULED\\|DEADLINE\\): <%s\" %s/*.org"
+     (format-time-string "%F" (current-time))
+     cashpw/path--notes-dir))))
+
+;; Deprecased because it's 2x slower
+;; (defun cashpw/org-agenda-view--today--files-mem ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
+;;         (org-not-done-keywords (with-temp-buffer
+;;                                  (org-mode)
+;;                                  org-not-done-keywords)))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      unless (s-ends-with-p "archive" file)
+;;      when (seq-find (lambda (entry)
+;;                       (or
+;;                        (member "everyday" (org-mem-entry-tags entry))
+;;                        (or
+;;                         (and
+;;                          (org-mem-entry-scheduled entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
+;;                         (and
+;;                          (org-mem-entry-deadline entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry))))))
+;;                     (org-mem-entries-in file))
+;;      collect file)))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -5530,10 +5541,6 @@ Intended for use with `org-super-agenda' `:transformer'. "
                  :scheduled past)))
          (:name "In Progress"
           :todo "INPROGRESS")
-         ;; (:name "Chores"
-         ;;  :tag "chore"
-         ;;  :transformer (--> it
-         ;;                    (cashpw/org-agenda--simplify-line it)))
          (:auto-map cashpw/org-super-agenda--get-priority
           :transformer cashpw/org-super-agenda--simplify-map)
          (;; Toss all other todos
@@ -5623,7 +5630,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
-(defun cashpw/org-agenda-view--review--today-files-fn ()
+(defun cashpw/org-agenda-view--review--today-files ()
   "Return list of files for review agenda views."
   (let* ((yyyy-mm-dd (format-time-string "%F" (current-time)))
          (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
@@ -5643,13 +5650,29 @@ Intended for use with `org-super-agenda' `:transformer'. "
                clock-grep-string
                cashpw/path--notes-dir))))))
 
+;; Deprecased because it's ~2x slower
+;; (defun cashpw/org-agenda-view--review--today-files ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      when (seq-find
+;;            (lambda (entry)
+;;              (seq-find
+;;               (lambda (clock-list)
+;;                 (when (listp clock-list)
+;;                   (let ((start (car clock-list)))
+;;                     (cashpw/time-today-p (encode-time (parse-time-string start))))))
+;;               (org-mem-entry-clocks entry)))
+;;            (org-mem-entries-in file))
+;;      collect file)))
+
 (defun cashpw/org-agenda-view--review--logged ()
   "Return custom agenda command."
   `((agenda
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       (org-agenda-show-log t)
       (org-agenda-start-with-log-mode '(state closed clock))
       (org-agenda-hide-tags-regexp
@@ -5669,7 +5692,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       (org-agenda-show-log 'clockcheck)
       (org-agenda-start-with-log-mode 'clockcheck)
       (org-clocktable-defaults '(:fileskip0 t))
@@ -5915,7 +5938,7 @@ items if they have an hour specification like [h]h:mm."
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
       (org-agenda-clockreport-mode t)
       (org-clocktable-defaults '(:fileskip0 t))
@@ -6276,10 +6299,26 @@ Category | Scheduled | Effort
 (cashpw/org-agenda-custom-commands--maybe-update)
 
 (defun cashpw/org-agenda-view--overdue--files ()
-  "Return list of files for overdue agenda view."
-  (-intersection
-    (cashpw/org-files-with-tag "hastodo" cashpw/path--notes-dir)
-    (cashpw/rgrep (format "-l \"<20\" %s/*.org" cashpw/path--notes-dir))))
+  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
+        (org-not-done-keywords
+         (with-temp-buffer
+           (org-mode)
+           org-not-done-keywords)))
+    (cl-loop
+     for file in (org-mem-all-files) unless (s-ends-with-p "archive" file) when
+     (seq-find
+      (lambda (entry)
+        (and (member (org-mem-entry-todo-state entry) org-not-done-keywords)
+             (or (and (org-mem-entry-scheduled entry)
+                      (cashpw/time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-scheduled entry)))))
+                 (and (org-mem-entry-deadline entry)
+                      (cashpw/time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-deadline entry))))))))
+      (org-mem-entries-in file))
+     collect file)))
 
 (defun cashpw/org-agenda-view--overdue ()
   "Return custom agenda command."
@@ -6290,18 +6329,21 @@ Category | Scheduled | Effort
       (org-agenda-files (cashpw/org-agenda-view--overdue--files))
       (org-super-agenda-groups
        '((:discard
-          (:scheduled future
+          (:scheduled
+           future
            :deadline future
            :scheduled today
            :deadline today
            :file-path ,cashpw/path--personal-calendar))
          (:auto-map
           (lambda (item)
-            (-when-let* ((marker (or (get-text-property 0 'org-marker item)
-                                     (get-text-property 0 'org-hd-marker)))
+            (-when-let* ((marker
+                          (or (get-text-property 0 'org-marker item)
+                              (get-text-property 0 'org-hd-marker)))
                          (default-priority "?")
-                         (priority (or (org-extras-get-priority marker)
-                                       default-priority)))
+                         (priority
+                          (or (org-extras-get-priority marker)
+                              default-priority)))
               (cond
                ((org-extras-scheduled-to-repeat-daily-p marker)
                 "1 Repeats daily")
@@ -6311,7 +6353,7 @@ Category | Scheduled | Effort
                 "3 Repeats")
                (t
                 "4 Doesn't repeat")))))
-         (;; Toss all other todos
+         ( ;; Toss all other todos
           :discard
           (:todo t))))))))
 
