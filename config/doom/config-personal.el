@@ -1863,7 +1863,7 @@ TAGS which start with \"-\" are excluded."
       (buffer-substring-no-properties (point-min) (point-max)))))
 
 (after!
-  elfeed (elfeed-set-timeout 36000)
+  elfeed (elfeed-set-timeout 90)
   (setq
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")

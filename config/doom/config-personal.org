@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-02 Mon 10:21]
+:LAST_MODIFIED: [2025-06-02 Mon 15:33]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3115,7 +3115,7 @@ https://pandoc.org/
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after!
-  elfeed (elfeed-set-timeout 36000)
+  elfeed (elfeed-set-timeout 90)
   (setq
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
@@ -3198,6 +3198,24 @@ https://pandoc.org/
                                       (when unread-only
                                         " +unread")))
     (elfeed-search-update)))
+#+end_src
+
+#+begin_src emacs-lisp
+(add-hook 'elfeed-update-hooks
+          (lambda (feed)
+            (elfeed-log 'info "feed: %s: %f"
+                        feed
+                        (- (float-time)
+                           (cdr (assoc feed my/elfeed-update-times))))))
+
+(defvar my/elfeed-update-times nil)
+
+(cl-loop with elfeed--inhibit-update-init-hooks = t
+         for feed in (elfeed-feed-list)
+         for time = (float-time)
+         do
+         (push (cons feed time) my/elfeed-update-times)
+         (elfeed-update-feed feed))
 #+end_src
 
 #+RESULTS:
