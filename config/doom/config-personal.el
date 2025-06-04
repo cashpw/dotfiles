@@ -2003,12 +2003,12 @@ TAGS which start with \"-\" are excluded."
   :custom
   (gptel-default-mode 'org-mode)
   (gptel-track-media t)
-  (gptel-show-progress-in-mode-line t)
-  (gptel-mode-line--indicator-querying " ")
-  (gptel-mode-line--indicator-responding "💬 ")
 
   :config
   (setq-default
+   gptel-show-progress-in-mode-line t
+   gptel-mode-line--indicator-querying " "
+   gptel-mode-line--indicator-responding "💬 "
    gptel-backend
    (gptel-make-gemini
        "Gemini"

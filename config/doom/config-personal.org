@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-02 Mon 15:33]
+:LAST_MODIFIED: [2025-06-03 Tue 20:48]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3358,12 +3358,12 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
   :custom
   (gptel-default-mode 'org-mode)
   (gptel-track-media t)
-  (gptel-show-progress-in-mode-line t)
-  (gptel-mode-line--indicator-querying " ")
-  (gptel-mode-line--indicator-responding "💬 ")
 
   :config
   (setq-default
+   gptel-show-progress-in-mode-line t
+   gptel-mode-line--indicator-querying " "
+   gptel-mode-line--indicator-responding "💬 "
    gptel-backend
    (gptel-make-gemini
        "Gemini"
