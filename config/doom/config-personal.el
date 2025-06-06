@@ -779,7 +779,16 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "New reference node"
     :n
     "c"
-    #'cashpw/org-roam-node-from-cite))
+    #'cashpw/org-roam-node-from-cite
+    (:prefix ("d")
+     :desc "Reflect (toggle)" "r" (cmd!
+                                   (if org-daily-reflection--list-of-newly-opened-entries
+                                       (org-daily-reflection-restore-prior-windows)
+                                     (org-daily-reflection
+                                      (intern (completing-read "What time interval?"
+                                             org-daily-reflection-time-spans
+                                             nil t nil nil))
+                                      4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
    ("t")
@@ -3578,6 +3587,13 @@ Return nil if no attendee exists with that EMAIL."
   :after org)
 
 (use-package!
+    org-daily-reflection
+  :custom
+  (org-daily-reflection-close-unmodified-newly-opened-buffers t)
+  (org-daily-reflection-capture-nascent-files nil)
+  (org-daily-reflection-dailies-directory cashpw/path--notes-dir))
+
+(use-package!
     org-mem
   :custom
   (org-mem-watch-dirs `(,cashpw/path--notes-dir))
@@ -5170,7 +5186,7 @@ This is an internal function."
    org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
                                                         :type plain
                                                         :template "%?"
-                                                        :file "journal--%<%Y-%m-%d>.org"
+                                                        :file "%<%Y-%m-%d>.org"
                                                         :unnarrowed t
                                                         :immediate-finish t
                                                         :children (("Day"
@@ -7296,7 +7312,7 @@ See `org-clock-special-range' for KEY."
       (:group
        "Journal"
        :file ,(lambda ()
-                (format "%s/journal--%s.org"
+                (format "%s/%s.org"
                         cashpw/path--notes-dir
                         (format-time-string "%F" (current-time))))
        :immediate-finish nil

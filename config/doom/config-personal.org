@@ -1209,7 +1209,16 @@ Doom Emacs provides =alert=.
     :desc "New reference node"
     :n
     "c"
-    #'cashpw/org-roam-node-from-cite))
+    #'cashpw/org-roam-node-from-cite
+    (:prefix ("d")
+     :desc "Reflect (toggle)" "r" (cmd!
+                                   (if org-daily-reflection--list-of-newly-opened-entries
+                                       (org-daily-reflection-restore-prior-windows)
+                                     (org-daily-reflection
+                                      (intern (completing-read "What time interval?"
+                                             org-daily-reflection-time-spans
+                                             nil t nil nil))
+                                      4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
    ("t")
@@ -5642,6 +5651,25 @@ Doom Emacs provides =org-roam=.
 
 Configuration is done at [[id:3d0e8be1-6d0f-4f4b-9025-f1ca312192bc][Roam]].
 
+**** =org-daily-reflection=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-daily-reflection)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-daily-reflection
+  :custom
+  (org-daily-reflection-close-unmodified-newly-opened-buffers t)
+  (org-daily-reflection-capture-nascent-files nil)
+  (org-daily-reflection-dailies-directory cashpw/path--notes-dir))
+#+end_src
+
 **** =org-mem=
 
 #+begin_quote
@@ -7696,7 +7724,7 @@ This is an internal function."
    org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
                                                         :type plain
                                                         :template "%?"
-                                                        :file "journal--%<%Y-%m-%d>.org"
+                                                        :file "%<%Y-%m-%d>.org"
                                                         :unnarrowed t
                                                         :immediate-finish t
                                                         :children (("Day"
@@ -10089,7 +10117,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
       (:group
        "Journal"
        :file ,(lambda ()
-                (format "%s/journal--%s.org"
+                (format "%s/%s.org"
                         cashpw/path--notes-dir
                         (format-time-string "%F" (current-time))))
        :immediate-finish nil
