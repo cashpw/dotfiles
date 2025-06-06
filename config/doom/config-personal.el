@@ -615,7 +615,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                          (member (org-mem-entry-todo-state entry) org-not-done-keywords))
                        (org-mem-entries-in file))
         collect (f-expand file))
-        (cashpw/org-roam-files-with-tag "journal"))))
+       (cashpw/org-roam-files-with-tag "journal"))))
     :desc "Reading List"
     :n
     "r"
@@ -1877,22 +1877,22 @@ TAGS which start with \"-\" are excluded."
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
    elfeed-sort-order 'ascending
-   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
+   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
   (map!
    :map elfeed-search-mode-map
-   :n "u" #'elfeed-update
-   :n "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
    :n "+" #'cashpw/elfeed-search-set-tag
+   :nv "a" #'elfeed-search-untag-all-unread
+   :n "u" #'elfeed-update
+   :desc "Star" "f" (cmd! (cashpw/elfeed-search-set-tag '("star")))
    (:prefix ("o" . "Order")
-    :desc "ascending" :n "a" (cmd! (setq elfeed-sort-order 'ascending))
-    :desc "descending" :n "d" (cmd! (setq elfeed-sort-order 'descending)))
-   :nv "a" #'elfeed-search-untag-all-unread)
-  (evil-define-key
-    'normal
-    elfeed-search-mode-map
-    "t"
-    (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
+    :desc "ascending" "a" (cmd! (setq elfeed-sort-order 'ascending)
+                                (elfeed-search-update--force))
+    :desc "descending" "d" (cmd! (setq elfeed-sort-order 'descending)
+                                (elfeed-search-update--force)))
+   (:prefix ("J" . "Search")
+    :desc "feed" "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+    :desc "tag" "t" (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only)))))
 
 (defun cashpw/elfeed-search-compare-by-date (a b)
   "Return non-nil if A is newer than B."
@@ -1901,6 +1901,10 @@ TAGS which start with \"-\" are excluded."
     (if (= date-a date-b)
         (string< (prin1-to-string b) (prin1-to-string a))
       (> date-a date-b))))
+
+(defun cashpw/elfeed-search-compare-by-title (a b)
+  "Return non-nil if A is newer than B."
+  (string> (elfeed-entry-title a) (elfeed-entry-title b)))
 
 (setq cashpw/reading-list-tags
       (string-split
@@ -2013,6 +2017,7 @@ TAGS which start with \"-\" are excluded."
 (use-package! elfeed-protocol
   :after elfeed
   :custom
+  (elfeed-log-level 'debug)
   (elfeed-protocol-fever-update-unread-only t)
   (elfeed-protocol-fever-fetch-category-as-tag t)
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
