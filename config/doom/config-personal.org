@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-05-30 Fri 16:41]
+:LAST_MODIFIED: [2025-06-09 Mon 09:06]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -1045,7 +1045,7 @@ Doom Emacs provides =alert=.
                          (member (org-mem-entry-todo-state entry) org-not-done-keywords))
                        (org-mem-entries-in file))
         collect (f-expand file))
-        (cashpw/org-roam-files-with-tag "journal"))))
+       (cashpw/org-roam-files-with-tag "journal"))))
     :desc "Reading List"
     :n
     "r"
@@ -1176,9 +1176,9 @@ Doom Emacs provides =alert=.
    ;; Override DOOM keybinding
    :n "b" #'cashpw/browse-select-url
    (:prefix
-    ("n")
+    ("n" . "Notes")
     :desc "Commonplace"
-    :n "C"
+    :n "c"
     (cmd!
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
@@ -1209,7 +1209,16 @@ Doom Emacs provides =alert=.
     :desc "New reference node"
     :n
     "c"
-    #'cashpw/org-roam-node-from-cite))
+    #'cashpw/org-roam-node-from-cite
+    (:prefix ("d")
+     :desc "Reflect (toggle)" "r" (cmd!
+                                   (if org-daily-reflection--list-of-newly-opened-entries
+                                       (org-daily-reflection-restore-prior-windows)
+                                     (org-daily-reflection
+                                      (intern (completing-read "What time interval?"
+                                             org-daily-reflection-time-spans
+                                             nil t nil nil))
+                                      4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
    ("t")
@@ -1300,7 +1309,6 @@ Requires your OpenWeatherMap APPID."
 "&units=" (url-encode-url (symbol-name units))
           "&cnt=5"))
 #+end_src
-
 
 * Machines
 
@@ -2157,9 +2165,9 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              (cons
               url
               `(lambda ()
-                 (plru-put cashpw/browser-url-history ,url t)
+                 (cashpw/browser-url-history-put-url url)
                  (funcall browse-url-browser-function ,url))))
-           (plru-entry-keys-most-to-least-recent cashpw/browser-url-history)))
+           (mapcar #'symbol-name (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))))
          (search-engine-options
           (let ((search-engines-key-to-engine
                  (-flatten-n
@@ -2178,7 +2186,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              search-engines-key-to-engine)))
          (options
           ;; List of the form (selector . handler-fn)
-          ;; 
+          ;;
           ;; handler-fn is invoked when selector is selected
           (append url-history-options search-engine-options))
          (selection (completing-read "URL/Search: " options)))
@@ -2212,30 +2220,31 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              (format "%s-%s" emacs-version
                      plru-internal-version-constant))))
   :config
-  (setq cashpw/browser-search-engines
-        `(
-          ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
-          ,(search-engine
-            :name "DuckDuckGo"
-            :id 'duckduckgo
-            :keys '("@ddg" "@duckduckgo")
-            :url "https://html.duckduckgo.com/html/?q=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir)
-          ,(search-engine
-            :name "IMDb"
-            :id 'imdb
-            :keys '("@imdb")
-            :url "https://www.imdb.com/find/?q=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir)
-          ,(search-engine
-            :name "Wikipedia"
-            :id 'wikipedia
-            :keys '("@wikipedia")
-            :url "https://en.wikipedia.org/w/index.php?search=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir))))
+  (let ((plru-debug t))
+    (setq cashpw/browser-search-engines
+          `(
+            ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
+            ,(search-engine
+              :name "DuckDuckGo"
+              :id 'duckduckgo
+              :keys '("@ddg" "@duckduckgo")
+              :url "https://html.duckduckgo.com/html/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "IMDb"
+              :id 'imdb
+              :keys '("@imdb")
+              :url "https://www.imdb.com/find/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "Wikipedia"
+              :id 'wikipedia
+              :keys '("@wikipedia")
+              :url "https://en.wikipedia.org/w/index.php?search=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)))))
 #+end_src
 
 *** EmacsWebWowser (eww)
@@ -2254,12 +2263,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 ***** URLs
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(let ((plru-directory cashpw/path--browser-history-dir))
-  (defconst cashpw/browser-url-history
-    (plru-repository (format "browser-url-history-%s-%s"
-                             emacs-version
-                             plru-internal-version-constant)
-                     :max-size 200 :save-delay 5)))
+(let ((plru-directory cashpw/path--browser-history-dir)
+      (plru-debug t))
+  (setq cashpw/browser-url-history
+        (plru-repository (format "browser-url-history-%s-%s"
+                                 emacs-version
+                                 plru-internal-version-constant)
+                         :max-size 200 :save-delay 5)))
 
 (defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
@@ -2276,7 +2286,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   "Put URL into history."
   (unless (--any
            (string-match it url) cashpw/browser-url-history-exclude-patterns)
-    (plru-put cashpw/browser-url-history url t)))
+    (plru-put cashpw/browser-url-history (intern url) t)))
 
 (defun cashpw/browser-url-history-put-eww-url ()
   "Add current buffer's url to history."
@@ -2288,13 +2298,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 
 #+begin_src emacs-lisp
 (clrhash *plru-repositories*)
-(let ((plru-directory cashpw/path--browser-history-dir))
-  (setq cashpw/browser-url-history
-    (plru-repository "browser-url-history" :max-size 200 :save-delay 5)))
+;; (let ((plru-directory cashpw/path--browser-history-dir))
+;;   (setq cashpw/browser-url-history
+;;     (plru-repository "browser-url-history" :max-size 200 :save-delay 5)))
 #+end_src
 
 #+RESULTS:
-: #s(plru-repository "/home/cashweaver/proj/notes/browser-history/browser-url-history" "browser-url-history" "29.4/0.0" nil #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ()) plru-entry 1748467416.5398204 200 5)
+: #s(hash-table size 65 test equal rehash-size 1.5 rehash-threshold 0.8125 data ())
 
 #+begin_src emacs-lisp
 (plru-clear cashpw/browser-url-history)
@@ -3115,26 +3125,45 @@ https://pandoc.org/
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after!
-  elfeed (elfeed-set-timeout 36000)
+  elfeed (elfeed-set-timeout 90)
   (setq
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
    elfeed-sort-order 'ascending
-   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
+   ;; elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
+   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
-  (map!
-   :map elfeed-search-mode-map
-   :n "u" #'elfeed-update
-   :n "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
-   :n "+" #'cashpw/elfeed-search-set-tag
-   (:prefix ("o" . "Order")
-    :desc "ascending" :n "a" (cmd! (setq elfeed-sort-order 'ascending))
-    :desc "descending" :n "d" (cmd! (setq elfeed-sort-order 'descending)))
-   :nv "a" #'elfeed-search-untag-all-unread)
+
   (evil-define-key
     'normal
     elfeed-search-mode-map
-    "t"
+    "+"
+    #'cashpw/elfeed-search-set-tag
+    "a"
+    #'elfeed-search-untag-all-unread
+    "u"
+    #'elfeed-update
+    "f"
+    (cmd! (if (elfeed-tagged-p 'star (elfeed-search-selected :ignore-region))
+              (elfeed-search-untag-all 'star)
+            (elfeed-search-tag-all 'star)))
+    (kbd "M-RET")
+    #'elfeed-search-browse-url
+    (kbd "o A")
+    (cmd! (setq elfeed-sort-order 'ascending) (elfeed-search-update--force))
+    (kbd "o D")
+    (cmd! (setq elfeed-sort-order 'descending) (elfeed-search-update--force))
+    (kbd "o t")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title)
+     (elfeed-search-update--force))
+    (kbd "o d")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date)
+     (elfeed-search-update--force))
+    (kbd "J f")
+    (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+    (kbd "J t")
     (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
 
 (defun cashpw/elfeed-search-compare-by-date (a b)
@@ -3145,21 +3174,25 @@ https://pandoc.org/
         (string< (prin1-to-string b) (prin1-to-string a))
       (> date-a date-b))))
 
-(setq cashpw/reading-list-tags
-      (string-split
-       (shell-command-to-string
-        (format "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'" cashpw/path--reading-list))
-       ":"
-       'omit-nulls))
+(defun cashpw/elfeed-search-compare-by-title (a b)
+  "Return non-nil if A is newer than B."
+  (string> (elfeed-entry-title a) (elfeed-entry-title b)))
+
+(setq
+ cashpw/reading-list-tags
+ (string-split
+  (shell-command-to-string
+   (format
+    "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'"
+    cashpw/path--reading-list))
+  ":" 'omit-nulls))
 
 (defun cashpw/elfeed-search-set-tag (tags)
   "Set tags on elfeed entries in search view."
-  (interactive
-   (list
-    (completing-read-multiple "Tag(s): "
-                              (append
-                               (elfeed-db-get-all-tags)
-                               cashpw/reading-list-tags))))
+  (interactive (list
+                (completing-read-multiple
+                 "Tag(s): "
+                 (append (elfeed-db-get-all-tags) cashpw/reading-list-tags))))
   (let ((elfeed-search-remain-on-entry t))
     (dolist (tag tags)
       (elfeed-search-tag-all (intern tag)))))
@@ -3193,11 +3226,87 @@ https://pandoc.org/
                     value)
                   elfeed-db-feeds)
                  (reverse (delete nil feed-titles)))))))
-    (elfeed-search-set-filter (format "=%s%s"
-                                      (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
-                                      (when unread-only
-                                        " +unread")))
+    (elfeed-search-set-filter
+     (format "=%s%s"
+             (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
+             (if unread-only
+                 " +unread"
+               "")))
     (elfeed-search-update)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  elfeed
+  (defvar ap/elfeed-update-complete-hook nil
+    "Functions called with no arguments when `elfeed-update' is finished.")
+
+  (defvar ap/elfeed-updates-in-progress 0
+    "Number of feed updates in-progress.")
+
+  (defvar ap/elfeed-search-update-filter nil
+    "The filter when `elfeed-update' is called.")
+
+  (defun ap/elfeed-update-complete-hook (&rest ignore)
+    "When update queue is empty, run `ap/elfeed-update-complete-hook' functions."
+    (when (= 0 ap/elfeed-updates-in-progress)
+      (run-hooks 'ap/elfeed-update-complete-hook)))
+
+  (add-hook 'elfeed-update-hooks #'ap/elfeed-update-complete-hook)
+
+  (defun ap/elfeed-update-message-completed (&rest _ignore)
+    (message "Feeds updated"))
+
+  (add-hook 'ap/elfeed-update-complete-hook #'ap/elfeed-update-message-completed)
+
+  (defun ap/elfeed-search-update-restore-filter (&rest ignore)
+    "Restore filter after feeds update."
+    (when ap/elfeed-search-update-filter
+      (elfeed-search-set-filter ap/elfeed-search-update-filter)
+      (setq ap/elfeed-search-update-filter nil)))
+
+  (add-hook
+   'ap/elfeed-update-complete-hook #'ap/elfeed-search-update-restore-filter)
+
+  (defun ap/elfeed-search-update-save-filter (&rest ignore)
+    "Save and change the filter while updating."
+    (setq ap/elfeed-search-update-filter elfeed-search-filter)
+    (setq elfeed-search-filter "#0"))
+
+  ;; NOTE: It would be better if this hook were run before starting the feed updates, but in
+  ;; `elfeed-update', it happens afterward.
+  (add-hook 'elfeed-update-init-hooks #'ap/elfeed-search-update-save-filter)
+
+  (defun ap/elfeed-update-counter-inc (&rest ignore)
+    (cl-incf ap/elfeed-updates-in-progress))
+
+  (advice-add #'elfeed-update-feed :before #'ap/elfeed-update-counter-inc)
+
+  (defun ap/elfeed-update-counter-dec (&rest ignore)
+    (cl-decf ap/elfeed-updates-in-progress)
+    (when (< ap/elfeed-updates-in-progress 0)
+      ;; Just in case
+      (setq ap/elfeed-updates-in-progress 0)))
+
+  (add-hook 'elfeed-update-hooks #'ap/elfeed-update-counter-dec))
+#+end_src
+
+#+begin_src emacs-lisp
+(add-hook 'elfeed-update-hooks
+          (lambda (feed)
+            (elfeed-log 'info "feed: %s: %f"
+                        feed
+                        (- (float-time)
+                           (cdr (assoc feed my/elfeed-update-times))))))
+
+(defvar my/elfeed-update-times nil)
+
+(cl-loop with elfeed--inhibit-update-init-hooks = t
+         for feed in (elfeed-feed-list)
+         for time = (float-time)
+         do
+         (push (cons feed time) my/elfeed-update-times)
+         (elfeed-update-feed feed))
 #+end_src
 
 #+RESULTS:
@@ -3217,6 +3326,7 @@ https://pandoc.org/
 (use-package! elfeed-protocol
   :after elfeed
   :custom
+  (elfeed-log-level 'debug)
   (elfeed-protocol-fever-update-unread-only t)
   (elfeed-protocol-fever-fetch-category-as-tag t)
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
@@ -3299,12 +3409,26 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
   "Please carefully review the following text with the aim of providing accurate and representative responses to the following requirements, in order:
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers, in a bullet-point list.
-2. In a section titled \"Thesis\": Paraphrase the thesis in 50 words or less.
+2. In a section titled \"Thesis\": Identify and describe the thesis statement(s) in a bullet point list.
 3. In a section titled \"Summary\": Summarize the content in 300 words or less. Prefer bullet-point lists where appropriate.
-4. In a section titled \"References\": List all of the books, articles, and other referenced sources.
+4. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
 5. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.
 6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
   "LLM prompt to summarize content.")
+
+(defvar fabric-command "~/third_party/fabric/fabric")
+
+(defun cashpw/fabric-transcript-youtube (youtube-url)
+  "(Return|Insert) the transcript of YOUTUBE-URL.
+
+Insert the transcript if run interactively."
+  (interactive "sYouTube URL: ")
+  (let ((transcript
+         (shell-command-to-string
+          (format "%s --youtube=%s" fabric-command youtube-url))))
+    (if (interactive-p)
+        (insert transcript)
+      transcript)))
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
@@ -3312,8 +3436,7 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 
 %s"
           llm-prompts-prompt--summarize
-          (shell-command-to-string
-           (format "~/third_party/fabric/fabric --transcript --youtube=%s" youtube-url))))
+          (cashpw/fabric-transcript-youtube youtube-url)))
 #+end_src
 
 *** Packages
@@ -3337,28 +3460,55 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package!
     gptel
-  :custom (gptel-default-mode 'org-mode) (gptel-track-media t)
-  ;; (gptel-directives
-  ;;  `((default . ,cashpw/llm--default-prompt)
-  ;;    (chain-of-thought . ,cashpw/llm--chain-of-thought-prompt)
-  ;;    (follow-up . ,cashpw/llm--follow-up-prompt)
-  ;;    (writing . ,cashpw/llm--writing-prompt)
-  ;;    (programming . ,cashpw/llm--programming-prompt)
-  ;;    (chat . ,cashpw/llm--chat-prompt)))
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-track-media t)
 
   :config
   (setq-default
-   gptel-backend (gptel-make-gemini
-                     "Gemini"
-                   :key
-                   (secret-get
-                    (if (cashpw/machine-p 'work-cloudtop)
-                        "corporate-gemini"
-                      "personal-gemini"))
-                   :stream t)
+   gptel-show-progress-in-mode-line t
+   gptel-mode-line--indicator-querying " "
+   gptel-mode-line--indicator-responding "💬 "
+   gptel-backend
+   (gptel-make-gemini
+       "Gemini"
+     :key
+     (secret-get
+      (if (cashpw/machine-p 'work-cloudtop)
+          "corporate-gemini"
+        "personal-gemini"))
+     :stream t)
    gptel-model 'gemini-2.5-pro-preview-05-06
    gptel-quick-backend gptel-backend
    gptel-quick-model 'gemini-2.5-flash-preview-05-20)
+
+  (defun gptel-mode-line--indicator (mode)
+    "Return indicator string for MODE."
+    (pcase mode
+      ('querying gptel-mode-line--indicator-querying)
+      ('responding gptel-mode-line--indicator-responding)
+      (t "")))
+  (defun gptel-mode-line (command mode)
+    "Update mode line to COMMAND (show|hide) indicator for MODE."
+    (when gptel-show-progress-in-mode-line
+      (let ((indicator (list t (gptel-mode-line--indicator mode))))
+        (pcase command
+          ('show (cl-pushnew indicator global-mode-string :test #'equal))
+          ('hide
+           (setf global-mode-string (remove indicator global-mode-string)))))
+      (force-mode-line-update t)))
+  (defun gptel-mode-line--hide-all (&rest _)
+    (gptel-mode-line 'hide 'querying)
+    (gptel-mode-line 'hide 'responding))
+  (defun gptel-mode-line--show-querying ()
+    (gptel-mode-line--hide-all)
+    (gptel-mode-line 'show 'querying))
+  (defun gptel-mode-line--show-responding ()
+    (gptel-mode-line--hide-all)
+    (gptel-mode-line 'show 'responding))
+  (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
+  (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
+  (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
 
   (defun cashpw/gptel-context-add-file-glob (pattern)
     "Add glob of files matched by PATTERN."
@@ -3370,8 +3520,7 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
     "Invoke `gptel-send' with specific PROMPT."
     (interactive (list (llm-prompts-select)))
     (let ((gptel--system-message prompt))
-      (gptel-send)))
-  )
+      (gptel-send))))
 
 (defun cashpw/gptel-kill-curl-process ()
   "Kill any running gptel curl process."
@@ -3715,9 +3864,11 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
     zotra
   :custom
   (zotra-backend 'zotra-server)
+  (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
   (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
   (zotra-after-get-bibtex-entry-hook nil)
+  (zotra-default-entry-format "biblatex")
 
   (bibtex-dialect 'biblatex)
   (bibtex-entry-format
@@ -3733,8 +3884,14 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
   (bibtex-autokey-titlewords-stretch 1)
   (bibtex-autokey-titleword-length 'infty)
   (bibtex-autokey-titleword-ignore
-   '("A" "An" "On" "The" "Eine?" "Der" "Die" "Das"
-     ;; "[^[:upper:]].*"
+   '("A"
+     "An"
+     "On"
+     "The"
+     "Eine?"
+     "Der"
+     "Die"
+     "Das"
      ".*[^[:upper:][:lower:]0-9].*"))
   (bibtex-autokey-name-case-convert-function #'identity)
   (bibtex-autokey-titleword-case-convert-function
@@ -3744,43 +3901,113 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
   (add-hook
    'zotra-after-get-bibtex-entry-hook 'cashpw/bibtex-clean-entry-override-key))
 
+(defun cashpw/replace-tabs-with-two-spaces ()
+  "Replace all tabs in buffer with two spaces."
+  (interactive)
+  (cashpw/replace-regexp-in-buffer "\t" "  "))
+
 (defun cashpw/bibtex-clean-entry-override-key ()
   "Invoke `bibtex-clean-entry' with key override."
-  (bibtex-clean-entry (bibtex-generate-autokey)))
+  (interactive)
+  (message "cashpw/bibtex-clean-entry-override-key")
+  (bibtex-clean-entry (bibtex-generate-autokey))
+  (cashpw/replace-tabs-with-two-spaces))
+
+(defun cashpw/bibtex--read-and-set-required-fields (buffer point-or-marker)
+  "Prompt user to set missing required fields in BUFFER at POINT-OR-MARKER."
+  (message "cashpw/bibtex--read-and-set-required-fields")
+  (save-excursion
+    (let ((window
+           (select-window
+            (display-buffer-in-side-window
+             buffer '((side . bottom))))))
+      (with-current-buffer (window-buffer window)
+        (goto-char point-or-marker)
+        (when (looking-at bibtex-entry-maybe-empty-head)
+          (with-restriction
+              (point)
+              (save-excursion
+                (evil-jump-item)
+                (1+ (point)))
+            (bibtex-entry-update)
+            (while (let ((case-fold-search nil))
+                     (search-forward-regexp "^\s*\\([a-z]\\|ALT\\)" nil t))
+              (let* ((field
+                      (replace-regexp-in-string
+                       "^\s*\\([^\s]*\\).*" "\\1" (org-current-line-string)))
+                     (new-value
+                      (read-string (format "%s (leave empty to skip): " field)))
+                     (new-line
+                      (when new-value
+                        (replace-regexp-in-string
+                         "{}" (format "{%s}" new-value) (org-current-line-string)))))
+                (when new-line
+                  (delete-line)
+                  (insert new-line)
+                  (newline))))
+            (bibtex-format-entry))))
+      (+workspace/close-window-or-workspace))))
 
 (defun cashpw/bibtex-generate-autokey ()
-  "Generate automatically a key for a BibTeX entry.
-Use the author/editor, the year and the title field.
-The algorithm works as follows."
+  "Return a key for the current bibtex entry.
+
+The key is in the form: (authors|journal)_title_year."
+  (message "cashpw/bibtex-generate-autokey")
+  (when
+      ;; Missing required fields
+      (or (string-empty-p
+           (bibtex-autokey-get-names))
+          (not
+           (ignore-errors
+             (bibtex-autokey-get-year))))
+    (cashpw/bibtex--read-and-set-required-fields
+     (current-buffer)
+     (point)))
   (let* ((journal (bibtex-autokey-get-field "journal"))
          (names (bibtex-autokey-get-names))
          (title (bibtex-autokey-get-title))
-         (year (bibtex-autokey-get-year))
-         (autokey
-          (substring
-           (concat
-            (cond
-             ((not (string-empty-p names))
-              (s-lex-format "${names}_"))
-             ((not (string-empty-p journal))
-              (s-lex-format "${journal}_")))
-            (if (string-empty-p title)
-                ""
-              (s-lex-format "${title}_"))
-            (if (string-empty-p year)
-                ""
-              (s-lex-format "${year}_")))
-           0 -1)))
+         (year
+          (or (ignore-errors
+                (bibtex-autokey-get-year))
+              ""))
+         (key
+          (substring (concat
+                      (cond
+                       ((not (string-empty-p names))
+                        (s-lex-format "${names}_"))
+                       ((not (string-empty-p journal))
+                        (s-lex-format "${journal}_")))
+                      (if (string-empty-p title)
+                          ""
+                        (s-lex-format "${title}_"))
+                      (if (string-empty-p year)
+                          ""
+                        (s-lex-format "${year}_")))
+                     0 -1)))
     (if bibtex-autokey-before-presentation-function
-        (funcall bibtex-autokey-before-presentation-function autokey)
-      autokey)))
+        (funcall bibtex-autokey-before-presentation-function key)
+      key)))
 
 (advice-add 'bibtex-generate-autokey :override 'cashpw/bibtex-generate-autokey)
+
+(defun cashpw/zotra-add-entry-from-url (url)
+  "Add an entry for the current page's url."
+  (interactive)
+  (let
+      ((rewriters
+        (list
+         (cons
+          "https:\\/\\/www.youtube.com\\/supported_browsers\\?next_url=\\(.*\\)"
+          (lambda () (url-unhex-string (match-string 1 url)))))))
+    (zotra-add-entry
+     (if-let ((rewriter (--first (string-match (car it) url) rewriters)))
+         (funcall (cdr rewriter))
+       url))))
 
 (defun cashpw/zotra-add-entry-from-eww ()
   "Add an entry for the current page's url."
   (interactive)
-  (zotra-add-entry (plist-get eww-data :url)))
+  (cashpw/zotra-add-entry-from-url (plist-get eww-data :url)))
 #+end_src
 
 **** =org-clock-act-on-overtime=
@@ -5552,6 +5779,25 @@ Doom Emacs provides =org-roam=.
 #+end_src
 
 Configuration is done at [[id:3d0e8be1-6d0f-4f4b-9025-f1ca312192bc][Roam]].
+
+**** =org-daily-reflection=
+
+***** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-daily-reflection)
+#+end_src
+
+***** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-daily-reflection
+  :custom
+  (org-daily-reflection-close-unmodified-newly-opened-buffers t)
+  (org-daily-reflection-capture-nascent-files nil)
+  (org-daily-reflection-dailies-directory cashpw/path--notes-dir))
+#+end_src
 
 **** =org-mem=
 
@@ -7607,7 +7853,7 @@ This is an internal function."
    org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
                                                         :type plain
                                                         :template "%?"
-                                                        :file "journal--%<%Y-%m-%d>.org"
+                                                        :file "%<%Y-%m-%d>.org"
                                                         :unnarrowed t
                                                         :immediate-finish t
                                                         :children (("Day"
@@ -8073,24 +8319,39 @@ Intended for use with `org-super-agenda' `:transformer'. "
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-agenda-view--today--files ()
-  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
-         (cl-loop
-          for file in (org-mem-all-files)
-          unless (s-ends-with-p "archive" file)
-          when (seq-find (lambda (entry)
-                           (or
-                            (member "everyday" (org-mem-entry-tags entry))
-                            (and
-                             (member (org-mem-entry-todo-state entry) org-not-done-keywords)
-                             (or
-                              (and
-                               (org-mem-entry-scheduled entry)
-                               (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
-                              (and
-                               (org-mem-entry-deadline entry)
-                               (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry)))))))
-                         (org-mem-entries-in file))
-          collect file)))
+  (seq-uniq
+   (append
+    (cashpw/rgrep
+     (format
+      "-l :everyday: %s/*.org"
+      cashpw/path--notes-dir))
+    (cashpw/rgrep
+     (format
+      "-l \"\\(SCHEDULED\\|DEADLINE\\): <%s\" %s/*.org"
+      (format-time-string "%F" (current-time))
+      cashpw/path--notes-dir)))))
+
+;; Deprecased because it's 2x slower
+;; (defun cashpw/org-agenda-view--today--files-mem ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
+;;         (org-not-done-keywords (with-temp-buffer
+;;                                  (org-mode)
+;;                                  org-not-done-keywords)))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      unless (s-ends-with-p "archive" file)
+;;      when (seq-find (lambda (entry)
+;;                       (or
+;;                        (member "everyday" (org-mem-entry-tags entry))
+;;                        (or
+;;                         (and
+;;                          (org-mem-entry-scheduled entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
+;;                         (and
+;;                          (org-mem-entry-deadline entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry))))))
+;;                     (org-mem-entries-in file))
+;;      collect file)))
 
 (defun cashpw/org-agenda-view--today ()
   "Return custom agenda command."
@@ -8119,10 +8380,6 @@ Intended for use with `org-super-agenda' `:transformer'. "
                  :scheduled past)))
          (:name "In Progress"
           :todo "INPROGRESS")
-         ;; (:name "Chores"
-         ;;  :tag "chore"
-         ;;  :transformer (--> it
-         ;;                    (cashpw/org-agenda--simplify-line it)))
          (:auto-map cashpw/org-super-agenda--get-priority
           :transformer cashpw/org-super-agenda--simplify-map)
          (;; Toss all other todos
@@ -8232,7 +8489,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
 ****** Logged
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/org-agenda-view--review--today-files-fn ()
+(defun cashpw/org-agenda-view--review--today-files ()
   "Return list of files for review agenda views."
   (let* ((yyyy-mm-dd (format-time-string "%F" (current-time)))
          (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
@@ -8252,13 +8509,29 @@ Intended for use with `org-super-agenda' `:transformer'. "
                clock-grep-string
                cashpw/path--notes-dir))))))
 
+;; Deprecased because it's ~2x slower
+;; (defun cashpw/org-agenda-view--review--today-files ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      when (seq-find
+;;            (lambda (entry)
+;;              (seq-find
+;;               (lambda (clock-list)
+;;                 (when (listp clock-list)
+;;                   (let ((start (car clock-list)))
+;;                     (cashpw/time-today-p (encode-time (parse-time-string start))))))
+;;               (org-mem-entry-clocks entry)))
+;;            (org-mem-entries-in file))
+;;      collect file)))
+
 (defun cashpw/org-agenda-view--review--logged ()
   "Return custom agenda command."
   `((agenda
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       (org-agenda-show-log t)
       (org-agenda-start-with-log-mode '(state closed clock))
       (org-agenda-hide-tags-regexp
@@ -8284,7 +8557,7 @@ See =org-agenda-clock-consistency-checks=.
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       (org-agenda-show-log 'clockcheck)
       (org-agenda-start-with-log-mode 'clockcheck)
       (org-clocktable-defaults '(:fileskip0 t))
@@ -8536,7 +8809,7 @@ items if they have an hour specification like [h]h:mm."
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files-fn))
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
       ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
       (org-agenda-clockreport-mode t)
       (org-clocktable-defaults '(:fileskip0 t))
@@ -8925,10 +9198,26 @@ Category | Scheduled | Effort
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-agenda-view--overdue--files ()
-  "Return list of files for overdue agenda view."
-  (-intersection
-    (cashpw/org-files-with-tag "hastodo" cashpw/path--notes-dir)
-    (cashpw/rgrep (format "-l \"<20\" %s/*.org" cashpw/path--notes-dir))))
+  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
+        (org-not-done-keywords
+         (with-temp-buffer
+           (org-mode)
+           org-not-done-keywords)))
+    (cl-loop
+     for file in (org-mem-all-files) unless (s-ends-with-p "archive" file) when
+     (seq-find
+      (lambda (entry)
+        (and (member (org-mem-entry-todo-state entry) org-not-done-keywords)
+             (or (and (org-mem-entry-scheduled entry)
+                      (cashpw/time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-scheduled entry)))))
+                 (and (org-mem-entry-deadline entry)
+                      (cashpw/time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-deadline entry))))))))
+      (org-mem-entries-in file))
+     collect file)))
 
 (defun cashpw/org-agenda-view--overdue ()
   "Return custom agenda command."
@@ -8939,18 +9228,21 @@ Category | Scheduled | Effort
       (org-agenda-files (cashpw/org-agenda-view--overdue--files))
       (org-super-agenda-groups
        '((:discard
-          (:scheduled future
+          (:scheduled
+           future
            :deadline future
            :scheduled today
            :deadline today
            :file-path ,cashpw/path--personal-calendar))
          (:auto-map
           (lambda (item)
-            (-when-let* ((marker (or (get-text-property 0 'org-marker item)
-                                     (get-text-property 0 'org-hd-marker)))
+            (-when-let* ((marker
+                          (or (get-text-property 0 'org-marker item)
+                              (get-text-property 0 'org-hd-marker)))
                          (default-priority "?")
-                         (priority (or (org-extras-get-priority marker)
-                                       default-priority)))
+                         (priority
+                          (or (org-extras-get-priority marker)
+                              default-priority)))
               (cond
                ((org-extras-scheduled-to-repeat-daily-p marker)
                 "1 Repeats daily")
@@ -8960,7 +9252,7 @@ Category | Scheduled | Effort
                 "3 Repeats")
                (t
                 "4 Doesn't repeat")))))
-         (;; Toss all other todos
+         ( ;; Toss all other todos
           :discard
           (:todo t))))))))
 
@@ -9959,7 +10251,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
       (:group
        "Journal"
        :file ,(lambda ()
-                (format "%s/journal--%s.org"
+                (format "%s/%s.org"
                         cashpw/path--notes-dir
                         (format-time-string "%F" (current-time))))
        :immediate-finish nil

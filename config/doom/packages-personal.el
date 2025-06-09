@@ -248,6 +248,8 @@
 
 (unpin! org-roam)
 
+(package! org-daily-reflection)
+
 (package! org-mem)
 
 (package! org-node
