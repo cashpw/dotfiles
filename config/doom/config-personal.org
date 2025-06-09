@@ -3394,6 +3394,18 @@ GPTel is a simple Large Language Model chat client for Emacs, with support for m
   (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
 #+end_src
 
+** Version control
+
+*** =diff-hl=
+
+Installed by Doom =vc-gutter= module.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ ;; PERF
+ diff-hl-flydiff-delay 3.0)
+#+end_src
+
 * Languages
 ** General
 *** Completion
