@@ -746,9 +746,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    ;; Override DOOM keybinding
    :n "b" #'cashpw/browse-select-url
    (:prefix
-    ("n")
+    ("n" . "Notes")
     :desc "Commonplace"
-    :n "C"
+    :n "c"
     (cmd!
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
@@ -5700,11 +5700,16 @@ Intended for use with `org-super-agenda' `:transformer'. "
 
 (defun cashpw/org-agenda-view--today--files ()
   (seq-uniq
-   (cashpw/rgrep
-    (format
-     "-l \"\\(SCHEDULED\\|DEADLINE\\): <%s\" %s/*.org"
-     (format-time-string "%F" (current-time))
-     cashpw/path--notes-dir))))
+   (append
+    (cashpw/rgrep
+     (format
+      "-l :everyday: %s/*.org"
+      cashpw/path--notes-dir))
+    (cashpw/rgrep
+     (format
+      "-l \"\\(SCHEDULED\\|DEADLINE\\): <%s\" %s/*.org"
+      (format-time-string "%F" (current-time))
+      cashpw/path--notes-dir)))))
 
 ;; Deprecased because it's 2x slower
 ;; (defun cashpw/org-agenda-view--today--files-mem ()
