@@ -1146,7 +1146,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              (cons
               url
               `(lambda ()
-                 (plru-put cashpw/browser-url-history ,url t)
+                 (cashpw/browser-url-history-put-url url)
                  (funcall browse-url-browser-function ,url))))
            (mapcar #'symbol-name (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))))
          (search-engine-options
@@ -1167,7 +1167,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              search-engines-key-to-engine)))
          (options
           ;; List of the form (selector . handler-fn)
-          ;; 
+          ;;
           ;; handler-fn is invoked when selector is selected
           (append url-history-options search-engine-options))
          (selection (completing-read "URL/Search: " options)))
@@ -1187,30 +1187,31 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
              (format "%s-%s" emacs-version
                      plru-internal-version-constant))))
   :config
-  (setq cashpw/browser-search-engines
-        `(
-          ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
-          ,(search-engine
-            :name "DuckDuckGo"
-            :id 'duckduckgo
-            :keys '("@ddg" "@duckduckgo")
-            :url "https://html.duckduckgo.com/html/?q=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir)
-          ,(search-engine
-            :name "IMDb"
-            :id 'imdb
-            :keys '("@imdb")
-            :url "https://www.imdb.com/find/?q=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir)
-          ,(search-engine
-            :name "Wikipedia"
-            :id 'wikipedia
-            :keys '("@wikipedia")
-            :url "https://en.wikipedia.org/w/index.php?search=%s"
-            :cache-size 200
-            :cache-directory cashpw/path--browser-history-dir))))
+  (let ((plru-debug t))
+    (setq cashpw/browser-search-engines
+          `(
+            ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
+            ,(search-engine
+              :name "DuckDuckGo"
+              :id 'duckduckgo
+              :keys '("@ddg" "@duckduckgo")
+              :url "https://html.duckduckgo.com/html/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "IMDb"
+              :id 'imdb
+              :keys '("@imdb")
+              :url "https://www.imdb.com/find/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "Wikipedia"
+              :id 'wikipedia
+              :keys '("@wikipedia")
+              :url "https://en.wikipedia.org/w/index.php?search=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)))))
 
 (after! shr
   (set-face-attribute 'shr-h1 nil :height 2.0 :weight 'bold)
@@ -1220,12 +1221,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (set-face-attribute 'shr-h5 nil :height 1.2 :weight 'bold)
   (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold))
 
-(let ((plru-directory cashpw/path--browser-history-dir))
+(let ((plru-directory cashpw/path--browser-history-dir)
+      (plru-debug t))
   (setq cashpw/browser-url-history
-    (plru-repository (format "browser-url-history-%s-%s"
-                             emacs-version
-                             plru-internal-version-constant)
-                     :max-size 200 :save-delay 5)))
+        (plru-repository (format "browser-url-history-%s-%s"
+                                 emacs-version
+                                 plru-internal-version-constant)
+                         :max-size 200 :save-delay 5)))
 
 (defcustom cashpw/browser-url-history-exclude-patterns '()
   "Patterns to exclude from URL history.")
@@ -1877,22 +1879,41 @@ TAGS which start with \"-\" are excluded."
    elfeed-use-curl t
    elfeed-curl-extra-arguments '("--insecure")
    elfeed-sort-order 'ascending
+   ;; elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
    elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
-  (map!
-   :map elfeed-search-mode-map
-   :n "+" #'cashpw/elfeed-search-set-tag
-   :nv "a" #'elfeed-search-untag-all-unread
-   :n "u" #'elfeed-update
-   :desc "Star" "f" (cmd! (cashpw/elfeed-search-set-tag '("star")))
-   (:prefix ("o" . "Order")
-    :desc "ascending" "a" (cmd! (setq elfeed-sort-order 'ascending)
-                                (elfeed-search-update--force))
-    :desc "descending" "d" (cmd! (setq elfeed-sort-order 'descending)
-                                (elfeed-search-update--force)))
-   (:prefix ("J" . "Search")
-    :desc "feed" "f" (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
-    :desc "tag" "t" (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only)))))
+
+  (evil-define-key
+    'normal
+    elfeed-search-mode-map
+    "+"
+    #'cashpw/elfeed-search-set-tag
+    "a"
+    #'elfeed-search-untag-all-unread
+    "u"
+    #'elfeed-update
+    "f"
+    (cmd! (if (elfeed-tagged-p 'star (elfeed-search-selected :ignore-region))
+              (elfeed-search-untag-all 'star)
+            (elfeed-search-tag-all 'star)))
+    (kbd "M-RET")
+    #'elfeed-search-browse-url
+    (kbd "o A")
+    (cmd! (setq elfeed-sort-order 'ascending) (elfeed-search-update--force))
+    (kbd "o D")
+    (cmd! (setq elfeed-sort-order 'descending) (elfeed-search-update--force))
+    (kbd "o t")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title)
+     (elfeed-search-update--force))
+    (kbd "o d")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date)
+     (elfeed-search-update--force))
+    (kbd "J f")
+    (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+    (kbd "J t")
+    (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
 
 (defun cashpw/elfeed-search-compare-by-date (a b)
   "Return non-nil if A is newer than B."
@@ -1906,21 +1927,21 @@ TAGS which start with \"-\" are excluded."
   "Return non-nil if A is newer than B."
   (string> (elfeed-entry-title a) (elfeed-entry-title b)))
 
-(setq cashpw/reading-list-tags
-      (string-split
-       (shell-command-to-string
-        (format "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'" cashpw/path--reading-list))
-       ":"
-       'omit-nulls))
+(setq
+ cashpw/reading-list-tags
+ (string-split
+  (shell-command-to-string
+   (format
+    "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'"
+    cashpw/path--reading-list))
+  ":" 'omit-nulls))
 
 (defun cashpw/elfeed-search-set-tag (tags)
   "Set tags on elfeed entries in search view."
-  (interactive
-   (list
-    (completing-read-multiple "Tag(s): "
-                              (append
-                               (elfeed-db-get-all-tags)
-                               cashpw/reading-list-tags))))
+  (interactive (list
+                (completing-read-multiple
+                 "Tag(s): "
+                 (append (elfeed-db-get-all-tags) cashpw/reading-list-tags))))
   (let ((elfeed-search-remain-on-entry t))
     (dolist (tag tags)
       (elfeed-search-tag-all (intern tag)))))
@@ -1954,10 +1975,12 @@ TAGS which start with \"-\" are excluded."
                     value)
                   elfeed-db-feeds)
                  (reverse (delete nil feed-titles)))))))
-    (elfeed-search-set-filter (format "=%s%s"
-                                      (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
-                                      (when unread-only
-                                        " +unread")))
+    (elfeed-search-set-filter
+     (format "=%s%s"
+             (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
+             (if unread-only
+                 " +unread"
+               "")))
     (elfeed-search-update)))
 
 (after!
@@ -2057,14 +2080,27 @@ TAGS which start with \"-\" are excluded."
 6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
   "LLM prompt to summarize content.")
 
+(defvar fabric-command "~/third_party/fabric/fabric")
+
+(defun cashpw/fabric-transcript-youtube (youtube-url)
+  "(Return|Insert) the transcript of YOUTUBE-URL.
+
+Insert the transcript if run interactively."
+  (interactive "sYouTube URL: ")
+  (let ((transcript
+         (shell-command-to-string
+          (format "%s --youtube=%s" fabric-command youtube-url))))
+    (if (interactive-p)
+        (insert transcript)
+      transcript)))
+
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
   (format "%s
 
 %s"
           llm-prompts-prompt--summarize
-          (shell-command-to-string
-           (format "~/third_party/fabric/fabric --transcript --youtube=%s" youtube-url))))
+          (cashpw/fabric-transcript-youtube youtube-url)))
 
 (use-package!
     gptel
@@ -2320,6 +2356,7 @@ TAGS which start with \"-\" are excluded."
   (zotra-default-bibliography cashpw/path--notes-bibliography)
   (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
   (zotra-after-get-bibtex-entry-hook nil)
+  (zotra-default-entry-format "biblatex")
 
   (bibtex-dialect 'biblatex)
   (bibtex-entry-format
@@ -2335,8 +2372,14 @@ TAGS which start with \"-\" are excluded."
   (bibtex-autokey-titlewords-stretch 1)
   (bibtex-autokey-titleword-length 'infty)
   (bibtex-autokey-titleword-ignore
-   '("A" "An" "On" "The" "Eine?" "Der" "Die" "Das"
-     ;; "[^[:upper:]].*"
+   '("A"
+     "An"
+     "On"
+     "The"
+     "Eine?"
+     "Der"
+     "Die"
+     "Das"
      ".*[^[:upper:][:lower:]0-9].*"))
   (bibtex-autokey-name-case-convert-function #'identity)
   (bibtex-autokey-titleword-case-convert-function
@@ -2346,43 +2389,113 @@ TAGS which start with \"-\" are excluded."
   (add-hook
    'zotra-after-get-bibtex-entry-hook 'cashpw/bibtex-clean-entry-override-key))
 
+(defun cashpw/replace-tabs-with-two-spaces ()
+  "Replace all tabs in buffer with two spaces."
+  (interactive)
+  (cashpw/replace-regexp-in-buffer "\t" "  "))
+
 (defun cashpw/bibtex-clean-entry-override-key ()
   "Invoke `bibtex-clean-entry' with key override."
-  (bibtex-clean-entry (bibtex-generate-autokey)))
+  (interactive)
+  (message "cashpw/bibtex-clean-entry-override-key")
+  (bibtex-clean-entry (bibtex-generate-autokey))
+  (cashpw/replace-tabs-with-two-spaces))
+
+(defun cashpw/bibtex--read-and-set-required-fields (buffer point-or-marker)
+  "Prompt user to set missing required fields in BUFFER at POINT-OR-MARKER."
+  (message "cashpw/bibtex--read-and-set-required-fields")
+  (save-excursion
+    (let ((window
+           (select-window
+            (display-buffer-in-side-window
+             buffer '((side . bottom))))))
+      (with-current-buffer (window-buffer window)
+        (goto-char point-or-marker)
+        (when (looking-at bibtex-entry-maybe-empty-head)
+          (with-restriction
+              (point)
+              (save-excursion
+                (evil-jump-item)
+                (1+ (point)))
+            (bibtex-entry-update)
+            (while (let ((case-fold-search nil))
+                     (search-forward-regexp "^\s*\\([a-z]\\|ALT\\)" nil t))
+              (let* ((field
+                      (replace-regexp-in-string
+                       "^\s*\\([^\s]*\\).*" "\\1" (org-current-line-string)))
+                     (new-value
+                      (read-string (format "%s (leave empty to skip): " field)))
+                     (new-line
+                      (when new-value
+                        (replace-regexp-in-string
+                         "{}" (format "{%s}" new-value) (org-current-line-string)))))
+                (when new-line
+                  (delete-line)
+                  (insert new-line)
+                  (newline))))
+            (bibtex-format-entry))))
+      (+workspace/close-window-or-workspace))))
 
 (defun cashpw/bibtex-generate-autokey ()
-  "Generate automatically a key for a BibTeX entry.
-Use the author/editor, the year and the title field.
-The algorithm works as follows."
+  "Return a key for the current bibtex entry.
+
+The key is in the form: (authors|journal)_title_year."
+  (message "cashpw/bibtex-generate-autokey")
+  (when
+      ;; Missing required fields
+      (or (string-empty-p
+           (bibtex-autokey-get-names))
+          (not
+           (ignore-errors
+             (bibtex-autokey-get-year))))
+    (cashpw/bibtex--read-and-set-required-fields
+     (current-buffer)
+     (point)))
   (let* ((journal (bibtex-autokey-get-field "journal"))
          (names (bibtex-autokey-get-names))
          (title (bibtex-autokey-get-title))
-         (year (bibtex-autokey-get-year))
-         (autokey
-          (substring
-           (concat
-            (cond
-             ((not (string-empty-p names))
-              (s-lex-format "${names}_"))
-             ((not (string-empty-p journal))
-              (s-lex-format "${journal}_")))
-            (if (string-empty-p title)
-                ""
-              (s-lex-format "${title}_"))
-            (if (string-empty-p year)
-                ""
-              (s-lex-format "${year}_")))
-           0 -1)))
+         (year
+          (or (ignore-errors
+                (bibtex-autokey-get-year))
+              ""))
+         (key
+          (substring (concat
+                      (cond
+                       ((not (string-empty-p names))
+                        (s-lex-format "${names}_"))
+                       ((not (string-empty-p journal))
+                        (s-lex-format "${journal}_")))
+                      (if (string-empty-p title)
+                          ""
+                        (s-lex-format "${title}_"))
+                      (if (string-empty-p year)
+                          ""
+                        (s-lex-format "${year}_")))
+                     0 -1)))
     (if bibtex-autokey-before-presentation-function
-        (funcall bibtex-autokey-before-presentation-function autokey)
-      autokey)))
+        (funcall bibtex-autokey-before-presentation-function key)
+      key)))
 
 (advice-add 'bibtex-generate-autokey :override 'cashpw/bibtex-generate-autokey)
+
+(defun cashpw/zotra-add-entry-from-url (url)
+  "Add an entry for the current page's url."
+  (interactive)
+  (let
+      ((rewriters
+        (list
+         (cons
+          "https:\\/\\/www.youtube.com\\/supported_browsers\\?next_url=\\(.*\\)"
+          (lambda () (url-unhex-string (match-string 1 url)))))))
+    (zotra-add-entry
+     (if-let ((rewriter (--first (string-match (car it) url) rewriters)))
+         (funcall (cdr rewriter))
+       url))))
 
 (defun cashpw/zotra-add-entry-from-eww ()
   "Add an entry for the current page's url."
   (interactive)
-  (zotra-add-entry (plist-get eww-data :url)))
+  (cashpw/zotra-add-entry-from-url (plist-get eww-data :url)))
 
 (use-package!
     org-clock-act-on-overtime
