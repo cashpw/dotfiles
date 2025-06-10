@@ -8483,16 +8483,23 @@ Reference:https://stackoverflow.com/q/23622296"
                 (minute-end (org-element-property :minute-end scheduled)))
             (cond
              ((and hour-start minute-start hour-end minute-end)
-              (format "%02d:%02d-%02d:%02d "
-                      hour-start
-                      minute-start
-                      hour-end
-                      minute-end))
+              (format
+               "%02d:%02d-%02d:%02d"
+               hour-start
+               minute-start
+               hour-end
+               minute-end))
              ((and hour-start minute-start)
-              (format "%02d:%02d " hour-start minute-start))
+              (format "%02d:%02d" hour-start minute-start))
              (t
               "")))))
-    (concat time-string (org-entry-get nil "ITEM"))))
+    (concat
+     (propertize
+      time-string
+      'face
+      'shadow)
+     " "
+     (org-entry-get nil "ITEM"))))
 
 (defun cashpw/select-from-todays-todos-and-go-to ()
   "Prompt user to select a todo, then go to it."

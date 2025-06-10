@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-09 Mon 09:06]
+:LAST_MODIFIED: [2025-06-10 Tue 09:14]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -11825,7 +11825,7 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
 
 ** =completing-read= for today's agenda
 
-#+begin_src emacs-lisp :tangle config-personal.el :results none
+#+begin_src emacs-lisp :tangle config-personal.el
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
   (interactive)
@@ -11843,16 +11843,23 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
                 (minute-end (org-element-property :minute-end scheduled)))
             (cond
              ((and hour-start minute-start hour-end minute-end)
-              (format "%02d:%02d-%02d:%02d "
-                      hour-start
-                      minute-start
-                      hour-end
-                      minute-end))
+              (format
+               "%02d:%02d-%02d:%02d"
+               hour-start
+               minute-start
+               hour-end
+               minute-end))
              ((and hour-start minute-start)
-              (format "%02d:%02d " hour-start minute-start))
+              (format "%02d:%02d" hour-start minute-start))
              (t
               "")))))
-    (concat time-string (org-entry-get nil "ITEM"))))
+    (concat
+     (propertize
+      time-string
+      'face
+      'shadow)
+     " "
+     (org-entry-get nil "ITEM"))))
 
 (defun cashpw/select-from-todays-todos-and-go-to ()
   "Prompt user to select a todo, then go to it."
@@ -11868,6 +11875,9 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 #+end_src
+
+#+RESULTS:
+: cashpw/select-from-todays-todos-and-go-to
 
 ** =font-lock-profiler=
 
