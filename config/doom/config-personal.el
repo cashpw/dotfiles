@@ -2054,16 +2054,6 @@ TAGS which start with \"-\" are excluded."
 ;;   (setq
 ;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
 
-(use-package!
-    commit-message
-  :config
-  (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
-  (add-hook 'git-commit-setup-hook 'commit-message-insert-message)
-  (add-hook
-   'git-commit-setup-hook
-   (defun cashpw/vc-start-in-insert-state ()
-     (evil-insert-state))))
-
 (use-package! gnuplot)
 
 (use-package! llm-prompts)
@@ -2185,6 +2175,46 @@ Insert the transcript if run interactively."
       (setq cashpw/gptel-after-whisper nil)))
 
   (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+
+(setq
+ ;; PERF
+ diff-hl-flydiff-delay 3.0)
+
+(use-package!
+ commit-message
+ :custom
+ (commit-message-builder-fn
+  (defun cashpw/commit-message-builder-fn ()
+    "Return commit message"
+    (let ((category (commit-message-read-category))
+          (scope (commit-message-read-scope))
+          (breaking (commit-message-read-breaking)))
+      (with-slots
+       (short) category
+       (let ((wrapped-scope
+              (if scope
+                  (format "(%s)" scope)
+                ""))
+             (breaking-bang
+              (if breaking
+                  "!"
+                "")))
+         (s-lex-format "${short}${wrapped-scope}${breaking-bang}: CURSOR
+
+**What?**
+
+TODO
+
+**Why?**
+
+TODO"))))))
+ :config
+ (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
+ (add-hook 'git-commit-setup-hook 'commit-message-maybe-insert-message)
+ (add-hook
+  'git-commit-setup-hook
+  (defun cashpw/vc-start-in-insert-state ()
+    (evil-insert-state))))
 
 (setq
  company-idle-delay 1
@@ -6518,8 +6548,7 @@ Category | Scheduled | Effort
 (cashpw/org-agenda-custom-commands--maybe-update)
 
 (defun cashpw/org-agenda-view--overdue--files ()
-  (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
-        (org-not-done-keywords
+  (let ((org-not-done-keywords
          (with-temp-buffer
            (org-mode)
            org-not-done-keywords)))
@@ -7095,6 +7124,7 @@ See `org-clock-special-range' for KEY."
   '("keep_on_done"
     "journal"
     "person"
+    "pet"
     "decision"
     "project")
   "Filetags for which we should keep on done."
