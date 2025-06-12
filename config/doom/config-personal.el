@@ -2094,6 +2094,14 @@ Insert the transcript if run interactively."
         (insert transcript)
       transcript)))
 
+(defun cashpw/ytt-api-transcript (youtube-video-id)
+  "Return transcript of YOUTUBE-VIDEO-ID."
+   (concat
+    "source ~/third_party/yt-transcripts/bin/activate;"
+    (format
+    "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), '')\""
+    youtube-video-id)))
+
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
   (format "%s
@@ -2185,6 +2193,10 @@ Insert the transcript if run interactively."
       (setq cashpw/gptel-after-whisper nil)))
 
   (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+
+(setq
+ ;; PERF
+ diff-hl-flydiff-delay 3.0)
 
 (setq
  company-idle-delay 1
@@ -8484,13 +8496,13 @@ Reference:https://stackoverflow.com/q/23622296"
             (cond
              ((and hour-start minute-start hour-end minute-end)
               (format
-               "%02d:%02d-%02d:%02d"
+               "%02d:%02d-%02d:%02d "
                hour-start
                minute-start
                hour-end
                minute-end))
              ((and hour-start minute-start)
-              (format "%02d:%02d" hour-start minute-start))
+              (format "%02d:%02d " hour-start minute-start))
              (t
               "")))))
     (concat
@@ -8498,7 +8510,6 @@ Reference:https://stackoverflow.com/q/23622296"
       time-string
       'face
       'shadow)
-     " "
      (org-entry-get nil "ITEM"))))
 
 (defun cashpw/select-from-todays-todos-and-go-to ()

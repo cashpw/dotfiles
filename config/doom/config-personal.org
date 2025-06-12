@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-10 Tue 09:14]
+:LAST_MODIFIED: [2025-06-11 Wed 20:36]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3429,6 +3429,14 @@ Insert the transcript if run interactively."
     (if (interactive-p)
         (insert transcript)
       transcript)))
+
+(defun cashpw/ytt-api-transcript (youtube-video-id)
+  "Return transcript of YOUTUBE-VIDEO-ID."
+   (concat
+    "source ~/third_party/yt-transcripts/bin/activate;"
+    (format
+    "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), '')\""
+    youtube-video-id)))
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
@@ -11856,13 +11864,13 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
             (cond
              ((and hour-start minute-start hour-end minute-end)
               (format
-               "%02d:%02d-%02d:%02d"
+               "%02d:%02d-%02d:%02d "
                hour-start
                minute-start
                hour-end
                minute-end))
              ((and hour-start minute-start)
-              (format "%02d:%02d" hour-start minute-start))
+              (format "%02d:%02d " hour-start minute-start))
              (t
               "")))))
     (concat
@@ -11870,7 +11878,6 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
       time-string
       'face
       'shadow)
-     " "
      (org-entry-get nil "ITEM"))))
 
 (defun cashpw/select-from-todays-todos-and-go-to ()
