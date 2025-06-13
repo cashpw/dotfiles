@@ -245,7 +245,7 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
 
 (defvar cashpw/path--browser-history-dir
   (file-name-concat cashpw/path--notes-dir "browser-history/")
-  "Personal org-roam notes directory.")
+   "Personal org-roam notes directory.")
 
 (defvar cashpw/path--personal-todos
   (s-lex-format "${cashpw/path--notes-dir}/todos.org")
@@ -268,7 +268,7 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
   "Reading list.")
 
 (defvar cashpw/path--notes-bibliography (format "%s/proj/notes/bibliography.bib"
-                                                cashpw/path--home-dir)
+                                        cashpw/path--home-dir)
   "Path to bibliograpy in notes.")
 
 (defvar cashpw/bibliographies `(,cashpw/path--notes-bibliography)
@@ -277,11 +277,11 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
 (setenv "GPG_AGENT_INFO")
 
 (use-package!
-    secret
-  :config
-  (set-secret-dir (format "%s/.config/secrets" cashpw/path--home-dir)))
+ secret
+ :config
+ (set-secret-dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 
-                                        ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
   (set 'sym (make-symbol (documentation def)))
@@ -483,7 +483,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (defun increment-ordinals-in-todo ()
     "Increment ordinal nubmers in TODO headline."
     (let ((headline
-           (org-entry-get nil "ITEM")))
+          (org-entry-get nil "ITEM")))
       (org-edit-headline
        (increment-ordinals-in-string headline)))))
 
@@ -557,7 +557,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    "Sit down"
    '(:persistent t)))
 
-                                        ; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
 (defun cashpw/evil-lambda-key (mode keymap key def)
   "Wrap `evil-define-key' to provide documentation."
   (set 'sym (make-symbol (documentation def)))
@@ -786,8 +786,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                        (org-daily-reflection-restore-prior-windows)
                                      (org-daily-reflection
                                       (intern (completing-read "What time interval?"
-                                                               org-daily-reflection-time-spans
-                                                               nil t nil nil))
+                                             org-daily-reflection-time-spans
+                                             nil t nil nil))
                                       4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
@@ -845,7 +845,7 @@ Requires your OpenWeatherMap APPID."
           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
           "&APPID=" appid
-          "&units=" (url-encode-url (symbol-name units))
+"&units=" (url-encode-url (symbol-name units))
           "&cnt=5"))
 
 (when (cashpw/machine-p 'personal-phone)
@@ -1085,13 +1085,13 @@ This be hooked to `projectile-after-switch-project-hook'."
 
 (cashpw/icon-alias
  cashpw/icons-hourglass-empty
- (expand-file-name
-  "~/.local/share/icons/google-material/hourglass_bottom_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
+  (expand-file-name
+   "~/.local/share/icons/google-material/hourglass_bottom_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
 
 (cashpw/icon-alias
  cashpw/icons-notifications
- (expand-file-name
-  "~/.local/share/icons/google-material/notifications_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
+  (expand-file-name
+   "~/.local/share/icons/google-material/notifications_48dp_FFF_FILL0_wght400_GRAD0_opsz48.png"))
 
 ;; (use-package! helm)
 ;; (use-package! exec-path-from-shell)
@@ -1677,8 +1677,8 @@ TAGS which start with \"-\" are excluded."
   "TODO"
   (message "killing sent email buffers")
   (let ((buffers-to-kill (-filter (lambda (buffer)
-                                    (string-match-p "sent mail" (buffer-name buffer)))
-                                  (buffer-list))))
+                                         (string-match-p "sent mail" (buffer-name buffer)))
+                                       (buffer-list))))
     (dolist (buffer-to-kill buffers-to-kill)
       (kill-buffer buffer-to-kill))))
 
@@ -1865,8 +1865,8 @@ TAGS which start with \"-\" are excluded."
         (tmp-output-file-path
          (format "/tmp/pandoc-tmp-output-%s" (format-time-string "%s"))))
     (with-temp-buffer text
-                      (let ((coding-system-for-write 'utf-8))
-                        (write-file tmp-input-file-path)))
+      (let ((coding-system-for-write 'utf-8))
+        (write-file tmp-input-file-path)))
     (cashpw/pandoc-cli
      (s-lex-format
       "${tmp-input-file-path} -f ${source-format} -t ${target-format} -o ${tmp-output-file-path}"))
@@ -2086,9 +2086,9 @@ Insert the transcript if run interactively."
 
 (defun cashpw/ytt-api-transcript (youtube-video-id)
   "Return transcript of YOUTUBE-VIDEO-ID."
-  (concat
-   "source ~/third_party/yt-transcripts/bin/activate;"
-   (format
+   (concat
+    "source ~/third_party/yt-transcripts/bin/activate;"
+    (format
     "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), '')\""
     youtube-video-id)))
 
@@ -2194,20 +2194,36 @@ Insert the transcript if run interactively."
   (commit-message-builder-fn
    (defun cashpw/commit-message-builder-fn ()
      "Return commit message"
-     (let ((category (commit-message-read-category))
-           (scope (commit-message-read-scope))
-           (breaking (commit-message-read-breaking)))
-       (with-slots
-           (short) category
-         (let ((wrapped-scope
-                (if scope
-                    (format "(%s)" scope)
-                  ""))
-               (breaking-bang
-                (if breaking
-                    "!"
-                  "")))
-           (s-lex-format "${short}${wrapped-scope}${breaking-bang}: CURSOR
+     (let ((buffer-path
+            (if-let* ((filename (or (buffer-file-name (buffer-base-buffer))
+                                    (bound-and-true-p list-buffers-directory))))
+                (abbreviate-file-name
+                 filename))))
+       (cond
+        ((file-in-directory-p
+          buffer-path
+          cashpw/path--notes-dir)
+         (cashpw/commit-message-builder--notes))
+        (t
+         (cashpw/commit-message-builder))))))
+
+  :config
+  (defun cashpw/commit-message-builder ()
+    "Return commit message"
+    (let ((category (commit-message-read-category))
+          (scope (commit-message-read-scope))
+          (breaking (commit-message-read-breaking)))
+      (with-slots
+          (short) category
+        (let ((wrapped-scope
+               (if scope
+                   (format "(%s)" scope)
+                 ""))
+              (breaking-bang
+               (if breaking
+                   "!"
+                 "")))
+          (s-lex-format "${short}${wrapped-scope}${breaking-bang}: CURSOR
 
 **What?**
 
@@ -2215,8 +2231,24 @@ TODO
 
 **Why?**
 
-TODO"))))))
-  :config
+TODO")))))
+
+  (defun cashpw/commit-message-builder--notes ()
+    "Return commit message"
+    (let* ((commit-message-categories cashpw/commit-message-notes-categories)
+           (category (commit-message-read-category)))
+      (with-slots
+          (short) category
+        (cond
+         ((string= short "flashcards")
+          "feat: Flashcards")
+         (t
+          (s-lex-format "${short}: CURSOR"))))))
+  
+  (setq cashpw/commit-message-notes-categories (list
+                                                (commit-message-category :name "Flashcards" :short "flashcards")
+                                                (commit-message-category :name "Fix" :short "fix" :aliases '("Bug"))
+                                                (commit-message-category :name "Feature" :short "feat" :aliases '("Add"))))
   (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
   (add-hook 'git-commit-setup-hook 'commit-message-maybe-insert-message)
   (add-hook
@@ -2589,8 +2621,8 @@ The key is in the form: (authors|journal)_title_year."
 
 (after! (:and oc
               memoize))
-;; Speed up exports
-;; (memoize 'citeproc-hash-itemgetter-from-any))
+  ;; Speed up exports
+  ;; (memoize 'citeproc-hash-itemgetter-from-any))
 
 (use-package! org-download
   :after org
@@ -2719,115 +2751,115 @@ The key is in the form: (authors|journal)_title_year."
   (org-fc-review-session--next org-fc-review--session))
 
 (use-package!
-    org-fc
-  :after org
-  :custom
-  (org-fc-directories `(,cashpw/path--notes-dir))
-  (org-fc-review-history-file
-   (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
-  (org-fc-bury-siblings t)
-  (org-fc-bury-siblings t)
-  (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
-  (org-fc-review-new-limit 20)
-  (org-fc-review-new-limit-schedule 'day)
-  (org-fc-review-hide-title-in-header-line t)
-  ;; Define twice so the keys show up in the hint
-  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
-  (org-fc-review-flip-mode-map
-   (let ((map (make-sparse-keymap)))
-     (define-key map (kbd "n") 'org-fc-review-flip)
-     (define-key map (kbd "q") 'org-fc-review-quit)
-     (define-key map (kbd "e") 'org-fc-review-edit)
-     (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
-     (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-     (define-key map (kbd "S") 'org-fc-review-suspend-card)
-     map))
-  (org-fc-review-rate-mode-map
-   (let ((map (make-sparse-keymap)))
-     (define-key map (kbd "0") 'org-fc-review-rate-again)
-     (define-key map (kbd "1") 'org-fc-review-rate-hard)
-     (define-key map (kbd "2") 'org-fc-review-rate-good)
-     (define-key map (kbd "3") 'org-fc-review-rate-easy)
-     (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-     (define-key map (kbd "S") 'org-fc-review-suspend-card)
-     (define-key map (kbd "e") 'org-fc-review-edit)
-     (define-key map (kbd "q") 'org-fc-review-quit)
-     map))
+ org-fc
+ :after org
+ :custom
+ (org-fc-directories `(,cashpw/path--notes-dir))
+ (org-fc-review-history-file
+  (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
+ (org-fc-bury-siblings t)
+ (org-fc-bury-siblings t)
+ (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
+ (org-fc-review-new-limit 20)
+ (org-fc-review-new-limit-schedule 'day)
+ (org-fc-review-hide-title-in-header-line t)
+ ;; Define twice so the keys show up in the hint
+ ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+ (org-fc-review-flip-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "n") 'org-fc-review-flip)
+    (define-key map (kbd "q") 'org-fc-review-quit)
+    (define-key map (kbd "e") 'org-fc-review-edit)
+    (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
+    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+    (define-key map (kbd "S") 'org-fc-review-suspend-card)
+    map))
+ (org-fc-review-rate-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "0") 'org-fc-review-rate-again)
+    (define-key map (kbd "1") 'org-fc-review-rate-hard)
+    (define-key map (kbd "2") 'org-fc-review-rate-good)
+    (define-key map (kbd "3") 'org-fc-review-rate-easy)
+    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+    (define-key map (kbd "S") 'org-fc-review-suspend-card)
+    (define-key map (kbd "e") 'org-fc-review-edit)
+    (define-key map (kbd "q") 'org-fc-review-quit)
+    map))
 
-  :config
-  (require 'org-fc-hydra)
-  (require 'org-fc-keymap-hint)
+ :config
+ (require 'org-fc-hydra)
+ (require 'org-fc-keymap-hint)
 
-  (setq cashpw/org-fc--seconds-per-card 10)
+ (setq cashpw/org-fc--seconds-per-card 10)
 
-  (add-to-list
-   'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
-  (add-to-list
-   'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
+ (add-to-list
+  'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
+ (add-to-list
+  'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
 
-  ;; Define twice so the keys show up in the hint
-  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
-  (evil-define-minor-mode-key
-    '(normal insert emacs)
-    'org-fc-review-flip-mode
-    (kbd "n")
-    'org-fc-review-flip
-    (kbd "s")
-    'cashpw/org-fc-review-skip-card
-    (kbd "S")
-    'org-fc-review-suspend-card
-    (kbd "e")
-    'org-fc-review-edit
-    (kbd "p")
-    'cashpw/org-fc-review-pause
-    (kbd "q")
-    'org-fc-review-quit)
-  (evil-define-minor-mode-key
-    '(normal insert emacs)
-    'org-fc-review-rate-mode
-    (kbd "0")
-    'org-fc-review-rate-again
-    (kbd "1")
-    'org-fc-review-rate-hard
-    (kbd "2")
-    'org-fc-review-rate-good
-    (kbd "3")
-    'org-fc-review-rate-easy
-    (kbd "s")
-    'cashpw/org-fc-review-skip-card
-    (kbd "S")
-    'org-fc-review-suspend-card
-    (kbd "e")
-    'org-fc-review-edit
-    (kbd "q")
-    'org-fc-review-quit)
-  (add-hook!
-   'org-fc-review-edit-mode-hook
-   #'cashpw/org-fc--reset-card-timer-expired-effects)
+ ;; Define twice so the keys show up in the hint
+ ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+ (evil-define-minor-mode-key
+  '(normal insert emacs)
+  'org-fc-review-flip-mode
+  (kbd "n")
+  'org-fc-review-flip
+  (kbd "s")
+  'cashpw/org-fc-review-skip-card
+  (kbd "S")
+  'org-fc-review-suspend-card
+  (kbd "e")
+  'org-fc-review-edit
+  (kbd "p")
+  'cashpw/org-fc-review-pause
+  (kbd "q")
+  'org-fc-review-quit)
+ (evil-define-minor-mode-key
+  '(normal insert emacs)
+  'org-fc-review-rate-mode
+  (kbd "0")
+  'org-fc-review-rate-again
+  (kbd "1")
+  'org-fc-review-rate-hard
+  (kbd "2")
+  'org-fc-review-rate-good
+  (kbd "3")
+  'org-fc-review-rate-easy
+  (kbd "s")
+  'cashpw/org-fc-review-skip-card
+  (kbd "S")
+  'org-fc-review-suspend-card
+  (kbd "e")
+  'org-fc-review-edit
+  (kbd "q")
+  'org-fc-review-quit)
+ (add-hook!
+  'org-fc-review-edit-mode-hook
+  #'cashpw/org-fc--reset-card-timer-expired-effects)
 
-  (add-hook! 'org-fc-before-setup-hook '(cashpw/org-fc--before-setup))
-  (add-hook! 'org-fc-after-setup-hook '(cashpw/org-fc--open-front-link))
+ (add-hook! 'org-fc-before-setup-hook '(cashpw/org-fc--before-setup))
+ (add-hook! 'org-fc-after-setup-hook '(cashpw/org-fc--open-front-link))
 
-  (add-hook!
-   'org-fc-after-flip-hook
-   '(cashpw/org-fc--after-flip
-     cashpw/org-fc--maybe-increment-new-seen-today
-     cashpw/org-fc--show-latex-for-tree))
+ (add-hook!
+  'org-fc-after-flip-hook
+  '(cashpw/org-fc--after-flip
+    cashpw/org-fc--maybe-increment-new-seen-today
+    cashpw/org-fc--show-latex-for-tree))
 
-  (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
+ (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
 
-  (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
-  ;; (setq
-  ;;  org-fc-review-position-filters '())
-  ;; (setq
-  ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
-  ;;                                   cashpw/org-fc--filter-limit-implement
-  ;;                                   cashpw/org-fc--filter-limit-new))
+ (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
+ ;; (setq
+ ;;  org-fc-review-position-filters '())
+ ;; (setq
+ ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
+ ;;                                   cashpw/org-fc--filter-limit-implement
+ ;;                                   cashpw/org-fc--filter-limit-new))
 
-  (setq org-roam-db-node-include-function
-        (lambda ()
-          ;; Exclude org-fc cards from roam
-          (not (org-fc-entry-p)))))
+ (setq org-roam-db-node-include-function
+       (lambda ()
+         ;; Exclude org-fc cards from roam
+         (not (org-fc-entry-p)))))
 
 (use-package! org-fc-type-vocab :after org-fc)
 
@@ -3717,7 +3749,7 @@ Return nil if no attendee exists with that EMAIL."
 
 (after! org-habit
   (setq
-   org-habit-show-done-always-green t))
+    org-habit-show-done-always-green t))
 
 (use-package! org-multi-clock)
 
@@ -3797,7 +3829,7 @@ Return nil if no attendee exists with that EMAIL."
        (s-join
         "\n"
         (--map
-         (format "> %s" it)
+           (format "> %s" it)
          (cl-delete
           "#+begin_export hugo "
           (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
@@ -3806,7 +3838,7 @@ Return nil if no attendee exists with that EMAIL."
        (s-join
         "\n"
         (--map
-         (format "> %s" it)
+           (format "> %s" it)
          (cl-delete
           "#+begin_export markdown "
           (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
@@ -3815,7 +3847,7 @@ Return nil if no attendee exists with that EMAIL."
        (s-join
         "\n"
         (--map
-         (format "> %s" it)
+           (format "> %s" it)
          (cl-delete
           "#+begin_export md "
           (cl-delete "#+end_export" (s-split "\n" raw-contents t) :test #'string=)
@@ -4324,8 +4356,8 @@ Don't call directly. Use `cashpw/org-agenda-files'."
 (defmacro cashpw/org-with-narrow-between-text (start-text end-text &rest body)
   "Execute BODY with current buffer narrowed between START-TEXT and END-TEXT around point."
   `(save-restriction
-     (cashpw/narrow-between-text ,start-text ,end-text)
-     ,@body))
+    (cashpw/narrow-between-text ,start-text ,end-text)
+    ,@body))
 
 (defun cashpw/org-join-lines-in-quote ()
   "Join lines in current quote block which are not separated by an empty line."
@@ -5101,8 +5133,8 @@ Optional:
   "Add flashcard heading to the current buffer."
   (interactive)
   (unless (--any-p
-           (funcall it)
-           cashpw/org-roam--skip-add-flashcard-fns)
+         (funcall it)
+         cashpw/org-roam--skip-add-flashcard-fns)
     (cashpw/org--insert-heading-if-missing
      "Flashcards"
      todo
@@ -5149,15 +5181,15 @@ Optional:
 
 (setq
  cashpw/org-hugo--mathjax-post-map '(("\\(C\\\\_{n}\\)" . "centering_matrix")
-                                     ("\\(I\\\\_{n}\\)" . "identity_matrix")
-                                     ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
-                                     ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
-                                     ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
-                                     ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
-                                     ("\\(\\\\cos\\)" . "cosine")
-                                     ("\\(\\\\sin\\)" . "sine")
-                                     ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
-                                     ("\\(\\\\tan\\)" . "tangent")))
+                                         ("\\(I\\\\_{n}\\)" . "identity_matrix")
+                                         ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
+                                         ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+                                         ("\\(\\\\cos\\)" . "cosine")
+                                         ("\\(\\\\sin\\)" . "sine")
+                                         ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+                                         ("\\(\\\\tan\\)" . "tangent")))
 
 (defun org-hugo--after-1-export-function (info outfile)
   "Function to be run after exporting one post.
@@ -5494,7 +5526,7 @@ not always show the expected results."
   "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
   (-when-let* ((marker (or (get-text-property 0 'org-marker item)
                            (get-text-property 0 'org-hd-marker))))
-    (org-entry-get marker "ITEM")))
+     (org-entry-get marker "ITEM")))
 
 (defun cashpw/org-super-agenda--get-category (item)
   "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
@@ -6761,13 +6793,13 @@ See `org-clock-special-range' for KEY."
   (let* ((org-read-date-counter -1))
     (cl-letf (((symbol-function 'org-read-date)
                (lambda (&optional
-                        _with-time
-                        _to-time
-                        _from-string
-                        _prompt
-                        _default-time
-                        _default-input
-                        _inactive)
+                   _with-time
+                   _to-time
+                   _from-string
+                   _prompt
+                   _default-time
+                   _default-input
+                   _inactive)
                  (cl-incf org-read-date-counter)
                  (cond
                   ((= org-read-date-counter
@@ -7265,17 +7297,8 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org--prompt-for-category-when-missing ()
   "Prompt for category if it's missing."
-  (let ((buffer-category
-         (save-excursion
-           (widen)
-           (goto-char (point-min))
-           (when (search-forward "#+category:")
-             (replace-regexp-in-string
-              "#\\+category: " "" (org-current-line-string)))))
-        (category (org-entry-get (point) "CATEGORY")))
-    (message "%s : %s" buffer-category category)
-    (when (or (not category)
-              (and buffer-category (string= buffer-category category)))
+  (let ((category (org-entry-get (point) "CATEGORY" nil)))
+    (when (not category)
       (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
 
 
@@ -7705,7 +7728,7 @@ All args are passed to `org-roam-node-read'."
 (defun cashpw/latex-toggle-preview--show ()
   (interactive)
   (cl-pushnew (buffer-name (current-buffer))
-              cashpw/latex-toggle-preview--buffers-with-preview-displayed-p)
+           cashpw/latex-toggle-preview--buffers-with-preview-displayed-p)
   (org-latex-preview '(16)))
 
 (defun cashpw/latex-toggle-preview--hide ()
@@ -7907,7 +7930,7 @@ All args are passed to `org-roam-node-read'."
       (with-current-buffer (find-file-noselect post-path)
         (dolist (missing-relref missing-relrefs)
           (cashpw/replace-regexp-in-buffer
-           (format "relref \"%s\"" missing-relref)
+            (format "relref \"%s\"" missing-relref)
            "REPLACED"))
         (save-buffer)))))
 
@@ -8290,9 +8313,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :desc "Quote (precise)" :n "Q" #'cashpw/org-noter-insert-selected-text-inside-note-content))
 
 (unless (cashpw/machine-p 'personal-phone)
-  (use-package! pdf-tools
-    :config
-    (pdf-tools-install)))
+(use-package! pdf-tools
+  :config
+  (pdf-tools-install)))
 
 (use-package! protobuf-mode)
 
@@ -8501,8 +8524,8 @@ Reference:https://stackoverflow.com/q/23622296"
  "M-j" #'pdf-view-scroll-up-or-next-column)
 
 ;; (use-package! org-window-habit
-;; :config
-;; (org-window-habit-mode +1))
+  ;; :config
+  ;; (org-window-habit-mode +1))
 
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."

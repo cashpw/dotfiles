@@ -137,15 +137,15 @@
 
 (package! elfeed-protocol)
 
-(package! commit-message
-  :recipe (:host github :repo "cashpw/commit-message"))
-
 (package! gnuplot)
 
 (package! llm-prompts
   :recipe (:host github :repo "cashpw/llm-prompts.el"))
 
 (package! gptel)
+
+(package! commit-message
+  :recipe (:host github :repo "cashpw/commit-message"))
 
 (package! eglot-booster
   :recipe (:host github

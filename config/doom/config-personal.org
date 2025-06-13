@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-12 Thu 08:59]
+:LAST_MODIFIED: [2025-06-13 Fri 07:03]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -3553,40 +3553,72 @@ Installed by Doom =vc-gutter= module.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (use-package!
- commit-message
- :custom
- (commit-message-builder-fn
-  (defun cashpw/commit-message-builder-fn ()
+    commit-message
+  :custom
+  (commit-message-builder-fn
+   (defun cashpw/commit-message-builder-fn ()
+     "Return commit message"
+     (let ((buffer-path
+            (if-let* ((filename (or (buffer-file-name (buffer-base-buffer))
+                                    (bound-and-true-p list-buffers-directory))))
+                (abbreviate-file-name
+                 filename))))
+       (cond
+        ((file-in-directory-p
+          buffer-path
+          cashpw/path--notes-dir)
+         (cashpw/commit-message-builder--notes))
+        (t
+         (cashpw/commit-message-builder))))))
+
+  :config
+  (defun cashpw/commit-message-builder ()
     "Return commit message"
     (let ((category (commit-message-read-category))
           (scope (commit-message-read-scope))
           (breaking (commit-message-read-breaking)))
       (with-slots
-       (short) category
-       (let ((wrapped-scope
-              (if scope
-                  (format "(%s)" scope)
-                ""))
-             (breaking-bang
-              (if breaking
-                  "!"
-                "")))
-         (s-lex-format "${short}${wrapped-scope}${breaking-bang}: CURSOR
+          (short) category
+        (let ((wrapped-scope
+               (if scope
+                   (format "(%s)" scope)
+                 ""))
+              (breaking-bang
+               (if breaking
+                   "!"
+                 "")))
+          (s-lex-format "${short}${wrapped-scope}${breaking-bang}: CURSOR
 
-**What?**
+,**What?**
 
 TODO
 
-**Why?**
+,**Why?**
 
-TODO"))))))
- :config
- (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
- (add-hook 'git-commit-setup-hook 'commit-message-maybe-insert-message)
- (add-hook
-  'git-commit-setup-hook
-  (defun cashpw/vc-start-in-insert-state ()
-    (evil-insert-state))))
+TODO")))))
+
+  (defun cashpw/commit-message-builder--notes ()
+    "Return commit message"
+    (let* ((commit-message-categories cashpw/commit-message-notes-categories)
+           (category (commit-message-read-category)))
+      (with-slots
+          (short) category
+        (cond
+         ((string= short "flashcards")
+          "feat: Flashcards")
+         (t
+          (s-lex-format "${short}: CURSOR"))))))
+  
+  (setq cashpw/commit-message-notes-categories (list
+                                                (commit-message-category :name "Flashcards" :short "flashcards")
+                                                (commit-message-category :name "Fix" :short "fix" :aliases '("Bug"))
+                                                (commit-message-category :name "Feature" :short "feat" :aliases '("Add"))))
+  (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
+  (add-hook 'git-commit-setup-hook 'commit-message-maybe-insert-message)
+  (add-hook
+   'git-commit-setup-hook
+   (defun cashpw/vc-start-in-insert-state ()
+     (evil-insert-state))))
 #+end_src
 
 * Languages
@@ -10076,17 +10108,8 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
 
 (defun cashpw/org--prompt-for-category-when-missing ()
   "Prompt for category if it's missing."
-  (let ((buffer-category
-         (save-excursion
-           (widen)
-           (goto-char (point-min))
-           (when (search-forward "#+category:")
-             (replace-regexp-in-string
-              "#\\+category: " "" (org-current-line-string)))))
-        (category (org-entry-get (point) "CATEGORY")))
-    (message "%s : %s" buffer-category category)
-    (when (or (not category)
-              (and buffer-category (string= buffer-category category)))
+  (let ((category (org-entry-get (point) "CATEGORY" nil)))
+    (when (not category)
       (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
 
 
