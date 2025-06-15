@@ -2084,13 +2084,21 @@ Insert the transcript if run interactively."
         (insert transcript)
       transcript)))
 
+(defun cashpw/youtube--video-id-from-url (url)
+  "Return the video id within the URL.
+
+Example: https://www.youtube.com/watch?v=xzseFskewlE"
+  (when (string-match ".*youtube.com\\/watch\\?v=\\([^&]*\\)\\(&.*\\)?" url)
+    (match-string 1 url)))
+
 (defun cashpw/ytt-api-transcript (youtube-video-id)
   "Return transcript of YOUTUBE-VIDEO-ID."
-   (concat
+   (shell-command-to-string
+    (concat
     "source ~/third_party/yt-transcripts/bin/activate;"
     (format
-    "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), '')\""
-    youtube-video-id)))
+    "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; print(reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), ''))\""
+    youtube-video-id))))
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
@@ -2098,7 +2106,7 @@ Insert the transcript if run interactively."
 
 %s"
           llm-prompts-prompt--summarize
-          (cashpw/fabric-transcript-youtube youtube-url)))
+          (cashpw/ytt-api-transcript (cashpw/youtube--video-id-from-url youtube-url))))
 
 (use-package!
     gptel
