@@ -629,7 +629,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :desc "Logged"
     :n
     "l"
-    (cmd! (org-agenda nil ".review-logged"))
+    (cmd!
+     (if (equal current-prefix-arg '(4))
+         (org-agenda nil ".review-logged")
+       (org-agenda nil ".review-logged-today")))
     :desc "Clock report"
     :n
     "r"
@@ -786,8 +789,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                                        (org-daily-reflection-restore-prior-windows)
                                      (org-daily-reflection
                                       (intern (completing-read "What time interval?"
-                                             org-daily-reflection-time-spans
-                                             nil t nil nil))
+                                                               org-daily-reflection-time-spans
+                                                               nil t nil nil))
                                       4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
@@ -2252,7 +2255,7 @@ TODO")))))
           "feat: Flashcards")
          (t
           (s-lex-format "${short}: CURSOR"))))))
-  
+
   (setq cashpw/commit-message-notes-categories (list
                                                 (commit-message-category :name "Flashcards" :short "flashcards")
                                                 (commit-message-category :name "Fix" :short "fix" :aliases '("Bug"))
@@ -5609,7 +5612,8 @@ Intended for use with `org-super-agenda-groups'."
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
-                                (".review-logged" "Logged" ,(cashpw/org-agenda-view--review--logged))
+                                (".review-logged" "Logged" ,(cashpw/org-agenda-view--review-logged))
+                                (".review-logged-today" "Logged" ,(cashpw/org-agenda-view--review-logged-today))
                                 (".roam-roam" "Roam" ,(cashpw/org-agenda-view--roam--roam))
                                 (".roam-readinglist" "Reading list" ,(cashpw/org-agenda-view--roam--readinglist))
                                 (".today" "Today" ,(cashpw/org-agenda-view--today))
@@ -5927,9 +5931,9 @@ Intended for use with `org-super-agenda' `:transformer'. "
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
-(defun cashpw/org-agenda-view--review--today-files ()
-  "Return list of files for review agenda views."
-  (let* ((yyyy-mm-dd (format-time-string "%F" (current-time)))
+(defun cashpw/org-agenda-view--review-files (&optional time)
+  "Return list of files for review agenda views for TIME."
+  (let* ((yyyy-mm-dd (format-time-string "%F" (or time (current-time))))
          (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
          (clock-grep-string (format "CLOCK: \\[%s" yyyy-mm-dd)))
     (seq-uniq
@@ -5963,13 +5967,32 @@ Intended for use with `org-super-agenda' `:transformer'. "
 ;;            (org-mem-entries-in file))
 ;;      collect file)))
 
-(defun cashpw/org-agenda-view--review--logged ()
+(defun cashpw/org-agenda-view--review-logged ()
   "Return custom agenda command."
   `((agenda
      ""
      ((org-agenda-overriding-header "")
       (org-agenda-span 'day)
-      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
+      (org-agenda-start-day (org-read-date))
+      (org-agenda-files (cashpw/org-agenda-view--review-files (org-read-date nil t)))
+      (org-agenda-show-log t)
+      (org-agenda-start-with-log-mode '(state closed clock))
+      (org-agenda-hide-tags-regexp
+       (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
+      (org-clocktable-defaults '(:fileskip0 t))
+      (org-super-agenda-groups
+       '((:name "Logged" :log t)
+         ( ;; Toss all other todos
+          :discard
+          (:todo t))))))))
+
+(defun cashpw/org-agenda-view--review-logged-today ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 'day)
+      (org-agenda-files (cashpw/org-agenda-view--review-files))
       (org-agenda-show-log t)
       (org-agenda-start-with-log-mode '(state closed clock))
       (org-agenda-hide-tags-regexp
