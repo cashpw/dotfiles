@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-13 Fri 07:03]
+:LAST_MODIFIED: [2025-06-16 Mon 11:37]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2740,26 +2740,28 @@ TAGS which start with \"-\" are excluded."
 (defun cashpw/notmuch-search-todo ()
   "Capture the email at point in search for a todo."
   (interactive)
-  (notmuch-search-show-thread)
-  (goto-char
-   (point-max))
+  ;; (notmuch-search-show-thread)
+  ;; (goto-char (point-max))
+  (cashpw/email-set-vars-from-search)
   (org-capture
    ;; goto
    nil
    ;; keys
-   "teE"))
+   "teE")
+  (message "Captured TODO for %s." cashpw/email--subject))
 
 (defun cashpw/notmuch-search-todo-today ()
   "Capture the email at point in search for a todo."
   (interactive)
-  (notmuch-search-show-thread)
-  (goto-char
-   (point-max))
+  ;; (notmuch-search-show-thread)
+  ;; (goto-char (point-max))
+  (cashpw/email-set-vars-from-search)
   (org-capture
    ;; goto
    nil
    ;; keys
-   "tee"))
+   "tee")
+  (message "Captured TODO for %s." cashpw/email--subject))
 #+end_src
 ***** Config
 
@@ -2887,6 +2889,78 @@ TAGS which start with \"-\" are excluded."
 #+end_src
 
 *** Composing email
+
+**** Get message attributes
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/email--to nil
+  "Holds an email to. Used to pass data across indirect function calls.")
+(defvar cashpw/email--subject nil
+  "Holds an email subject. Used to pass data across indirect function calls.")
+(defvar cashpw/email--from nil
+  "Holds an email from. Used to pass data across indirect function calls.")
+
+(defun cashpw/notmuch-search-get-properties ()
+  "Return properties object for thread at point in search."
+  (with-current-buffer (notmuch-show (notmuch-search-find-thread-id t))
+    (save-excursion
+      (goto-char (point-max))
+      (prog1
+          (cond
+           ((eq major-mode 'notmuch-show-mode)
+	    (notmuch-show-get-message-properties))
+	   ((eq major-mode 'notmuch-tree-mode)
+	    (notmuch-tree-get-message-properties))
+	   (t nil))
+        (kill-buffer)))))
+
+(defun cashpw/email-get-to ()
+  "Return To value for message buffer, or message at point."
+  (or
+   cashpw/email--to
+   (notmuch-show-get-to)
+   (message-field-value "To")))
+
+(defun cashpw/email-get-from ()
+  "Return From value for message buffer, or message at point."
+  (or
+   cashpw/email--from
+   (notmuch-show-get-from)
+   (message-field-value "From")))
+
+(defun cashpw/email-get-subject ()
+  "Return From value for message buffer, or message at point."
+  (or
+   cashpw/email--subject
+   (notmuch-show-get-subject)
+   (message-field-value "Subject")))
+
+(defun cashpw/email--invalidate-vars ()
+  "Invalidate email context variables."
+  (setq
+   cashpw/email--to nil
+   cashpw/email--from nil
+   cashpw/email--subject nil))
+
+(defun cashpw/email-set-vars-from-search ()
+  "Set email context variables."
+  (cashpw/email--invalidate-vars)
+  (when-let ((thread-id (notmuch-search-find-thread-id)))
+    (with-current-buffer
+        (notmuch-show
+         thread-id
+         nil
+         (current-buffer))
+      (save-excursion
+        (goto-char (point-max))
+        (setq
+         cashpw/email--to (cashpw/email-get-to)
+         cashpw/email--from (cashpw/email-get-from)
+         cashpw/email--subject (cashpw/email-get-subject)))
+      (notmuch-bury-or-kill-this-buffer))))
+#+end_src
+
+
 **** In =org-mode=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -2910,6 +2984,15 @@ TAGS which start with \"-\" are excluded."
       (notmuch-message-mode)
       (message "enabled notmuch-message-mode"))))
 
+(defun cashpw/email--address-properties (address)
+  "Return plist of ADDRESS contents."
+  (when (string-match "\\([^<]*\\) <\\([^@]*\\)@\\([^>]*\\)>" address)
+    (list
+     :name (match-string 1 address)
+     :email (format "%s@%s" (match-string 2 address) (match-string 3 address))
+     :username (match-string 2 address)
+     :domain (match-string 3 address))))
+
 (defun cashpw/mail-get-short-address (address)
   "Returns \"foo@\" for an ADDRESS of \"Foo <foo@bar.com>\"."
   (cond
@@ -2920,15 +3003,13 @@ TAGS which start with \"-\" are excluded."
 
 (defun cashpw/mail-create-follow-up-todo ()
   (interactive)
-  (setq
-   cashpw/email--long-to (message-field-value "To")
-   cashpw/email--subject (message-field-value "Subject")
-   cashpw/email--long-from (message-field-value "From"))
+  (cashpw/email-set-vars-from-search)
   (org-capture
    ;; goto
    nil
    ;; keys
-   "tef"))
+   "tef")
+  (message "Captured follow-up TODO for %s." cashpw/email--subject))
 
 (defun cashpw/email--close-mail-buffer ()
   "TODO"
@@ -10211,20 +10292,27 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
            :keys "e"
            :message-subject
            (lambda ()
-             (truncate-string-to-width
-              (or cashpw/email--subject (message-field-value "Subject")) 30))
+             (s-trim (truncate-string-to-width (cashpw/email-get-subject) 30)))
            :message-from-to
            (lambda ()
-             (let* ((long-to
-                     (or cashpw/email--long-to (message-field-value "To")))
-                    (short-to (cashpw/mail-get-short-address long-to))
-                    (long-from
-                     (or cashpw/email--long-from (message-field-value "From")))
-                    (short-from (cashpw/mail-get-short-address long-from)))
-               (if (and (member short-to cashpw/email-addresses--personal)
-                        (member short-from cashpw/email-addresses--personal))
+             (let* ((to
+                     (plist-get
+                      (cashpw/email--address-properties (cashpw/email-get-to))
+                      :email))
+                    (from
+                     (plist-get
+                      (cashpw/email--address-properties (cashpw/email-get-from))
+                      :email)))
+               (if (and (member to cashpw/email-addresses--personal)
+                        (member from cashpw/email-addresses--personal))
                    ""
-                 (format " %s→%s" short-from short-to))))
+                 (format "%s → %s"
+                         (if (member from cashpw/email-addresses--personal)
+                             "me"
+                           from)
+                         (if (member to cashpw/email-addresses--personal)
+                             "me"
+                           to)))))
            :file cashpw/path--personal-todos
            :children
            (("Follow-up"
@@ -10233,28 +10321,25 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
              (lambda ()
                (let ((tomorrow (time-add (current-time) (days-to-time 1))))
                  (org-schedule nil tomorrow)))
-             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
              :immediate-finish t
              :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
             ("Todo today"
              :keys "e"
              :before-finalize (lambda () (org-schedule nil (current-time)))
-             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
              :immediate-finish t
              :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))
             ("Todo (unscheduled)"
              :keys "E"
-             :after-finalize (lambda () (notmuch-bury-or-kill-this-buffer))
              :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}%{message-from-to}]] :email:"
+             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
               ":PROPERTIES:"
               ":Created: %U"
               ":END:"))))))))
@@ -10372,10 +10457,11 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
               (org-fc-type-text-input-init)))))))
       (:group
        "Journal"
-       :file ,(lambda ()
-                (format "%s/%s.org"
-                        cashpw/path--notes-dir
-                        (format-time-string "%F" (current-time))))
+       :file
+       ,(lambda ()
+          (format "%s/%s.org"
+                  cashpw/path--notes-dir
+                  (format-time-string "%F" (current-time))))
        :immediate-finish nil
        :children
        ("Journal"
@@ -10384,53 +10470,70 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
         (("Thought record"
           :keys "t"
           :olp ("Journal" "Me" "Thought records")
-          :record-situation
-          (lambda ()
-            (read-string "Situation/Trigger: "))
+          :record-situation (lambda () (read-string "Situation/Trigger: "))
           :record-pre-reflection-emotions
           (lambda ()
-            (read-string "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
-          :record-automatic-thought
-          (lambda ()
-            (read-string "Automatic thought: "))
-          :record-alternative-thought
-          (lambda ()
-            (read-string "Alternative thought: "))
+            (read-string
+             "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
+          :record-automatic-thought (lambda () (read-string "Automatic thought: "))
+          :record-alternative-thought (lambda () (read-string "Alternative thought: "))
           :record-distortions
           (lambda ()
             (let* ((distortions
-                    '(("All-or-nothing thinking" . "id:161a1843-d228-4e46-afd0-f587356ef03a")
-                      ("Mind reading" . "id:85eee943-87dc-4728-a03e-63a096ff8df5")
-                      ("Fortune-telling" . "id:522e7027-ebac-4c06-8de5-ab338aec390a")
+                    '(("All-or-nothing thinking"
+                       .
+                       "id:161a1843-d228-4e46-afd0-f587356ef03a")
+                      ("Mind reading"
+                       .
+                       "id:85eee943-87dc-4728-a03e-63a096ff8df5")
+                      ("Fortune-telling"
+                       .
+                       "id:522e7027-ebac-4c06-8de5-ab338aec390a")
                       ("Labeling" . "id:f67f2787-f097-466f-a5c9-21cd8d6286ba")
-                      ("Emotional reasoning" . "id:7b9b6518-05eb-4d48-9265-459847052d4d")
+                      ("Emotional reasoning"
+                       .
+                       "id:7b9b6518-05eb-4d48-9265-459847052d4d")
                       ("Should/Must" . "id:2a3b0da0-7d1f-4f36-a161-c9fb17d64dfa")
-                      ("Personalization" . "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
+                      ("Personalization"
+                       .
+                       "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
                       ("Blaming" . "id:40d20f7b-3fe1-453c-968a-04d6a19d2c60")
-                      ("Always being right" . "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
-                      ("Magnification/Minimization" . "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
-                      ("Catastrophizing" . "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
-                      ("Overgeneralizing" . "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
-                      ("Disqualifying the positive" . "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
+                      ("Always being right"
+                       .
+                       "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
+                      ("Magnification/Minimization"
+                       .
+                       "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
+                      ("Catastrophizing"
+                       .
+                       "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
+                      ("Overgeneralizing"
+                       .
+                       "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
+                      ("Disqualifying the positive"
+                       .
+                       "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
                       ("Filtering" . "id:0b509a6f-0fc2-41a3-8770-4c1f9a881a04")))
-                   (selections (completing-read-multiple "Distortions: " distortions nil t))
+                   (selections
+                    (completing-read-multiple "Distortions: " distortions nil t))
                    (link-list
-                    (string-join
-                     (--map
-                      (format "- %s
+                    (string-join (--map
+                                  (format "- %s
 "
-                              (org-link-make-string
-                               (format
-                                "id:%s"
-                                (alist-get it distortions nil nil #'string=))
-                               it))
-                      selections)
-                     "")))
+                                          (org-link-make-string
+                                           (format "id:%s"
+                                                   (alist-get it distortions
+                                                              nil nil #'string=))
+                                           it))
+                                  selections)
+                                 "")))
               link-list))
           :record-post-reflection-emotions
           (lambda ()
-            (read-string "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
-          :template "*** %U
+            (read-string
+             "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
+          :template
+          "*** %U
 
 ,**** Situation/Trigger
 
