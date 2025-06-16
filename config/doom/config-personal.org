@@ -12004,7 +12004,8 @@ Adapted from `org-agenda-entry-text-show-here', relies upon
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
-            '(or (tags "everyday") (deadline 0) (scheduled 0))))))
+            '(and (or (tags "everyday") (deadline 0) (scheduled 0))
+                  (todo "TODO"))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 #+end_src

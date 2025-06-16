@@ -8633,7 +8633,8 @@ Reference:https://stackoverflow.com/q/23622296"
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
-            '(or (tags "everyday") (deadline 0) (scheduled 0))))))
+            '(and (or (tags "everyday") (deadline 0) (scheduled 0))
+                  (todo "TODO"))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 
