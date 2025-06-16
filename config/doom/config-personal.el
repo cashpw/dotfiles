@@ -202,7 +202,39 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (and (not (time-equal-p a b))
        (not (time-less-p a b))))
 
-(defvar cashpw/holiday-mothers-day '(holiday-float 5 0 2 "Mother's Day"))
+(defconst cashpw/time--day-number-sunday 0)
+(defconst cashpw/time--day-number-monday 1)
+(defconst cashpw/time--day-number-tuesday 2)
+(defconst cashpw/time--day-number-wednesday 3)
+(defconst cashpw/time--day-number-thursday 4)
+(defconst cashpw/time--day-number-friday 5)
+(defconst cashpw/time--day-number-saturday 6)
+
+(defconst cashpw/time--month-number-january 1)
+(defconst cashpw/time--month-number-february 2)
+(defconst cashpw/time--month-number-march 3)
+(defconst cashpw/time--month-number-april 4)
+(defconst cashpw/time--month-number-may 5)
+(defconst cashpw/time--month-number-june 6)
+(defconst cashpw/time--month-number-july 7)
+(defconst cashpw/time--month-number-august 8)
+(defconst cashpw/time--month-number-september 9)
+(defconst cashpw/time--month-number-october 10)
+(defconst cashpw/time--month-number-november 11)
+(defconst cashpw/time--month-number-december 12)
+
+(defvar cashpw/holiday-mothers-day
+  '(holiday-float
+    cashpw/time--month-number-may
+    cashpw/time--day-number-sunday
+    2
+    "Mother's Day"))
+(defvar cashpw/holiday-fathers-day
+  '(holiday-float
+    cashpw/time--month-number-june
+    cashpw/time--day-number-sunday
+    3
+    "Father's Day"))
 
 (defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
   "Return next HOLIDAY occurrance time.
@@ -226,14 +258,13 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
            (lambda (holiday-string)
              (date-to-time (car (split-string holiday-string ": "))))
            holiday-strings)))
-    (kill-buffer holiday-buffer)
+    (with-current-buffer holiday-buffer
+      (kill-buffer-and-window))
     (car
      (seq-filter
       (lambda (holiday-time)
         (cashpw/time-greater-than-p holiday-time (current-time)))
       holiday-times))))
-
-;; (cashpw/holiday-get-next-time '(holiday-float 5 0 2 "Mother's Day"))
 
 (defvar cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
