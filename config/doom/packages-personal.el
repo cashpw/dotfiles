@@ -110,6 +110,7 @@
 (package! nerd-icons)
 
 (package! asana
+  ;; :recipe (:host github :repo "lmartel/emacs-asana"))
   :recipe (:host github :repo "cashpw/asana.el"))
 
 ;; (package! go

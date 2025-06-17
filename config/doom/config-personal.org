@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-16 Mon 11:37]
+:LAST_MODIFIED: [2025-06-16 Mon 20:43]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -2110,6 +2110,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 (package! asana
+  ;; :recipe (:host github :repo "lmartel/emacs-asana"))
   :recipe (:host github :repo "cashpw/asana.el"))
 #+end_src
 
