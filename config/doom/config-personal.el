@@ -8703,22 +8703,16 @@ Reference:https://stackoverflow.com/q/23622296"
                 (minute-end (org-element-property :minute-end scheduled)))
             (cond
              ((and hour-start minute-start hour-end minute-end)
-              (format
-               "%02d:%02d-%02d:%02d "
-               hour-start
-               minute-start
-               hour-end
-               minute-end))
+              (format "%02d:%02d-%02d:%02d "
+                      hour-start
+                      minute-start
+                      hour-end
+                      minute-end))
              ((and hour-start minute-start)
               (format "%02d:%02d " hour-start minute-start))
              (t
               "")))))
-    (concat
-     (propertize
-      time-string
-      'face
-      'shadow)
-     (org-entry-get nil "ITEM"))))
+    (concat (propertize time-string 'face 'shadow) (org-entry-get nil "ITEM"))))
 
 (defun cashpw/select-from-todays-todos-and-go-to ()
   "Prompt user to select a todo, then go to it."
@@ -8730,8 +8724,10 @@ Reference:https://stackoverflow.com/q/23622296"
             (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
-            '(and (or (tags "everyday") (deadline 0) (scheduled 0))
-                  (todo "TODO"))))))
+            `(and (or (tags "everyday") (deadline 0) (scheduled 0))
+                  (not (or
+                        ,(dolist (keyword org-done-keywords)
+                           '(todo keyword)))))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 
