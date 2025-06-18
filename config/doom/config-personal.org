@@ -7953,10 +7953,10 @@ This is an internal function."
 ***** Agenda view
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun vulpea-agenda-files-update (&rest _)
-  "Update the value of `org-agenda-files'."
-  (setq
-   org-agenda-files (cashpw/org-agenda-files 'notes-with-todo)))
+;; (defun vulpea-agenda-files-update (&rest _)
+;;   "Update the value of `org-agenda-files'."
+;;   (setq
+;;    org-agenda-files (cashpw/org-agenda-files 'notes-with-todo)))
 #+end_src
 
 ***** Roam UI

@@ -5417,10 +5417,10 @@ This is an internal function."
         files-with-archive
       (cashpw/revert-file it))))
 
-(defun vulpea-agenda-files-update (&rest _)
-  "Update the value of `org-agenda-files'."
-  (setq
-   org-agenda-files (cashpw/org-agenda-files 'notes-with-todo)))
+;; (defun vulpea-agenda-files-update (&rest _)
+;;   "Update the value of `org-agenda-files'."
+;;   (setq
+;;    org-agenda-files (cashpw/org-agenda-files 'notes-with-todo)))
 
 (use-package! websocket
   :after org-roam)
