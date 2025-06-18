@@ -4131,41 +4131,29 @@ The exporting happens only when Org Capture is not in progress."
         ))))
 
 (defun cashpw/org-files-with-tag (tag directory)
-  "Return list of org files in DIRECTORY tagged (filetag) with TAG."
-  (cashpw/rgrep
-   (format
-    "-l '#.filetags.*:%s:' %s*.org"
-    tag
-    (cashpw/maybe-add-trailing-forward-slash
-     directory))))
-
-(defun cashpw/org-roam-files-with-tag (tag &optional skip-sync)
-  "Return a list of note files containing 'hastodo tag."
-  (cashpw/org-files-with-tag
-   tag
-   org-roam-directory))
+  (cashpw/org-files-with-tags (list tag) directory))
 
 (defun cashpw/org-files-with-tags (tags directory)
   "Return a list of files in DIRECTORY tagged with all TAGS."
-  (cashpw/grep
-   (format
-    ;; "-Pl '^(?=.*filetags:.*:%s:)(?=.*filetags.*:%s:)' %s*.org"
-    "-Pl '^%s' %s*.org"
-    (s-join
-     ""
-     (--map
-      (format
-       "(?=.*filetags:.*:%s:)"
-       it)
-      tags))
-    (cashpw/maybe-add-trailing-forward-slash
-     directory))))
+  (cl-loop
+   for file in (org-mem-all-files)
+   unless (s-ends-with-p "archive" file)
+   when (-any
+         (lambda (entry)
+           (-every
+            (lambda (tag)
+              (member tag (org-mem-entry-tags-inherited entry)))
+            tags))
+    (org-mem-entries-in file))
+   collect file))
 
-(defun cashpw/org-roam-files-with-tags (&rest tags)
+(defun cashpw/notes-files-with-tag (tag)
+  "Return a list of note files containing 'hastodo tag."
+  (cashpw/org-files-with-tag tag cashpw/path--notes-dir))
+
+(defun cashpw/notes-files-with-tags (&rest tags)
   "Return a list of note files tagged with all TAGS."
-  (cashpw/org-files-with-tags
-   tags
-   org-roam-directory))
+  (cashpw/org-files-with-tags tag cashpw/path--notes-dir))
 
 (defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
