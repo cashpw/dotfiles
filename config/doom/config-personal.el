@@ -646,7 +646,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                          (member (org-mem-entry-todo-state entry) org-not-done-keywords))
                        (org-mem-entries-in file))
         collect (f-expand file))
-       (cashpw/org-roam-files-with-tag "journal"))))
+       (cashpw/notes-files-with-tag "journal"))))
     :desc "Reading List"
     :n
     "r"
@@ -4385,7 +4385,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
          (yyyy (format-time-string "%Y" (current-time))))
     (--filter
      (string-match-p yyyy it)
-     (cashpw/org-roam-files-with-tag "journal"))))
+     (cashpw/notes-files-with-tag "journal"))))
 
 (defun cashpw/org-agenda-files--journal-this-year-with-todo ()
   "Return list of journal agenda files.
@@ -4397,14 +4397,14 @@ Don't call directly. Use `cashpw/org-agenda-files'."
          (yyyy (format-time-string "%Y" (current-time))))
     (--filter
      (string-match-p yyyy it)
-     (cashpw/org-roam-files-with-tags "journal" "hastodo"))))
+     (cashpw/notes-files-with-tags "journal" "hastodo"))))
 
 (defun cashpw/org-agenda-files (context &optional include-archive)
   "Return list of agenda files for CONTEXT. Include archived files when INCLUDE-ARCHIVE."
   (let ((files
          (cond
           ((equal context 'notes-with-todo)
-           (cashpw/org-roam-files-with-tag "hastodo"))
+           (cashpw/notes-files-with-tag "hastodo"))
           ((equal context 'notes-all)
            (cashpw/org-agenda-files--notes-all))
           ((equal context 'personal)
@@ -4413,9 +4413,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
               ,cashpw/path--personal-asana
               ,cashpw/path--personal-calendar)))
           ((equal context 'projects-with-todo)
-           (cashpw/org-roam-files-with-tags "hastodo" "project"))
+           (cashpw/notes-files-with-tags "hastodo" "project"))
           ((equal context 'pets-with-todo)
-           (cashpw/org-roam-files-with-tags "hastodo" "pet"))
+           (cashpw/notes-files-with-tags "hastodo" "pet"))
           ((equal context 'calendar)
            '())
           ((equal context 'journal-this-year)
@@ -4423,9 +4423,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
           ((equal context 'journal-this-year-with-todo)
            (cashpw/org-agenda-files--journal-this-year-with-todo))
           ((equal context 'people-private-with-todo)
-           (cashpw/org-roam-files-with-tags "person" "private" "hastodo"))
+           (cashpw/notes-files-with-tags "person" "private" "hastodo"))
           ((equal context 'people-private)
-           (cashpw/org-roam-files-with-tags "person" "private")))))
+           (cashpw/notes-files-with-tags "person" "private")))))
     (if include-archive
         (append
          files
@@ -7173,7 +7173,7 @@ See `org-clock-special-range' for KEY."
                                                   ;; (let* ((org-roam-directory cashpw/path--notes-dir)
                                                   ;;        (org-roam-db-location (expand-file-name "org-roam.db"
                                                   ;;                                                org-roam-directory)))
-                                                  ;;   (cashpw/org-roam-files-with-tag "person"))
+                                                  ;;   (cashpw/notes-files-with-tag "person"))
                                                   )))
 
 (after! org
