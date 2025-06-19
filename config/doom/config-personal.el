@@ -4746,13 +4746,14 @@ ${title}
 #+filetags: :decision:private:
 
 * TODO Background
-* TODO Overall decision
+* TODO Decison
 
 The current, overall, decision taking all considerations into account.
 
 * PROJ Consideration [%<%Y-%m-%d %a>]
 
 ** TODO Do I have enough ([[id:bceac98c-163f-4208-8ef5-75f98640553b][40-70%]]) information?
+
 ** TODO Options
 
 1. Option 1
@@ -4766,7 +4767,7 @@ The current, overall, decision taking all considerations into account.
 | Dimension 1 | 🟩 Great | 🟨 Good  | 🟥 Bad   |
 | Dimension 2 | 🟥 Bad   | 🟨 Good  | 🟥 Good  |
 
-** TODO Decision
+** TODO Conclusion
 
 Option 2
 
