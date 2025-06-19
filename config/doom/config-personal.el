@@ -610,15 +610,46 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :n "i" (cmd! (org-agenda nil ".inbox"))
    :desc "Overdue"
    :n "o" (cmd! (org-agenda nil ".overdue"))
-   :desc "Gallery"
-   :n "g"
-   (cmd!
-    (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
-          (default-directory cashpw/path--notes-dir)
-          (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
-      (org-agenda nil ".gallery")
-      (cashpw/feh-gallery-of-linked-images-in-buffer)
-      (org-agenda-quit)))
+   (:prefix
+    ("g" . "Gallery")
+    :desc "Current buffer"
+    :n "."
+    (cmd!
+     (defvar cashpw/gallery-file-name)
+     (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+           (default-directory cashpw/path--notes-dir)
+           (cashpw/gallery-file-name (buffer-file-name))
+           (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
+       (org-agenda nil ".gallery-current-buffer")
+       (cashpw/feh-gallery-of-linked-images-in-buffer)
+       (org-agenda-quit)))
+    :desc "Select tag"
+    :n "t"
+    (cmd!
+     (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+           (default-directory cashpw/path--notes-dir)
+           (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
+       (org-agenda nil ".gallery")
+       (cashpw/feh-gallery-of-linked-images-in-buffer)
+       (org-agenda-quit)))
+    :desc "Photos"
+    :n "p"
+    (cmd!
+     (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+           (default-directory cashpw/path--notes-dir)
+           (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
+       (org-agenda nil ".gallery-photos")
+       (cashpw/feh-gallery-of-linked-images-in-buffer)
+       (org-agenda-quit)))
+    :desc "All"
+    :n "g"
+    (cmd!
+     (let ((org-agenda-cmp-user-defined #'cashpw/cmp-random)
+           (default-directory cashpw/path--notes-dir)
+           (org-agenda-sorting-strategy '((agenda . (user-defined-up)))))
+       (org-agenda nil ".gallery-all")
+       (cashpw/feh-gallery-of-linked-images-in-buffer)
+       (org-agenda-quit))))
    :desc "Today"
    :n "d" (cmd! (org-agenda nil ".today"))
    :desc "Week"
@@ -4088,6 +4119,17 @@ The exporting happens only when Org Capture is not in progress."
         ;;     (save-buffer)))
         ))))
 
+(defun cashpw/org-get-filetags (&optional file-path)
+  "Return filetags in FILE-PATH."
+  (let ((filetag-string
+         (shell-command-to-string
+          (concat
+           (format "rgrep '^#+filetags:' %s"
+                   (or file-path
+                       (buffer-file-name)))
+           "| sed 's/.*#+filetags: \\(.*\\)/\\1/'"))))
+    (s-split ":" filetag-string 'omit-nulls)))
+
 (defun cashpw/org-files-and-filetags (directory)
   "Return list of org files in DIRECTORY and their filetags."
   (let ((grep-result
@@ -4097,7 +4139,9 @@ The exporting happens only when Org Capture is not in progress."
                    (directory-file-name directory))
            " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
     (--map
-     (cl-destructuring-bind (file filetags) (s-split " " it 'omit-nulls)
+     (cl-destructuring-bind
+         (file filetags)
+         (s-split " " it 'omit-nulls)
        (cons file (s-split ":" filetags 'omit-nulls)))
      (s-split "\n" grep-result 'omit-nulls))))
 
@@ -4111,10 +4155,7 @@ The exporting happens only when Org Capture is not in progress."
    (car it)
    (-filter
     (lambda (file-and-filetags)
-      (-every
-       (lambda (tag)
-         (member tag (cdr file-and-filetags)))
-       tags))
+      (-every (lambda (tag) (member tag (cdr file-and-filetags))) tags))
     (cashpw/org-files-and-filetags directory))))
 
 (defun cashpw/notes-files-with-tag (tag)
@@ -5674,6 +5715,9 @@ Intended for use with `org-super-agenda-groups'."
    org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
                                 (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
                                 (".gallery" "Gallery" ,(cashpw/org-agenda-view--gallery))
+                                (".gallery-all" "Gallery (all)" ,(cashpw/org-agenda-view--gallery-all))
+                                (".gallery-photos" "Gallery (photos)" ,(cashpw/org-agenda-view--gallery-photos))
+                                (".gallery-current-buffer" "Gallery (current buffer)" ,(cashpw/org-agenda-view--gallery-current-buffer))
                                 (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
                                 (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
                                 (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
@@ -6759,6 +6803,39 @@ Category | Scheduled | Effort
           :todo nil)
          (:discard (:anything))))))))
 
+(defun cashpw/org-agenda-view--gallery-all ()
+  "Return custom agenda command."
+  `((tags
+     "gallery"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(defun cashpw/org-agenda-view--gallery-photos ()
+  "Return custom agenda command."
+  `((tags
+     "photo"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(defun cashpw/org-agenda-view--gallery-current-buffer ()
+  "Return custom agenda command."
+  `((tags
+     "gallery"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (list cashpw/gallery-file-name))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
 (cashpw/org-agenda-custom-commands--maybe-update)
 
 (cashpw/org-agenda-custom-commands--update)
@@ -7626,9 +7703,7 @@ See `org-clock-special-range' for KEY."
                   '(("All-or-nothing thinking"
                      .
                      "id:161a1843-d228-4e46-afd0-f587356ef03a")
-                    ("Mind reading"
-                     .
-                     "id:85eee943-87dc-4728-a03e-63a096ff8df5")
+                    ("Mind reading" . "id:85eee943-87dc-4728-a03e-63a096ff8df5")
                     ("Fortune-telling"
                      .
                      "id:522e7027-ebac-4c06-8de5-ab338aec390a")
@@ -7712,35 +7787,53 @@ See `org-clock-special-range' for KEY."
          :keys "p"
          :olp ("Photos")
          :immediate-finish t
-         :template (lambda ()
-                     (let* ((image-url (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING)))
-                            (title (read-string "Title: "))
-                            (description (read-string "Description: "))
-                            (description
-                             (if (string-empty-p description)
-                                 description
-                               (concat "\n" description)))
-                            (image-link
-                             (progn
-                               (cashpw/org-download-image--no-insert image-url)
-                               (if (and (>= (string-to-number org-version) 9.3)
-                                        (eq org-download-method 'attach))
-                                   (format "[[attachment:%s]%s]"
-                                           (org-link-escape
-                                            (file-relative-name org-download-path-last-file
-                                                                (org-attach-dir)))
-                                           (if (string-empty-p title)
-                                               ""
-                                             (format "[%s]" title)))
-                                 (format "[[file:%s]%s]"
-                                         (org-link-escape
-                                          (funcall org-download-abbreviate-filename-function
-                                                   org-download-path-last-file))
-                                         (if (string-empty-p title)
-                                             ""
-                                           (format "[%s]" title)))))))
-                       (s-lex-format
-                        "* ${image-link}
+         :template
+         (lambda ()
+           (let* ((image-url
+                   (read-string "Image URL: "
+                                (gui-get-selection 'CLIPBOARD 'STRING)))
+                  (title (read-string "Title: "))
+                  (description (read-string "Description: "))
+                  (description
+                   (if (string-empty-p description)
+                       description
+                     (concat "\n" description)))
+                  (artist-name
+                   (when (member "person" (cashpw/org-get-filetags))
+                     (org-get-title)))
+                  (artist-tag
+                   (when artist-name
+                     (-->
+                      (downcase artist-name)
+                      (replace-regexp-in-string " " "_" it)
+                      (replace-regexp-in-string "-" "_" it))))
+                  (tags
+                   (org-make-tag-string
+                    (list
+                     "photo"
+                     artist-tag)))
+                  (image-link
+                   (progn
+                     (cashpw/org-download-image--no-insert image-url)
+                     (if (and (>= (string-to-number org-version) 9.3)
+                              (eq org-download-method 'attach))
+                         (format "[[attachment:%s]%s]"
+                                 (org-link-escape
+                                  (file-relative-name org-download-path-last-file
+                                                      (org-attach-dir)))
+                                 (if (string-empty-p title)
+                                     ""
+                                   (format "[%s]" title)))
+                       (format "[[file:%s]%s]"
+                               (org-link-escape
+                                (funcall
+                                 org-download-abbreviate-filename-function
+                                 org-download-path-last-file))
+                               (if (string-empty-p title)
+                                   ""
+                                 (format "[%s]" title)))))))
+             (s-lex-format
+              "* ${image-link} ${tags}
 :PROPERTIES:
 :CREATED: %U
 :IMAGE_SOURCE: ${image-url}
