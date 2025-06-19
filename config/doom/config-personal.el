@@ -3261,49 +3261,7 @@ Only parent headings of the current heading remain visible."
   :config
   (defun cashpw/org-download-image--no-insert (image-url)
     (cl-letf (((symbol-function 'org-download-insert-link) #'ignore))
-      (org-download-image image-url)))
-
-  (defun cashpw/org-gallery--add-image ()
-    "Add a gallery image."
-    (interactive)
-    (let* ((image-url
-            (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING)))
-           (title (read-string "Title: "))
-           (description (read-string "Description: "))
-           (headings-up 10))
-      (while (and (> headings-up 0)
-                  (not (member org-gallery--tag (org-get-tags (point) t))))
-        (org-up-heading-safe)
-        (decf headings-up))
-      (if (= headings-up 0)
-          (error "Couldn't find gallery tag")
-        (org-insert-subheading nil)
-        (cashpw/org-download-image--no-insert image-url)
-        (insert
-         ;; Based on `org-download-link-format-function-default'
-         (if (and (>= (string-to-number org-version) 9.3)
-                  (eq org-download-method 'attach))
-             (format " [[attachment:%s]%s]"
-                     (org-link-escape
-                      (file-relative-name org-download-path-last-file
-                                          (org-attach-dir)))
-                     (if (not (string-empty-p title))
-                         (format "[%s]" title)
-                       ""))
-           (format " [[file:%s]%s]"
-                   (org-link-escape
-                    (funcall org-download-abbreviate-filename-function
-                             org-download-path-last-file))
-
-                   (if (not (string-empty-p title))
-                       (format "[%s]" title)
-                     ""))))
-        (end-of-line)
-        (newline)
-        (insert description)
-        (org-node-put-created)
-        (org-set-property (org-gallery--image-prop-source) image-url)
-        ))))
+      (org-download-image image-url))))
 
 (use-package! org-habit-stats
   :custom
@@ -7451,277 +7409,274 @@ See `org-clock-special-range' for KEY."
 (after!
   org
   (setq
-   org-capture-templates
-   (doct
-    `(("Website"
-       :keys "w"
-       :file ""
-       :template "* %a :website:\n\n%U %?\n\n%:initial")
-      (:group
-       "Todo"
+   cashpw/org-capture-templates--today
+   `(:group
+     "Todo"
+     :children
+     (("Todo"
+       :keys "t"
        :children
        (("Todo"
          :keys "t"
+         :file cashpw/path--personal-todos
+         :before-finalize
+         (lambda ()
+           (cashpw/org--prompt-for-priority-when-missing)
+           (cashpw/org--prompt-for-effort-while-missing)
+           (cashpw/org--prompt-for-category-when-missing))
+         :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+        ("Roam"
+         :keys "r"
+         :file (lambda () (concat cashpw/path--notes-dir "/todos-roam.org"))
+         :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+        ("Email"
+         :keys "e"
+         :message-subject
+         (lambda ()
+           (s-trim (truncate-string-to-width (cashpw/email-get-subject) 30)))
+         :message-from-to
+         (lambda ()
+           (let* ((to
+                   (plist-get
+                    (cashpw/email--address-properties (cashpw/email-get-to))
+                    :email))
+                  (from
+                   (plist-get
+                    (cashpw/email--address-properties (cashpw/email-get-from))
+                    :email)))
+             (if (and (member to cashpw/email-addresses--personal)
+                      (member from cashpw/email-addresses--personal))
+                 ""
+               (format "%s → %s"
+                       (if (member from cashpw/email-addresses--personal)
+                           "me"
+                         from)
+                       (if (member to cashpw/email-addresses--personal)
+                           "me"
+                         to)))))
+         :file cashpw/path--personal-todos
          :children
-         (("Todo"
-           :keys "t"
-           :file cashpw/path--personal-todos
+         (("Follow-up"
+           :keys "e"
            :before-finalize
            (lambda ()
-             (cashpw/org--prompt-for-priority-when-missing)
-             (cashpw/org--prompt-for-effort-while-missing)
-             (cashpw/org--prompt-for-category-when-missing))
-           :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
-          ("Roam"
-           :keys "r"
-           :file (lambda () (concat cashpw/path--notes-dir "/todos-roam.org"))
-           :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
-          ("Email"
+             (let ((tomorrow (time-add (current-time) (days-to-time 1))))
+               (org-schedule nil tomorrow)))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Todo today"
            :keys "e"
-           :message-subject
-           (lambda ()
-             (s-trim (truncate-string-to-width (cashpw/email-get-subject) 30)))
-           :message-from-to
-           (lambda ()
-             (let* ((to
-                     (plist-get
-                      (cashpw/email--address-properties (cashpw/email-get-to))
-                      :email))
-                    (from
-                     (plist-get
-                      (cashpw/email--address-properties (cashpw/email-get-from))
-                      :email)))
-               (if (and (member to cashpw/email-addresses--personal)
-                        (member from cashpw/email-addresses--personal))
-                   ""
-                 (format "%s → %s"
-                         (if (member from cashpw/email-addresses--personal)
-                             "me"
-                           from)
-                         (if (member to cashpw/email-addresses--personal)
-                             "me"
-                           to)))))
-           :file cashpw/path--personal-todos
-           :children
-           (("Follow-up"
-             :keys "e"
-             :before-finalize
-             (lambda ()
-               (let ((tomorrow (time-add (current-time) (days-to-time 1))))
-                 (org-schedule nil tomorrow)))
-             :immediate-finish t
-             :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
-              ":PROPERTIES:"
-              ":Created: %U"
-              ":END:"))
-            ("Todo today"
-             :keys "e"
-             :before-finalize (lambda () (org-schedule nil (current-time)))
-             :immediate-finish t
-             :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
-              ":PROPERTIES:"
-              ":Created: %U"
-              ":END:"))
-            ("Todo (unscheduled)"
-             :keys "E"
-             :template
-             ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
-              ":PROPERTIES:"
-              ":Created: %U"
-              ":END:"))))))))
-      (:group
-       "Flashcards"
-       :file ,(lambda () (buffer-name))
-       :olp ("Flashcards")
+           :before-finalize (lambda () (org-schedule nil (current-time)))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Todo (unscheduled)"
+           :keys "E"
+           :template
+           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))))))))
+   cashpw/org-capture-templates--flashcards
+   `(:group
+     "Flashcards"
+     :file ,(lambda () (buffer-name))
+     :olp ("Flashcards")
+     :children
+     (("Flashcards"
+       :keys "f"
        :children
-       (("Flashcards"
-         :keys "f"
-         :children
-         (("Cloze"
-           :keys "c"
-           :template
-           ("* %^{Name of card}"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Source")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-cloze-init 'deletion)))
-          ("Photo"
-           :keys "p"
-           :template
-           ("* %^{Name of card} :photo:"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Back"
-            ""
-            "TODO")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-double-init)))
-          ("Double"
-           :keys "d"
-           :template
-           ("* %^{Name of card}"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Back"
-            ""
-            "TODO"
-            ""
-            "** TODO Source")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-double-init)))
-          ("Normal"
-           :keys "n"
-           :template
-           ("* %^{Name of card}"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Back"
-            ""
-            "TODO"
-            ""
-            "** TODO Source")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-normal-init)))
-          ("Vocab"
-           :keys "v"
-           :template
-           ("* %^{Term}"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Source")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-vocab-init)))
-          ("Text input"
-           :keys "t"
-           :template
-           ("* %^{Name of card}"
-            ":PROPERTIES:"
-            ":CREATED: %U"
-            ":END:"
-            ""
-            "%?"
-            ""
-            "** TODO Back"
-            ""
-            "TODO"
-            ""
-            "** TODO Source")
-           :prepare-finalize
-           ,(lambda ()
-              (goto-char (point-min))
-              (org-fc-type-text-input-init)))))))
-      (:group
-       "Journal"
-       :file
-       ,(lambda ()
-          (format "%s/%s.org"
-                  cashpw/path--notes-dir
-                  (format-time-string "%F" (current-time))))
-       :immediate-finish nil
-       :children
-       ("Journal"
-        :keys "j"
-        :children
-        (("Thought record"
-          :keys "t"
-          :olp ("Journal" "Me" "Thought records")
-          :record-situation (lambda () (read-string "Situation/Trigger: "))
-          :record-pre-reflection-emotions
-          (lambda ()
-            (read-string
-             "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
-          :record-automatic-thought (lambda () (read-string "Automatic thought: "))
-          :record-alternative-thought (lambda () (read-string "Alternative thought: "))
-          :record-distortions
-          (lambda ()
-            (let* ((distortions
-                    '(("All-or-nothing thinking"
-                       .
-                       "id:161a1843-d228-4e46-afd0-f587356ef03a")
-                      ("Mind reading"
-                       .
-                       "id:85eee943-87dc-4728-a03e-63a096ff8df5")
-                      ("Fortune-telling"
-                       .
-                       "id:522e7027-ebac-4c06-8de5-ab338aec390a")
-                      ("Labeling" . "id:f67f2787-f097-466f-a5c9-21cd8d6286ba")
-                      ("Emotional reasoning"
-                       .
-                       "id:7b9b6518-05eb-4d48-9265-459847052d4d")
-                      ("Should/Must" . "id:2a3b0da0-7d1f-4f36-a161-c9fb17d64dfa")
-                      ("Personalization"
-                       .
-                       "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
-                      ("Blaming" . "id:40d20f7b-3fe1-453c-968a-04d6a19d2c60")
-                      ("Always being right"
-                       .
-                       "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
-                      ("Magnification/Minimization"
-                       .
-                       "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
-                      ("Catastrophizing"
-                       .
-                       "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
-                      ("Overgeneralizing"
-                       .
-                       "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
-                      ("Disqualifying the positive"
-                       .
-                       "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
-                      ("Filtering" . "id:0b509a6f-0fc2-41a3-8770-4c1f9a881a04")))
-                   (selections
-                    (completing-read-multiple "Distortions: " distortions nil t))
-                   (link-list
-                    (string-join (--map
-                                  (format "- %s
+       (("Cloze"
+         :keys "c"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Source")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-cloze-init 'deletion)))
+        ("Photo"
+         :keys "p"
+         :template
+         ("* %^{Name of card} :photo:"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Back"
+          ""
+          "TODO")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-double-init)))
+        ("Double"
+         :keys "d"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Back"
+          ""
+          "TODO"
+          ""
+          "** TODO Source")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-double-init)))
+        ("Normal"
+         :keys "n"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Back"
+          ""
+          "TODO"
+          ""
+          "** TODO Source")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-normal-init)))
+        ("Vocab"
+         :keys "v"
+         :template
+         ("* %^{Term}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Source")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-vocab-init)))
+        ("Text input"
+         :keys "t"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "** TODO Back"
+          ""
+          "TODO"
+          ""
+          "** TODO Source")
+         :prepare-finalize
+         ,(lambda ()
+            (goto-char (point-min))
+            (org-fc-type-text-input-init)))))))
+   cashpw/org-capture-templates--journal
+   `(:group
+     "Journal"
+     :file
+     ,(lambda ()
+        (format "%s/%s.org"
+                cashpw/path--notes-dir
+                (format-time-string "%F" (current-time))))
+     :immediate-finish nil
+     :children
+     ("Journal"
+      :keys "j"
+      :children
+      (("Thought record"
+        :keys "t"
+        :olp ("Journal" "Me" "Thought records")
+        :record-situation (lambda () (read-string "Situation/Trigger: "))
+        :record-pre-reflection-emotions
+        (lambda ()
+          (read-string
+           "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
+        :record-automatic-thought (lambda () (read-string "Automatic thought: "))
+        :record-alternative-thought (lambda () (read-string "Alternative thought: "))
+        :record-distortions
+        (lambda ()
+          (let* ((distortions
+                  '(("All-or-nothing thinking"
+                     .
+                     "id:161a1843-d228-4e46-afd0-f587356ef03a")
+                    ("Mind reading"
+                     .
+                     "id:85eee943-87dc-4728-a03e-63a096ff8df5")
+                    ("Fortune-telling"
+                     .
+                     "id:522e7027-ebac-4c06-8de5-ab338aec390a")
+                    ("Labeling" . "id:f67f2787-f097-466f-a5c9-21cd8d6286ba")
+                    ("Emotional reasoning"
+                     .
+                     "id:7b9b6518-05eb-4d48-9265-459847052d4d")
+                    ("Should/Must" . "id:2a3b0da0-7d1f-4f36-a161-c9fb17d64dfa")
+                    ("Personalization"
+                     .
+                     "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
+                    ("Blaming" . "id:40d20f7b-3fe1-453c-968a-04d6a19d2c60")
+                    ("Always being right"
+                     .
+                     "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
+                    ("Magnification/Minimization"
+                     .
+                     "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
+                    ("Catastrophizing"
+                     .
+                     "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
+                    ("Overgeneralizing"
+                     .
+                     "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
+                    ("Disqualifying the positive"
+                     .
+                     "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
+                    ("Filtering" . "id:0b509a6f-0fc2-41a3-8770-4c1f9a881a04")))
+                 (selections
+                  (completing-read-multiple "Distortions: " distortions nil t))
+                 (link-list
+                  (string-join (--map
+                                (format "- %s
 "
-                                          (org-link-make-string
-                                           (format "id:%s"
-                                                   (alist-get it distortions
-                                                              nil nil #'string=))
-                                           it))
-                                  selections)
-                                 "")))
-              link-list))
-          :record-post-reflection-emotions
-          (lambda ()
-            (read-string
-             "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
-          :template
-          "*** %U
+                                        (org-link-make-string
+                                         (format "id:%s"
+                                                 (alist-get it distortions
+                                                            nil nil #'string=))
+                                         it))
+                                selections)
+                               "")))
+            link-list))
+        :record-post-reflection-emotions
+        (lambda ()
+          (read-string
+           "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
+        :template
+        "*** %U
 
 **** Situation/Trigger
 
@@ -7744,7 +7699,63 @@ See `org-clock-special-range' for KEY."
 
 **** Post-reflection emotions
 
-%{record-post-reflection-emotions}%?"))))))))
+%{record-post-reflection-emotions}%?"))))
+   cashpw/org-capture-templates--gallery
+   `(:group
+     "Gallery"
+     :file ,(lambda () (buffer-name))
+     :children
+     (("Gallery"
+       :keys "g"
+       :children
+       (("Photo"
+         :keys "p"
+         :olp ("Photos")
+         :immediate-finish t
+         :template (lambda ()
+                     (let* ((image-url (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING)))
+                            (title (read-string "Title: "))
+                            (description (read-string "Description: "))
+                            (description
+                             (if (string-empty-p description)
+                                 description
+                               (concat "\n" description)))
+                            (image-link
+                             (progn
+                               (cashpw/org-download-image--no-insert image-url)
+                               (if (and (>= (string-to-number org-version) 9.3)
+                                        (eq org-download-method 'attach))
+                                   (format "[[attachment:%s]%s]"
+                                           (org-link-escape
+                                            (file-relative-name org-download-path-last-file
+                                                                (org-attach-dir)))
+                                           (if (string-empty-p title)
+                                               ""
+                                             (format "[%s]" title)))
+                                 (format "[[file:%s]%s]"
+                                         (org-link-escape
+                                          (funcall org-download-abbreviate-filename-function
+                                                   org-download-path-last-file))
+                                         (if (string-empty-p title)
+                                             ""
+                                           (format "[%s]" title)))))))
+                       (s-lex-format
+                        "* ${image-link}
+:PROPERTIES:
+:CREATED: %U
+:IMAGE_SOURCE: ${image-url}
+:END:
+${description}"))))))))
+   org-capture-templates
+   (doct
+    `(("Website"
+       :keys "w"
+       :file ""
+       :template "* %a :website:\n\n%U %?\n\n%:initial")
+      ,cashpw/org-capture-templates--today
+      ,cashpw/org-capture-templates--flashcards
+      ,cashpw/org-capture-templates--journal
+      ,cashpw/org-capture-templates--gallery))))
 
 (after! org
   (setq
@@ -8435,7 +8446,6 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     :n "d" #'org-download-delete
     :n "e" #'org-download-edit
     :n "i" #'org-download-image
-    :n "g" #'cashpw/org-gallery--add-image
     :n "r" #'org-download-rename-at-point
     :n "s" #'org-download-screenshot
     :n "y" #'org-download-yank)
