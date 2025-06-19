@@ -7093,16 +7093,24 @@ See `org-clock-special-range' for KEY."
 (add-hook 'org-clock-out-hook #'cashpw/feedback-loop--unschedule-alert)
 
 (after! org
-  (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))
-        ;; showeverything to make large files open faster
+  (setq ;; showeverything to make large files open faster
         org-startup-folded 'showeverything
         org-log-into-drawer t
         org-log-repeat t))
 
-(after! org
-  (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))))
+(after!
+  org
+  (setq
+   cashpw/org-refile-targets
+   (seq-uniq
+    (append
+     (cashpw/org-agenda-files 'personal)
+     (cashpw/notes-files-with-tags "project" "hastodo")
+     (cashpw/notes-files-with-tags "decision" "hastodo")
+     (cashpw/notes-files-with-tags "pet" "hastodo")
+     (cashpw/notes-files-with-tags "people" "private" "hastodo")))
+   org-refile-targets
+   `((,cashpw/org-refile-targets :todo . "PROJ"))))
 
 (after! org
   :config

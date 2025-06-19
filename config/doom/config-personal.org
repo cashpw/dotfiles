@@ -9835,9 +9835,7 @@ See `org-clock-special-range' for KEY."
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! org
-  (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))
-        ;; showeverything to make large files open faster
+  (setq ;; showeverything to make large files open faster
         org-startup-folded 'showeverything
         org-log-into-drawer t
         org-log-repeat t))
@@ -9846,9 +9844,19 @@ See `org-clock-special-range' for KEY."
 **** Refile
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(after! org
-  (setq org-refile-targets '((nil :maxlevel . 9)
-                             (org-agenda-files :maxlevel . 9))))
+(after!
+  org
+  (setq
+   cashpw/org-refile-targets
+   (seq-uniq
+    (append
+     (cashpw/org-agenda-files 'personal)
+     (cashpw/notes-files-with-tags "project" "hastodo")
+     (cashpw/notes-files-with-tags "decision" "hastodo")
+     (cashpw/notes-files-with-tags "pet" "hastodo")
+     (cashpw/notes-files-with-tags "people" "private" "hastodo")))
+   org-refile-targets
+   `((,cashpw/org-refile-targets :todo . "PROJ"))))
 #+end_src
 
 **** TODOs
