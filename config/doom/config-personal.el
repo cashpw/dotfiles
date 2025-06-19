@@ -4130,22 +4130,34 @@ The exporting happens only when Org Capture is not in progress."
         ;;     (save-buffer)))
         ))))
 
+(defun cashpw/org-files-and-filetags (directory)
+  "Return list of org files in DIRECTORY and their filetags."
+  (let ((grep-result
+         (shell-command-to-string
+          (concat
+           (format "rgrep --max-count=1 '^#+filetags:' %s/*.org"
+                   (directory-file-name directory))
+           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
+    (--map
+     (cl-destructuring-bind (file filetags) (s-split " " it 'omit-nulls)
+       (cons file (s-split ":" filetags 'omit-nulls)))
+     (s-split "\n" grep-result 'omit-nulls))))
+
 (defun cashpw/org-files-with-tag (tag directory)
+  "Return list of org files in DIRECTORY tagged (filetag) with TAG."
   (cashpw/org-files-with-tags (list tag) directory))
 
 (defun cashpw/org-files-with-tags (tags directory)
-  "Return a list of files in DIRECTORY tagged with all TAGS."
-  (cl-loop
-   for file in (org-mem-all-files)
-   unless (s-ends-with-p "archive" file)
-   when (-any
-         (lambda (entry)
-           (-every
-            (lambda (tag)
-              (member tag (org-mem-entry-tags-inherited entry)))
-            tags))
-    (org-mem-entries-in file))
-   collect file))
+  "Return list of org files in DIRECTORY tagged (filetag) with TAG."
+  (--map
+   (car it)
+   (-filter
+    (lambda (file-and-filetags)
+      (-every
+       (lambda (tag)
+         (member tag (cdr file-and-filetags)))
+       tags))
+    (cashpw/org-files-and-filetags directory))))
 
 (defun cashpw/notes-files-with-tag (tag)
   "Return a list of note files containing 'hastodo tag."
@@ -4153,7 +4165,7 @@ The exporting happens only when Org Capture is not in progress."
 
 (defun cashpw/notes-files-with-tags (&rest tags)
   "Return a list of note files tagged with all TAGS."
-  (cashpw/org-files-with-tags tag cashpw/path--notes-dir))
+  (cashpw/org-files-with-tags tags cashpw/path--notes-dir))
 
 (defun cashpw/org-mode--buffer-has-todo-p ()
   "Return non-nil if current buffer has any todo entry.
