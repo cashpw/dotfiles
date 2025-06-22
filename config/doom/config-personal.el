@@ -259,7 +259,7 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
              (date-to-time (car (split-string holiday-string ": "))))
            holiday-strings)))
     (with-current-buffer holiday-buffer
-      (kill-buffer-and-window))
+      (kill-buffer))
     (car
      (seq-filter
       (lambda (holiday-time)
@@ -7478,10 +7478,11 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org--prompt-for-category-when-missing ()
   "Prompt for category if it's missing."
-  (let ((category (org-entry-get (point) "CATEGORY" nil)))
-    (when (not category)
+  (let ((file-category (org-get-category (point-min)))
+        (category (org-get-category (point))))
+    (when (or (not category)
+              (and category (string= category file-category)))
       (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
-
 
 (after!
   org
