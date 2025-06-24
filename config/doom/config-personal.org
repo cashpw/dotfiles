@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-22 Sun 14:03]
+:LAST_MODIFIED: [2025-06-24 Tue 07:42]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -6903,29 +6903,31 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   (cashpw/org-with-narrow-between-text
    "#+begin_quote"
    "#+end_quote"
-   ;; Go to #+begin_quote
-   (goto-char 0)
-   ;; Go to first line of quote
-   (evil-next-line)
-   ;; Go to second line of quote
-   (evil-next-line)
-   ;; Join each empty-line-delineated paragraph
-   (while (not
-           (string-equal-ignore-case
-            (org-current-line-string) "#+end_quote"))
-     ;; 2. While 'next line isn't empty': (evil-join)
-     (while (and (not
-                  (string-equal-ignore-case
-                   (org-current-line-string) "#+end_quote"))
-                 (not (string-empty-p (org-current-line-string))))
-       (join-line)
-       (evil-next-line))
+   (save-excursion
+     ;; Go to #+begin_quote
+     (goto-char (point-min))
+     ;; Go to first line of quote
      (evil-next-line)
-     (evil-next-line))
+     ;; Go to second line of quote
+     (evil-next-line)
+     ;; Join each empty-line-delineated paragraph
+     (while (not
+             (string-equal-ignore-case
+              (org-current-line-string) "#+end_quote"))
+       ;; 2. While 'next line isn't empty': (evil-join)
+       (while (and (not
+                    (string-equal-ignore-case
+                     (org-current-line-string) "#+end_quote"))
+                   (not (string-empty-p (org-current-line-string))))
+         (join-line)
+         (evil-next-line))
+       (ignore-errors
+         (evil-next-line)
+         (evil-next-line)))
 
-   ;; Join line-break-hyphenated words (for example: "back- ground")
-   (goto-char 0)
-   (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2")))
+     ;; Join line-break-hyphenated words (for example: "back- ground")
+     (goto-char (point-min))
+     (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2"))))
 #+end_src
 
 **** Remove square brackets
@@ -8345,15 +8347,11 @@ Intended for use with `org-super-agenda-groups'."
 
 (defun cashpw/org-agenda--remove-priorities (line)
   "Return LINE without priorities."
-  (-->
-   line
-   (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+  (--> line (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
 
 (defun cashpw/org-agenda--remove-todo (line)
   "Return LINE without todo."
-  (-->
-   line
-   (replace-regexp-in-string "TODO " "" it)))
+  (--> line (replace-regexp-in-string "TODO " "" it)))
 
 (defun cashpw/org-super-agenda--simplify-map (group)
   "Return GROUP after simplifying each line.
@@ -8364,9 +8362,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (plist-put
    group
    :items
-   (--map
-    (cashpw/org-agenda--simplify-line it)
-    (plist-get group :items))))
+   (--map (cashpw/org-agenda--simplify-line it) (plist-get group :items))))
 
 (defun cashpw/org-super-agenda--remove-todo-map (group)
   "Return GROUP after simplifying each line.
@@ -8376,30 +8372,46 @@ GROUP is a plist of the form `(:name ... :items ...)'.
 Intended for use with `org-super-agenda' `:transformer'. "
   (plist-put
    group
-   :items
-   (--map
-    (cashpw/org-agenda--remove-todo it)
-    (plist-get group :items))))
+   :items (--map (cashpw/org-agenda--remove-todo it) (plist-get group :items))))
 
 (defun cashpw/org-agenda--dim-line (line)
   "Dim color/brightness of LINE."
-  (propertize
-   line
-   'face
-   'shadow))
+  (propertize line 'face 'shadow))
 
 (defcustom cashpw/org-agenda--dim-headline-regexps
-  '("Stretch"
-    "Slack"
-    "Huel shake")
+  '("Stretch" "Slack" "Huel"
+    ;; <= 5 minutes effort
+    " [12345]m "
+    ;; No duration, no effort; brittle
+    " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  ")
   "List of headlines to dim in the org agenda view."
   :type '(repeat string))
 
+(defun cashpw/time-hh-mm-to-minutes (hh-mm)
+  "Return number of minutes since midnight for HH-MM."
+  (let ((decoded-time (parse-time-string hh-mm)))
+    (+ (* 60 (decoded-time-hour decoded-time))
+       (decoded-time-minute decoded-time))))
+
+(defun cashpw/time-minutes-between-time-range (start-hh-mm end-hh-mm)
+  "Return length of time between START-HH-MM and END-HH-MM."
+  (let ((start-minutes (cashpw/time-hh-mm-to-minutes start-hh-mm))
+        (end-minutes (cashpw/time-hh-mm-to-minutes end-hh-mm)))
+    (- end-minutes start-minutes)))
+
+(defconst cashpw/time-re-hh-mm-hh-mm
+  (rx
+   (group num num ":" num num) "-" (group num num ":" num num))
+  "Matches HH:MM-HH:MM.")
+
 (defun cashpw/org-agenda--dim-headlines (line)
   "Dim LINE if it's on the list."
-  (if (--any
-       (string-match-p it line)
-       cashpw/org-agenda--dim-headline-regexps)
+  (if (or (when (string-match cashpw/time-re-hh-mm-hh-mm line)
+            (< (cashpw/time-minutes-between-time-range
+                (match-string 1 line) (match-string 2 line))
+               5))
+          (--any
+           (string-match-p it line) cashpw/org-agenda--dim-headline-regexps))
       (cashpw/org-agenda--dim-line line)
     line))
 #+end_src
@@ -8665,6 +8677,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
           :transformer (--> it
                             (cashpw/org-agenda--simplify-line it)
                             (cashpw/org-agenda--dim-headlines it)))
+         ;; (:discard
+          ;; (:scheduled future))
          (:auto-map cashpw/org-super-agenda--get-priority
           :transformer cashpw/org-super-agenda--simplify-map)
          (:discard
