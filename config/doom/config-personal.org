@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-06-24 Tue 07:42]
+:LAST_MODIFIED: [2025-06-25 Wed 13:54]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -10329,7 +10329,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
 (after!
   org
   (setq
-   cashpw/org-capture-templates--today
+   cashpw/org-capture-templates--todo
    `(:group
      "Todo"
      :children
@@ -10377,7 +10377,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
          :file (lambda () (cashpw/path-todos))
          :children
          (("Follow-up"
-           :keys "e"
+           :keys "f"
            :before-finalize
            (lambda ()
              (let ((tomorrow (time-add (current-time) (days-to-time 1))))

@@ -7507,7 +7507,7 @@ See `org-clock-special-range' for KEY."
 (after!
   org
   (setq
-   cashpw/org-capture-templates--today
+   cashpw/org-capture-templates--todo
    `(:group
      "Todo"
      :children
@@ -7555,7 +7555,7 @@ See `org-clock-special-range' for KEY."
          :file (lambda () (cashpw/path-todos))
          :children
          (("Follow-up"
-           :keys "e"
+           :keys "f"
            :before-finalize
            (lambda ()
              (let ((tomorrow (time-add (current-time) (days-to-time 1))))
