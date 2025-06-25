@@ -281,10 +281,16 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
 (defvar cashpw/path--personal-todos
   (s-lex-format "${cashpw/path--notes-dir}/todos.org")
   "Personal TODOs file.")
+(defun cashpw/path-todos ()
+  "Return path to TODOs."
+  cashpw/path--personal-todos)
 
 (defvar cashpw/path--personal-calendar
   (s-lex-format "${cashpw/path--notes-dir}/calendar-personal.org")
   "Personal calendar file.")
+(defun cashpw/path-calendar ()
+  "Return path to TODOs."
+  cashpw/path--personal-calendar)
 
 (defvar cashpw/path--personal-asana
   (s-lex-format "${cashpw/path--notes-dir}/asana.org")
@@ -670,8 +676,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
                 (s-ends-with-p "archive" file)
                 (member (f-expand file)
                         (list
-                         (f-expand cashpw/path--personal-calendar)
-                         (f-expand cashpw/path--personal-todos)
+                         (f-expand (cashpw/path-calendar))
+                         (f-expand (cashpw/path-todos))
                          (f-expand cashpw/path--reading-list))))
         when (seq-find (lambda (entry)
                          (member (org-mem-entry-todo-state entry) org-not-done-keywords))
@@ -823,7 +829,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")))
     :desc "Todos"
-    :n "t" (cmd! (cashpw/open-file cashpw/path--personal-todos))))
+    :n "t" (cmd! (cashpw/open-file (cashpw/path-todos)))))
   (:prefix
    ("n")
    :desc "Store email link"
@@ -3667,7 +3673,7 @@ Return nil if no attendee exists with that EMAIL."
 
 (defcustom cashpw/org-gcal--profile-personal
   (make-org-gcal-profile
-   :fetch-file-alist `(("cashbweaver@gmail.com" . ,cashpw/path--personal-calendar))
+   :fetch-file-alist `(("cashbweaver@gmail.com" . ,(cashpw/path-calendar)))
    :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
    :client-secret (secret-get "org-gcal--personal")
    :after-update-entry-functions
@@ -4420,9 +4426,9 @@ Don't call directly. Use `cashpw/org-agenda-files'."
            (cashpw/org-agenda-files--notes-all))
           ((equal context 'personal)
            (append
-            `(,cashpw/path--personal-todos
+            `(,(cashpw/path-todos)
               ,cashpw/path--personal-asana
-              ,cashpw/path--personal-calendar)))
+              ,(cashpw/path-calendar))))
           ((equal context 'projects-with-todo)
            (cashpw/notes-files-with-tags "hastodo" "project"))
           ((equal context 'pets-with-todo)
@@ -5420,8 +5426,8 @@ This is an internal function."
 (defun cashpw/revert-common-files ()
   (interactive)
   (let* ((files
-          `(,cashpw/path--personal-todos
-            ,cashpw/path--personal-calendar))
+          `(,(cashpw/path-todos)
+            ,(cashpw/path-calendar)))
          (files-with-archive
           (append
            files
@@ -5959,7 +5965,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
                             (cashpw/org-agenda--simplify-line it)
                             (cashpw/org-agenda--dim-headlines it)))
          (:discard
-          (:and (:file-path ,cashpw/path--personal-calendar
+          (:and (:file-path ,(cashpw/path-calendar)
                  :scheduled past)))
          (:name "In Progress"
           :todo "INPROGRESS")
@@ -6776,7 +6782,7 @@ Category | Scheduled | Effort
            :deadline future
            :scheduled today
            :deadline today
-           :file-path ,cashpw/path--personal-calendar))
+           :file-path ,(cashpw/path-calendar)))
          (:auto-map
           (lambda (item)
             (-when-let* ((marker
@@ -7510,7 +7516,7 @@ See `org-clock-special-range' for KEY."
        :children
        (("Todo"
          :keys "t"
-         :file cashpw/path--personal-todos
+         :file (lambda () (cashpw/path-todos))
          :before-finalize
          (lambda ()
            (cashpw/org--prompt-for-priority-when-missing)
@@ -7546,7 +7552,7 @@ See `org-clock-special-range' for KEY."
                        (if (member to cashpw/email-addresses--personal)
                            "me"
                          to)))))
-         :file cashpw/path--personal-todos
+         :file (lambda () (cashpw/path-todos))
          :children
          (("Follow-up"
            :keys "e"
