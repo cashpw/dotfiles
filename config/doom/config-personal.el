@@ -7866,7 +7866,7 @@ ${description}"))))))))
        :keys "w"
        :file ""
        :template "* %a :website:\n\n%U %?\n\n%:initial")
-      ,cashpw/org-capture-templates--today
+      ,cashpw/org-capture-templates--todo
       ,cashpw/org-capture-templates--flashcards
       ,cashpw/org-capture-templates--journal
       ,cashpw/org-capture-templates--gallery))))
