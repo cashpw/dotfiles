@@ -1298,6 +1298,7 @@ Doom Emacs provides =alert=.
   (:prefix
    ("t")
    :n "C" #'centered-cursor-mode
+   :n "D" #'toggle-debug-on-error
    :n "k" #'clm/toggle-command-log-buffer)))
 
 (map!

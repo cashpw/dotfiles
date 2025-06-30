@@ -864,6 +864,7 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   (:prefix
    ("t")
    :n "C" #'centered-cursor-mode
+   :n "D" #'toggle-debug-on-error
    :n "k" #'clm/toggle-command-log-buffer)))
 
 (map!
