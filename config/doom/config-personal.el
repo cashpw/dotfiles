@@ -1707,6 +1707,8 @@ TAGS which start with \"-\" are excluded."
 ;;    )
 ;;   (org-msg-mode))
 
+(defvar cashpw/email--message-id nil
+  "Holds an email id. Used to pass data across indirect function calls.")
 (defvar cashpw/email--to nil
   "Holds an email to. Used to pass data across indirect function calls.")
 (defvar cashpw/email--subject nil
@@ -1735,6 +1737,12 @@ TAGS which start with \"-\" are excluded."
    (notmuch-show-get-to)
    (message-field-value "To")))
 
+(defun cashpw/email-get-message-id ()
+  "Return To value for message buffer, or message at point."
+  (or
+   cashpw/email--message-id
+   (notmuch-show-get-message-id)))
+
 (defun cashpw/email-get-from ()
   "Return From value for message buffer, or message at point."
   (or
@@ -1752,6 +1760,7 @@ TAGS which start with \"-\" are excluded."
 (defun cashpw/email--invalidate-vars ()
   "Invalidate email context variables."
   (setq
+   cashpw/email--message-id nil
    cashpw/email--to nil
    cashpw/email--from nil
    cashpw/email--subject nil))
@@ -1760,6 +1769,7 @@ TAGS which start with \"-\" are excluded."
   "Set email context variables."
   (cashpw/email--invalidate-vars)
   (when-let ((thread-id (notmuch-search-find-thread-id)))
+    (message "thread-id: %s" thread-id)
     (with-current-buffer
         (notmuch-show
          thread-id
@@ -1768,6 +1778,7 @@ TAGS which start with \"-\" are excluded."
       (save-excursion
         (goto-char (point-max))
         (setq
+         cashpw/email--message-id (cashpw/email-get-message-id)
          cashpw/email--to (cashpw/email-get-to)
          cashpw/email--from (cashpw/email-get-from)
          cashpw/email--subject (cashpw/email-get-subject)))
@@ -2758,7 +2769,31 @@ The key is in the form: (authors|journal)_title_year."
   :after org)
 
 (use-package! org-roam-contacts
-  :after org-roam)
+  :after org-roam
+
+  :config
+  (defun org-roam-contacts--get-all ()
+    "Return list of contacts."
+    (-map
+     #'make-org-roam-contact-from-file
+     (cashpw/notes-files-with-tag org-roam-contacts-tag )))
+
+  (defun cashpw/email-select-contact ()
+    (let ((name-to-email-alist
+           (-reduce-from
+            (lambda (acc contact)
+              (let ((names (org-roam-contact-names contact))
+                    (emails (org-roam-contact-emails contact))
+                    (permutations '()))
+                (dotimes (name-index (length names))
+                  (dotimes (email-index (length emails))
+                    (push (cons (nth name-index names) (cdr (nth email-index emails))) permutations)))
+                (append acc permutations)))
+            '()
+            (--filter
+             (org-roam-contact-emails it)
+             (org-roam-contacts--get-all)))))
+      (alist-get name-to-email-alist (completing-read "Who?: " name-to-email-alist)))))
 
 (use-package! clocktable-by-category
   :after org)
@@ -5494,6 +5529,22 @@ This is an internal function."
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-backlinks)
 
+(defun cashpw/journal--create (name)
+  "Create a daily, journal, entry with NAME."
+  (org-roam-dailies--capture time t)
+  (save-buffer))
+
+(defun cashpw/journal--remove-old-hastodo (pattern)
+  "Remove hastodo tag from old journal entries matching PATTERN."
+  (let ((journal-files
+         (--filter
+          (string-match-p pattern it)
+          (cashpw/org-files-with-tag "hastodo" org-roam-directory))))
+    (dolist (journal-file journal-files)
+      (with-current-buffer (find-file-noselect journal-file)
+        (set-buffer-modified-p t)
+        (save-buffer)))))
+
 (after! doct-org-roam
   (setq
    org-roam-dailies-directory cashpw/path--notes-dir
@@ -5786,7 +5837,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (propertize line 'face 'shadow))
 
 (defcustom cashpw/org-agenda--dim-headline-regexps
-  '("Stretch" "Slack" "Huel"
+  '("Stretch" "Slack" "Huel" "Meditate" "Shower" "Shave" "Walk" "Lunch" "Dinner" "Journal.*Journal" "Journal.*Retrospective" "Journal.*Gratitude" "Debrief"
     ;; <= 5 minutes effort
     " [12345]m "
     ;; No duration, no effort; brittle
@@ -7514,10 +7565,10 @@ See `org-clock-special-range' for KEY."
      :children
      (("Todo"
        :keys "t"
+       :file (lambda () (cashpw/path-todos))
        :children
        (("Todo"
          :keys "t"
-         :file (lambda () (cashpw/path-todos))
          :before-finalize
          (lambda ()
            (cashpw/org--prompt-for-priority-when-missing)
@@ -7530,6 +7581,9 @@ See `org-clock-special-range' for KEY."
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Email"
          :keys "e"
+         :message-id
+         (lambda ()
+           (cashpw/email-get-message-id))
          :message-subject
          (lambda ()
            (s-trim (truncate-string-to-width (cashpw/email-get-subject) 30)))
@@ -7553,7 +7607,6 @@ See `org-clock-special-range' for KEY."
                        (if (member to cashpw/email-addresses--personal)
                            "me"
                          to)))))
-         :file (lambda () (cashpw/path-todos))
          :children
          (("Follow-up"
            :keys "f"
@@ -7563,7 +7616,7 @@ See `org-clock-special-range' for KEY."
                (org-schedule nil tomorrow)))
            :immediate-finish t
            :template
-           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
             ":PROPERTIES:"
             ":Created: %U"
             ":END:"))
@@ -7572,21 +7625,21 @@ See `org-clock-special-range' for KEY."
            :before-finalize (lambda () (org-schedule nil (current-time)))
            :immediate-finish t
            :template
-           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
             ":PROPERTIES:"
             ":Created: %U"
             ":END:"))
           ("Todo (unscheduled)"
            :keys "E"
            :template
-           ("* TODO [#2] [[notmuch:id:%:message-id][%{message-subject}]] (%{message-from-to}) :email:"
+           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
             ":PROPERTIES:"
             ":Created: %U"
             ":END:"))))))))
    cashpw/org-capture-templates--flashcards
    `(:group
      "Flashcards"
-     :file ,(lambda () (buffer-name))
+     :file (lambda () (buffer-name))
      :olp ("Flashcards")
      :children
      (("Flashcards"
@@ -7604,9 +7657,9 @@ See `org-clock-special-range' for KEY."
           ""
           "** TODO Source")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-cloze-init 'deletion)))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-cloze-init 'deletion)))
         ("Photo"
          :keys "p"
          :template
@@ -7621,9 +7674,9 @@ See `org-clock-special-range' for KEY."
           ""
           "TODO")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-double-init)))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-double-init)))
         ("Double"
          :keys "d"
          :template
@@ -7640,9 +7693,9 @@ See `org-clock-special-range' for KEY."
           ""
           "** TODO Source")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-double-init)))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-double-init)))
         ("Normal"
          :keys "n"
          :template
@@ -7659,9 +7712,9 @@ See `org-clock-special-range' for KEY."
           ""
           "** TODO Source")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-normal-init)))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-normal-init)))
         ("Vocab"
          :keys "v"
          :template
@@ -7674,9 +7727,9 @@ See `org-clock-special-range' for KEY."
           ""
           "** TODO Source")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-vocab-init)))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-vocab-init)))
         ("Text input"
          :keys "t"
          :template
@@ -7693,17 +7746,17 @@ See `org-clock-special-range' for KEY."
           ""
           "** TODO Source")
          :prepare-finalize
-         ,(lambda ()
-            (goto-char (point-min))
-            (org-fc-type-text-input-init)))))))
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-text-input-init)))))))
    cashpw/org-capture-templates--journal
    `(:group
      "Journal"
      :file
-     ,(lambda ()
-        (format "%s/%s.org"
-                cashpw/path--notes-dir
-                (format-time-string "%F" (current-time))))
+     (lambda ()
+       (format "%s/%s.org"
+               cashpw/path--notes-dir
+               (format-time-string "%F" (current-time))))
      :immediate-finish nil
      :children
      ("Journal"
@@ -7800,7 +7853,7 @@ See `org-clock-special-range' for KEY."
    cashpw/org-capture-templates--gallery
    `(:group
      "Gallery"
-     :file ,(lambda () (buffer-name))
+     :file (lambda () (buffer-name))
      :children
      (("Gallery"
        :keys "g"
