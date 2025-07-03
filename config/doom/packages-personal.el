@@ -40,6 +40,10 @@
   :recipe (:host github
            :repo "cashpw/plru"))
 
+(package! isbn
+  :recipe (:host github
+           :repo "cashpw/isbn.el"))
+
 (package! titlecase)
 
 (package! whisper

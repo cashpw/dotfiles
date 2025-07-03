@@ -202,6 +202,14 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (and (not (time-equal-p a b))
        (not (time-less-p a b))))
 
+(defun cashpw/presorted-completion-table (completions)
+  "Return COMPLETIONS table for `completing-read' so order is maintained.
+Reference: https://emacs.stackexchange.com/a/8177."
+  (lambda (string pred action)
+    (if (eq action 'metadata)
+        `(metadata (display-sort-function . ,#'identity))
+      (complete-with-action action completions string pred))))
+
 (defconst cashpw/time--day-number-sunday 0)
 (defconst cashpw/time--day-number-monday 1)
 (defconst cashpw/time--day-number-tuesday 2)
@@ -532,6 +540,24 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   :custom
   (plru-directory (file-name-concat doom-profile-cache-dir "plru/")))
 
+(use-package!
+    isbn
+  :config
+  (defun cashpw/isbn-select-from-buffer ()
+    "Return selected isbn from buffer."
+    (let* ((isbn-10s (isbn-10-get-all-in-buffer))
+           (isbn-13s (isbn-13-get-all-in-buffer)))
+      (completing-read "ISBN: " (append isbn-10s isbn-13s) nil t))))
+(after! json
+  (defun cashpw/google-books--list (query key success)
+    "Return results of Google Books QUERY with api KEY.
+Invokes SUCCESS on success."
+    (request "https://www.googleapis.com/books/v1/volumes"
+      :sync t
+      :params `(("key" . ,key) ("q" . , query) ("orderBy" . "relevance") ("maxResults" . 20))
+      :parser 'json-read
+      :success success)))
+
 (use-package! titlecase)
 
 (use-package! whisper
@@ -671,17 +697,20 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
      (cashpw/org-select-and-go-to-todo
       (-difference
        (cl-loop
-        for file in (org-mem-all-files)
-        unless (or
-                (s-ends-with-p "archive" file)
-                (member (f-expand file)
-                        (list
-                         (f-expand (cashpw/path-calendar))
-                         (f-expand (cashpw/path-todos))
-                         (f-expand cashpw/path--reading-list))))
-        when (seq-find (lambda (entry)
-                         (member (org-mem-entry-todo-state entry) org-not-done-keywords))
-                       (org-mem-entries-in file))
+        for file in (org-mem-all-files) unless
+        (or (s-ends-with-p "archive" file)
+            (member
+             (f-expand file)
+             (list
+              (f-expand (cashpw/path-calendar))
+              (f-expand (cashpw/path-todos))
+              (f-expand cashpw/path--reading-list))))
+        when
+        (seq-find
+         (lambda
+           (entry)
+           (member (org-mem-entry-todo-state entry) org-not-done-keywords))
+         (org-mem-entries-in file))
         collect (f-expand file))
        (cashpw/notes-files-with-tag "journal"))))
     :desc "Reading List"
@@ -691,20 +720,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    (:prefix
     ("r" . "Review")
     :desc "Clock check"
-    :n
-    "c"
-    (cmd! (org-agenda nil ".review-clockcheck"))
+    :n "c" (cmd! (org-agenda nil ".review-clockcheck"))
     :desc "Logged"
-    :n
-    "l"
+    :n "l"
     (cmd!
      (if (equal current-prefix-arg '(4))
          (org-agenda nil ".review-logged")
        (org-agenda nil ".review-logged-today")))
     :desc "Clock report"
-    :n
-    "r"
-    (cmd! (org-agenda nil ".review-clockreport")))
+    :n "r" (cmd! (org-agenda nil ".review-clockreport")))
    (:prefix
     ("-" . "Without")
     :desc "Effort"
@@ -733,7 +757,9 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    :n
    "l"
    (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
-   :n "k" #'cashpw/gptel-kill-curl-process
+   :n
+   "k"
+   #'cashpw/gptel-kill-curl-process
    :desc "empty"
    :n
    "L"
@@ -832,8 +858,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     :n "t" (cmd! (cashpw/open-file (cashpw/path-todos)))))
   (:prefix
    ("n")
-   :desc "Store email link"
-   :n "L" #'org-notmuch-store-link
+   :desc "add note" :n "+" #'org-add-note
+   :desc "Store email link" :n "L" #'org-notmuch-store-link
    (:prefix
     ("A" . "Flashcards")
     :n "d" #'org-fc-dashboard
@@ -844,22 +870,20 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
    (:prefix
     ("r")
     :desc "New art node"
-    :n
-    "a"
-    #'cashpw/org-roam-node-create--art
+    :n "a" #'cashpw/org-roam-node-create--art
     :desc "New reference node"
-    :n
-    "c"
-    #'cashpw/org-roam-node-from-cite
-    (:prefix ("d")
-     :desc "Reflect (toggle)" "r" (cmd!
-                                   (if org-daily-reflection--list-of-newly-opened-entries
-                                       (org-daily-reflection-restore-prior-windows)
-                                     (org-daily-reflection
-                                      (intern (completing-read "What time interval?"
-                                                               org-daily-reflection-time-spans
-                                                               nil t nil nil))
-                                      4))))))
+    :n "c" #'cashpw/org-roam-node-from-cite
+    (:prefix
+     ("d")
+     :desc "Reflect (toggle)" "r"
+     (cmd!
+      (if org-daily-reflection--list-of-newly-opened-entries
+          (org-daily-reflection-restore-prior-windows)
+        (org-daily-reflection
+         (intern
+          (completing-read "What time interval?" org-daily-reflection-time-spans
+                           nil t nil nil))
+         4))))))
   (:prefix ("p") :n "u" #'cashpw/projectile-refresh-known-paths)
   (:prefix
    ("t")
@@ -1212,13 +1236,14 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (defun cashpw/browse-select-url ()
   "Return selected url based on history and search engines."
   (interactive)
+  (message "foo foo")
   (let* ((url-history-options
           (-map
            (lambda (url)
              (cons
               url
               `(lambda ()
-                 (cashpw/browser-url-history-put-url url)
+                 (cashpw/browser-url-history-put-url ,url)
                  (funcall browse-url-browser-function ,url))))
            (mapcar #'symbol-name (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))))
          (search-engine-options
@@ -1243,6 +1268,8 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
           ;; handler-fn is invoked when selector is selected
           (append url-history-options search-engine-options))
          (selection (completing-read "URL/Search: " options)))
+    (message "selection: %s" selection)
+    (message "assoc selection: %s" (assoc selection options))
     (if (assoc selection options)
         (funcall (cdr (assoc selection options)))
       ;; Allow literal URLs
@@ -1270,6 +1297,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
               :url "https://html.duckduckgo.com/html/?q=%s"
               :cache-size 200
               :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+             :name "ISBNSearch"
+             :id 'isbn
+             :keys '("@isbn")
+             :url "https://isbnsearch.org/search?s=%s"
+             :cache-size 200
+             :cache-directory cashpw/path--browser-history-dir)
             ,(search-engine
               :name "IMDb"
               :id 'imdb
@@ -1301,7 +1335,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
                                  plru-internal-version-constant)
                          :max-size 200 :save-delay 5)))
 
-(defcustom cashpw/browser-url-history-exclude-patterns '()
+(defcustom cashpw/browser-url-history-exclude-patterns '("isbnsearch\\.org")
   "Patterns to exclude from URL history.")
 
 (after! search-engine
@@ -1769,7 +1803,6 @@ TAGS which start with \"-\" are excluded."
   "Set email context variables."
   (cashpw/email--invalidate-vars)
   (when-let ((thread-id (notmuch-search-find-thread-id)))
-    (message "thread-id: %s" thread-id)
     (with-current-buffer
         (notmuch-show
          thread-id
@@ -2406,6 +2439,8 @@ TODO")))))
       (with-slots
           (short) category
         (cond
+         ((string= short "misc")
+          "feat: Misc")
          ((string= short "flashcards")
           "feat: Flashcards")
          (t
@@ -2413,6 +2448,7 @@ TODO")))))
 
   (setq cashpw/commit-message-notes-categories (list
                                                 (commit-message-category :name "Flashcards" :short "flashcards")
+                                                (commit-message-category :name "Misc" :short "misc")
                                                 (commit-message-category :name "Fix" :short "fix" :aliases '("Bug"))
                                                 (commit-message-category :name "Feature" :short "feat" :aliases '("Add"))))
   (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
@@ -2729,9 +2765,14 @@ The key is in the form: (authors|journal)_title_year."
        url))))
 
 (defun cashpw/zotra-add-entry-from-eww ()
-  "Add an entry for the current page's url."
+  "Add an entry for the current eww buffer."
   (interactive)
-  (cashpw/zotra-add-entry-from-url (plist-get eww-data :url)))
+  (let ((url (plist-get eww-data :url)))
+    (cond
+     ((string-match-p "isbnsearch\\.org" url)
+      (zotra-add-entry (cashpw/isbn-select-from-buffer)))
+     (t
+      (cashpw/zotra-add-entry-from-url url)))))
 
 (use-package!
     org-clock-act-on-overtime
@@ -4643,6 +4684,12 @@ Don't call directly. Use `cashpw/org-agenda-files'."
   ;; (set-face-attribute 'org-modern-horizontal-rule nil :strike-through "gray70")
   (global-org-modern-mode))
 
+(after! org
+  (defun cashpw/org--enable-insert-in-note-buffer ()
+    "Enable insert mode when entering a note buffer."
+    (evil-insert-state nil))
+  (add-hook 'org-log-buffer-setup-hook 'cashpw/org--enable-insert-in-note-buffer))
+
 (after! org-roam
   ;; Override to only replace if it's a roam link.
   (defun cashpw/org-roam-link-replace-all ()
@@ -4714,6 +4761,7 @@ Don't call directly. Use `cashpw/org-agenda-files'."
        :template "%?"
        :file "${slug}.org"
        :unnarrowed t
+       :after-finalize cashpw/org--set-refile-targets
        :before-finalize
        (lambda ()
          (save-excursion
@@ -7207,17 +7255,19 @@ See `org-clock-special-range' for KEY."
 
 (after!
   org
-  (setq
-   cashpw/org-refile-targets
-   (seq-uniq
-    (append
-     (cashpw/org-agenda-files 'personal)
-     (cashpw/notes-files-with-tags "project" "hastodo")
-     (cashpw/notes-files-with-tags "decision" "hastodo")
-     (cashpw/notes-files-with-tags "pet" "hastodo")
-     (cashpw/notes-files-with-tags "people" "private" "hastodo")))
-   org-refile-targets
-   `((,cashpw/org-refile-targets :todo . "PROJ"))))
+  (defun cashpw/org--set-refile-targets ()
+    "Refresh refile targets."
+    (setq
+     cashpw/org-refile-targets
+     (seq-uniq
+      (append
+       (cashpw/org-agenda-files 'personal)
+       (cashpw/notes-files-with-tags "project" "hastodo")
+       (cashpw/notes-files-with-tags "decision" "hastodo")
+       (cashpw/notes-files-with-tags "pet" "hastodo")
+       (cashpw/notes-files-with-tags "people" "private" "hastodo")))
+     org-refile-targets `((,cashpw/org-refile-targets :todo . "PROJ"))))
+  (cashpw/org--set-refile-targets))
 
 (after! org
   :config
@@ -8536,7 +8586,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
   (map!
    :map eww-mode-map
    :n "yy" #'evil-yank
-   
+
    (:localleader
     :n "@" #'cashpw/zotra-add-entry-from-eww
     :desc "jump to hedaing" "." #'+eww/jump-to-heading-on-page))
@@ -8547,6 +8597,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :nv "@" nil
    (:prefix ("@" . "Citation")
     :n "a" #'zotra-add-entry
+    :n "b" #'cashpw/google-books-select-isbn-and-add-citation
     :n "@" #'org-cite-insert)
    (:prefix ("b")
     :n "RET" #'org-table-copy-down)
