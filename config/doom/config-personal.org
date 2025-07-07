@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-07-03 Thu 10:03]
+:LAST_MODIFIED: [2025-07-06 Sun 15:26]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -897,9 +897,7 @@ Invokes SUCCESS on success."
       :params `(("key" . ,key) ("q" . , query) ("orderBy" . "relevance") ("maxResults" . 20))
       :parser 'json-read
       :success success)))
-#+end_src
 
-#+begin_src emacs-lisp
 (defun cashpw/google-books-select-isbn-and-add-citation (query)
   "Select ISBN from Google Books."
   (interactive "MQuery: ")
@@ -1440,6 +1438,8 @@ https://akrl.sdf.org/#orgc15a10d
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
+  "API key for OpenWeatherMap.")
+(defconst cashpw/weatherbit-api-key (secret-get "weatherbit")
   "API key for OpenWeatherMap.")
 #+end_src
 
@@ -3499,7 +3499,12 @@ https://pandoc.org/
     (elfeed-search-update)))
 #+end_src
 
+
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+;; Alphapapa's solution to speed up elfeed-update
+;;
+;; Source: https://github.com/skeeto/elfeed/issues/293#issuecomment-425627688
+
 (after!
   elfeed
   (defvar ap/elfeed-update-complete-hook nil
@@ -3591,7 +3596,7 @@ https://pandoc.org/
   :after elfeed
   :custom
   (elfeed-log-level 'debug)
-  (elfeed-protocol-fever-update-unread-only t)
+  (elfeed-protocol-fever-update-unread-only nil)
   (elfeed-protocol-fever-fetch-category-as-tag t)
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
   (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
@@ -10083,7 +10088,14 @@ See `org-clock-special-range' for KEY."
        (cashpw/notes-files-with-tags "pet" "hastodo")
        (cashpw/notes-files-with-tags "people" "private" "hastodo")))
      org-refile-targets `((,cashpw/org-refile-targets :todo . "PROJ"))))
-  (cashpw/org--set-refile-targets))
+  (cashpw/org--set-refile-targets)
+
+  (add-hook! 'org-after-refile-insert-hook
+             #'cashpw/org--prompt-for-priority-when-missing
+             #'cashpw/org--prompt-for-effort-when-missing
+             #'cashpw/org--prompt-for-category-when-missing
+             #'cashpw/org--prompt-for-schedule-when-missing
+             #'cashpw/org--prompt-for-deadline-when-missing))
 #+end_src
 
 **** TODOs
@@ -10481,7 +10493,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
   (unless (org-extras-get-priority (point))
     (org-priority)))
 
-(defun cashpw/org--prompt-for-effort-while-missing ()
+(defun cashpw/org--prompt-for-effort-when-missing ()
   "Prompt user for an effort until they provide a non-empty value."
   (while
       (or
@@ -10490,12 +10502,29 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
        (string= (org-entry-get (point) "Effort") ""))
     (org-set-effort)))
 
+(defun cashpw/org--prompt-for-deadline-when-missing ()
+  "Prompt user for an deadline if there isn't already one present."
+  (unless (org-get-deadline-time (point))
+    (condition-case nil
+        (org-deadline nil)
+      (quit))))
+
+(defun cashpw/org--prompt-for-schedule-when-missing ()
+  "Prompt user for an schedule if there isn't already one present."
+  (unless (org-get-scheduled-time (point))
+    (condition-case nil
+        (org-schedule nil)
+      (quit))))
+
 (defun cashpw/org--prompt-for-category-when-missing ()
   "Prompt for category if it's missing."
   (let ((file-category (org-get-category (point-min)))
         (category (org-get-category (point))))
     (when (or (not category)
-              (and category (string= category file-category)))
+              (if (file-equal-p buffer-file-name cashpw/path--personal-todos)
+                  (string= category file-category)
+                ;; Allow default category in non-todo files.
+                nil))
       (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
 
 (after!
@@ -10511,11 +10540,16 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
        :children
        (("Todo"
          :keys "t"
-         :before-finalize
+         :after-finalize
          (lambda ()
-           (cashpw/org--prompt-for-priority-when-missing)
-           (cashpw/org--prompt-for-effort-while-missing)
-           (cashpw/org--prompt-for-category-when-missing))
+           (save-excursion
+             (with-current-buffer (marker-buffer org-capture-last-stored-marker)
+               (goto-char org-capture-last-stored-marker)
+               (cashpw/org--prompt-for-priority-when-missing)
+               (cashpw/org--prompt-for-effort-when-missing)
+               (cashpw/org--prompt-for-category-when-missing)
+               (cashpw/org--prompt-for-schedule-when-missing)
+               (cashpw/org--prompt-for-deadline-when-missing))))
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Roam"
          :keys "r"

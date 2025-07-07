@@ -202,14 +202,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
   (and (not (time-equal-p a b))
        (not (time-less-p a b))))
 
-(defun cashpw/presorted-completion-table (completions)
-  "Return COMPLETIONS table for `completing-read' so order is maintained.
-Reference: https://emacs.stackexchange.com/a/8177."
-  (lambda (string pred action)
-    (if (eq action 'metadata)
-        `(metadata (display-sort-function . ,#'identity))
-      (complete-with-action action completions string pred))))
-
 (defconst cashpw/time--day-number-sunday 0)
 (defconst cashpw/time--day-number-monday 1)
 (defconst cashpw/time--day-number-tuesday 2)
@@ -557,6 +549,57 @@ Invokes SUCCESS on success."
       :params `(("key" . ,key) ("q" . , query) ("orderBy" . "relevance") ("maxResults" . 20))
       :parser 'json-read
       :success success)))
+
+(defun cashpw/google-books-select-isbn-and-add-citation (query)
+  "Select ISBN from Google Books."
+  (interactive "MQuery: ")
+  (cashpw/google-books--list
+   query (secret-get "google-books")
+   (cl-function (lambda (&key data &allow-other-keys)
+                  (let ((options
+                         (--map
+                          (when-let ((volume-info (alist-get 'volumeInfo it)))
+                            (cons
+                             (concat
+                              (let ((title (alist-get 'title volume-info))
+                                    (max-length 50))
+                                (if (> (length title) max-length)
+                                    (substring title 0 max-length)
+                                  (string-pad title max-length)))
+                              ""
+                              (let ((authors
+                                     (string-join (alist-get
+                                                   'authors volume-info)
+                                                  ","))
+                                    (max-length 30))
+                                (if (> (length authors) max-length)
+                                    (substring authors 0 max-length)
+                                  (string-pad authors max-length)))
+                              ""
+                              (let ((description
+                                     (alist-get 'description volume-info))
+                                    (max-length 30))
+                                (if (> (length description) max-length)
+                                    (substring description 0 max-length)
+                                  (string-pad description max-length))))
+                             ;; First ISBN in list of identifiers
+                             (cdr
+                              (car
+                               (cdr
+                                (elt
+                                 (alist-get
+                                  'industryIdentifiers volume-info)
+                                 0))))))
+                          (alist-get 'items data))))
+                    (let ((vertico-sort-function #'identity)
+                          (isbn
+                           (alist-get (completing-read
+                                       "Volume: "
+                                       options
+                                       nil 'require-match)
+                                      options
+                                      nil nil #'string=)))
+                      (zotra-add-entry isbn)))))))
 
 (use-package! titlecase)
 
@@ -926,6 +969,8 @@ Invokes SUCCESS on success."
   "Human-readable name for current location.")
 
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
+  "API key for OpenWeatherMap.")
+(defconst cashpw/weatherbit-api-key (secret-get "weatherbit")
   "API key for OpenWeatherMap.")
 
 (use-package! sunshine
@@ -2174,6 +2219,10 @@ TAGS which start with \"-\" are excluded."
                "")))
     (elfeed-search-update)))
 
+;; Alphapapa's solution to speed up elfeed-update
+;;
+;; Source: https://github.com/skeeto/elfeed/issues/293#issuecomment-425627688
+
 (after!
   elfeed
   (defvar ap/elfeed-update-complete-hook nil
@@ -2232,7 +2281,7 @@ TAGS which start with \"-\" are excluded."
   :after elfeed
   :custom
   (elfeed-log-level 'debug)
-  (elfeed-protocol-fever-update-unread-only t)
+  (elfeed-protocol-fever-update-unread-only nil)
   (elfeed-protocol-fever-fetch-category-as-tag t)
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
   (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
@@ -7267,7 +7316,14 @@ See `org-clock-special-range' for KEY."
        (cashpw/notes-files-with-tags "pet" "hastodo")
        (cashpw/notes-files-with-tags "people" "private" "hastodo")))
      org-refile-targets `((,cashpw/org-refile-targets :todo . "PROJ"))))
-  (cashpw/org--set-refile-targets))
+  (cashpw/org--set-refile-targets)
+
+  (add-hook! 'org-after-refile-insert-hook
+             #'cashpw/org--prompt-for-priority-when-missing
+             #'cashpw/org--prompt-for-effort-when-missing
+             #'cashpw/org--prompt-for-category-when-missing
+             #'cashpw/org--prompt-for-schedule-when-missing
+             #'cashpw/org--prompt-for-deadline-when-missing))
 
 (after! org
   :config
@@ -7589,7 +7645,7 @@ See `org-clock-special-range' for KEY."
   (unless (org-extras-get-priority (point))
     (org-priority)))
 
-(defun cashpw/org--prompt-for-effort-while-missing ()
+(defun cashpw/org--prompt-for-effort-when-missing ()
   "Prompt user for an effort until they provide a non-empty value."
   (while
       (or
@@ -7598,12 +7654,29 @@ See `org-clock-special-range' for KEY."
        (string= (org-entry-get (point) "Effort") ""))
     (org-set-effort)))
 
+(defun cashpw/org--prompt-for-deadline-when-missing ()
+  "Prompt user for an deadline if there isn't already one present."
+  (unless (org-get-deadline-time (point))
+    (condition-case nil
+        (org-deadline nil)
+      (quit))))
+
+(defun cashpw/org--prompt-for-schedule-when-missing ()
+  "Prompt user for an schedule if there isn't already one present."
+  (unless (org-get-scheduled-time (point))
+    (condition-case nil
+        (org-schedule nil)
+      (quit))))
+
 (defun cashpw/org--prompt-for-category-when-missing ()
   "Prompt for category if it's missing."
   (let ((file-category (org-get-category (point-min)))
         (category (org-get-category (point))))
     (when (or (not category)
-              (and category (string= category file-category)))
+              (if (file-equal-p buffer-file-name cashpw/path--personal-todos)
+                  (string= category file-category)
+                ;; Allow default category in non-todo files.
+                nil))
       (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
 
 (after!
@@ -7619,11 +7692,16 @@ See `org-clock-special-range' for KEY."
        :children
        (("Todo"
          :keys "t"
-         :before-finalize
+         :after-finalize
          (lambda ()
-           (cashpw/org--prompt-for-priority-when-missing)
-           (cashpw/org--prompt-for-effort-while-missing)
-           (cashpw/org--prompt-for-category-when-missing))
+           (save-excursion
+             (with-current-buffer (marker-buffer org-capture-last-stored-marker)
+               (goto-char org-capture-last-stored-marker)
+               (cashpw/org--prompt-for-priority-when-missing)
+               (cashpw/org--prompt-for-effort-when-missing)
+               (cashpw/org--prompt-for-category-when-missing)
+               (cashpw/org--prompt-for-schedule-when-missing)
+               (cashpw/org--prompt-for-deadline-when-missing))))
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Roam"
          :keys "r"
