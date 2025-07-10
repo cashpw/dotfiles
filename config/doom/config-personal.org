@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-07-06 Sun 15:26]
+:LAST_MODIFIED: [2025-07-09 Wed 09:50]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -678,6 +678,13 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (format "%s/" str)))
 #+end_src
 
+*** =cashpw/dim=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/dim (text)
+  "Dim color/brightness of TEXT."
+  (propertize text 'face 'shadow))
+#+end_src
 ** Packages
 *** =aggressive-indent=
 **** Package
@@ -1439,8 +1446,6 @@ https://akrl.sdf.org/#orgc15a10d
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
   "API key for OpenWeatherMap.")
-(defconst cashpw/weatherbit-api-key (secret-get "weatherbit")
-  "API key for OpenWeatherMap.")
 #+end_src
 
 
@@ -1468,7 +1473,7 @@ Requires your OpenWeatherMap APPID."
           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
           "&APPID=" appid
-"&units=" (url-encode-url (symbol-name units))
+          "&units=" (url-encode-url (symbol-name units))
           "&cnt=5"))
 #+end_src
 
@@ -3262,6 +3267,14 @@ I need to use a different =send-mail-function= when sending email at work. I ove
  :localleader
  "e"
  #'org-mime-edit-mail-in-org-mode
+ "h t"
+ #'cashpw/email-set-to
+ "h T"
+ #'cashpw/email-append-to
+ "h c"
+ #'cashpw/email-set-cc
+ "h C"
+ #'cashpw/email-append-cc
  "@"
  #'gnus-alias-select-identity)
 
@@ -4459,8 +4472,9 @@ org-mode utility functions
 
 ***** Config
 
-#+begin_src emacs-lisp :tangle config-personal.el
-(use-package! org-roam-contacts
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-roam-contacts
   :after org-roam
 
   :config
@@ -4468,9 +4482,45 @@ org-mode utility functions
     "Return list of contacts."
     (-map
      #'make-org-roam-contact-from-file
-     (cashpw/notes-files-with-tag org-roam-contacts-tag )))
+     (cashpw/notes-files-with-tag org-roam-contacts-tag)))
 
-  (defun cashpw/email-select-contact ()
+  (defun cashpw/email-set-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (search-backward ":" nil 'noerror)
+      (kill-line)
+      (insert ": " value)))
+
+  (defun cashpw/email-append-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (insert (format " %s" value))))
+
+  (defun cashpw/email-set-to (email)
+    "Set email \"To\" header to EMAIl."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "To" email))
+
+  (defun cashpw/email-append-to (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "To" email))
+
+  (defun cashpw/email-set-cc (email)
+    "Set email \"To\" header to EMAIL."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "CC" email))
+
+  (defun cashpw/email-append-cc (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "CC" email))
+
+  (defun cashpw/email-select-contact-email ()
+    "Return user-selected email from org-roam contact list."
+    (interactive)
     (let ((name-to-email-alist
            (-reduce-from
             (lambda (acc contact)
@@ -4479,17 +4529,19 @@ org-mode utility functions
                     (permutations '()))
                 (dotimes (name-index (length names))
                   (dotimes (email-index (length emails))
-                    (push (cons (nth name-index names) (cdr (nth email-index emails))) permutations)))
+                    (let ((name (nth name-index names))
+                          (email (cdr (nth email-index emails)))
+                          (email-name (car (nth email-index emails))))
+                      (push (cons (format "%s (%s) %s" name email-name (cashpw/dim email)) email)
+                            permutations))))
                 (append acc permutations)))
             '()
             (--filter
-             (org-roam-contact-emails it)
-             (org-roam-contacts--get-all)))))
-      (alist-get name-to-email-alist (completing-read "Who?: " name-to-email-alist)))))
+             (org-roam-contact-emails it) (org-roam-contacts--get-all)))))
+      (alist-get
+       (completing-read "Who?: " name-to-email-alist) name-to-email-alist
+       nil nil 'string=))))
 #+end_src
-
-#+RESULTS:
-: t
 
 **** =citar=
 
@@ -12528,6 +12580,37 @@ Remove this section once my [[github:doomemacs/doomemacs/pull/8408][pull request
     (recenter)))
 
 #+end_src
+** Weather
+
+#+begin_src emacs-lisp
+(defvar cashpw/openweather-data nil)
+(request
+  "https://api.openweathermap.org/data/2.5/forecast"
+  :sync t
+  :parser 'json-read
+  :success (cl-function (lambda (&key data &allow-other-keys)
+                          (setq cashpw/openweather-data data)))
+  :params `(("appid" . ,cashpw/openweather-api-key)
+            ("units" . "imperial")
+            ;; ("exclude" . "current,minutely,alerts")
+            ("lat" . "37.283")
+            ("lon" . "-121.86")))
+#+end_src
+
+#+begin_src emacs-lisp
+(let* ((data cashpw/openweather-data)
+       (data-points (alist-get 'list data)))
+  (dotimes (i (length data-points))
+    (let* ((data-point (elt data-points i))
+           (main (alist-get 'main data-point)))
+      (message "%s: high:%s, low:%s"
+               (format-time-string "%F %T" (seconds-to-time (alist-get 'dt data-point)))
+               (alist-get 'temp_max main)
+               (alist-get 'temp_min main)
+               ))))
+#+end_src
+
+#+RESULTS:
 * Wishlist
 :PROPERTIES:
 :ID:       c7bb88c8-96bc-4269-bc3a-4fa820030a58

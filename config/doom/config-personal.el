@@ -485,6 +485,10 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
       str
     (format "%s/" str)))
 
+(defun cashpw/dim (text)
+  "Dim color/brightness of TEXT."
+  (propertize text 'face 'shadow))
+
 (unless
     ;; Avoid 'void-variable mouse-wheel-up-event' error
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
@@ -970,8 +974,6 @@ Invokes SUCCESS on success."
 
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
   "API key for OpenWeatherMap.")
-(defconst cashpw/weatherbit-api-key (secret-get "weatherbit")
-  "API key for OpenWeatherMap.")
 
 (use-package! sunshine
   :custom
@@ -986,7 +988,7 @@ Requires your OpenWeatherMap APPID."
           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
           "&APPID=" appid
-"&units=" (url-encode-url (symbol-name units))
+          "&units=" (url-encode-url (symbol-name units))
           "&cnt=5"))
 
 (when (cashpw/machine-p 'personal-phone)
@@ -2001,6 +2003,14 @@ TAGS which start with \"-\" are excluded."
  :localleader
  "e"
  #'org-mime-edit-mail-in-org-mode
+ "h t"
+ #'cashpw/email-set-to
+ "h T"
+ #'cashpw/email-append-to
+ "h c"
+ #'cashpw/email-set-cc
+ "h C"
+ #'cashpw/email-append-cc
  "@"
  #'gnus-alias-select-identity)
 
@@ -2858,7 +2868,8 @@ The key is in the form: (authors|journal)_title_year."
 (use-package! org-extras
   :after org)
 
-(use-package! org-roam-contacts
+(use-package!
+    org-roam-contacts
   :after org-roam
 
   :config
@@ -2866,9 +2877,45 @@ The key is in the form: (authors|journal)_title_year."
     "Return list of contacts."
     (-map
      #'make-org-roam-contact-from-file
-     (cashpw/notes-files-with-tag org-roam-contacts-tag )))
+     (cashpw/notes-files-with-tag org-roam-contacts-tag)))
 
-  (defun cashpw/email-select-contact ()
+  (defun cashpw/email-set-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (search-backward ":" nil 'noerror)
+      (kill-line)
+      (insert ": " value)))
+
+  (defun cashpw/email-append-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (insert (format " %s" value))))
+
+  (defun cashpw/email-set-to (email)
+    "Set email \"To\" header to EMAIl."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "To" email))
+
+  (defun cashpw/email-append-to (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "To" email))
+
+  (defun cashpw/email-set-cc (email)
+    "Set email \"To\" header to EMAIL."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "CC" email))
+
+  (defun cashpw/email-append-cc (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "CC" email))
+
+  (defun cashpw/email-select-contact-email ()
+    "Return user-selected email from org-roam contact list."
+    (interactive)
     (let ((name-to-email-alist
            (-reduce-from
             (lambda (acc contact)
@@ -2877,13 +2924,18 @@ The key is in the form: (authors|journal)_title_year."
                     (permutations '()))
                 (dotimes (name-index (length names))
                   (dotimes (email-index (length emails))
-                    (push (cons (nth name-index names) (cdr (nth email-index emails))) permutations)))
+                    (let ((name (nth name-index names))
+                          (email (cdr (nth email-index emails)))
+                          (email-name (car (nth email-index emails))))
+                      (push (cons (format "%s (%s) %s" name email-name (cashpw/dim email)) email)
+                            permutations))))
                 (append acc permutations)))
             '()
             (--filter
-             (org-roam-contact-emails it)
-             (org-roam-contacts--get-all)))))
-      (alist-get name-to-email-alist (completing-read "Who?: " name-to-email-alist)))))
+             (org-roam-contact-emails it) (org-roam-contacts--get-all)))))
+      (alist-get
+       (completing-read "Who?: " name-to-email-alist) name-to-email-alist
+       nil nil 'string=))))
 
 (use-package! clocktable-by-category
   :after org)
