@@ -891,8 +891,12 @@ Invokes SUCCESS on success."
    :n "b" #'cashpw/browse-select-url
    (:prefix
     ("n" . "Notes")
-    :desc "Commonplace"
+    :desc "Calendar"
     :n "c"
+    (cmd!
+     (cashpw/open-file
+      cashpw/path--personal-calendar))
+    :n "C"
     (cmd!
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
