@@ -979,6 +979,150 @@ Invokes SUCCESS on success."
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
   "API key for OpenWeatherMap.")
 
+(defun cashpw/openweather-get-forecast (success-fn)
+  "Get weather forecast, then call SUCCESS-FN."
+  (request
+    "https://api.openweathermap.org/data/2.5/forecast"
+    :sync t
+    :parser 'json-read
+    :success success-fn
+    :params
+    `(("appid" . ,cashpw/openweather-api-key)
+      ("units" . "imperial")
+      ;; ("exclude" . "current,minutely,alerts")
+      ("lat" . "37.283") ("lon" . "-121.86"))))
+
+;; (defvar cashpw/openweather-data nil)
+;; (cashpw/openweather-get-forecast
+;;  (cl-function (lambda (&key data &allow-other-keys)
+;;                 ;; (setq cashpw/openweather-data data)
+;;                 (cashpw/openweather-insert-close-window-todo 70 data))))
+
+(defun cashpw/openweather-get-hourly-forecast-temps (data)
+  "Return list of \"(<time> . <temperature>)\" for openweather hourly forecast DATA."
+  (--map
+   (let ((main))
+     (cons
+     (seconds-to-time (alist-get 'dt it))
+     ;; High and low are equal for hourly forecasts
+     (alist-get 'temp_max (alist-get 'main it))))
+   (alist-get 'list data)))
+
+(defun cashpw/openweather--get-points-before-and-after-crossing-threshold (time-temps temp-threshold &optional into-threshold)
+  "Return TIME-TEMPS before and after crossing INTO-THRESHOLD TEMP-THRESHOLD.
+
+TIME-TEMPS is a list of \"(<time> . <temperature>)\"."
+  (let ((i 1)
+        before-crossing-threshold after-crossing-threshold)
+    (when (> (length time-temps) 1)
+      (while (and (< i (length time-temps))
+                  (not before-crossing-threshold)
+                  (not after-crossing-threshold))
+        (let ((previous-time-temp (nth (1- i) time-temps))
+              (time-temp (nth i time-temps)))
+          (when (and (not before-crossing-threshold)
+                     (not after-crossing-threshold)
+                     (if into-threshold
+                         (< (cdr previous-time-temp) temp-threshold)
+                       (> (cdr previous-time-temp) temp-threshold))
+                     (if into-threshold
+                         (> (cdr time-temp) temp-threshold)
+                       (< (cdr time-temp) temp-threshold)))
+            (setq
+             before-crossing-threshold previous-time-temp
+             after-crossing-threshold time-temp)))
+        (cl-incf i)))
+    (cons before-crossing-threshold
+          after-crossing-threshold)))
+
+(defun cashpw/openweather-get-points-before-and-after-crossing-into-threshold (time-temps temp-threshold)
+  (cashpw/openweather-get-points-before-and-after-crossing-threshold time-temps temp-threshold t))
+
+(defun cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold (time-temps temp-threshold)
+  (cashpw/openweather-get-points-before-and-after-crossing-threshold time-temps temp-threshold nil))
+
+(defun cashpw/interpolate-time-for-temperature (time-a temp-a time-b temp-b target-temp)
+  "Calculate the time for a target temperature via linear interpolation.
+
+This function assumes a linear relationship between time and
+temperature. Times are numbers (e.g., hours as 12.0, 15.0) and
+temperatures are numbers.
+
+It returns the calculated time as a number. If the start and end
+temperatures are identical but do not match the target, it
+returns nil."
+  (let ((temp-range (- temp-b temp-a)))
+    (if (zerop temp-range)
+        ;; If temperature does not change, result is valid only if
+        ;; target-temp matches the constant temperature.
+        (when (= target-temp temp-a)
+          time-a)
+      ;; Standard case: perform linear interpolation.
+      (let* ((time-range (time-subtract time-b time-a))
+             (target-offset (- target-temp temp-a))
+             (proportion (/ (float target-offset) temp-range)))
+        (time-add time-a (seconds-to-time (* proportion (time-to-seconds time-range))))))))
+
+(defun cashpw/openweather-get-threshold-cross-into-time (temperature-threshold openweather-data)
+  "Return the approximate time at which outdoor temp crosses into TEMPERATURE-THRESHOLD."
+  (when-let* ((before-after
+               (cashpw/openweather-get-points-before-and-after-crossing-into-threshold
+                (--filter
+                 (cashpw/time-tomorrow-p (car it))
+                 (cashpw/openweather-get-hourly-forecast-temps openweather-data))
+                temperature-threshold))
+              (before (car before-after))
+              (after (cdr before-after)))
+    (cashpw/interpolate-time-for-temperature
+     (car before)
+     (cdr before)
+     (car after)
+     (cdr after)
+     temperature-threshold)))
+
+(defun cashpw/openweather-get-threshold-cross-out-time (temperature-threshold openweather-data)
+  "Return the approximate time at which outdoor temp crosses out of TEMPERATURE-THRESHOLD."
+  (when-let* ((before-after
+               (cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold
+                (--filter
+                 (cashpw/time-tomorrow-p (car it))
+                 (cashpw/openweather-get-hourly-forecast-temps openweather-data))
+                temperature-threshold))
+              (before (car before-after))
+              (after (cdr before-after)))
+    (cashpw/interpolate-time-for-temperature
+     (car before)
+     (cdr before)
+     (car after)
+     (cdr after)
+     temperature-threshold)))
+
+(defun cashpw/openweather-insert-close-windows-todo (temperature-threshold openweather-data)
+  "Insert todo to close the windows."
+  (with-current-buffer (find-file-noselect cashpw/path--personal-todos)
+    (save-excursion
+      (cashpw/org-insert-todo
+       "Close the windows"
+       :point-or-marker (point-max)
+       :priority 1
+       :category "Home"
+       :effort "5m"
+       :start-time (cashpw/openweather-get-threshold-cross-into-time temperature-threshold openweather-data)
+       :include-hh-mm t))))
+
+(defun cashpw/openweather-insert-open-windows-todo (temperature-threshold openweather-data)
+  "Insert todo to open the windows"
+  (with-current-buffer (find-file-noselect cashpw/path--personal-todos)
+    (save-excursion
+      (cashpw/org-insert-todo
+       "Open the windows"
+       :point-or-marker (point-max)
+       :priority 1
+       :category "Home"
+       :effort "5m"
+       :start-time (cashpw/openweather-get-threshold-cross-out-time temperature-threshold openweather-data)
+       :include-hh-mm t))))
+
 (use-package! sunshine
   :custom
   (sunshine-location "95125,USA")
@@ -5990,9 +6134,25 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (propertize line 'face 'shadow))
 
 (defcustom cashpw/org-agenda--dim-headline-regexps
-  '("Stretch" "Slack" "Huel" "Meditate" "Shower" "Shave" "Walk" "Lunch" "Dinner" "Journal.*Journal" "Journal.*Retrospective" "Journal.*Gratitude" "Debrief"
+  '(
+    ;; "Stretch"
+    "Slack"
+    "Huel"
+    "Meditate"
+    ;; "Shower"
+    ;; "Shave"
+    ;; "Walk"
+    "Lunch"
+    "Dinner"
+    "Journal.*Journal"
+    "Journal.*Retrospective"
+    "Journal.*Gratitude"
+    ;; "Debrief"
+    "Tidy: "
+    "Diet: "
+    "forsale mailing lists"
     ;; <= 5 minutes effort
-    " [12345]m "
+    ;; " [12345]m "
     ;; No duration, no effort; brittle
     " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  ")
   "List of headlines to dim in the org agenda view."
@@ -6011,18 +6171,17 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (- end-minutes start-minutes)))
 
 (defconst cashpw/time-re-hh-mm-hh-mm
-  (rx
-   (group num num ":" num num) "-" (group num num ":" num num))
+  (rx (group num num ":" num num) "-" (group num num ":" num num))
   "Matches HH:MM-HH:MM.")
 
-(defun cashpw/org-agenda--dim-headlines (line)
+(defun cashpw/org-agenda--maybe-dim-headline (line)
   "Dim LINE if it's on the list."
-  (if (or (when (string-match cashpw/time-re-hh-mm-hh-mm line)
-            (< (cashpw/time-minutes-between-time-range
-                (match-string 1 line) (match-string 2 line))
-               5))
-          (--any
-           (string-match-p it line) cashpw/org-agenda--dim-headline-regexps))
+  (if (or
+       ;; (when (string-match cashpw/time-re-hh-mm-hh-mm line)
+       ;;   (< (cashpw/time-minutes-between-time-range
+       ;;       (match-string 1 line) (match-string 2 line))
+       ;;      5))
+       (--any (string-match-p it line) cashpw/org-agenda--dim-headline-regexps))
       (cashpw/org-agenda--dim-line line)
     line))
 
@@ -6168,7 +6327,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
           :order 0
           :transformer (--> it
                             (cashpw/org-agenda--simplify-line it)
-                            (cashpw/org-agenda--dim-headlines it)))
+                            (cashpw/org-agenda--maybe-dim-headline it)))
          (:discard
           (:and (:file-path ,(cashpw/path-calendar)
                  :scheduled past)))
@@ -6246,7 +6405,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
           :order 0
           :transformer (--> it
                             (cashpw/org-agenda--simplify-line it)
-                            (cashpw/org-agenda--dim-headlines it)))
+                            (cashpw/org-agenda--maybe-dim-headline it)))
          ;; (:discard
           ;; (:scheduled future))
          (:auto-map cashpw/org-super-agenda--get-priority
