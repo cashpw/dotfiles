@@ -1036,10 +1036,10 @@ TIME-TEMPS is a list of \"(<time> . <temperature>)\"."
           after-crossing-threshold)))
 
 (defun cashpw/openweather-get-points-before-and-after-crossing-into-threshold (time-temps temp-threshold)
-  (cashpw/openweather-get-points-before-and-after-crossing-threshold time-temps temp-threshold t))
+  (cashpw/openweather--get-points-before-and-after-crossing-threshold time-temps temp-threshold t))
 
 (defun cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold (time-temps temp-threshold)
-  (cashpw/openweather-get-points-before-and-after-crossing-threshold time-temps temp-threshold nil))
+  (cashpw/openweather--get-points-before-and-after-crossing-threshold time-temps temp-threshold nil))
 
 (defun cashpw/interpolate-time-for-temperature (time-a temp-a time-b temp-b target-temp)
   "Calculate the time for a target temperature via linear interpolation.
@@ -4014,6 +4014,7 @@ Return nil if no attendee exists with that EMAIL."
    '("^Nap$"
      "^Sleeping$"
      "^Slack$"
+     "^Flashcards$"
      "^Drive "
      "^Shower, etc$"
      "^Chores$"
