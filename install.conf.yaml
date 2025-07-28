@@ -38,10 +38,6 @@
 - shell:
   - [git submodule update --init --recursive, Installing submodules.]
   -
-    command: bash fonts/download_and_install_firacode.sh
-    description: Downloading and installing Fira Code.
-    stdout: true
-  -
     command: bash install_zotra.sh
     description: Installing zotra
     stdout: true
