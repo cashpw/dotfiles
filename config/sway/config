@@ -1,0 +1,412 @@
+# Default config for sway
+#
+# Copy this to ~/.config/sway/config and edit it to your liking.
+#
+# Read `man 5 sway` for a complete reference.
+
+### Variables
+#
+# Logo key. Use Mod1 for Alt.
+set $mod Mod4
+# Home row direction keys, like vim
+set $left h
+set $down j
+set $up k
+set $right l
+# Your preferred terminal emulator
+# Recommends: foot
+set $term foot
+# Your preferred application launcher
+# Note: pass the final command to swaymsg so that the resulting window can be opened
+# on the original workspace that the command was run on.
+# Recommends: rofi-wayland
+set $rofi_cmd rofi \
+        XDG_DATA_DIRS=$HOME/.local/share/flatpak/exports/share/applications:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share \
+        -terminal '$term' \
+        -font 'Fira Code 10' \
+        -show-icons \
+        -show drun
+        # -modi drun#window#ssh \
+        # -modes combi
+bindsym $mod+d exec $rofi_cmd
+
+
+
+# Example configuration:
+#
+#   output HDMI-A-1 resolution 1920x1080 position 1920,0
+#
+# You can get the names of your outputs by running: swaymsg -t get_outputs
+
+### Idle configuration
+#
+# Example configuration:
+#
+# exec swayidle -w \
+#          timeout 300 'swaylock -f -c 000000' \
+#          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+#          before-sleep 'swaylock -f -c 000000'
+#
+# This will lock your screen after 300 seconds of inactivity, then turn off
+# your displays after another 300 seconds, and turn your screens back on when
+# resumed. It will also lock your screen before your computer goes to sleep.
+
+### Input configuration
+#
+# Example configuration:
+#
+#   input "2:14:SynPS/2_Synaptics_TouchPad" {
+#       dwt enabled
+#       tap enabled
+#       natural_scroll enabled
+#       middle_emulation enabled
+#   }
+#
+# You can get the names of your inputs by running: swaymsg -t get_inputs
+# Read `man 5 sway-input` for more information about this section.
+
+### Key bindings
+#
+# Basics:
+#
+    # Kill focused window
+    bindsym $mod+Shift+q kill
+
+
+    # Drag floating windows by holding down $mod and left mouse button.
+    # Resize them with right mouse button + $mod.
+    # Despite the name, also works for non-floating windows.
+    # Change normal to inverse to use left mouse button for resizing and right
+    # mouse button for dragging.
+    floating_modifier $mod normal
+
+    # Reload the configuration file
+    bindsym $mod+Shift+c reload
+
+    # Exit sway (logs you out of your Wayland session)
+    #bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+#
+# Layout stuff:
+#
+    # Make the current focus fullscreen
+    bindsym $mod+f fullscreen
+
+    # Toggle the current focus between tiling and floating mode
+    bindsym $mod+Shift+space floating toggle
+
+    # Swap focus between the tiling area and the floating area
+    bindsym $mod+space focus mode_toggle
+
+    # Move focus to the parent container
+    bindsym $mod+a focus parent
+#
+# Scratchpad:
+#
+    # Sway has a "scratchpad", which is a bag of holding for windows.
+    # You can send windows there and get them back later.
+
+    # Move the currently focused window to the scratchpad
+    bindsym $mod+Shift+minus move scratchpad
+
+    # Show the next scratchpad window or hide the focused scratchpad window.
+    # If there are multiple scratchpad windows, this command cycles through them.
+    bindsym $mod+minus scratchpad show
+
+# Include configs from 3 locations:
+#  - /usr/share/sway/config.d
+#  - /etc/sway/config.d
+#  - $XDG_CONFIG_HOME/sway/config.d ($HOME/.config/sway/config.d)
+#
+# If multiple directories contain the files with the same name, the later
+# directory takes precedence; `$XDG_CONFIG_HOME/sway/config.d/20-swayidle.conf`
+# will always be loaded instead of `/usr/share/sway/config.d/20-swayidle.conf`
+# or `/etc/sway/config.d/20-swayidle.conf`
+#
+# This mechanism permits overriding our default configuration per-system
+# (/etc) or per-user ($XDG_CONFIG_HOME) basis. Just create the file you
+# want to modify/override in the higher-level directory.
+#
+# For example, to disable the default bar from Fedora configs, you'll need to
+#     $ echo -n > "$HOME/.config/sway/config.d/90-bar.conf"
+#
+# Note the quoting, the $() and the arguments quoting. All the parts are equally
+# important to make the magic work. And if you want to learn the secret behind
+# the trick, it's all in the `wordexp(3)`.
+#
+#include '$(/usr/libexec/sway/layered-include "/usr/share/sway/config.d/*.conf" "/etc/sway/config.d/*.conf" "${XDG_CONFIG_HOME:-$HOME/.config}/sway/config.d/*.conf")'
+
+################################################################################
+# Bar
+################################################################################
+
+bar {
+  colors {
+    # Theme: Tomorrow Night
+    background #1d1f21
+  }
+
+  position bottom
+  font pango:"Fira Code" 10, "FiraCode Nerd Font" 10
+  #font pango:Source Code Pro 8
+
+  status_command i3status-rs ~/.config/i3status-rs/config.toml
+  #status_command ~/.config/polybar/launch.sh
+}
+
+################################################################################
+# Workspace Management                                               
+################################################################################
+
+# switch to workspace
+bindsym $mod+1 workspace 1
+bindsym $mod+2 workspace 2
+bindsym $mod+3 workspace 3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+6 workspace 6
+bindsym $mod+7 workspace 7
+bindsym $mod+8 workspace 8
+bindsym $mod+9 workspace 9
+bindsym $mod+0 workspace 10
+
+# move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+0 move container to workspace 10
+
+# Move your focus around
+bindsym $mod+$left focus left
+bindsym $mod+$down focus down
+bindsym $mod+$up focus up
+bindsym $mod+$right focus right
+# Or use $mod+[up|down|left|right]
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# Move the focused window with the same, but add Shift
+bindsym $mod+Shift+$left move left
+bindsym $mod+Shift+$down move down
+bindsym $mod+Shift+$up move up
+bindsym $mod+Shift+$right move right
+# Ditto, with arrow keys
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# ================================================
+# Modes
+# ================================================
+
+set $mode_layout Layout: (h/v) Split horiz/vert
+mode "$mode_layout" {
+    bindsym h splith
+    bindsym $mod+v splitv
+
+    # Switch the current container between different layout styles
+    #bindsym $mod+s layout stacking
+    #bindsym $mod+w layout tabbed
+    #bindsym $mod+e layout toggle split
+
+    # back to normal: Enter or Escape
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+y mode "$mode_layout"
+
+set $interval 10
+# Resize windows
+mode "resize" {
+  bindsym $left resize shrink width $interval px  or $interval ppt
+  bindsym $down resize grow height $interval px  or $interval ppt
+  bindsym $up resize shrink height $interval px or $interval ppt
+  bindsym $right resize grow width $interval px or $interval ppt
+
+  bindsym Left resize shrink width $interval px or $interval ppt
+  bindsym Down resize grow height $interval px or $interval ppt
+  bindsym Up resize shrink height $interval px or $interval ppt
+  bindsym Right resize grow width $interval px or $interval ppt
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# i3lock; logout, shutdown, etc
+set $mode_system System: (l) lock, (e) logout, (s) suspend, (r) reboot, (Shift+s) shutdown
+mode "$mode_system" {
+  bindsym l exec --no-startup-id "bash ~/.scripts/utility/lock.sh", mode "default"
+  bindsym e exec --no-startup-id swaymsg exit, mode "default"
+  bindsym s exec --no-startup-id "bash ~/.scripts/utility/suspend.sh", mode "default"
+  bindsym r exec --no-startup-id systemctl reboot, mode "default"
+  bindsym Shift+s exec --no-startup-id  systemctl poweroff -i, mode "default"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+Delete mode "$mode_system"
+
+set $mode_brightness Brightness: (↑/↓) ±5%, [1-0] set to X%
+mode "$mode_brightness" {
+  bindsym Down exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 5%-"
+  bindsym Up exec --no-startup-id "brightnessctl -d amdgpu_bl1 set +5%"
+  bindsym 1 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 10%"
+  bindsym 2 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 20%"
+  bindsym 3 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 30%"
+  bindsym 4 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 40%"
+  bindsym 5 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 50%"
+  bindsym 6 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 60%"
+  bindsym 7 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 70%"
+  bindsym 8 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 80%"
+  bindsym 9 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 90%"
+  bindsym 0 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 100%"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+b mode "$mode_brightness"
+
+# set $mode_brightness Brightness: (l/L) Left ↑/↓, (c/C) Center ↑/↓, (r/R) Right ↑/↓, (↑/↓) All ↑/↓
+# mode "$mode_brightness" {
+#   set $change_brightness "~/.scripts/brightness/change_brightness.sh"
+
+#   # all monitors
+#   bindsym Down exec --no-startup-id bash $change_brightness "down"
+#   bindsym Up exec --no-startup-id bash $change_brightness "up"
+
+#   # north monitor
+#   bindsym l exec --no-startup-id bash $change_brightness "down" "left"
+#   bindsym Shift+l exec --no-startup-id bash $change_brightness "up" "left"
+
+#   # south monitor
+#   bindsym c exec --no-startup-id bash $change_brightness "down" "center"
+#   bindsym Shift+c exec --no-startup-id bash $change_brightness "up" "center"
+
+#   # east monitor
+#   bindsym e exec --no-startup-id bash $change_brightness "down" "east"
+#   bindsym Shift+e exec --no-startup-id bash $change_brightness "up" "east"
+
+#   # west monitor
+#   bindsym r exec --no-startup-id bash $change_brightness "down" "right"
+#   bindsym Shift+r exec --no-startup-id bash $change_brightness "up" "right"
+
+#   # back to normal: Enter or Escape
+#   bindsym Return mode "default"
+#   bindsym Escape mode "default"
+# }
+# bindsym $mod+b mode "$mode_brightness"
+
+# Screenshots
+set $mode_screenshot Screenshot: (s) save, (c) clipboard, (o) OCR
+mode "$mode_screenshot" {
+  bindsym s exec --no-startup-id bash /home/cashpw/.scripts/screenshot/save.sh, mode "default"
+  bindsym o exec --no-startup-id bash /home/cashpw/.scripts/ocr/copy.sh, mode "default"
+  bindsym c exec --no-startup-id bash /home/cashpw/.scripts/screenshot/clipboard.sh, mode "default"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+Shift+s mode "$mode_screenshot"
+
+# Sound
+set $mode_sound Sound: (j) Prev, (k) Play/Pause, (l) Next, (s) Stop, (↑↓) ±2%, (0-9) Volume, (M)m (un)mute, (S) Shuffle
+mode "$mode_sound" {
+  bindsym h exec "playerctl --all-players position 15-"
+  bindsym j exec "playerctl --all-players previous"
+  bindsym l exec "playerctl --all-players next"
+  bindsym semicolon exec "playerctl --all-players position 15+"
+
+  bindsym s exec "playerctl --all-players stop"
+  bindsym Shift+s exec "playerctl --all-players shuffle Toggle"
+  bindsym k exec "playerctl --all-players play-pause"
+
+  bindsym Down exec "bash ~/.scripts/sound/set_volume.sh 2%-"
+  bindsym Up exec "bash ~/.scripts/sound/set_volume.sh 2%+"
+  bindsym 1 exec "bash ~/.scripts/sound/set_volume.sh 10%"
+  bindsym 2 exec "bash ~/.scripts/sound/set_volume.sh 20%"
+  bindsym 3 exec "bash ~/.scripts/sound/set_volume.sh 30%"
+  bindsym 4 exec "bash ~/.scripts/sound/set_volume.sh 40%"
+  bindsym 5 exec "bash ~/.scripts/sound/set_volume.sh 50%"
+  bindsym 6 exec "bash ~/.scripts/sound/set_volume.sh 60%"
+  bindsym 7 exec "bash ~/.scripts/sound/set_volume.sh 70%"
+  bindsym 8 exec "bash ~/.scripts/sound/set_volume.sh 80%"
+  bindsym 9 exec "bash ~/.scripts/sound/set_volume.sh 90%"
+  bindsym 0 exec "bash ~/.scripts/sound/set_volume.sh 100%"
+  bindsym m exec "bash ~/.scripts/sound/set_volume.sh mute"
+  bindsym Shift+m exec "bash ~/.scripts/sound/set_volume.sh unmute"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+s mode "$mode_sound"
+
+# ================================================
+# Output
+# ================================================
+
+output * bg #1d1f21 solid_color
+
+output eDP-1 {
+  resolution 2880x1920@60Hz
+  scale 1.6
+}
+
+# ================================================
+# Appearance
+# ================================================
+
+for_window [class=".*"] border none
+
+# ================================================
+# Applications
+# ================================================
+
+# Firefox
+for_window [app_id="firefox" title="Firefox — Sharing Indicator"] {
+    floating enable
+}
+
+# Sway Notification Center
+bindsym $mod+Shift+n exec swaync-client -t -sw
+
+# apply mark for Xwayland and wayland native browser windows
+for_window [class="Chromium-browser"] mark Browser
+for_window [class="Brave-browser"] mark Browser
+for_window [class="firefox"]  mark Browser
+for_window [app_id="Chromium-browser"] mark Browser
+for_window [app_id="brave-browser"] mark Browser
+for_window [app_id="firefox"] mark Browser
+
+# inhibit scrensaver for fullscreen browser windows
+for_window [con_mark="Browser"] {
+    inhibit_idle fullscreen
+}
+assign [app_id="firefox"]: workspace number 10
+
+bindsym $mod+Return exec $term
+bindsym $mod+e exec emacs
+
+# ================================================
+# Startup
+# ================================================
+
+exec input-remapper-control --command autoload
+
+exec emacs
+exec firefox
+exec swaync
+exec autotiling-rs
