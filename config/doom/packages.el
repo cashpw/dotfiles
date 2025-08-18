@@ -2,14 +2,17 @@
   nil
   "Group for my customizations and configurations.")
 
-(defun cashpw/message (format-string &rest args)
-  "`message' with an identifier."
-  (apply
-   #'message
-   (concat
-    "[cashpw] "
-    format-string)
-   args))
+(defcustom cashpw/debug nil
+  "Non-nil if my personal debug mode is active.")
+
+(cl-defun cashpw/message-debug (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
+  (when cashpw/debug
+    (apply #'message (concat "[cashpw:DEBUG] " format-string) args)))
+
+(cl-defun cashpw/message (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
+  (apply #'message (concat "[cashpw] " format-string) args))
 (defun cashpw/error (error-message &rest args)
   (error
    "[cashpw] %s"
@@ -49,13 +52,13 @@ https://akrl.sdf.org/#orgc15a10d"
      (file-exists-p cashpw/path--work-cloudtop-id-file))
     ('work-laptop
      (file-exists-p cashpw/path--work-laptop-id-file))
-    (t
+    (_
      (cashpw/error
       "Unknown machine: %s"
       machine))))
 
 (defvar cashpw/path--personal-home-dir
-  "/home/cashweaver"
+  "/home/cashpw"
   "Path to home directory on my personal machine.")
 
 (defvar cashpw/path--work-home-dir

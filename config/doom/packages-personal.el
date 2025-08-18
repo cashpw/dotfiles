@@ -12,9 +12,13 @@
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (package! centered-cursor-mode))
 
+(package! openwith)
+
 ;; (package! electric-case
 ;;   :recipe (:host github
 ;;            :repo "zk-phi/electric-case"))
+
+(package! elmacro)
 
 (package! command-log-mode)
 
@@ -129,6 +133,8 @@
 ;; (package! w3m)
 
 (package! nov)
+
+;; (package! org-remark)
 
 (package! casual)
 

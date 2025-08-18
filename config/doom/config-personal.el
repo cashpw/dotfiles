@@ -338,7 +338,7 @@ The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next 
   (split-string
    (shell-command-to-string
     (format
-     "rgrep %s"
+     "rg %s"
      command-string))
    "\n"
    t))
@@ -494,6 +494,11 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 
+(after! helm
+  (setq helm-posframe-min-width 100))
+
+(use-package! openwith)
+
 ;; (use-package! electric-case
 ;;   :config
 ;;   (add-hook!
@@ -505,6 +510,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 ;;   (add-hook!
 ;;    'java-mode-hook
 ;;    'electric-case-java-init))
+
+(use-package! elmacro)
 
 (use-package! command-log-mode
   :config
@@ -595,7 +602,7 @@ Invokes SUCCESS on success."
                                   'industryIdentifiers volume-info)
                                  0))))))
                           (alist-get 'items data))))
-                    (let ((vertico-sort-function #'identity)
+                    (let ((corfu-sort-function #'identity)
                           (isbn
                            (alist-get (completing-read
                                        "Volume: "
@@ -610,13 +617,15 @@ Invokes SUCCESS on success."
 (use-package! whisper
   :config
   (setq whisper-install-directory "~/.config/emacs/.local/cache/"
-        ;; whisper-model "large-v3"
+        ;; whisper-model "large-v3-turbo"
         ;; whisper-model "medium"
         ;; whisper-model "small"
         whisper-model "base"
         whisper-language "en"
         whisper-translate nil
-        whisper--ffmpeg-input-device "hw:0"
+        whisper-use-threads (/ (num-processors) 2)
+        ;; whisper--ffmpeg-input-device "hw:0"
+        whisper--ffmpeg-input-device "default"
         whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
@@ -979,6 +988,22 @@ Invokes SUCCESS on success."
 (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
   "API key for OpenWeatherMap.")
 
+(defconst cashpw/google-weather-api-key (secret-get "google-weather")
+  "API key for Google Weather.")
+
+(defun cashpw/google-weather-get-hourly-forecast (success-fn)
+  "Get weather forecast, then call SUCCESS-FN."
+  (request
+    "https://weather.googleapis.com/v1/forecast/hours:lookup"
+    :sync t
+    :parser 'json-read
+    :success success-fn
+    :params
+    `(("key" . ,cashpw/google-weather-api-key)
+      ("hours" . "48")
+      ("unitsSystem" . "IMPERIAL")
+      ("location.latitude" . "37.283") ("location.longitude" . "-121.86"))))
+
 (defun cashpw/openweather-get-forecast (success-fn)
   "Get weather forecast, then call SUCCESS-FN."
   (request
@@ -998,22 +1023,32 @@ Invokes SUCCESS on success."
 ;;                 ;; (setq cashpw/openweather-data data)
 ;;                 (cashpw/openweather-insert-close-window-todo 70 data))))
 
+(defun cashpw/google-weather-get-hourly-forecast-temps (data)
+  "Return list of \"(<time> . <temperature>)\" for hourly forecast DATA."
+  (--map
+   (let ((start-time (encode-time
+                      (parse-time-string (alist-get 'startTime (alist-get 'interval it)))))
+         (temperature (alist-get 'degrees (alist-get 'temperature it))))
+     (cons start-time temperature))
+   (alist-get 'forecastHours data)))
+
 (defun cashpw/openweather-get-hourly-forecast-temps (data)
   "Return list of \"(<time> . <temperature>)\" for openweather hourly forecast DATA."
   (--map
-   (let ((main))
-     (cons
-     (seconds-to-time (alist-get 'dt it))
-     ;; High and low are equal for hourly forecasts
-     (alist-get 'temp_max (alist-get 'main it))))
+   (cons
+    (seconds-to-time (alist-get 'dt it))
+    ;; High and low are equal for hourly forecasts
+    (alist-get 'temp_max (alist-get 'main it)))
    (alist-get 'list data)))
 
-(defun cashpw/openweather--get-points-before-and-after-crossing-threshold (time-temps temp-threshold &optional into-threshold)
+(defun cashpw/weather--get-points-before-and-after-crossing-threshold
+    (time-temps temp-threshold &optional into-threshold)
   "Return TIME-TEMPS before and after crossing INTO-THRESHOLD TEMP-THRESHOLD.
 
 TIME-TEMPS is a list of \"(<time> . <temperature>)\"."
   (let ((i 1)
-        before-crossing-threshold after-crossing-threshold)
+        before-crossing-threshold
+        after-crossing-threshold)
     (when (> (length time-temps) 1)
       (while (and (< i (length time-temps))
                   (not before-crossing-threshold)
@@ -1023,25 +1058,31 @@ TIME-TEMPS is a list of \"(<time> . <temperature>)\"."
           (when (and (not before-crossing-threshold)
                      (not after-crossing-threshold)
                      (if into-threshold
-                         (< (cdr previous-time-temp) temp-threshold)
-                       (> (cdr previous-time-temp) temp-threshold))
+                         (<= (cdr previous-time-temp) temp-threshold)
+                       (>= (cdr previous-time-temp) temp-threshold))
                      (if into-threshold
-                         (> (cdr time-temp) temp-threshold)
-                       (< (cdr time-temp) temp-threshold)))
+                         (>= (cdr time-temp) temp-threshold)
+                       (<= (cdr time-temp) temp-threshold)))
             (setq
              before-crossing-threshold previous-time-temp
              after-crossing-threshold time-temp)))
         (cl-incf i)))
-    (cons before-crossing-threshold
-          after-crossing-threshold)))
+    (cons before-crossing-threshold after-crossing-threshold)))
 
-(defun cashpw/openweather-get-points-before-and-after-crossing-into-threshold (time-temps temp-threshold)
-  (cashpw/openweather--get-points-before-and-after-crossing-threshold time-temps temp-threshold t))
+(defun cashpw/weather-get-points-before-and-after-crossing-into-threshold
+    (time-temps temp-threshold)
+  (cashpw/weather--get-points-before-and-after-crossing-threshold
+   time-temps temp-threshold
+   t))
 
-(defun cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold (time-temps temp-threshold)
-  (cashpw/openweather--get-points-before-and-after-crossing-threshold time-temps temp-threshold nil))
+(defun cashpw/weather-get-points-before-and-after-crossing-out-of-threshold
+    (time-temps temp-threshold)
+  (cashpw/weather--get-points-before-and-after-crossing-threshold
+   time-temps temp-threshold
+   nil))
 
-(defun cashpw/interpolate-time-for-temperature (time-a temp-a time-b temp-b target-temp)
+(defun cashpw/interpolate-time-for-temperature
+    (time-a temp-a time-b temp-b target-temp)
   "Calculate the time for a target temperature via linear interpolation.
 
 This function assumes a linear relationship between time and
@@ -1051,54 +1092,114 @@ temperatures are numbers.
 It returns the calculated time as a number. If the start and end
 temperatures are identical but do not match the target, it
 returns nil."
-  (let ((temp-range (- temp-b temp-a)))
-    (if (zerop temp-range)
-        ;; If temperature does not change, result is valid only if
-        ;; target-temp matches the constant temperature.
-        (when (= target-temp temp-a)
-          time-a)
-      ;; Standard case: perform linear interpolation.
-      (let* ((time-range (time-subtract time-b time-a))
-             (target-offset (- target-temp temp-a))
-             (proportion (/ (float target-offset) temp-range)))
-        (time-add time-a (seconds-to-time (* proportion (time-to-seconds time-range))))))))
+  (cashpw/message-debug "interpolate: %s, %s; %s, %s; %s"
+              (format-time-string "%F %T%Z" time-a)
+              temp-a
+              (format-time-string "%F %T%Z" time-b)
+              temp-b
+              target-temp)
+  (cond
+   ((= temp-a target-temp)
+    time-a)
+   ((= temp-b target-temp)
+    time-b)
+   (t
+    (let ((temp-range (- temp-b temp-a)))
+      (if (zerop temp-range)
+          ;; If temperature does not change, result is valid only if
+          ;; target-temp matches the constant temperature.
+          (when (= target-temp temp-a)
+            time-a)
+        ;; Standard case: perform linear interpolation.
+        (let* ((time-range (time-subtract time-b time-a))
+               (target-offset (- target-temp temp-a))
+               (proportion (/ (float target-offset) temp-range)))
+          (time-add
+           time-a
+           (seconds-to-time (* proportion (time-to-seconds time-range))))))))))
 
-(defun cashpw/openweather-get-threshold-cross-into-time (temperature-threshold openweather-data)
-  "Return the approximate time at which outdoor temp crosses into TEMPERATURE-THRESHOLD."
-  (when-let* ((before-after
-               (cashpw/openweather-get-points-before-and-after-crossing-into-threshold
-                (--filter
-                 (cashpw/time-tomorrow-p (car it))
-                 (cashpw/openweather-get-hourly-forecast-temps openweather-data))
-                temperature-threshold))
-              (before (car before-after))
-              (after (cdr before-after)))
+(defun cashpw/weather-cross-into-threshold-time
+    (temperature-threshold time-temps)
+  "Return the approximate time at which TIME-TEMP crosses into TEMPERATURE-THRESHOLD."
+  (when-let*
+      ((before-after
+        (cashpw/weather-get-points-before-and-after-crossing-into-threshold
+         time-temps
+         temperature-threshold))
+       (before (car before-after))
+       (after (cdr before-after)))
+    (cashpw/message-debug
+     "(cross into) Tomorrow hourly forecast temperatures: %s"
+     (--map
+      (format "\n%s: %s"
+              (format-time-string "%F %T%Z" (car it))
+              (cdr it))
+      time-temps))
+    (cashpw/message-debug
+     "(cross into) before: %s, %s"
+     (format-time-string "%F %T%Z" (car before))
+     (cdr before))
+    (cashpw/message-debug
+     "(cross into) after: %s, %s"
+     (format-time-string "%F %T%Z" (car after))
+     (cdr after))
     (cashpw/interpolate-time-for-temperature
-     (car before)
-     (cdr before)
-     (car after)
-     (cdr after)
-     temperature-threshold)))
+     (car before) (cdr before) (car after) (cdr after) temperature-threshold)))
 
-(defun cashpw/openweather-get-threshold-cross-out-time (temperature-threshold openweather-data)
+(defun cashpw/weather-cross-out-of-threshold-time
+    (temperature-threshold time-temps)
+  "Return the approximate time at which TIME-TEMP crosses out of TEMPERATURE-THRESHOLD."
+  (when-let*
+      ((before-after
+        (cashpw/weather-get-points-before-and-after-crossing-out-of-threshold
+         time-temps
+         temperature-threshold))
+       (before (car before-after))
+       (after (cdr before-after)))
+    (cashpw/message-debug
+     "(cross into) Tomorrow hourly forecast temperatures: %s"
+     (--map
+      (format "\n%s: %s"
+              (format-time-string "%F %T%Z" (car it))
+              (cdr it))
+      time-temps))
+    (cashpw/message-debug
+     "(cross into) before: %s, %s"
+              (format-time-string "%F %T%Z" (car before))
+     (cdr before))
+    (cashpw/message-debug
+     "(cross into) after: %s, %s"
+              (format-time-string "%F %T%Z" (car after))
+     (cdr after))
+    (cashpw/interpolate-time-for-temperature
+     (car before) (cdr before) (car after) (cdr after) temperature-threshold)))
+
+(defun cashpw/weather-cross-out-of-fthreshold-time
+    (temperature-threshold openweather-data)
   "Return the approximate time at which outdoor temp crosses out of TEMPERATURE-THRESHOLD."
-  (when-let* ((before-after
-               (cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold
-                (--filter
-                 (cashpw/time-tomorrow-p (car it))
-                 (cashpw/openweather-get-hourly-forecast-temps openweather-data))
-                temperature-threshold))
-              (before (car before-after))
-              (after (cdr before-after)))
+  (when-let*
+      ((tomorrow-hourly-forecast-temps
+        (--filter
+         (cashpw/time-tomorrow-p (car it))
+         (cashpw/openweather-get-hourly-forecast-temps openweather-data)))
+       (before-after
+        (cashpw/openweather-get-points-before-and-after-crossing-out-of-threshold
+         tomorrow-hourly-forecast-temps temperature-threshold))
+       (before (car before-after))
+       (after (cdr before-after)))
+    (cashpw/message-debug
+     "(cross out) Tomorrow hourly forecast temperatures: %s"
+     (string-join
+      (--map
+       (format "\n%s: %s"
+               (format-time-string "%F %T%Z" (car it))
+               (cdr it))
+       tomorrow-hourly-forecast-temps)))
     (cashpw/interpolate-time-for-temperature
-     (car before)
-     (cdr before)
-     (car after)
-     (cdr after)
-     temperature-threshold)))
+     (car before) (cdr before) (car after) (cdr after) temperature-threshold)))
 
-(defun cashpw/openweather-insert-close-windows-todo (temperature-threshold openweather-data)
-  "Insert todo to close the windows."
+(defun cashpw/weather-insert-close-windows-todo (time)
+  "Insert todo to close the windows at TIME."
   (with-current-buffer (find-file-noselect cashpw/path--personal-todos)
     (save-excursion
       (cashpw/org-insert-todo
@@ -1107,11 +1208,11 @@ returns nil."
        :priority 1
        :category "Home"
        :effort "5m"
-       :start-time (cashpw/openweather-get-threshold-cross-into-time temperature-threshold openweather-data)
+       :start-time time
        :include-hh-mm t))))
 
-(defun cashpw/openweather-insert-open-windows-todo (temperature-threshold openweather-data)
-  "Insert todo to open the windows"
+(defun cashpw/weather-insert-open-windows-todo (time)
+  "Insert todo to open the windows at TIME."
   (with-current-buffer (find-file-noselect cashpw/path--personal-todos)
     (save-excursion
       (cashpw/org-insert-todo
@@ -1120,7 +1221,7 @@ returns nil."
        :priority 1
        :category "Home"
        :effort "5m"
-       :start-time (cashpw/openweather-get-threshold-cross-out-time temperature-threshold openweather-data)
+       :start-time time
        :include-hh-mm t))))
 
 (use-package! sunshine
@@ -1283,7 +1384,7 @@ This be hooked to `projectile-after-switch-project-hook'."
             :size (if (cashpw/machine-p 'work-laptop)
                       ;; Laptop has a different DPI
                       28
-                    16)))
+                    14)))
 
 (setq
  +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
@@ -1386,11 +1487,35 @@ This be hooked to `projectile-after-switch-project-hook'."
 
 ;; (use-package! helm)
 ;; (use-package! exec-path-from-shell)
-(use-package! asana
+(use-package!
+    asana
   :config
   (setq
    asana-tasks-org-file cashpw/path--personal-asana
-   asana-token (secret-get "asana")))
+   asana-token (secret-get "asana"))
+
+  (defun cashpw/asana-task-complete (task-gid)
+    "Complete an Asana task by TASK-GID."
+    (request
+      (format "https://app.asana.com/api/1.0/tasks/%s" task-gid)
+      ;; :sync t
+      :type "PUT"
+      :data (json-encode `((data (completed . t))))
+      :headers
+      `(("Content-Type" . "application/json")
+        ("Authorization" . ,(concat "Bearer " (asana-get-token))))
+      :parser 'json-read
+      :success
+      (cl-function
+       (lambda (&key data &allow-other-keys)
+         (lambda (data)
+           (let ((task-name (map-elt data 'name)))
+             (if (equal t (assoc 'completed data))
+                 (message "`%s' completed." task-name)
+               (message "Unknown error: couldn't complete `%s': %s"
+                        task-name
+                        data))))))))
+  (advice-add 'asana-task-complete :override 'cashpw/asana-task-complete))
 
 (defun hash-table-contains-p (key table)
   "Return non-nil if TABLE contains KEY.
@@ -1589,6 +1714,20 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (use-package! nov
   :config
   (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode)))
+
+;; (use-package! org-remark-global-tracking
+;;   ;; It is recommended that `org-remark-global-tracking-mode' be
+;;   ;; enabled when Emacs initializes. You can set it in
+;;   ;; `after-init-hook'.
+;;   :hook after-init
+;;   :config
+;;   ;; Selectively keep or comment out the following if you want to use
+;;   ;; extensions for Info-mode, EWW, and NOV.el (EPUB) respectively.
+;;   ;(use-package! org-remark-info :after info :config (org-remark-info-mode +1))
+;;   ;(use-package! org-remark-eww  :after eww  :config (org-remark-eww-mode +1))
+;;   (use-package! org-remark-nov  :after nov  :config (org-remark-nov-mode +1))
+;;   )
+;; (use-package! org-remark)
 
 (setq
  calendar-latitude 37.2
@@ -2326,7 +2465,7 @@ TAGS which start with \"-\" are excluded."
  (string-split
   (shell-command-to-string
    (format
-    "rgrep \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'"
+    "rg \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'"
     cashpw/path--reading-list))
   ":" 'omit-nulls))
 
@@ -2491,12 +2630,14 @@ Example: https://www.youtube.com/watch?v=xzseFskewlE"
 
 (defun cashpw/ytt-api-transcript (youtube-video-id)
   "Return transcript of YOUTUBE-VIDEO-ID."
-   (shell-command-to-string
-    (concat
-    "source ~/third_party/yt-transcripts/bin/activate;"
-    (format
-    "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; print(reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), ''))\""
-    youtube-video-id))))
+  (shell-command-to-string
+   (format "youtube_transcript_api --format text %s" youtube-video-id)
+   ;; (concat
+   ;; "source ~/third_party/yt-transcripts/bin/activate;"
+   ;; (format
+   ;; "python -c \"from youtube_transcript_api import YouTubeTranscriptApi; from functools import reduce; print(reduce(lambda acc, snippet: acc + ' ' + snippet, map(lambda snippet: snippet.text, YouTubeTranscriptApi().fetch('%s').snippets), ''))\""
+   ;; youtube-video-id))
+   ))
 
 (defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
   "Return prompt."
@@ -2526,7 +2667,7 @@ Example: https://www.youtube.com/watch?v=xzseFskewlE"
           "corporate-gemini"
         "personal-gemini"))
      :stream t)
-   gptel-model 'gemini-2.5-pro-preview-05-06
+   gptel-model 'gemini-2.5-pro-preview-06-05
    gptel-quick-backend gptel-backend
    gptel-quick-model 'gemini-2.5-flash-preview-05-20)
 
@@ -2535,7 +2676,7 @@ Example: https://www.youtube.com/watch?v=xzseFskewlE"
     (pcase mode
       ('querying gptel-mode-line--indicator-querying)
       ('responding gptel-mode-line--indicator-responding)
-      (t "")))
+      (_ "")))
   (defun gptel-mode-line (command mode)
     "Update mode line to COMMAND (show|hide) indicator for MODE."
     (when gptel-show-progress-in-mode-line
@@ -2666,7 +2807,7 @@ TODO")))))
      (evil-insert-state))))
 
 (setq
- company-idle-delay 1
+ corfu-auto-delay 1
  +vertico-company-completion-styles '(orderless)
  ;; completion-styles '(orderless)
  ;; orderless-matching-styles '(orderless-literal
@@ -2876,23 +3017,19 @@ TODO")))))
 (defun cashpw/bibtex-clean-entry-override-key ()
   "Invoke `bibtex-clean-entry' with key override."
   (interactive)
-  (message "cashpw/bibtex-clean-entry-override-key")
   (bibtex-clean-entry (bibtex-generate-autokey))
   (cashpw/replace-tabs-with-two-spaces))
 
 (defun cashpw/bibtex--read-and-set-required-fields (buffer point-or-marker)
   "Prompt user to set missing required fields in BUFFER at POINT-OR-MARKER."
-  (message "cashpw/bibtex--read-and-set-required-fields")
   (save-excursion
     (let ((window
            (select-window
-            (display-buffer-in-side-window
-             buffer '((side . bottom))))))
+            (display-buffer-in-side-window buffer '((side . bottom))))))
       (with-current-buffer (window-buffer window)
         (goto-char point-or-marker)
         (when (looking-at bibtex-entry-maybe-empty-head)
-          (with-restriction
-              (point)
+          (with-restriction (point)
               (save-excursion
                 (evil-jump-item)
                 (1+ (point)))
@@ -2907,7 +3044,9 @@ TODO")))))
                      (new-line
                       (when new-value
                         (replace-regexp-in-string
-                         "{}" (format "{%s}" new-value) (org-current-line-string)))))
+                         "{}"
+                         (format "{%s}" new-value)
+                         (org-current-line-string)))))
                 (when new-line
                   (delete-line)
                   (insert new-line)
@@ -2915,21 +3054,32 @@ TODO")))))
             (bibtex-format-entry))))
       (+workspace/close-window-or-workspace))))
 
+;; Add 'urldate'
+(defun cashpw/bibtex-autokey-get-year ()
+  "Return year field contents as a string obeying `bibtex-autokey-year-length'."
+  (let* ((str (bibtex-autokey-get-field '("date" "year" "urldate"))) ; possibly ""
+         (year (or (and (iso8601-valid-p str)
+                        (let ((year (decoded-time-year (iso8601-parse str))))
+                          (and year (number-to-string year))))
+                   ;; BibTeX permits a year field "(about 1984)", where only
+                   ;; the last four nonpunctuation characters must be numerals.
+                   (and (string-match "\\([0-9][0-9][0-9][0-9]\\)[^[:alnum:]]*\\'" str)
+                        (match-string 1 str))
+                   (user-error "Year or date field `%s' invalid" str))))
+    (substring year (max 0 (- (length year) bibtex-autokey-year-length)))))
+(advice-add 'bibtex-autokey-get-year :override 'cashpw/bibtex-autokey-get-year)
+
 (defun cashpw/bibtex-generate-autokey ()
   "Return a key for the current bibtex entry.
 
 The key is in the form: (authors|journal)_title_year."
-  (message "cashpw/bibtex-generate-autokey")
   (when
       ;; Missing required fields
-      (or (string-empty-p
-           (bibtex-autokey-get-names))
+      (or (string-empty-p (bibtex-autokey-get-names))
           (not
            (ignore-errors
              (bibtex-autokey-get-year))))
-    (cashpw/bibtex--read-and-set-required-fields
-     (current-buffer)
-     (point)))
+    (cashpw/bibtex--read-and-set-required-fields (current-buffer) (point)))
   (let* ((journal (bibtex-autokey-get-field "journal"))
          (names (bibtex-autokey-get-names))
          (title (bibtex-autokey-get-title))
@@ -3084,6 +3234,15 @@ The key is in the form: (authors|journal)_title_year."
       (alist-get
        (completing-read "Who?: " name-to-email-alist) name-to-email-alist
        nil nil 'string=))))
+
+(after!
+  citar
+  ;; Don't use helm for citar's insert. You get stuck in an infinite loop
+  ;; because helm overrides the `last-command' which `citar--select-multiple'
+  ;; depends on to exit.
+  (pushnew!
+   helm-completing-read-handlers-alist
+   '(org-cite-insert . completing-read-default)))
 
 (use-package! clocktable-by-category
   :after org)
@@ -3626,6 +3785,93 @@ Only parent headings of the current heading remain visible."
     (cl-letf (((symbol-function 'org-download-insert-link) #'ignore))
       (org-download-image image-url))))
 
+(cl-defun
+    cashpw/gallery--add-image
+    (link &key source-url description tags gallery-heading-marker)
+  "TODO."
+  (let ((gallery-heading-marker
+         (or gallery-heading-marker (cashpw/gallery--select-gallery))))
+    (message "marker: %s" gallery-heading-marker)
+    (with-current-buffer (marker-buffer gallery-heading-marker)
+      (save-excursion
+        (goto-char gallery-heading-marker)
+        (message "point: %s; buffer: " (point) (buffer-name))
+        (org-insert-heading-respect-content)
+        (org-do-demote)
+        (insert link)
+        (when tags
+          (insert (format " %s" (org-make-tag-string tags))))
+        (when description
+          (insert "\n")
+          (insert description))
+        (org-extras-set-created)
+        (when source-url
+          (org-set-property (org-gallery--image-prop-source) source-url))))))
+
+(defun cashpw/gallery--select-gallery ()
+  "Return marker for selected gallery."
+  (let ((options-alist
+         (--map
+          (let ((file-path
+                 (replace-regexp-in-string "\\.org:[0-9].*" ".org" it))
+                (line-number
+                 (string-to-number
+                  (replace-regexp-in-string ".*:\\([0-9]+\\).*" "\\1" it))))
+            (cons
+             it
+             `(lambda ()
+                "Return marker at gallery heading."
+                (with-current-buffer (find-file-noselect ,file-path)
+                  (goto-line ,line-number)
+                  (point-marker)))))
+          (cashpw/rgrep
+           (format "--line-number :gallery: %s/*.org"
+                   cashpw/path--notes-dir)))))
+    (funcall
+     (alist-get
+      (completing-read "Select gallery: " options-alist nil t) options-alist
+      nil nil #'string=))))
+
+(defun cashpw/foo ()
+  "TODO."
+  (interactive)
+  (universal-argument)
+  (message "url %s" (url-encode-url (shr-url-at-point current-prefix-arg))))
+
+(defun cashpw/eww-download-image-add-to-gallery ()
+  "Download image at point and add to selected gallery."
+  (interactive)
+  (let ((title (read-string "Title: "))
+        (description (read-string "Description: "))
+        (gallery-heading-marker (cashpw/gallery--select-gallery))
+        (image-url (url-encode-url (shr-url-at-point nil))))
+    (with-current-buffer (marker-buffer gallery-heading-marker)
+      (save-excursion
+      (goto-char gallery-heading-marker)
+    (cashpw/org-download-image--no-insert image-url)
+    (cashpw/gallery--add-image
+     (if (and (>= (string-to-number org-version) 9.3)
+              (eq org-download-method 'attach))
+         (format "[[attachment:%s]%s]"
+                 (org-link-escape
+                  (file-relative-name org-download-path-last-file
+                                      (org-attach-dir t)))
+                 (if (string-empty-p title)
+                     ""
+                   (format "[%s]" title)))
+       (format "[[file:%s]%s]"
+               (org-link-escape
+                (funcall org-download-abbreviate-filename-function
+                         org-download-path-last-file))
+               (if (string-empty-p title)
+                   ""
+                 (format "[%s]" title))))
+     :gallery-heading-marker gallery-heading-marker
+     :description (if (string-empty-p description)
+                      nil
+                    description)
+     :source-url image-url)))))
+
 (use-package! org-habit-stats
   :custom
   (org-agenda-block-separator 9472))
@@ -4000,7 +4246,7 @@ Return nil if no attendee exists with that EMAIL."
 (defcustom cashpw/org-gcal--profile-personal
   (make-org-gcal-profile
    :fetch-file-alist `(("cashbweaver@gmail.com" . ,(cashpw/path-calendar)))
-   :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
+   :client-id "878906466019-lfm5pph17736noimc9n8rth7vne1u566.apps.googleusercontent.com"
    :client-secret (secret-get "org-gcal--personal")
    :after-update-entry-functions
    '(org-gcal-extras--set-scheduled
@@ -4169,6 +4415,7 @@ Return nil if no attendee exists with that EMAIL."
     (cashpw/org-gcal-fetch)))
 
 (after! org-gcal-extras
+  (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id"))
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (use-package! org-gcal
     :custom
@@ -4182,8 +4429,11 @@ Return nil if no attendee exists with that EMAIL."
     (org-gcal-recurring-events-mode 'top-level)
 
     :config
+    (setq epg-pinentry-mode 'loopback)
     ;; https://github.com/dengste/org-caldav/issues/117
     (setenv "GPG_AGENT_INFO")
+    ;; this avoids problem with hanging in "Contacting host: oauth2.googleapis.com:443"
+    ;; (fset 'epg-wait-for-status 'ignore)
     (org-gcal-reload-client-id-secret)))
 
 (after! org-habit
@@ -4457,7 +4707,7 @@ The exporting happens only when Org Capture is not in progress."
   (let ((filetag-string
          (shell-command-to-string
           (concat
-           (format "rgrep '^#+filetags:' %s"
+           (format "rg '^#+filetags:' %s"
                    (or file-path
                        (buffer-file-name)))
            "| sed 's/.*#+filetags: \\(.*\\)/\\1/'"))))
@@ -4468,7 +4718,7 @@ The exporting happens only when Org Capture is not in progress."
   (let ((grep-result
          (shell-command-to-string
           (concat
-           (format "rgrep --max-count=1 '^#+filetags:' %s/*.org"
+           (format "rg --max-count=1 '^#\\+filetags:' %s/*.org"
                    (directory-file-name directory))
            " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
     (--map
@@ -4853,10 +5103,24 @@ Don't call directly. Use `cashpw/org-agenda-files'."
  org-id-locations-file-relative nil
  ;; org-return-follows-link t
  org-default-properties (append org-default-properties org-recipes--properties)
- org-agenda-bulk-custom-functions '((?L org-extras-reschedule-overdue-todo-agenda)
-                                    (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
-                                    (?y cashpw/org-agenda-done-yesterday)
-                                    (?. cashpw/org-agenda-reschedule-to-today)))
+ org-agenda-bulk-custom-functions
+ '((?L org-extras-reschedule-overdue-todo-agenda)
+   (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
+   (?y cashpw/org-agenda-done-yesterday)
+   (?. cashpw/org-agenda-reschedule-to-today)))
+(after! (:and org openwith)
+  (add-to-list
+   'org-file-apps
+   (cons
+    (openwith-make-extension-regexp
+     '("mpg" "mpeg" "mp3" "mp4" "avi" "wmv" "wav" "mov" "flv" "ogm" "ogg" "mkv"))
+    "vlc --play-and-exit --qt-minimal-view --no-video-title-show --key-quit \"q\" %s"))
+  (add-to-list
+   'org-file-apps
+   (cons
+    (openwith-make-extension-regexp
+     '("doc" "xls" "ppt" "odt" "ods" "odg" "odp"))
+    "libreoffice %s")))
 
 (after! org
   ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
@@ -6281,7 +6545,7 @@ Intended for use with `org-super-agenda' `:transformer'. "
       cashpw/path--notes-dir))
     (cashpw/rgrep
      (format
-      "-l \"\\(SCHEDULED\\|DEADLINE\\): <%s\" %s/*.org"
+      "-l \"(SCHEDULED|DEADLINE): <%s\" %s/*.org"
       (format-time-string "%F" (current-time))
       cashpw/path--notes-dir)))))
 
@@ -6814,7 +7078,7 @@ items if they have an hour specification like [h]h:mm."
                (error "Error! %s (match: %s)" todo-with-file match))))
          todos-with-file))
        (selection
-        (let ((vertico-sort-function
+        (let ((corfu-sort-function
                (lambda (candidates)
                  ;; Sort by priority and randomize order for same priority
                  (sort
@@ -7066,6 +7330,7 @@ Category | Scheduled | Effort
          (:discard
           (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
            :todo "PROJ"
+           :tag ("unscheduled" "everyday")
            ;; Discard everything with a priority
            :pred (lambda (item)
                    (org-extras-get-priority (get-text-property 0 'org-hd-marker item)))))
@@ -7074,6 +7339,47 @@ Category | Scheduled | Effort
 (cashpw/org-agenda-custom-commands--maybe-update)
 
 (defun cashpw/org-agenda-view--not-scheduled ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-sorting-strategy '((todo category-up alpha-up)))
+      ;; (org-agenda-cmp-user-defined
+      ;;  (lambda (a b)
+      ;;    (let* ((a-priority-or-nil
+      ;;            (org-extras-get-priority
+      ;;             (get-text-property 0 'org-hd-marker a)))
+      ;;           (a-priority
+      ;;            (string-to-number
+      ;;             (or a-priority-or-nil
+      ;;                 (number-to-string (1+ org-priority-lowest)))))
+      ;;           (b-priority-or-nil
+      ;;            (org-extras-get-priority
+      ;;             (get-text-property 0 'org-hd-marker b)))
+      ;;           (b-priority
+      ;;            (string-to-number
+      ;;             (or b-priority-or-nil
+      ;;                 (number-to-string (1+ org-priority-lowest))))))
+      ;;      (if (> a-priority b-priority)
+      ;;          1
+      ;;        -1))))
+                                        ;(org-agenda-sorting-strategy '((todo . (user-defined-up))))
+      (org-super-agenda-groups
+       '(( ;; Automatically named "Log"
+          :log
+          t)
+         (:discard
+          ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"
+           :tag ("unscheduled" "everyday")))
+         (:discard (:scheduled t))
+         ;; (:auto-category t)
+         (:auto-map cashpw/org-super-agenda--get-priority
+          :transformer cashpw/org-super-agenda--simplify-map)
+         ))))))
+
+(defun cashpw/org-agenda-view--not-scheduled-by-priority ()
   "Return custom agenda command."
   `((alltodo
      ""
@@ -7108,7 +7414,8 @@ Category | Scheduled | Effort
            :todo "PROJ"
            :tag ("unscheduled" "everyday")))
          (:discard (:scheduled t))
-         (:auto-category t)))))))
+         (:auto-map cashpw/org-super-agenda--get-priority
+          :transformer cashpw/org-super-agenda--simplify-map)))))))
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
@@ -7814,6 +8121,8 @@ See `org-clock-special-range' for KEY."
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
   (when (org-entry-is-done-p)
     (org-clock-out-if-current)
+    (when-let (asana-id (org-entry-get nil "ASANA_ID"))
+      (asana-task-complete (string-trim-left asana-id ".+-")))
     (repeat-todo--reschedule (point))
     (cond
      ((cashpw/org-mode-on-done--is-noop)
@@ -8881,6 +9190,10 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    :map eww-mode-map
    :n "yy" #'evil-yank
 
+   (:prefix ("d" . "Download")
+    :n "d" #'eww-download
+    :n "i" #'cashpw/eww-download-image-add-to-gallery)
+
    (:localleader
     :n "@" #'cashpw/zotra-add-entry-from-eww
     :desc "jump to hedaing" "." #'+eww/jump-to-heading-on-page))
@@ -9221,8 +9534,13 @@ Reference:https://stackoverflow.com/q/23622296"
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
   (interactive)
-  (let* ((vertico-sort-function #'vertico-sort-alpha)
-         (selection (completing-read "Select: " label-to-marker-alist nil t)))
+  (let* ((selection
+          (completing-read
+           "Select: "
+           label-to-marker-alist
+           ;; (cashpw/presorted-completion-table label-to-marker-alist)
+           nil
+           t)))
     (alist-get selection label-to-marker-alist nil nil #'string=)))
 
 (defun cashpw/org-today--format-heading ()
@@ -9249,11 +9567,13 @@ Reference:https://stackoverflow.com/q/23622296"
 (defun cashpw/select-from-todays-todos-and-go-to ()
   "Prompt user to select a todo, then go to it."
   (interactive)
-  (let ((marker
-         (cashpw/org-today--select-marker-from-alist
+  (let
+      ((marker
+        (cashpw/org-today--select-marker-from-alist
+         (-sort
+          (lambda (a b) (string< (car a) (car b)))
           (org-ql-query
-            :select
-            (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
+            :select (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
             :from (cashpw/org-agenda-view--today--files)
             :where
             `(and (or (tags "everyday") (deadline 0) (scheduled 0))
@@ -9262,7 +9582,7 @@ Reference:https://stackoverflow.com/q/23622296"
                        (not (todo "DONE"))
                        (not (todo "KILL"))
                        (not (todo "MOVE"))
-                       (not (todo "RESCHEDULE"))))))))
+                       (not (todo "RESCHEDULE")))))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 
