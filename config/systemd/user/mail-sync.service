@@ -1,0 +1,12 @@
+[Unit]
+Description=Sync local email
+
+[Service]
+ExecStart=/usr/bin/bash /home/cashpw/.scripts/mail/sync_cashbweaver_gmail_email.sh
+# Always restart the service after it exits.
+Restart=always
+# Wait 5 minutes before restarting.
+RestartSec=5m
+
+[Install]
+WantedBy=default.target
