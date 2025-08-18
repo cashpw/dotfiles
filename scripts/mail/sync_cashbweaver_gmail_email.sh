@@ -1,23 +1,18 @@
 #!/bin/bash
 
 SECONDS=0
-MAIL_DIR_PATH="/home/cashweaver/mail/cashbweaver.gmail"
+MAIL_DIR_PATH="/home/cashpw/mail/cashbweaver.gmail"
 LOG_FILE="/tmp/gmi-sync-log-cashbweaver.gmail.txt"
-LIEER_DIR_PATH="/home/cashweaver/third_party/lieer"
+GMI="/home/cashpw/.local/bin/gmi"
 
-echo "[$(date) Sync started]" >> $LOG_FILE
+echo "[$(date +"%F %T%Z") cashbweaver@gmail.com: Sync started]" >> $LOG_FILE
 
-if [[ $(ps aux | grep gmi | grep sync | grep -V tail | wc -l) == 1 ]]; then
-  echo "Another sync is already in progress."
-  exit 0
+if [[ $(ps aux | grep gmi | grep sync | grep -v tail | wc -l) == 1 ]]; then
+  echo "Another sync is already in progress." >> $LOG_FILE
+else
+  cd "${MAIL_DIR_PATH}"
+  $GMI sync >> $LOG_FILE 2>&1
 fi
 
-source "${LIEER_DIR_PATH}/.venv/bin/activate"
-
-cd "${MAIL_DIR_PATH}"
-"${LIEER_DIR_PATH}/gmi" sync >> $LOG_FILE
-
-deactivate
-
 duration=$SECONDS
-echo "[$(date) Sync ended ($(($duration / 60))min $(($duration % 60))sec)]" >> $LOG_FILE
+echo "[$(date +"%F %T%Z") cashbweaver@gmail.com: Sync ended after ($(($duration / 60))min $(($duration % 60))sec)]" >> $LOG_FILE
