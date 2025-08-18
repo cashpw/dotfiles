@@ -53,3 +53,4 @@ else
   source ~/.profile-personal
 fi
 
+. "$HOME/.cargo/env"
