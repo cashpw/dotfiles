@@ -1,0 +1,24 @@
+#!/usr/bin/env zsh
+
+alias c="clear"
+
+alias l="ls"
+alias la="ls -a"
+alias ll="ls -la"
+
+alias ..="cd ../"
+alias ..2="cd ../../"
+alias ..3="cd ../../../"
+alias ..4="cd ../../../../"
+alias ..5="cd ../../../../../"
+
+alias v='nvim'
+
+# Editor
+alias e='emacsclient -t -a ""'
+
+# Applications
+## Ripgrep
+alias rgrep="rg"
+## Zotra
+#alias zotra='node ~/.local/share/zotra-server/bin/index.js'
