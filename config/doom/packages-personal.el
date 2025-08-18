@@ -150,9 +150,6 @@
 
 (package! gnuplot)
 
-(package! llm-prompts
-  :recipe (:host github :repo "cashpw/llm-prompts.el"))
-
 (package! gptel)
 
 (package! commit-message
