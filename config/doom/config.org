@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-07-31 Thu 09:57]
+:LAST_MODIFIED: [2025-08-18 Mon 16:39]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
@@ -136,8 +136,14 @@ https://akrl.sdf.org/#orgc15a10d"
 
 (cl-defun cashpw/message (format-string &rest args)
   "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
-  (apply #'message (concat "[cashpw] " format-string) args))
+  (apply #'message
+         (concat (format "[cashpw %s] " (format-time-string "%F %T%Z"))
+                 format-string)
+         args))
 #+end_src
+
+#+RESULTS: cashpw/message
+: cashpw/message
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashpw/message>>

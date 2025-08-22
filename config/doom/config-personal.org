@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-08-18 Mon 05:31]
+:LAST_MODIFIED: [2025-08-22 Fri 05:11]
 :END:
 #+title: Emacs Config: Personal
 #+author: Cash Weaver
@@ -721,7 +721,8 @@ Doom emacs installs =helm= via =:completion helm=.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (after! helm
-  (setq helm-posframe-min-width 100))
+  (setq helm-posframe-border-width 8
+        helm-posframe-min-width 120))
 #+end_src
 
 *** =openwith=
@@ -3782,6 +3783,13 @@ https://pandoc.org/
    elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title
    elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
 
+  (defun cashpw/elfeed-update ()
+    (when (= elfeed-curl-queue-active 0)
+      (cashpw/message "Updating elfeed")
+      (elfeed-update)))
+
+  (run-at-time 300 300 #'cashpw/elfeed-update)
+
   (evil-define-key
     'normal
     elfeed-search-mode-map
@@ -3883,8 +3891,7 @@ https://pandoc.org/
     (elfeed-search-update)))
 #+end_src
 
-
-#+begin_src emacs-lisp :tangle config-personal.el :results none
+#+begin_src emacs-lisp
 ;; Alphapapa's solution to speed up elfeed-update
 ;;
 ;; Source: https://github.com/skeeto/elfeed/issues/293#issuecomment-425627688
@@ -3945,14 +3952,15 @@ https://pandoc.org/
 #+end_src
 
 #+begin_src emacs-lisp
-(add-hook 'elfeed-update-hooks
-          (lambda (feed)
-            (elfeed-log 'info "feed: %s: %f"
+(setq my/elfeed-update-times nil)
+(defun cashpw/elfeed--foo (feed)
+  (elfeed-log 'info (format "feed: %s: %f"
                         feed
                         (- (float-time)
                            (cdr (assoc feed my/elfeed-update-times))))))
 
-(defvar my/elfeed-update-times nil)
+(remove-hook 'elfeed-update-hooks 'cashpw/elfeed--foo)
+
 
 (cl-loop with elfeed--inhibit-update-init-hooks = t
          for feed in (elfeed-feed-list)
@@ -3963,7 +3971,6 @@ https://pandoc.org/
 #+end_src
 
 #+RESULTS:
-#+end_src
 
 *** =elfeed-protocol=
 
@@ -3981,6 +3988,7 @@ https://pandoc.org/
   :custom
   (elfeed-log-level 'debug)
   (elfeed-protocol-fever-update-unread-only nil)
+  (elfeed-protocol-fever-maxsize 50)
   (elfeed-protocol-fever-fetch-category-as-tag t)
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
   (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
@@ -6563,6 +6571,7 @@ Return nil if no attendee exists with that EMAIL."
         ("Empty cat boxes"
          "Myth's inhaler"
          "Feed cats"
+         "Train Finn"
          "Clean pet water and food dishes"))
        ("Family" . ("Call parents"))
        ("Friend" . ("Call with Alian, Ethan, and Austin"))
@@ -10091,52 +10100,50 @@ items if they have an hour specification like [h]h:mm."
                 "--multiline --line-number --with-filename '^\\*[\\*]* (TODO|INPROGRESS) ([^\\n]*)\\n(?!SCHEDULED:)(?!DEADLINE:)' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:"))))
           (-partition-all 50 files))))
        (match-alist
-        (mapcar
-         (lambda (todo-with-file)
-           (cl-destructuring-bind (file line-number match)
-               (s-split separator todo-with-file 'omit-nulls)
-             (if (string-match org-complex-heading-regexp match)
-                 (let* (
-                        (priority (or (match-string 3 match) "[#?]"))
-                        (priority-face (let ((face (or (cdr (assq (aref (substring priority 2 3) 0) org-modern-priority-faces))
-                                                       t)))
-                                         `(:inherit (,face org-modern-label))))
-                        (heading (match-string 4 match)))
-                   `(,(format "%s %s %s"
-                              (propertize
-                               (concat " #" (substring priority 2 3) " ")
-                               'face
-                               priority-face)
-                              heading
-                              (propertize
-                               (format "(%s:%s)" file line-number)
-                               'face
-                               'shadow))
-                     .
-                     (:file ,file
-                      :heading ,heading
-                      :priority ,priority
-                      :line-number ,(string-to-number line-number))))
-               (error "Error! %s (match: %s)" todo-with-file match))))
+        (--map
+         (cl-destructuring-bind
+             (file line-number match) (s-split separator it 'omit-nulls)
+           (if (string-match org-complex-heading-regexp match)
+               (let* ((priority (or (match-string 3 match) "[#?]"))
+                      (priority-face
+                       (let ((face
+                              (or (cdr
+                                   (assq
+                                    (aref
+                                     (substring priority 2 3) 0)
+                                    org-modern-priority-faces))
+                                  t)))
+                         `(:inherit (,face org-modern-label))))
+                      (heading (match-string 4 match)))
+                 (cons
+                  (format "%s %s %s"
+                          (propertize (concat " #" (substring priority 2 3) " ")
+                                      'face priority-face)
+                          heading
+                          (propertize (format "(%s:%s)" (file-relative-name file cashpw/path--notes-dir) line-number)
+                                      'face
+                                      'shadow))
+                  `(:file ,file
+                    :heading ,heading
+                    :priority ,priority
+                    :line-number ,(string-to-number line-number))))
+             (cashpw/error "Error! %s (match: %s)" todo-with-file match)))
          todos-with-file))
        (selection
-        (let ((corfu-sort-function
-               (lambda (candidates)
-                 ;; Sort by priority and randomize order for same priority
-                 (sort
-                  candidates
-                  (lambda (a b)
-                    (let ((priority-a (substring a 0 4))
-                          (priority-b (substring b 0 4)))
-                      (cond
-                       ((string= priority-a priority-b)
-                        (= 0 (random 2)))
-                       (t
-                        (string< a b)))))))))
-          (alist-get (completing-read "Select TODO: " match-alist) match-alist
-                     nil
-                     nil
-                     #'string=))))
+        (alist-get (completing-read
+                    "Select TODO: "
+                    (-sort
+                     (lambda (a b)
+                       (let ((priority-a (substring (car a) 0 4))
+                             (priority-b (substring (car b) 0 4)))
+                         (cond
+                          ((string= priority-a priority-b)
+                           (= 0 (random 2)))
+                          (t
+                           (string< (car a) (car b))))))
+                     match-alist))
+                   match-alist
+                   nil nil #'string=)))
     (goto-line (plist-get selection :line-number)
                (find-file (plist-get selection :file)))))
 #+end_src
