@@ -32,10 +32,10 @@
  (corfu                ; complete with cap(f), cape and a flying feather!
   +icons
   +orderless)
- (helm              ; the *other* search engine for love and life
-  +childframe
-  +fuzzy
-  +icons)
+ ;;(helm              ; the *other* search engine for love and life
+  ;;+childframe
+  ;;+fuzzy
+  ;;+icons)
  ;;ido               ; the other *other* search engine...
  ;;ivy               ; a search engine for love and life
  (vertico           ; the search engine of the future

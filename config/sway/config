@@ -398,7 +398,7 @@ for_window [con_mark="Browser"] {
 assign [app_id="firefox"]: workspace number 10
 
 bindsym $mod+Return exec $term
-bindsym $mod+e exec emacs
+bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 
 # ================================================
 # Startup

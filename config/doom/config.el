@@ -5,27 +5,51 @@
 (defcustom cashpw/debug nil
   "Non-nil if my personal debug mode is active.")
 
-(cl-defun cashpw/message-debug (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
-  (when cashpw/debug
-    (apply #'message (concat "[cashpw:DEBUG] " format-string) args)))
+(cl-defun
+    cashpw/log--internal
+    (format-string state args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (message
+   (apply #'format
+          (append
+           (list
+            (format "[%s %s] %s"
+                    state
+                    (format-time-string "%F %T%Z")
+                    format-string))
+           args))))
 
-(cl-defun cashpw/message (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
-  (apply #'message (concat "[cashpw] " format-string) args))
+(cl-defun
+    cashpw/log-info
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (cashpw/log--internal format-string "INFO" args))
+
+(cl-defun
+    cashpw/log
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (apply #'cashpw/log-info (append (list format-string) args)))
+
+(cl-defun
+    cashpw/log-debug
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (when cashpw/debug
+    (cashpw/log--internal format-string "DEBUG" args)))
 (defun cashpw/error (error-message &rest args)
   (error
-   "[cashpw] %s"
+   "[cashpw %s] %s"
    (apply
     #'format
     error-message
     args)))
-(defun cashpw/load (path &optional)
+(defun cashpw/load (path)
   "Return non-nil after loading PATH."
-  (cashpw/message
+  (cashpw/log
    "Loading %s ..."
    path)
-  (cashpw/message
+  (cashpw/log
    "Loaded %s in %.06f seconds."
    path
    (k-time
@@ -111,11 +135,14 @@ https://akrl.sdf.org/#orgc15a10d"
   "Non-nil if my config has finished loading."
   :group 'cashpw
   :type 'boolean)
+(defvar cashpw/personal-config-loaded-hooks '()
+  "Hooks to run after we finish loading personal config.")
 (setq
  cashpw/personal-config-loaded-p (cashpw/load
                                   (format
                                    "%s/config-personal.el"
                                    cashpw/path--emacs-config-dir)))
+(run-hooks 'cashpw/personal-config-loaded-hooks)
 
 (when (cashpw/machine-p 'work-cloudtop)
   (defcustom
@@ -124,8 +151,11 @@ https://akrl.sdf.org/#orgc15a10d"
     "Non-nil if my config has finished loading."
     :group 'cashpw
     :type 'boolean)
+(defvar cashpw/work-config-loaded-hooks '()
+  "Hooks to run after we finish loading work config.")
   (setq
    cashpw/work-config-loaded-p (cashpw/load
                                 (format
                                  "%s/config-work.el"
                                  cashpw/path--emacs-config-dir))))
+(run-hooks 'cashpw/work-config-loaded-hooks)

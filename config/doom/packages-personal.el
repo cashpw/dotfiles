@@ -44,6 +44,8 @@
   :recipe (:host github
            :repo "cashpw/plru"))
 
+(package! persist)
+
 (package! isbn
   :recipe (:host github
            :repo "cashpw/isbn.el"))

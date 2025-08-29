@@ -18,6 +18,8 @@
  user-mail-address "cashbweaver@gmail.com")
 
 (setq calendar-date-style 'iso)
+(after! org
+  (setq org-timestamp-custom-formats (cons "%F" "%F %T%Z")))
 
 (use-package! day-of-week)
 
@@ -90,8 +92,8 @@ Reference: https://emacs.stackexchange.com/a/43985"
                  (or daylight-savings-time-p prev-daylight-savings-time-p)
                  (or utc-offset prev-utc-offset))))
 
-(defun cashpw/time--today-at-hh-mm (hh mm)
-  "Return a time object for the current day at HH:MM."
+(defun cashpw/time-at-hh-mm (time hh mm)
+  "Return a TIME at HH:MM:00."
   (cl-destructuring-bind (seconds
                           minutes
                           hours
@@ -101,7 +103,7 @@ Reference: https://emacs.stackexchange.com/a/43985"
                           day-of-week
                           daylight-savings-time-p
                           utc-offset)
-      (decode-time (current-time))
+      (decode-time time)
     (encode-time 0
                  mm
                  hh
@@ -111,6 +113,14 @@ Reference: https://emacs.stackexchange.com/a/43985"
                  day-of-week
                  daylight-savings-time-p
                  utc-offset)))
+
+(defun cashpw/time-today-at-hh-mm (hh mm)
+  "Return a time object for the current day at HH:MM."
+  (cashpw/time-at-hh-mm (current-time) hh mm))
+
+(defun cashpw/time-tomorrow-at-hh-mm (hh mm)
+  "Return a time object for the current day at HH:MM."
+  (cashpw/time-at-hh-mm (time-add (current-time) (days-to-time 1)) hh mm))
 
 (defun cashpw/time--end-of-day (time)
   "Return TIME with maximum hours, minutes, and seconds."
@@ -172,6 +182,10 @@ Reference: https://emacs.stackexchange.com/a/43985"
 (defun cashpw/time-today-p (time)
   "Return non-nil if TIME occurs today."
   (cashpw/time-same-day-p time (current-time)))
+
+(defun cashpw/time-yesterday-p (time)
+  "Return non-nil if TIME occured yesterday."
+  (cashpw/time-same-day-p time (time-subtract (current-time) (days-to-time 1))))
 
 (defun cashpw/time--zero-out-hh-mm-ss (time)
   "Return TIME with hours, minutes, and seconds set to 0."
@@ -489,6 +503,37 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
   "Dim color/brightness of TEXT."
   (propertize text 'face 'shadow))
 
+(after!
+  persist
+  (defvar cashpw/run-once-a-day-hooks '()
+    "Functions to be run once a day.")
+  (defvar cashpw/run-once-a-day-timer nil
+    "Functions to be run once a day.")
+
+  (persist-defvar
+    cashpw/run-once-a-day--last-run
+    (time-subtract (current-time) (days-to-time 1))
+    "Last time we ran the once-a-day functions.")
+
+  (defun cashpw/run-once-a-day--runner ()
+    "Invoke FN if we haven't run it yet today; as checked by LAST-RUN-SYM."
+    (if (or (not cashpw/run-once-a-day--last-run)
+            (time-less-p
+             cashpw/run-once-a-day--last-run (cashpw/time-today-at-hh-mm 0 1)))
+        (progn
+          (cashpw/log "[once-a-day] Running")
+          (run-hooks 'cashpw/run-once-a-day-hooks)
+          (setq cashpw/run-once-a-day--last-run (current-time)))
+      (cashpw/log
+       "[once-a-day] Skipping; already run today at %s"
+       (format-time-string "%F %T%Z" cashpw/run-once-a-day--last-run))))
+
+  (add-hook
+   'cashpw/personal-config-loaded-hooks
+   (lambda ()
+     (setq cashpw/run-once-a-day-timer
+           (run-with-timer nil (* 60 60) #'cashpw/run-once-a-day--runner)))))
+
 (unless
     ;; Avoid 'void-variable mouse-wheel-up-event' error
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
@@ -543,6 +588,8 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
 (use-package! plru
   :custom
   (plru-directory (file-name-concat doom-profile-cache-dir "plru/")))
+
+(use-package! persist)
 
 (use-package!
     isbn
@@ -615,19 +662,26 @@ Invokes SUCCESS on success."
 
 (use-package! titlecase)
 
-(use-package! whisper
+(use-package!
+    whisper
   :config
-  (setq whisper-install-directory "~/.config/emacs/.local/cache/"
-        ;; whisper-model "large-v3-turbo"
-        ;; whisper-model "medium"
-        ;; whisper-model "small"
-        whisper-model "base"
-        whisper-language "en"
-        whisper-translate nil
-        whisper-use-threads (/ (num-processors) 2)
-        ;; whisper--ffmpeg-input-device "hw:0"
-        whisper--ffmpeg-input-device "default"
-        whisper-return-cursor-to-start nil))
+  (setq
+   whisper-install-directory (locate-user-emacs-file "./")
+   whisper--install-path
+   (concat
+    (expand-file-name (file-name-as-directory whisper-install-directory))
+    "whisper.cpp/")
+   whisper-server-mode 'local
+   ;; whisper-model "large-v3-turbo"
+   ;; whisper-model "medium"
+   ;; whisper-model "small"
+   whisper-model "base"
+   whisper-language "en"
+   whisper-translate nil
+   whisper-use-threads (/ (num-processors) 2)
+   ;; whisper--ffmpeg-input-device "hw:0"
+   whisper--ffmpeg-input-device "default"
+   whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
   :config
@@ -658,7 +712,7 @@ Invokes SUCCESS on success."
                    (15 . 0)
                    (16 . 0)))
   (scheduled-alert-schedule
-   (cashpw/time--today-at-hh-mm
+   (cashpw/time-today-at-hh-mm
     (car hhmm)
     (cdr hhmm))
    "Stand up"
@@ -671,7 +725,7 @@ Invokes SUCCESS on success."
                    (15 . 15)
                    (16 . 15)))
   (scheduled-alert-schedule
-   (cashpw/time--today-at-hh-mm
+   (cashpw/time-today-at-hh-mm
     (car hhmm)
     (cdr hhmm))
    "Sit down"
@@ -1093,7 +1147,7 @@ temperatures are numbers.
 It returns the calculated time as a number. If the start and end
 temperatures are identical but do not match the target, it
 returns nil."
-  (cashpw/message-debug "interpolate: %s, %s; %s, %s; %s"
+  (cashpw/log-debug "interpolate: %s, %s; %s, %s; %s"
               (format-time-string "%F %T%Z" time-a)
               temp-a
               (format-time-string "%F %T%Z" time-b)
@@ -1129,18 +1183,18 @@ returns nil."
          temperature-threshold))
        (before (car before-after))
        (after (cdr before-after)))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) Tomorrow hourly forecast temperatures: %s"
      (--map
       (format "\n%s: %s"
               (format-time-string "%F %T%Z" (car it))
               (cdr it))
       time-temps))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) before: %s, %s"
      (format-time-string "%F %T%Z" (car before))
      (cdr before))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) after: %s, %s"
      (format-time-string "%F %T%Z" (car after))
      (cdr after))
@@ -1157,18 +1211,18 @@ returns nil."
          temperature-threshold))
        (before (car before-after))
        (after (cdr before-after)))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) Tomorrow hourly forecast temperatures: %s"
      (--map
       (format "\n%s: %s"
               (format-time-string "%F %T%Z" (car it))
               (cdr it))
       time-temps))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) before: %s, %s"
               (format-time-string "%F %T%Z" (car before))
      (cdr before))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross into) after: %s, %s"
               (format-time-string "%F %T%Z" (car after))
      (cdr after))
@@ -1188,7 +1242,7 @@ returns nil."
          tomorrow-hourly-forecast-temps temperature-threshold))
        (before (car before-after))
        (after (cdr before-after)))
-    (cashpw/message-debug
+    (cashpw/log-debug
      "(cross out) Tomorrow hourly forecast temperatures: %s"
      (string-join
       (--map
@@ -1224,6 +1278,47 @@ returns nil."
        :effort "5m"
        :start-time time
        :include-hh-mm t))))
+
+;;; -*- lexical-binding: t; -*-
+(defun cashpw/weather-insert-todays-open-close-window-todos
+    (open-window-threshold-temp close-window-threshold-temp)
+  "Insert open/close window todos for today based on OPEN-WINDOW-THRESHOLD-TEMP and CLOSE-WINDOW-THRESHOLD-TEMP."
+  (cashpw/google-weather-get-hourly-forecast
+   (cl-function
+    (lambda (&key data &allow-other-keys)
+      ;; For debugging
+      ;; (setq cashpw/weather-data data)
+      ;; (setq cashpw/debug t)
+      (let* ((time-temps
+              (--filter
+               (cashpw/time-today-p (car it))
+               (cashpw/google-weather-get-hourly-forecast-temps data)))
+             (close-window-time
+              (cashpw/weather-cross-into-threshold-time
+               close-window-threshold-temp time-temps))
+             (open-window-time
+              (cashpw/weather-cross-out-of-threshold-time
+               open-window-threshold-temp time-temps)))
+        (when open-window-time
+          (cashpw/weather-insert-open-windows-todo open-window-time))
+        (when close-window-time
+          (cashpw/weather-insert-close-windows-todo close-window-time)))))))
+
+(defun cashpw/weather-schedule-insert-todos (time)
+  "Schedule `cashpw/weather-insert-*-windows-todo' at TIME."
+  (when cashpw/weather-todo-timer
+    (cancel-timer cashpw/weather-todo-timer))
+  (setq cashpw/weather-todo-timer
+        (run-at-time
+         time nil
+         (lambda ()
+           (cashpw/weather-insert-todays-open-close-window-todos 74 74)
+           (cashpw/weather-schedule-insert-todos
+            (cashpw/time-tomorrow-at-hh-mm 5 00))))))
+
+(add-hook
+ 'cashpw/run-once-a-day-hooks
+ (lambda () (cashpw/weather-insert-todays-open-close-window-todos 74 74)))
 
 (use-package! sunshine
   :custom
@@ -1495,6 +1590,8 @@ This be hooked to `projectile-after-switch-project-hook'."
    asana-tasks-org-file cashpw/path--personal-asana
    asana-token (secret-get "asana"))
 
+  (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks)
+
   (defun cashpw/asana-task-complete (task-gid)
     "Complete an Asana task by TASK-GID."
     (request
@@ -1741,38 +1838,52 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (setq
  ediff-split-window-function #'split-window-horizontally)
 
-(use-package! ox-gfm
+(use-package!
+    ox-gfm
   :config
 
   (defun cashpw/org-gfm-timestamp (timestamp contents info)
     "Translate TIMESTAMP to a compatible form. INFO is a plist holding contextual information."
+    (cashpw/log
+     "Converting timestamp (%s -> %s)"
+     timestamp
+     (org-timestamp-translate timestamp))
     (format "%s" (org-timestamp-translate timestamp)))
 
   ;; Override so we can set some add to translate-alist
-  (org-export-define-derived-backend 'gfm 'md
+  (org-export-define-derived-backend
+      'gfm 'md
     :filters-alist '((:filter-parse-tree . org-md-separate-elements))
     :menu-entry
-    '(?g "Export to Github Flavored Markdown"
-      ((?G "To temporary buffer"
-           (lambda (a s v b) (org-gfm-export-as-markdown a s v)))
+    '(?g
+      "Export to Github Flavored Markdown"
+      ((?G
+        "To temporary buffer"
+        (lambda (a s v b) (org-gfm-export-as-markdown a s v)))
        (?g "To file" (lambda (a s v b) (org-gfm-export-to-markdown a s v)))
-       (?o "To file and open"
-           (lambda (a s v b)
-             (if a (org-gfm-export-to-markdown t s v)
-               (org-open-file (org-gfm-export-to-markdown nil s v)))))))
-    :translate-alist '((inner-template . org-gfm-inner-template)
-                       (paragraph . org-gfm-paragraph)
-                       (timestamp . cashpw/org-gfm-timestamp)
-                       (strike-through . org-gfm-strike-through)
-                       (example-block . org-gfm-example-block)
-                       (src-block . org-gfm-src-block)
-                       (table-cell . org-gfm-table-cell)
-                       (table-row . org-gfm-table-row)
-                       (table . org-gfm-table))))
+       (?o
+        "To file and open"
+        (lambda (a s v b)
+          (if a
+              (org-gfm-export-to-markdown t s v)
+            (org-open-file (org-gfm-export-to-markdown nil s v)))))))
+    :translate-alist
+    '((inner-template . org-gfm-inner-template)
+      (paragraph . org-gfm-paragraph)
+      (timestamp . cashpw/org-gfm-timestamp)
+      (strike-through . org-gfm-strike-through)
+      (example-block . org-gfm-example-block)
+      (src-block . org-gfm-src-block)
+      (table-cell . org-gfm-table-cell)
+      (table-row . org-gfm-table-row)
+      (table . org-gfm-table))))
 
 (after!
   emacs-everywhere
   (setq
+   emacs-everywhere-paste-command
+   (list "wtype" "-M" "Ctrl" "-P" "v" "-m" "Ctrl" "-p" "v")
+   emacs-everywhere-copy-command (list "sh" "-c" "wl-copy < %f")
    emacs-everywhere-org-export-options
    "#+property: header-args :exports both
 #+options: toc:nil ':nil -:nil <:nil\n"
@@ -1781,57 +1892,53 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
      ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
      "--to"
      "org"))
-
   (--each
-      '(
-        ;; Google issue tracker
+      '( ;; Google issue tracker
         "Buganizer"
-
         ;; Google code review
         "Critique"
-
         ;; Google chat
         "Chat")
     (add-to-list 'emacs-everywhere-markdown-windows it)))
 
-(after!
-  emacs-everywhere
-  (defun emacs-everywhere-insert-selection ()
-    "Insert the last text selection into the buffer."
-    (pcase system-type
-      ('darwin
-       (progn
-         (call-process
-          "osascript"
-          nil
-          nil
-          nil
-          "-e"
-          "tell application \"System Events\" to keystroke \"c\" using command down")
-         (sleep-for emacs-everywhere-clipboard-sleep-delay) ; lets clipboard info propagate
-         (yank)))
-      ((or 'ms-dos 'windows-nt 'cygwin)
-       (emacs-everywhere-insert-selection--windows))
-      (_
-       (when-let ((selection (gui-get-selection 'PRIMARY 'UTF8_STRING)))
-         (gui-backend-set-selection 'PRIMARY "")
-         (insert selection))))
-    (when (and (eq major-mode 'org-mode)
-               (emacs-everywhere-markdown-p)
-               (executable-find "pandoc"))
-      (apply #'call-process-region
-             (point-min)
-             (point-max)
-             "pandoc"
-             t
-             t
-             t
-             emacs-everywhere-pandoc-md-args)
-      (deactivate-mark)
-      (goto-char (point-max)))
-    (cond
-     ((bound-and-true-p evil-local-mode)
-      (evil-insert-state)))))
+;; (after!
+;;   emacs-everywhere
+;;   (defun emacs-everywhere-insert-selection ()
+;;     "Insert the last text selection into the buffer."
+;;     (pcase system-type
+;;       ('darwin
+;;        (progn
+;;          (call-process
+;;           "osascript"
+;;           nil
+;;           nil
+;;           nil
+;;           "-e"
+;;           "tell application \"System Events\" to keystroke \"c\" using command down")
+;;          (sleep-for emacs-everywhere-clipboard-sleep-delay) ; lets clipboard info propagate
+;;          (yank)))
+;;       ((or 'ms-dos 'windows-nt 'cygwin)
+;;        (emacs-everywhere-insert-selection--windows))
+;;       (_
+;;        (when-let ((selection (gui-get-selection 'PRIMARY 'UTF8_STRING)))
+;;          (gui-backend-set-selection 'PRIMARY "")
+;;          (insert selection))))
+;;     (when (and (eq major-mode 'org-mode)
+;;                (emacs-everywhere-markdown-p)
+;;                (executable-find "pandoc"))
+;;       (apply #'call-process-region
+;;              (point-min)
+;;              (point-max)
+;;              "pandoc"
+;;              t
+;;              t
+;;              t
+;;              emacs-everywhere-pandoc-md-args)
+;;       (deactivate-mark)
+;;       (goto-char (point-max)))
+;;     (cond
+;;      ((bound-and-true-p evil-local-mode)
+;;       (evil-insert-state)))))
 
 (use-package! gnus-alias
   :config
@@ -2226,7 +2333,7 @@ TAGS which start with \"-\" are excluded."
     (cashpw/mail--close-mail-buffer-after-capture)
     (cashpw/mail-create-follow-up-todo)))
 
-(defun cashpw/message-send-and-exit ()
+(defun cashpw/log-send-and-exit ()
   (interactive)
   (org-mime-htmlize)
   (notmuch-mua-send)
@@ -2275,16 +2382,16 @@ TAGS which start with \"-\" are excluded."
   ;;(apply #'sendmail-query-once args)
   (apply #'smtpmail-send-it args))
 
-(defun cashpw/message-send-mail-function (&rest args)
+(defun cashpw/log-send-mail-function (&rest args)
   "Wrapper method for `message-send-mail-function' for easy overriding in work environment."
   ;; (apply #'message--default-send-mail-function args)
   (apply #'smtpmail-send-it args))
 
 (setq
  send-mail-function #'cashpw/send-mail-function
- message-send-mail-function #'cashpw/message-send-mail-function)
+ message-send-mail-function #'cashpw/log-send-mail-function)
 
-(map! :map message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
+(map! :map message-mode-map "C-c C-c" #'cashpw/log-send-and-exit)
 
 (map!
  :map message-mode-map
@@ -2305,7 +2412,7 @@ TAGS which start with \"-\" are excluded."
 (after!
   notmuch
   ;; Keep in alphabetical order.
-  (map! :map notmuch-message-mode-map "C-c C-c" #'cashpw/message-send-and-exit)
+  (map! :map notmuch-message-mode-map "C-c C-c" #'cashpw/log-send-and-exit)
 
   (map!
    :map notmuch-message-mode-map
@@ -2419,10 +2526,11 @@ TAGS which start with \"-\" are excluded."
 
   (defun cashpw/elfeed-update ()
     (when (= elfeed-curl-queue-active 0)
-      (cashpw/message "Updating elfeed")
+      (cashpw/log "Updating elfeed")
       (elfeed-update)))
 
-  (run-at-time 300 300 #'cashpw/elfeed-update)
+  (setq cashpw/elfeed-update--timer
+    (run-with-timer 300 300 #'cashpw/elfeed-update))
 
   (evil-define-key
     'normal
@@ -3201,6 +3309,438 @@ TODO")))))
   (bibtex-autokey-titleword-case-convert-function
    (lambda (str) (titlecase--string str nil)))
 
+  (bibtex-biblatex-entry-alist
+   ;; Compare in biblatex documentation:
+   ;; Sec. 2.1.1  Regular types (required and optional fields)
+   ;; Sec. 2.2.5  Field Aliases
+   ;; Appendix A  Default Crossref setup
+   '(("Article" "Article in Journal"
+      (("author") ("title")
+       ("journaltitle" nil nil 3) ("journal" nil nil -3)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("translator") ("annotator") ("commentator") ("subtitle") ("titleaddon")
+       ("editor") ("editora") ("editorb") ("editorc") ("journalsubtitle")
+       ("journaltitleaddon") ("issuetitle") ("issuesubtitle") ("issuetitleaddon")
+       ("language") ("origlanguage") ("series") ("volume") ("number") ("eid")
+       ("issue") ("month") ("pages") ("version") ("note") ("issn")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Book" "Single-Volume Book"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator")
+       ("introduction") ("foreword") ("afterword") ("subtitle") ("titleaddon")
+       ("maintitle") ("mainsubtitle") ("maintitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVBook" "Multi-Volume Book"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator")
+       ("introduction") ("foreword") ("afterword") ("subtitle")
+       ("titleaddon") ("language") ("origlanguage") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InBook" "Chapter or Pages in a Book"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("BookInBook" "Book in Collection" ; same as @inbook
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppBook" "Supplemental Material in a Book" ; same as @inbook
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint")("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Booklet" "Booklet (Bound, but no Publisher)"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("note") ("location" nil nil 2) ("address" nil nil -2)
+       ("eid") ("chapter") ("pages") ("pagetotal")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Collection" "Single-Volume Collection"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("language") ("origlanguage") ("volume")
+       ("part") ("edition") ("volumes") ("series") ("number") ("note")
+       ("publisher") ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVCollection" "Multi-Volume Collection"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("language") ("origlanguage") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InCollection" "Article in a Collection"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppCollection" "Supplemental Material in a Collection" ; same as @incollection
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Dataset" "Data Set"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("edition") ("type") ("series")
+       ("number") ("version") ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Manual" "Technical Manual"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("edition")
+       ("type") ("series") ("number") ("version") ("note")
+       ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter")
+       ("pages") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+
+     ("Misc" "Miscellaneous"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Online" "Online Resource"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1)
+       ("doi" nil nil 2) ("eprint" nil nil 2) ("url" nil nil 2))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("version") ("note")
+       ("organization") ("month") ("addendum")
+       ("pubstate") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5) ("urldate")))
+     ("Patent" "Patent"
+      (("author") ("title") ("number")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("holder") ("subtitle") ("titleaddon") ("type") ("version")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("note") ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Periodical" "Complete Issue of a Periodical"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("subtitle") ("titleaddon")
+       ("issuetitle") ("issuesubtitle") ("issuetitleaddon") ("language")
+       ("series") ("volume") ("number") ("issue")
+       ("month") ("note") ("issn") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppPeriodical" "Supplemental Material in a Periodical" ; same as @article
+      (("author") ("title")
+       ("journaltitle" nil nil 3) ("journal" nil nil -3)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("translator") ("annotator") ("commentator") ("subtitle") ("titleaddon")
+       ("editor") ("editora") ("editorb") ("editorc") ("journalsubtitle")
+       ("journaltitleaddon") ("issuetitle") ("issuesubtitle") ("issuetitleaddon")
+       ("language") ("origlanguage") ("series") ("volume") ("number") ("eid")
+       ("issue") ("month") ("pages") ("version") ("note") ("issn")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Proceedings" "Single-Volume Conference Proceedings"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("eventtitle") ("eventtitleaddon") ("eventdate")
+       ("venue") ("language") ("volume") ("part") ("volumes") ("series")
+       ("number") ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month")
+       ("isbn") ("eid") ("chapter") ("pages") ("pagetotal") ("addendum")
+       ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVProceedings" "Multi-Volume Conference Proceedings"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("subtitle") ("titleaddon") ("eventtitle") ("eventtitleaddon")
+       ("eventdate") ("venue") ("language") ("volumes") ("series") ("number")
+       ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month")
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InProceedings" "Article in Conference Proceedings"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("eventtitle") ("eventtitleaddon") ("eventdate") ("venue") ("language")
+       ("volume") ("part") ("volumes") ("series") ("number") ("note")
+       ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month") ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Conference" "Article in Conference Proceedings" ; same as InProceedings
+      (("author")
+       ("title" "Title of the article in proceedings (BibTeX converts it to lowercase)"))
+      (("booktitle" "Name of the conference proceedings")
+       ("year"))
+      (("editor")
+       ("volume" "Volume of the conference proceedings in the series")
+       ("number" "Number of the conference proceedings in a small series (overwritten by volume)")
+       ("series" "Series in which the conference proceedings appeared")
+       ("pages" "Pages in the conference proceedings")
+       ("month") ("address")
+       ("organization" "Sponsoring organization of the conference")
+       ("publisher" "Publishing company, its location")
+       ("note")))
+     ("Reference" "Single-Volume Work of Reference" ; same as @collection
+      (("editor") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("language") ("origlanguage") ("volume")
+       ("part") ("edition") ("volumes") ("series") ("number") ("note")
+       ("publisher") ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVReference" "Multi-Volume Work of Reference" ; same as @mvcollection
+      (("editor") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("language") ("origlanguage") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InReference" "Article in a Work of Reference" ; same as @incollection
+      (("author") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Report" "Technical or Research Report"
+      (("author") ("title") ("type")
+       ("institution" nil nil 6) ("school" nil nil -6)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("number") ("version") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("isrn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Software" "Computer Software"    ; Same as @misc.
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Thesis" "PhD or Master's Thesis"
+      (("author") ("title") ("type")
+       ("institution" nil nil 6) ("school" nil nil -6)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("isbn") ("eid") ("chapter") ("pages") ("pagetotal")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("PhdThesis" "PhD Thesis"
+      (("author")
+       ("title" "Title of the PhD thesis")
+       ("school" "School where the PhD thesis was written")
+       ("year"))
+      nil
+      (("type" "Type of the PhD thesis")
+       ("address" "Address of the school (if not part of field \"school\") or country")
+       ("month") ("note")))
+     ("MastersThesis" "Master's Thesis"
+      (("author")
+       ("title" "Title of the master's thesis (BibTeX converts it to lowercase)")
+       ("school" "School where the master's thesis was written")
+       ("year"))
+      nil
+      (("type" "Type of the master's thesis (if other than \"Master's thesis\")")
+       ("address" "Address of the school (if not part of field \"school\") or country")
+       ("month") ("note")))
+     ("TechReport" "Technical Report"
+      (("author")
+       ("title" "Title of the technical report (BibTeX converts it to lowercase)")
+       ("institution" "Sponsoring institution of the report")
+       ("year"))
+      nil
+      (("type" "Type of the report (if other than \"technical report\")")
+       ("number" "Number of the technical report")
+       ("address") ("month") ("note")))
+     ("Unpublished" "Unpublished"
+      (("author") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("type") ("eventtitle") ("eventtitleaddon")
+       ("eventdate") ("venue") ("language") ("howpublished") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+
+     ;; My additions
+     ;; Video is unsupported but used by Zotero and is treated as miscellaneous. I've copied Misc and renamed it to Video.
+     ("Video" "Video"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ;; Movie is unsupported but used by Zotero and is treated as miscellaneous. I've copied Misc and renamed it to Movie.
+     ("Movie" "Movie"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))))
+
+
+
   :config
   (add-hook
    'zotra-after-get-bibtex-entry-hook 'cashpw/bibtex-clean-entry-override-key))
@@ -3297,6 +3837,7 @@ The key is in the form: (authors|journal)_title_year."
                           ""
                         (s-lex-format "${year}_")))
                      0 -1)))
+    (cashpw/log "key: %s" key)
     (if bibtex-autokey-before-presentation-function
         (funcall bibtex-autokey-before-presentation-function key)
       key)))
@@ -3436,9 +3977,10 @@ The key is in the form: (authors|journal)_title_year."
   ;; Don't use helm for citar's insert. You get stuck in an infinite loop
   ;; because helm overrides the `last-command' which `citar--select-multiple'
   ;; depends on to exit.
-  (pushnew!
-   helm-completing-read-handlers-alist
-   '(org-cite-insert . completing-read-default)))
+  ;; (pushnew!
+  ;;  helm-completing-read-handlers-alist
+  ;;  '(org-cite-insert . completing-read-default))
+  )
 
 (use-package! clocktable-by-category
   :after org)
@@ -4610,6 +5152,8 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-extract-todos-tag)
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
+
+(add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch)
 
 (after! org-gcal-extras
   (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id"))
@@ -6783,7 +7327,9 @@ Intended for use with `org-super-agenda' `:transformer'. "
       (org-super-agenda-groups
        '((:discard
           (:scheduled future
-           :scheduled past))
+           :scheduled past
+           :deadline future
+           :deadline past))
          (:name "Schedule"
           :time-grid t
           :order 0

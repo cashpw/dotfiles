@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-08-18 Mon 16:39]
+:LAST_MODIFIED: [2025-08-25 Mon 16:09]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
@@ -100,12 +100,12 @@ https://akrl.sdf.org/#orgc15a10d"
 
 #+name: cashpw/load
 #+begin_src emacs-lisp
-(defun cashpw/load (path &optional)
+(defun cashpw/load (path)
   "Return non-nil after loading PATH."
-  (cashpw/message
+  (cashpw/log
    "Loading %s ..."
    path)
-  (cashpw/message
+  (cashpw/log
    "Loaded %s in %.06f seconds."
    path
    (k-time
@@ -117,43 +117,64 @@ https://akrl.sdf.org/#orgc15a10d"
 #+begin_src emacs-lisp
 (defun cashpw/error (error-message &rest args)
   (error
-   "[cashpw] %s"
+   "[cashpw %s] %s"
    (apply
     #'format
     error-message
     args)))
 #+end_src
 
-#+name: cashpw/message
+#+name: cashpw/log
 #+begin_src emacs-lisp
 (defcustom cashpw/debug nil
   "Non-nil if my personal debug mode is active.")
 
-(cl-defun cashpw/message-debug (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
-  (when cashpw/debug
-    (apply #'message (concat "[cashpw:DEBUG] " format-string) args)))
+(cl-defun
+    cashpw/log--internal
+    (format-string state args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (message
+   (apply #'format
+          (append
+           (list
+            (format "[%s %s] %s"
+                    state
+                    (format-time-string "%F %T%Z")
+                    format-string))
+           args))))
 
-(cl-defun cashpw/message (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS; conditional when DEBUG is non-nil."
-  (apply #'message
-         (concat (format "[cashpw %s] " (format-time-string "%F %T%Z"))
-                 format-string)
-         args))
+(cl-defun
+    cashpw/log-info
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (cashpw/log--internal format-string "INFO" args))
+
+(cl-defun
+    cashpw/log
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (apply #'cashpw/log-info (append (list format-string) args)))
+
+(cl-defun
+    cashpw/log-debug
+    (format-string &rest args)
+  "Call `message' with FORMAT-STRING and ARGS."
+  (when cashpw/debug
+    (cashpw/log--internal format-string "DEBUG" args)))
 #+end_src
 
-#+RESULTS: cashpw/message
-: cashpw/message
+#+RESULTS: cashpw/log
+: cashpw/log-debug
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-<<cashpw/message>>
+<<cashpw/log>>
 <<cashpw/error>>
 <<cashpw/load>>
 <<k-time>>
 #+end_src
 
 #+begin_src emacs-lisp :tangle packages.el :noweb no-export
-<<cashpw/message>>
+<<cashpw/log>>
 <<cashpw/error>>
 <<cashpw/load>>
 <<k-time>>
@@ -267,11 +288,14 @@ Configuration files should follow the naming convention =(config|packages)-<type
   "Non-nil if my packages have finished loading."
   :group 'cashpw
   :type 'boolean)
+(defvar cashpw/personal-packages-loaded-hooks '()
+  "Hooks to run after we finish loading personal packages.")
 (setq
  cashpw/personal-packages-loaded-p (cashpw/load
                                     (format
                                      "%s/packages-personal.el"
                                      cashpw/path--emacs-config-dir)))
+(run-hooks 'cashpw/personal-packages-loaded-hooks)
 #+end_src
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
@@ -281,11 +305,14 @@ Configuration files should follow the naming convention =(config|packages)-<type
   "Non-nil if my config has finished loading."
   :group 'cashpw
   :type 'boolean)
+(defvar cashpw/personal-config-loaded-hooks '()
+  "Hooks to run after we finish loading personal config.")
 (setq
  cashpw/personal-config-loaded-p (cashpw/load
                                   (format
                                    "%s/config-personal.el"
                                    cashpw/path--emacs-config-dir)))
+(run-hooks 'cashpw/personal-config-loaded-hooks)
 #+end_src
 
 ** Work
@@ -298,11 +325,14 @@ Configuration files should follow the naming convention =(config|packages)-<type
     "Non-nil if my packages have finished loading."
     :group 'cashpw
     :type 'boolean)
+(defvar cashpw/work-packages-loaded-hooks '()
+  "Hooks to run after we finish loading work packages.")
   (setq
    cashpw/work-packages-loaded-p (cashpw/load
                                   (format
                                    "%s/packages-work.el"
                                    cashpw/path--emacs-config-dir))))
+(run-hooks 'cashpw/work-packages-loaded-hooks)
 #+end_src
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
@@ -313,9 +343,12 @@ Configuration files should follow the naming convention =(config|packages)-<type
     "Non-nil if my config has finished loading."
     :group 'cashpw
     :type 'boolean)
+(defvar cashpw/work-config-loaded-hooks '()
+  "Hooks to run after we finish loading work config.")
   (setq
    cashpw/work-config-loaded-p (cashpw/load
                                 (format
                                  "%s/config-work.el"
                                  cashpw/path--emacs-config-dir))))
+(run-hooks 'cashpw/work-config-loaded-hooks)
 #+end_src

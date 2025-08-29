@@ -48,6 +48,8 @@ cmd = "pavucontrol"
 [block.theme_overrides]
 warning_fg = "#c5c8c6" # idle_fg
 warning_bg = "#373b41" # idle_bg
+idle_fg = "#1d1f21" # good_fg
+idle_bg = "#b5bd68" # good_bg
 
 [[block]]
 block = "bluetooth"
