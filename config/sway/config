@@ -257,7 +257,7 @@ mode "$mode_system" {
 }
 bindsym $mod+Delete mode "$mode_system"
 
-set $mode_brightness Brightness: (↑/↓) ±5%, [1-0] set to X%
+set $mode_brightness Brightness: (↑/↓) ±5%, (1) 10%, (2) 20%, ..., (0) 100%
 mode "$mode_brightness" {
   bindsym Down exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 5%-"
   bindsym Up exec --no-startup-id "brightnessctl -d amdgpu_bl1 set +5%"

@@ -150,6 +150,9 @@
 
 (package! elfeed-protocol)
 
+(package! elfeed-export
+  :recipe (:host codeberg :repo "bram85/elfeed-export"))
+
 (package! gnuplot)
 
 (package! gptel)

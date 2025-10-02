@@ -650,7 +650,8 @@ Invokes SUCCESS on success."
                                   'industryIdentifiers volume-info)
                                  0))))))
                           (alist-get 'items data))))
-                    (let ((corfu-sort-function #'identity)
+                    (let* ((corfu-sort-function #'identity)
+                          (vertico-sort-override-function #'identity)
                           (isbn
                            (alist-get (completing-read
                                        "Volume: "
@@ -676,6 +677,7 @@ Invokes SUCCESS on success."
    ;; whisper-model "medium"
    ;; whisper-model "small"
    whisper-model "base"
+   ;; whisper-quantize "q5_0"
    whisper-language "en"
    whisper-translate nil
    whisper-use-threads (/ (num-processors) 2)
@@ -1613,7 +1615,32 @@ This be hooked to `projectile-after-switch-project-hook'."
                (message "Unknown error: couldn't complete `%s': %s"
                         task-name
                         data))))))))
-  (advice-add 'asana-task-complete :override 'cashpw/asana-task-complete))
+  (advice-add 'asana-task-complete :override 'cashpw/asana-task-complete)
+
+  (defun cashpw/asana--set-scheduled-after-sync ()
+    "Set scheduled after syncing tasks."
+    (with-current-buffer (find-file-noselect asana-tasks-org-file)
+      (org-map-entries
+       (lambda ()
+         (when-let ((deadline-time (org-get-deadline-time (point))))
+           (shut-up
+             (org-schedule nil deadline-time))))
+       "+ASANA_ID={.}"
+       'file)))
+  (advice-add
+   'asana-org-sync-tasks
+   :after 'cashpw/asana--set-scheduled-after-sync)
+
+  (defun cashpw/asana--set-priority-after-sync ()
+    "Set priority after syncing tasks."
+    (with-current-buffer (find-file-noselect asana-tasks-org-file)
+      (org-map-entries
+       (lambda () (shut-up (org-priority org-priority-default)))
+       "+ASANA_ID={.}"
+       'file)))
+  (advice-add
+   'asana-org-sync-tasks
+   :after 'cashpw/asana--set-priority-after-sync))
 
 (defun hash-table-contains-p (key table)
   "Return non-nil if TABLE contains KEY.
@@ -2050,8 +2077,6 @@ TAGS which start with \"-\" are excluded."
 (defun cashpw/notmuch-search-todo ()
   "Capture the email at point in search for a todo."
   (interactive)
-  ;; (notmuch-search-show-thread)
-  ;; (goto-char (point-max))
   (cashpw/email-set-vars-from-search)
   (org-capture
    ;; goto
@@ -2060,17 +2085,37 @@ TAGS which start with \"-\" are excluded."
    "teE")
   (message "Captured TODO for %s." cashpw/email--subject))
 
+(defun cashpw/notmuch-search-follow-up ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "teF")
+  (message "Captured TODO for %s." cashpw/email--subject))
+
 (defun cashpw/notmuch-search-todo-today ()
   "Capture the email at point in search for a todo."
   (interactive)
-  ;; (notmuch-search-show-thread)
-  ;; (goto-char (point-max))
   (cashpw/email-set-vars-from-search)
   (org-capture
    ;; goto
    nil
    ;; keys
    "tee")
+  (message "Captured TODO for %s." cashpw/email--subject))
+
+(defun cashpw/notmuch-search-follow-up-tomorrow ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef")
   (message "Captured TODO for %s." cashpw/email--subject))
 
 (after! notmuch
@@ -2448,6 +2493,10 @@ TAGS which start with \"-\" are excluded."
     'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo-today)
   (evil-define-key
     'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo)
+  (evil-define-key
+    'normal notmuch-search-mode-map "tF" 'cashpw/notmuch-search-follow-up)
+  (evil-define-key
+    'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up-tomorrow)
 
   ;; Helpers for toggling often-used tags.
   (evil-define-key 'normal notmuch-search-mode-map "T" nil)
@@ -2529,8 +2578,8 @@ TAGS which start with \"-\" are excluded."
       (cashpw/log "Updating elfeed")
       (elfeed-update)))
 
-  (setq cashpw/elfeed-update--timer
-    (run-with-timer 300 300 #'cashpw/elfeed-update))
+  ;; (setq cashpw/elfeed-update--timer
+  ;; (run-with-timer 300 300 #'cashpw/elfeed-update))
 
   (evil-define-key
     'normal
@@ -2646,6 +2695,9 @@ TAGS which start with \"-\" are excluded."
   :config
   (elfeed-protocol-enable))
 
+(use-package! elfeed-export
+  :after elfeed)
+
 ;; (after! elfeed-org
 ;;   (setq
 ;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
@@ -2653,7 +2705,7 @@ TAGS which start with \"-\" are excluded."
 (use-package! gnuplot)
 
 (defvar llm-prompts-prompt--default
-  "Write to me in plan language, focusing on the ideas, arguments, or facts at hand. Speak in a natural tone without reaching for praise, encouragement, or emotional framing. Let the conversation move forward directly, with brief acknowledgments if they serve clarity, but without personal commentary or attempts to manage the mood. Keep the engagement sharp, respectful, and free of performance. Let the discussion end when the material does, without softening or drawing it out unless there’s clear reason to continue."
+  "Write to me in plan language. Focus on the ideas, arguments, or facts at hand. Speak in a natural tone without praise, encouragement, or emotional framing. Let the conversation move forward directly, with brief acknowledgments if they serve clarity, but without personal commentary or attempts to manage the mood. Keep the engagement sharp, respectful, and free of performance. Let the discussion end when the material does, without softening or drawing it out unless there’s clear reason to continue. Ask questions when appropriate to clarify or disambiguate the goal."
   "Default prompt.")
 
 (defun llm-prompts-prompt-default ()
@@ -2676,7 +2728,7 @@ TAGS which start with \"-\" are excluded."
   "Return the video id within the URL.
 
 Example: https://www.youtube.com/watch?v=xzseFskewlE"
-  (when (string-match ".*youtube.com\\/watch\\?v=\\([^&]*\\)\\(&.*\\)?" url)
+  (when (string-match ".*youtube.com\\/watch\\?.*v=\\([^&]*\\)\\(&.*\\)?" url)
     (match-string 1 url)))
 
 (defun cashpw/ytt-api-transcript (youtube-video-id)
@@ -3095,12 +3147,15 @@ TODO")))))
           "feat: Misc")
          ((string= short "flashcards")
           "feat: Flashcards")
+         ((string= short "rss")
+          "feat(rss): Sync")
          (t
           (s-lex-format "${short}: CURSOR"))))))
 
   (setq cashpw/commit-message-notes-categories (list
                                                 (commit-message-category :name "Flashcards" :short "flashcards")
                                                 (commit-message-category :name "Misc" :short "misc")
+                                                (commit-message-category :name "RSS" :short "rss")
                                                 (commit-message-category :name "Fix" :short "fix" :aliases '("Bug"))
                                                 (commit-message-category :name "Feature" :short "feat" :aliases '("Add"))))
   (remove-hook 'git-commit-setup-hook '+vc-start-in-insert-state-maybe-h)
@@ -4039,7 +4094,7 @@ The key is in the form: (authors|journal)_title_year."
           :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
   (ignore-errors
     (doom/reset-font-size))
-  (setq org-image-actual-width 1200)
+  ;; (setq org-image-actual-width 1200)
   ;; (cashpw/eglot-pause)
   ;; (global-flycheck-mode -1)
   (global-hide-mode-line-mode)
@@ -4065,7 +4120,8 @@ The key is in the form: (authors|journal)_title_year."
      :html-background "Transparent"
      :html-scale 1.0
      :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
-   org-image-actual-width nil)
+   ;org-image-actual-width nil
+   )
   ;; (global-flycheck-mode)
   ;; (cashpw/eglot-unpause)
   (global-hide-mode-line-mode -1)
@@ -7812,30 +7868,35 @@ items if they have an hour specification like [h]h:mm."
                           (propertize (concat " #" (substring priority 2 3) " ")
                                       'face priority-face)
                           heading
-                          (propertize (format "(%s:%s)" (file-relative-name file cashpw/path--notes-dir) line-number)
-                                      'face
-                                      'shadow))
-                  `(:file ,file
+                          (propertize (format "(%s:%s)"
+                                              (file-relative-name
+                                               file
+                                               cashpw/path--notes-dir)
+                                              line-number)
+                                      'face 'shadow))
+                  `(:file
+                    ,file
                     :heading ,heading
                     :priority ,priority
                     :line-number ,(string-to-number line-number))))
              (cashpw/error "Error! %s (match: %s)" todo-with-file match)))
          todos-with-file))
        (selection
-        (alist-get (completing-read
-                    "Select TODO: "
-                    (-sort
-                     (lambda (a b)
-                       (let ((priority-a (substring (car a) 0 4))
-                             (priority-b (substring (car b) 0 4)))
-                         (cond
-                          ((string= priority-a priority-b)
-                           (= 0 (random 2)))
-                          (t
-                           (string< (car a) (car b))))))
-                     match-alist))
-                   match-alist
-                   nil nil #'string=)))
+        (let ((vertico-sort-override-function #'identity))
+          (alist-get (completing-read
+                      "Select TODO: "
+                      (-sort
+                       (lambda (a b)
+                         (let ((priority-a (substring (car a) 0 4))
+                               (priority-b (substring (car b) 0 4)))
+                           (cond
+                            ((string= priority-a priority-b)
+                             (= 0 (random 2)))
+                            (t
+                             (string< (car a) (car b))))))
+                       match-alist))
+                     match-alist
+                     nil nil #'string=))))
     (goto-line (plist-get selection :line-number)
                (find-file (plist-get selection :file)))))
 
@@ -8604,6 +8665,7 @@ See `org-clock-special-range' for KEY."
                         "TODO(t)"
                         ;; A task that is in progress
                         "INPROGRESS(i)"
+                        "INPROGRESS-AT(I)"
                         ;; Something external is holding up this task
                         "BLOCKED(b)"
                         ;; This task is paused/on hold because of me
@@ -8651,14 +8713,15 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-mode-when-inprogress ()
   "Handle inprogress behavior."
-  (when (string-equal (org-get-todo-state)
-                      "INPROGRESS")
-    (cond
-     ;; ((cashpw/org-mode-on-inprogress--in-clock-in-file-p)
-     ;;  (org-clock-in))
-     ;; Trying this out for a while
-     (t
-      (org-clock-in)))))
+  (let ((todo-state (org-get-todo-state)))
+    (message "todo-state: %s" todo-state)
+    (when (cl-member todo-state (list "INPROGRESS" "INPROGRESS-AT") :test #'string=)
+      (when (string= "INPROGRESS" todo-state)
+        (org-clock-in))
+      (when (string= "INPROGRESS-AT" todo-state)
+        (search-backward "INPROGRESS-AT")
+        (replace-match "INPROGRESS")
+        (org-clock-in nil (org-read-date nil 'to-time))))))
 
 (after! org
   :config
@@ -9003,6 +9066,17 @@ See `org-clock-special-range' for KEY."
                          to)))))
          :children
          (("Follow-up"
+           :keys "F"
+           :before-finalize
+           (lambda ()
+             (org-schedule nil))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] Follow-up: [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Follow-up tomorrow"
            :keys "f"
            :before-finalize
            (lambda ()
@@ -9010,7 +9084,7 @@ See `org-clock-special-range' for KEY."
                (org-schedule nil tomorrow)))
            :immediate-finish t
            :template
-           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+           ("* TODO [#2] Follow-up: [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
             ":PROPERTIES:"
             ":Created: %U"
             ":END:"))
@@ -9388,6 +9462,37 @@ All args are passed to `org-roam-node-read'."
 (deflink "stock"
          "https://www.google.com/finance/quote/%s"
          (lambda (link _) (concat "$" (upcase link))))
+
+(defun cashpw/org--create-inline-image-to-fit-window-width
+    (original-function &rest args)
+  "Invoke ORIGINAL-FUNCTION with ARGS with a width such that the image fits in the window."
+  (if-let ((original-width (nth 1 args)))
+      ;; Pass through to create the image with a non-nil width
+      (apply original-function args)
+    ;; Clamp the width based on window and image size such that the image fits in the window
+    (let* ((file (nth 0 args))
+           (image (create-image file))
+           (image-size (image-size image t))
+           (image-width (car image-size))
+           (image-height (cdr image-size))
+
+           ;; Leave a small margin for the fringe and mode line.
+           (window-width (- (window-pixel-width) 4))
+           (window-height (- (window-pixel-height) 4))
+
+           (width-scale (/ (float window-width) image-width))
+           (height-scale (/ (float window-height) image-height))
+           (scale-factor (min 1.0 width-scale height-scale))
+
+           (width
+            (if (< scale-factor 1.0)
+                (floor (* image-width scale-factor))
+              nil)))
+      (funcall original-function file width))))
+
+(advice-add
+ 'org--create-inline-image
+ :around 'cashpw/org--create-inline-image-to-fit-window-width)
 
 ;; (use-package! org-transclusion
 ;;   :after org
@@ -9953,6 +10058,7 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
     :n "E" #'org-clock-modify-effort-estimate
     :n "e" #'org-set-effort
     :n "a" #'cashpw/org-clock-add-entry
+    :desc "Clock out at time" :n "O" (cmd! (org-clock-out nil nil (org-read-date nil 'to-time)))
     :n "p" #'omc-make-new-parallel-clock
     :n "s" #'omc-set-active-clock
     (:prefix ("R" . "Report")
@@ -10308,22 +10414,22 @@ Reference:https://stackoverflow.com/q/23622296"
 (defun cashpw/select-from-todays-todos-and-go-to ()
   "Prompt user to select a todo, then go to it."
   (interactive)
-  (let
-      ((marker
-        (cashpw/org-today--select-marker-from-alist
-         (-sort
-          (lambda (a b) (string< (car a) (car b)))
-          (org-ql-query
-            :select (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
-            :from (cashpw/org-agenda-view--today--files)
-            :where
-            `(and (or (tags "everyday") (deadline 0) (scheduled 0))
-                  (and (not (todo "CANCELLED"))
-                       (not (todo "DECLINED"))
-                       (not (todo "DONE"))
-                       (not (todo "KILL"))
-                       (not (todo "MOVE"))
-                       (not (todo "RESCHEDULE")))))))))
+  (let* ((vertico-sort-override-function #'identity)
+        (marker
+         (cashpw/org-today--select-marker-from-alist
+          (-sort
+           (lambda (a b) (string< (car a) (car b)))
+           (org-ql-query
+             :select (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
+             :from (cashpw/org-agenda-view--today--files)
+             :where
+             `(and (or (tags "everyday") (deadline 0) (scheduled 0))
+                   (and (not (todo "CANCELLED"))
+                        (not (todo "DECLINED"))
+                        (not (todo "DONE"))
+                        (not (todo "KILL"))
+                        (not (todo "MOVE"))
+                        (not (todo "RESCHEDULE")))))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 

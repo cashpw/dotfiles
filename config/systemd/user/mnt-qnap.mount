@@ -1,0 +1,11 @@
+[Unit]
+Description=Qnap mount
+
+[Mount]
+What=cashpw@192.168.86.51:/share/CACHEDEV1_DATA/
+Where=/mnt/qnap
+Type=fuse.sshfs
+Options=_netdev,auto,allow_other,IdentityFile=/home/cashpw/.ssh/qnap
+
+[Install]
+WantedBy=multi-user.target
