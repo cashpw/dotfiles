@@ -50,6 +50,10 @@
   :recipe (:host github
            :repo "cashpw/isbn.el"))
 
+(package! read-multi
+  :recipe (:host github
+           :repo "cashpw/read-multi"))
+
 (package! titlecase)
 
 (package! whisper
@@ -155,10 +159,13 @@
 
 (package! gnuplot)
 
-(package! gptel)
+(unpin! gptel)
+(unpin! gptel-quick)
 
 (package! commit-message
   :recipe (:host github :repo "cashpw/commit-message"))
+
+(package! speed-type)
 
 (package! eglot-booster
   :recipe (:host github
@@ -281,7 +288,7 @@
 
 ;; org-tempo is provided by org-mode
 
-;; (package! org-transclusion)
+(package! org-transclusion)
 
 (package! org-tree-slide)
 
@@ -309,6 +316,10 @@
 (package! toml
   :recipe (:host github
            :repo "gongo/emacs-toml"))
+
+;; (package! emacs-rag
+;;   :recipe (:host github
+;;            :repo "jkitchin/emacs-rag-libsql" :files ("emacs-rag/*.el")))
 
 (package! pomm)
 

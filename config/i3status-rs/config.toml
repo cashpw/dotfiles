@@ -79,6 +79,18 @@ button = "right"
 cmd = "bluetoothctl disconnect 74:74:46:26:4C:6F"
 
 [[block]]
+block = "bluetooth"
+mac = "C3:FD:60:D2:CE:74"
+format = " 󰍽{ $percentage|} "
+disconnected_format = " $icon "
+[[block.click]]
+button = "left"
+cmd = "bluetoothctl connect C3:FD:60:D2:CE:74"
+[[block.click]]
+button = "right"
+cmd = "bluetoothctl disconnect C3:FD:60:D2:CE:74"
+
+[[block]]
 block = "net"
 format = " $icon{ $ssid|} "
 format_alt = " $icon ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $speed_up.eng(prefix:K) {$signal_strength $ssid|Wired connection} $ip $ipv6 "
@@ -99,4 +111,4 @@ block = "battery"
 [[block]]
 block = "time"
 interval = 1
-format = " $timestamp.datetime(f:'%m-%d %H:%M:%S') "
+format = " 󰃭 $timestamp.datetime(f:'%m-%d %H:%M:%S') "

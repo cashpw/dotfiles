@@ -1,0 +1,6 @@
+[Unit]
+Description=Check battery level and send notification if low
+
+[Service]
+Type=oneshot
+ExecStart=%h/.scripts/battery/low-battery-alert.sh

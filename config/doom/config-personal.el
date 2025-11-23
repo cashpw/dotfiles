@@ -237,49 +237,6 @@ Reference: https://emacs.stackexchange.com/a/43985"
 (defconst cashpw/time--month-number-november 11)
 (defconst cashpw/time--month-number-december 12)
 
-(defvar cashpw/holiday-mothers-day
-  '(holiday-float
-    cashpw/time--month-number-may
-    cashpw/time--day-number-sunday
-    2
-    "Mother's Day"))
-(defvar cashpw/holiday-fathers-day
-  '(holiday-float
-    cashpw/time--month-number-june
-    cashpw/time--day-number-sunday
-    3
-    "Father's Day"))
-
-(defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
-  "Return next HOLIDAY occurrance time.
-
-The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next year's time."
-  (let* ((holiday-buffer-name "*get-next-holiday*")
-         (this-year (string-to-number (format-time-string "%Y" (current-time))))
-         (next-year (1+ this-year))
-         (holiday-strings
-          (progn
-            (list-holidays
-             (if force-next-year
-                 next-year
-               this-year)
-             next-year (list holiday))
-            (split-string (with-current-buffer holiday-buffer
-                            (buffer-string))
-                          "\n")))
-         (holiday-times
-          (mapcar
-           (lambda (holiday-string)
-             (date-to-time (car (split-string holiday-string ": "))))
-           holiday-strings)))
-    (with-current-buffer holiday-buffer
-      (kill-buffer))
-    (car
-     (seq-filter
-      (lambda (holiday-time)
-        (cashpw/time-greater-than-p holiday-time (current-time)))
-      holiday-times))))
-
 (defvar cashpw/path--proj-dir
   (s-lex-format "${cashpw/path--home-dir}/proj")
   "Projects directory.")
@@ -534,6 +491,19 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
      (setq cashpw/run-once-a-day-timer
            (run-with-timer nil (* 60 60) #'cashpw/run-once-a-day--runner)))))
 
+(defun number-to-words-clisp (n)
+  "Returns the cardinal English number representation, for example if N is 4, it would return \"four\""
+  (let* ((command (format "clisp -q -norc -x '(format t \"~R\" %d)'" n))
+     (lines (split-string (shell-command-to-string command) "\n")))
+    (car lines)))
+
+(defun number-to-words (n)
+  "Interactive function that returns written number representation by using CLISP and kills it into memory"
+  (interactive "nNumber: ")
+  (let ((number (number-to-words-clisp n)))
+    (kill-new number)
+    (message number)))
+
 (unless
     ;; Avoid 'void-variable mouse-wheel-up-event' error
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
@@ -599,13 +569,19 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (let* ((isbn-10s (isbn-10-get-all-in-buffer))
            (isbn-13s (isbn-13-get-all-in-buffer)))
       (completing-read "ISBN: " (append isbn-10s isbn-13s) nil t))))
-(after! json
+(after!
+  json
   (defun cashpw/google-books--list (query key success)
     "Return results of Google Books QUERY with api KEY.
 Invokes SUCCESS on success."
-    (request "https://www.googleapis.com/books/v1/volumes"
+    (request
+      "https://www.googleapis.com/books/v1/volumes"
       :sync t
-      :params `(("key" . ,key) ("q" . , query) ("orderBy" . "relevance") ("maxResults" . 20))
+      :params
+      `(("key" . ,key)
+        ("q" . , query)
+        ("orderBy" . "relevance")
+        ("maxResults" . 20))
       :parser 'json-read
       :success success)))
 
@@ -614,52 +590,50 @@ Invokes SUCCESS on success."
   (interactive "MQuery: ")
   (cashpw/google-books--list
    query (secret-get "google-books")
-   (cl-function (lambda (&key data &allow-other-keys)
-                  (let ((options
-                         (--map
-                          (when-let ((volume-info (alist-get 'volumeInfo it)))
-                            (cons
-                             (concat
-                              (let ((title (alist-get 'title volume-info))
-                                    (max-length 50))
-                                (if (> (length title) max-length)
-                                    (substring title 0 max-length)
-                                  (string-pad title max-length)))
-                              ""
-                              (let ((authors
-                                     (string-join (alist-get
-                                                   'authors volume-info)
-                                                  ","))
-                                    (max-length 30))
-                                (if (> (length authors) max-length)
-                                    (substring authors 0 max-length)
-                                  (string-pad authors max-length)))
-                              ""
-                              (let ((description
-                                     (alist-get 'description volume-info))
-                                    (max-length 30))
-                                (if (> (length description) max-length)
-                                    (substring description 0 max-length)
-                                  (string-pad description max-length))))
-                             ;; First ISBN in list of identifiers
-                             (cdr
-                              (car
-                               (cdr
-                                (elt
-                                 (alist-get
-                                  'industryIdentifiers volume-info)
-                                 0))))))
-                          (alist-get 'items data))))
-                    (let* ((corfu-sort-function #'identity)
-                          (vertico-sort-override-function #'identity)
-                          (isbn
-                           (alist-get (completing-read
-                                       "Volume: "
-                                       options
-                                       nil 'require-match)
-                                      options
-                                      nil nil #'string=)))
-                      (zotra-add-entry isbn)))))))
+   (cl-function
+    (lambda (&key data &allow-other-keys)
+      (let ((options
+             (--map
+              (when-let ((volume-info (alist-get 'volumeInfo it)))
+                (cons
+                 (concat
+                  (let ((title (alist-get 'title volume-info))
+                        (max-length 80))
+                    (if (> (length title) max-length)
+                        (substring title 0 max-length)
+                      (string-pad title max-length)))
+                  ""
+                  (let ((authors
+                         (string-join (alist-get 'authors volume-info) ","))
+                        (max-length 30))
+                    (if (> (length authors) max-length)
+                        (substring authors 0 max-length)
+                      (string-pad authors max-length)))
+                  ""
+                  (let ((description (alist-get 'description volume-info))
+                        (max-length 30))
+                    (if (> (length description) max-length)
+                        (substring description 0 max-length)
+                      (string-pad description max-length))))
+                 ;; First ISBN in list of identifiers
+                 (cdr
+                  (car
+                   (cdr
+                    (elt (alist-get 'industryIdentifiers volume-info) 0))))))
+              (alist-get 'items data))))
+        (let* ((corfu-sort-function #'identity)
+               (vertico-sort-override-function #'identity)
+               (isbn
+                (alist-get (completing-read "Volume: " options
+                                            nil
+                                            'require-match)
+                           options
+                           nil nil #'string=)))
+          (message "Attempting to add ISBN %s" isbn)
+          (zotra-add-entry isbn)))))))
+
+(use-package! read-multi
+  :after org)
 
 (use-package! titlecase)
 
@@ -870,6 +844,14 @@ Invokes SUCCESS on success."
    :n
    "l"
    (cmd! (cashpw/gptel-send (llm-prompts-prompt-default)))
+   :desc "explain"
+   :n
+   "e"
+   #'gptel-quick
+   :desc "explain"
+   :n
+   "E"
+   (cmd! (cashpw/gptel-quick-buffer))
    :n
    "k"
    #'cashpw/gptel-kill-curl-process
@@ -893,12 +875,12 @@ Invokes SUCCESS on success."
       (with-current-buffer buffer
         (org-mode)
         (delete-region (point-min) (point-max))
-        (insert
-         (format "\n** %s\n"
-                 (with-temp-buffer
-                   (org-mode)
-                   (org-timestamp '(16) t)
-                   (buffer-string))))
+        ;; (insert
+        ;;  (format "\n** %s\n"
+        ;;          (with-temp-buffer
+        ;;            (org-mode)
+        ;;            (org-timestamp '(16) t)
+        ;;            (buffer-string))))
         (insert
          (llm-prompts-prompt-extract-wisdom-yt
           (read-string "YouTube URL: "
@@ -1337,6 +1319,91 @@ Requires your OpenWeatherMap APPID."
           "&APPID=" appid
           "&units=" (url-encode-url (symbol-name units))
           "&cnt=5"))
+
+(defvar cashpw/holiday-mothers-day
+  '(holiday-float
+    cashpw/time--month-number-may
+    cashpw/time--day-number-sunday
+    2
+    "Mother's Day"))
+(defvar cashpw/holiday-fathers-day
+  '(holiday-float
+    cashpw/time--month-number-june
+    cashpw/time--day-number-sunday
+    3
+    "Father's Day"))
+
+(defun cashpw/holiday-get-next-time (holiday &optional force-next-year)
+  "Return next HOLIDAY occurrance time.
+
+The next occurrance may be in the current year. Use FORCE-NEXT-YEAR to get next year's time."
+  (let* ((holiday-buffer-name "*get-next-holiday*")
+         (this-year (string-to-number (format-time-string "%Y" (current-time))))
+         (next-year (1+ this-year))
+         (holiday-strings
+          (progn
+            (list-holidays
+             (if force-next-year
+                 next-year
+               this-year)
+             next-year (list holiday))
+            (split-string (with-current-buffer holiday-buffer
+                            (buffer-string))
+                          "\n")))
+         (holiday-times
+          (mapcar
+           (lambda (holiday-string)
+             (date-to-time (car (split-string holiday-string ": "))))
+           holiday-strings)))
+    (with-current-buffer holiday-buffer
+      (kill-buffer))
+    (car
+     (seq-filter
+      (lambda (holiday-time)
+        (cashpw/time-greater-than-p holiday-time (current-time)))
+      holiday-times))))
+
+(defun cashpw/org--insert-holiday-reminders (year)
+  "Insert TODO reminders for holidays."
+  (interactive (let* ((year
+                       (calendar-read-sexp
+                        "Year?"
+                        (lambda (x) (> x 0))
+                        (calendar-extract-year (calendar-current-date)))))
+                 (list year)))
+  (let ((all-holidays
+         (s-split
+          "\n"
+          (progn
+            (list-holidays
+             year year
+             (append holiday-general-holidays holiday-christian-holidays holiday-solar-holidays))
+            (with-current-buffer holiday-buffer
+              (buffer-string))))))
+    (cl-labels
+        ((insert-reminder
+           (name schedule-time)
+           (progn
+             (org-insert-heading)
+             (org-todo "TODO")
+             (insert name)
+             (org-priority org-priority-default)
+             (org-schedule nil (format-time-string "%F %a" schedule-time)))))
+      (--map
+       (cl-destructuring-bind
+           (date-string holiday-name)
+           ;; Example Monday, January 1, 2024: New Year's Day
+           (s-split ": " it)
+         (let ((holiday-time (date-to-time date-string)))
+           ;; (insert-reminder holiday-name holiday-time)
+           (insert-reminder
+            (s-concat holiday-name " in 30 days")
+            (time-subtract holiday-time (days-to-time 30)))
+           (insert-reminder
+            (s-concat holiday-name " in 90 days")
+            (time-subtract holiday-time (days-to-time 90)))))
+       all-holidays)))
+  (kill-buffer holiday-buffer))
 
 (when (cashpw/machine-p 'personal-phone)
   (advice-add 'doom/increase-font-size :override #'ignore)
@@ -2681,6 +2748,61 @@ TAGS which start with \"-\" are excluded."
                "")))
     (elfeed-search-update)))
 
+(defun cashpw/elfeed-unread-count-by-tag ()
+  "Count all elfeed entries by tag and display the results."
+  (interactive)
+  (let ((count-hash (make-hash-table :test 'equal)))
+    (maphash
+     (lambda (_ entry)
+       (when (member 'unread (elfeed-entry-tags entry))
+         (dolist (tag (elfeed-entry-tags entry))
+           (puthash tag (1+ (gethash tag count-hash 0)) count-hash))))
+     (plist-get elfeed-db :entries))
+    (with-current-buffer (get-buffer-create "*elfeed-counts*")
+      (let* ((tag-counts (let (ret)
+                           (maphash
+                            (lambda (tag count)
+                              (unless (equal tag 'unread)
+                              (push (cons tag count) ret)))
+                            count-hash)
+                           ret))
+             (sorted-tag-counts
+              (--sort
+               (> (cdr it) (cdr other))
+               tag-counts)))
+        (erase-buffer)
+        (--each sorted-tag-counts
+          (insert (format "%-20s %d\n" (car it) (cdr it))))
+        (goto-char (point-min))
+        (display-buffer (current-buffer))))))
+
+(defun cashpw/elfeed-unread-count-by-feed ()
+  "Count all elfeed entries by tag and display the results."
+  (interactive)
+  (let ((count-hash (make-hash-table :test 'equal)))
+    (maphash
+     (lambda (_ entry)
+       (when (member 'unread (elfeed-entry-tags entry))
+         (let ((feed-title (elfeed-feed-title (elfeed-entry-feed entry))))
+           (puthash feed-title (1+ (gethash feed-title count-hash 0)) count-hash))))
+     (plist-get elfeed-db :entries))
+    (with-current-buffer (get-buffer-create "*elfeed-counts*")
+      (let* ((feed-counts (let (ret)
+                            (maphash
+                             (lambda (feed count)
+                               (push (cons feed count) ret))
+                             count-hash)
+                            ret))
+             (sorted-feed-counts
+              (--sort
+               (> (cdr it) (cdr other))
+               feed-counts)))
+        (erase-buffer)
+        (--each sorted-feed-counts
+          (insert (format "%-50s %d\n" (string-limit (car it) 49) (cdr it))))
+        (goto-char (point-min))
+        (display-buffer (current-buffer))))))
+
 (use-package! elfeed-protocol
   :after elfeed
   :custom
@@ -2705,7 +2827,7 @@ TAGS which start with \"-\" are excluded."
 (use-package! gnuplot)
 
 (defvar llm-prompts-prompt--default
-  "Write to me in plan language. Focus on the ideas, arguments, or facts at hand. Speak in a natural tone without praise, encouragement, or emotional framing. Let the conversation move forward directly, with brief acknowledgments if they serve clarity, but without personal commentary or attempts to manage the mood. Keep the engagement sharp, respectful, and free of performance. Let the discussion end when the material does, without softening or drawing it out unless there’s clear reason to continue. Ask questions when appropriate to clarify or disambiguate the goal."
+  "Write in plan language. Start with the conclusion, suggestion, or similar (bottom line up front). Focus on the ideas, arguments, or facts at hand. Speak in a natural tone without praise, encouragement, or emotional framing. Let the conversation move forward directly, with brief acknowledgments if they serve clarity, but without personal commentary or attempts to manage the mood. Keep the engagement sharp, respectful, and free of performance. Let the discussion end when the material does, without softening or drawing it out unless there’s clear reason to continue. Ask questions when appropriate to clarify or disambiguate the goal. Structure your writing: bullet point lists instead of long paragraphs, emphasis (bold and italic), headings, and tables."
   "Default prompt.")
 
 (defun llm-prompts-prompt-default ()
@@ -2714,14 +2836,15 @@ TAGS which start with \"-\" are excluded."
 
 ;; Based on https://github.com/danielmiessler/fabric/blob/main/patterns/extract_article_wisdom/system.md
 (defvar llm-prompts-prompt--summarize
-  "Please carefully review the following text with the aim of providing accurate and representative responses to the following requirements, in order:
+  "Please carefully review the preceding text with the aim of providing accurate and representative responses to the following requirements, in order:
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers, in a bullet-point list.
 2. In a section titled \"Thesis\": Identify and describe the thesis statement(s) in a bullet point list.
 3. In a section titled \"Summary\": Summarize the content in 300 words or less. Prefer bullet-point lists where appropriate.
 4. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
 5. In a section titled \"Ideas\": List up to 30 key, representative, and distinct ideas from the text in an bullet-point list.
-6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers"
+6. In a section titled \"Next steps\": List up to 10 next steps mentioned by the speakers
+7. In a section titled \"Antithesis\": Push back on the thesis and supporting points in 200 words or less. Discuss inaccuracies, omissions, fallacies, and offer counterpoints and an opposition thesis."
   "LLM prompt to summarize content.")
 
 (defun cashpw/youtube--video-id-from-url (url)
@@ -2747,8 +2870,13 @@ Example: https://www.youtube.com/watch?v=xzseFskewlE"
   (format "%s
 
 %s"
-          llm-prompts-prompt--summarize
-          (cashpw/ytt-api-transcript (cashpw/youtube--video-id-from-url youtube-url))))
+          (cashpw/ytt-api-transcript (cashpw/youtube--video-id-from-url youtube-url))
+          llm-prompts-prompt--summarize))
+
+;; Based on https://github.com/danielmiessler/fabric/blob/main/patterns/extract_article_wisdom/system.md
+(defvar llm-prompts-prompt--summarize-short
+  "Carefully review the following text and respond with an accurate and representative summary in %d words or less."
+  "LLM prompt to summarize content in a few words.")
 
 (defvar llm-prompts-prompt--follow-up-questions
   "When faced with a prompt, begin by identifying the participants who will contribute to asking follow-up questions. Then, each participant should ask between three and ten follow-up questions.
@@ -3022,10 +3150,30 @@ Task: "
       (if (cashpw/machine-p 'work-cloudtop)
           "corporate-gemini"
         "personal-gemini"))
-     :stream t)
-   gptel-model 'gemini-2.5-pro-preview-06-05
+     :stream t
+     ;; :request-params '(:tools [(:google_search ())])
+     )
+   ;; gptel-model 'gemini-pro-latest
+   gptel-model 'gemini-3-pro-preview
+   gptel-tools '()
+   ;; (list
+   ;;              (gptel-make-tool
+   ;;                    :name "cashpw_log"
+   ;;                    :description "Custom logging fucntion."
+   ;;                    :function (lambda (text)
+   ;;                                (cashpw/log text))
+   ;;                    :args '((:name "text"
+   ;;                             :type string
+   ;;                             :description "The text to log."))))
+
+   gptel-quick-system-message
+   (lambda (count) (format llm-prompts-prompt--summarize-short count))
    gptel-quick-backend gptel-backend
-   gptel-quick-model 'gemini-2.5-flash-preview-05-20)
+   ;; gptel-quick-display nil
+   gptel-quick-display 'posframe
+   gptel-quick-timeout 60
+   gptel-quick-word-count 35
+   gptel-quick-model 'gemini-flash-latest)
 
   (defun gptel-mode-line--indicator (mode)
     "Return indicator string for MODE."
@@ -3043,12 +3191,15 @@ Task: "
            (setf global-mode-string (remove indicator global-mode-string)))))
       (force-mode-line-update t)))
   (defun gptel-mode-line--hide-all (&rest _)
+    (message "[gptel] Done")
     (gptel-mode-line 'hide 'querying)
     (gptel-mode-line 'hide 'responding))
   (defun gptel-mode-line--show-querying ()
+    (message "[gptel] Querying")
     (gptel-mode-line--hide-all)
     (gptel-mode-line 'show 'querying))
   (defun gptel-mode-line--show-responding ()
+    (message "[gptel] Responding")
     (gptel-mode-line--hide-all)
     (gptel-mode-line 'show 'responding))
   (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
@@ -3060,6 +3211,39 @@ Task: "
     (interactive "sPattern: ")
     (dolist (file (f-glob pattern))
       (gptel-context-add-file file)))
+
+  (defun cashpw/gptel-quick-buffer ()
+    (gptel-quick (buffer-substring-no-properties (point-min) (point-max))))
+  (defun gptel-quick (query-text &optional count)
+    "Explain or summarize region or thing at point with an LLM.
+
+QUERY-TEXT is the text being explained.  COUNT is the approximate
+word count of the response."
+    (interactive
+     (list (cond
+            ((use-region-p) (buffer-substring-no-properties (region-beginning)
+                                                            (region-end)))
+            ((and (derived-mode-p 'pdf-view-mode)
+                  (pdf-view-active-region-p))
+             (mapconcat #'identity (pdf-view-active-region-text) "\n\n"))
+            (t (thing-at-point 'sexp)))
+           current-prefix-arg))
+
+    (when (xor gptel-quick-backend gptel-quick-model)
+      (error "gptel-quick-backend and gptel-quick-model must be both set or unset"))
+
+    (let* ((count (or count gptel-quick-word-count))
+           ;; (gptel-max-tokens (floor (+ (sqrt (length query-text))
+           ;;                             (* count 2.5))))
+           (gptel-use-curl)
+           (gptel-use-context (and gptel-quick-use-context 'system))
+           (gptel-backend (or gptel-quick-backend gptel-backend))
+           (gptel-model (or gptel-quick-model gptel-model)))
+      (gptel-request query-text
+        :system (funcall gptel-quick-system-message count)
+        :context (list query-text count
+                       (posn-at-point (and (use-region-p) (region-beginning))))
+        :callback #'gptel-quick--callback-posframe)))
 
   (defun cashpw/gptel-send (prompt)
     "Invoke `gptel-send' with specific PROMPT."
@@ -3086,6 +3270,10 @@ Task: "
       (setq cashpw/gptel-after-whisper nil)))
 
   (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+
+(cl-defmethod gptel--request-data :around ((backend gptel-gemini) prompts)
+  "Add search ability."
+  (plist-put (cl-call-next-method) :tools (append '(:google_search ()))))
 
 (setq
  ;; PERF
@@ -3164,6 +3352,15 @@ TODO")))))
    'git-commit-setup-hook
    (defun cashpw/vc-start-in-insert-state ()
      (evil-insert-state))))
+
+(use-package! speed-type
+  :config
+  (defun cashpw/speed-type-mode-hook ()
+    "Hooks for monkeytype-mode."
+    (centered-cursor-mode)
+    (evil-escape-mode -1)
+    (evil-insert -1))
+  (add-hook 'speed-type-mode-hook #'cashpw/speed-type-mode-hook))
 
 (setq
  corfu-auto-delay 1
@@ -5068,43 +5265,45 @@ Return nil if no attendee exists with that EMAIL."
       (let ((category (car it))
             (summaries (cdr it)))
         (--map `(,it . ,category) summaries)))
-     '(("Fitness" .
+     '(("Personal>Health>Fitness>Cardio" .
+        ("Cardio"
+         "Run"
+         "Row"
+         "Walk"))
+       ("Personal>Health>Fitness>Strength" .
         ("Shoulders"
          "Back"
          "Chest"
          "Legs"
-         "Mobility, Grip, Neck"
-         "Cardio"
-         "Strength"
-         "Stretch"
+         "Strength"))
+       ("Personal>Health>Fitness>Mobility" .
+        ("Stretch"
          "Stretch: Hamstrings"
-         "Stretch: Hips"
-         "Walk"))
-       ("Car" . ("Tidy car"))
+         "Stretch: Hips"))
        ("Finance" . ("Finances and net worth"))
-       ("Pet" .
+       ("Family>Pet" .
         ("Empty cat boxes"
          "Myth's inhaler"
          "Feed cats"
          "Train Finn"
          "Clean pet water and food dishes"))
-       ("Family" . ("Call parents"))
-       ("Friend" . ("Call with Alian, Ethan, and Austin"))
-       ("Food" . ("Lunch" "Dinner"))
-       ("Home" .
+       ("Family" . ("Call parents"
+                    "Call with Alian, Ethan, and Austin"))
+       ("Personal>Eat" . ("Lunch" "Dinner"))
+       ("Personal>Housework" .
         ("Take out the trash"
+         "Tidy car"
          "Get the mail"
          "Clean house"
          "Flip pillowcase"
          "New bedsheets"
          "New pillowcase"))
-       ("Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
-       ("Pottery" . ("Pottery" "Wheel Projects with Khaled"))
-       ("Study" . ("Study" "Flashcards"))
-       ("Food" . ("Huel shake"))
-       ("Sleep" . ("Sleep"))
-       ("Therapy". ("Therapy"))
-       ("R&R" . ("R&R")))))
+       ("Personal>Health>Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
+       ("Personal>Hobby>Pottery" . ("Pottery" "Wheel Projects with Khaled"))
+       ("Personal>Learn" . ("Study" "Flashcards"))
+       ("Personal>Eat" . ("Huel shake"))
+       ("Personal>Sleep" . ("Sleep"))
+       ("Personal>Health>Mental". ("Therapy")))))
    :on-activate
    (lambda ()
      (setq cashpw/org-gcal--no-prep-reminder-summaries
@@ -5132,7 +5331,7 @@ Return nil if no attendee exists with that EMAIL."
      (let ((category (car it))
            (summaries (cdr it)))
        (--map `(,it . ,category) summaries)))
-    '(("Sleep" . ("Sleep")))))
+    '(("Personal>Sleep" . ("Sleep")))))
   :on-activate (lambda () (setq cashpw/org-gcal--no-prep-reminder-summaries '())))
  ;; "Personal sleep profile for `org-gcal'."
  ;; :group 'cashpw
@@ -5282,7 +5481,7 @@ Return nil if no attendee exists with that EMAIL."
   :after org-roam
   :custom
   (org-node-creation-fn #'org-node-new-via-roam-capture)
-  (org-node-slug-fn #'org-node-slugify-like-roam-actual)
+  (org-node-file-slug-fn #'org-node-slugify-like-roam-default)
   (org-node-filter-fn
    (lambda (node)
      (and (not (assoc "ROAM_EXCLUDE" (org-node-get-properties node)))
@@ -5290,6 +5489,7 @@ Return nil if no attendee exists with that EMAIL."
           (not (s-ends-with-p "archive" (org-node-get-file node)))
           ;; Exclude flashcards
           (not (member "fc" (org-node-get-tags-local node))))))
+  (org-node-alter-candidates t)
 
   :config
   (org-node-cache-mode)
@@ -5344,7 +5544,249 @@ Return nil if no attendee exists with that EMAIL."
   (org-defblock quote4 nil (cashpw/org-defblock--quote-format))
   (org-defblock quote5 nil (cashpw/org-defblock--quote-format)))
 
-(use-package! org-tempo)
+(use-package! org-tempo
+  :after org)
+
+(use-package!
+    org-transclusion
+  :after org
+  :custom
+  (org-transclusion-extensions
+   '(org-transclusion-src-lines
+     org-transclusion-font-lock org-transclusion-indent-mode))
+  (org-transclusion-exclude-elements '(property-drawer keyword))
+  :config
+  (defun cashpw/day-log--get-org-files-with-heading (haystack-path needle)
+    "Search org files in HAYSTACK-PATH for headings matching NEEDLE regexp.
+Returns an alist of (absolute-path . line-number)."
+    (let*
+        ((cmd
+          (format
+           "fd --extension org --absolute-path --type f . %s --exec grep -nHE \"^\\*+ .*%s\""
+           (shell-quote-argument haystack-path) needle))
+         (output (shell-command-to-string cmd))
+         (lines (split-string output "\n" t))
+         (results '()))
+      (dolist (line lines (nreverse results))
+        ;; Parse output format: filename:linenumber:match
+        (when (string-match "^\\([^:]+\\):\\([0-9]+\\):" line)
+          (let ((path (match-string 1 line))
+                (line-num (string-to-number (match-string 2 line))))
+            (push (cons path line-num) results))))))
+
+  (defcustom cashpw/day-log--buffer-name "*day-log*"
+    "TODO.")
+
+  (defun cashpw/day-log--get-id-from-match (file-path line-number)
+    "Visit FILE-PATH and return org-mode id at LINE-NUMBER.
+
+Crate an org-mode id if one doesn't exist.
+
+Note: This saves the buffers to persist the created IDs."
+    (with-current-buffer (find-file-noselect file-path)
+      (save-excursion
+        (goto-char (point-min))
+        (forward-line (1- line-number)) ;; forward-line is 0-indexed
+        (let ((id (org-id-get-create)))
+          (save-buffer)
+          id))))
+
+
+  (defun cashpw/day-log--get-ids-from-matches (file-path-line-number-alist)
+    "Visit files in alist, ensure they have an Org ID, and return the IDs.
+FILE-PATH-LINE-NUMBER-ALIST is an alist of (path . line-number).
+Note: This saves the buffers to persist the created IDs."
+    (--map (cashpw/day-log--get-id-from-match (car it) (cdr it)) matches))
+
+  (defun cashpw/org-transclusion--insert (id &optional extra)
+    "Insert transclusion links for the provided ID."
+    (insert
+     (format "#+transclude: [[id:%s]]%s\n"
+             id
+             (when extra
+               (concat " " extra)))))
+
+  (defun cashpw/org-transclusion-keyword-rename-to-title (str)
+    "Parse :rename-to-title property from the transclusion keyword string."
+    (when (string-match ":rename-to-title" str)
+      (list :rename-to-title t)))
+
+  (defun cashpw/org-transclusion-filter-rename-to-file-title (obj plist)
+    "Rename the transcluded headline to the document title if :rename-to-title is present."
+    (when (plist-get plist :rename-to-title)
+      (when-let ((title
+                  (save-restriction
+                    (widen)
+                    (or (cadar (org-collect-keywords '("TITLE")))
+                        (and (buffer-file-name)
+                             (file-name-base (buffer-file-name)))))))
+        ;; Map over top-level headlines in the transcluded content (obj)
+        ;; and update their :title property.
+        (org-element-map
+            obj 'headline (lambda (hl) (org-element-put-property hl :title title))
+            nil 'first-match 'no-recursion))) ;; t for no-recursion ensures we only rename the root headline(s)
+    obj)
+
+  (with-eval-after-load 'org-transclusion
+    (add-to-list
+     'org-transclusion-keyword-value-functions
+     #'cashpw/org-transclusion-keyword-rename-to-title)
+    (add-to-list
+     'org-transclusion-content-filter-org-functions
+     #'cashpw/org-transclusion-filter-rename-to-file-title))
+  ;; Usage:
+  ;; #+transclude: [[id:some-id]] :rename-to-title
+
+  (defun org-transclusion-keyword-plist-to-string (plist)
+    "Convert a keyword PLIST to a string."
+    (let (;;(active-p (plist-get plist :active-p))
+          (link (plist-get plist :link))
+          (level (plist-get plist :level))
+          (disable-auto (plist-get plist :disable-auto))
+          (only-contents (plist-get plist :only-contents))
+          (exclude-elements (plist-get plist :exclude-elements))
+          (expand-links (plist-get plist :expand-links))
+          (rename-to-title (plist-get plist :rename-to-title))
+          (custom-properties-string nil))
+      (setq custom-properties-string
+            (dolist (fn
+                     org-transclusion-keyword-plist-to-string-functions
+                     custom-properties-string)
+              (let ((str (funcall fn plist)))
+                (when (and str (not (string-empty-p str)))
+                  (setq custom-properties-string
+                        (concat custom-properties-string " " str))))))
+      (concat
+       "#+transclude: " link
+       (when level
+         (format " :level %d" level))
+       (when disable-auto
+         (format " :disable-auto"))
+       (when only-contents
+         (format " :only-contents"))
+       (when rename-to-title
+         (format " :rename-to-title"))
+       (when exclude-elements
+         (format " :exclude-elements \"%s\"" exclude-elements))
+       (when expand-links
+         (format " :expand-links"))
+       custom-properties-string "\n")))
+
+  (defun cashpw/day-log-day (time)
+    "Collect all headings with timestamp for day of TIME and transclude them for review."
+    (interactive)
+    (with-current-buffer (get-buffer-create cashpw/day-log--buffer-name)
+      (org-mode)
+      (org-transclusion-remove-all)
+      (erase-buffer)
+      (insert
+       (format "Notes from %s\n\n"
+               (format-time-string (org-time-stamp-format nil 'interactive)
+                                   time)))
+      (let* ((dir-path cashpw/path--notes-dir)
+             (today-timestamp
+              (format-time-string (substring
+                                   ;; Strip the leading and trailing brackets
+                                   (org-time-stamp-format nil 'inactive)
+                                   1 -1)
+                                  time))
+             (ids
+              (cashpw/day-log--get-ids-from-matches
+               (cashpw/day-log--get-org-files-with-heading
+                dir-path (regexp-quote today-timestamp)))))
+        (dolist (id ids)
+          (cashpw/org-transclusion--insert id ":rename-to-title")))
+      (org-transclusion-add-all)
+      (pop-to-buffer (current-buffer))))
+
+  (defun cashpw/day-log-today ()
+    "Collect all headings with timestamp for today and transclude them for review."
+    (interactive)
+    (cashpw/day-log-day (current-time)))
+
+  (defun cashpw/day-log-days (times)
+    "Collect all headings with timestamp for each day in TIMES and transclude them for review."
+    (interactive)
+    (with-current-buffer (get-buffer-create cashpw/day-log--buffer-name)
+      (org-mode)
+      (org-transclusion-remove-all)
+      (erase-buffer)
+      (goto-char (point-min))
+      (insert
+       (format "Notes for %s\n\n"
+               (s-join ", " (--map (format-time-string "%F (%a)" it) times))))
+      (let* ((dir-path cashpw/path--notes-dir)
+             (file-and-line-numbers (make-hash-table :test 'equal))
+             (file-and-ids (make-hash-table :test 'equal)))
+        (cl-flet
+            ((timestamp-for-time
+               (time)
+               (format-time-string (substring
+                                    ;; Strip the leading and trailing brackets
+                                    (org-time-stamp-format nil 'inactive)
+                                    1 -1)
+                                   time)))
+          (dolist (file-and-line-number
+                   (-reduce
+                    #'append
+                    (--map
+                     (cashpw/day-log--get-org-files-with-heading
+                      dir-path
+                      (progn
+                        (regexp-quote (timestamp-for-time it))))
+                     times)))
+            (let ((file-path (car file-and-line-number))
+                  (line-number (cdr file-and-line-number)))
+              (puthash
+               file-path
+               (append
+                (gethash file-path file-and-line-numbers '())
+                (list line-number))
+               file-and-line-numbers)))
+          (maphash
+           (lambda (file-path line-numbers)
+             (puthash
+              file-path
+              (--map
+               (cashpw/day-log--get-id-from-match file-path it) line-numbers)
+              file-and-ids))
+           file-and-line-numbers)
+          (maphash
+           (lambda (file-path ids)
+             (let ((file-title (with-current-buffer (find-file-noselect file-path)
+                                 (org-get-title))))
+               (insert (format "* %s\n\n" file-title)))
+             (dolist (id ids)
+               (cashpw/org-transclusion--insert id ":level 2")))
+           file-and-ids)))
+      (org-transclusion-add-all)
+      (pop-to-buffer (current-buffer))))
+
+  (defun cashpw/day-log-this-week ()
+    "TODO."
+    (interactive)
+    (cashpw/day-log-days (cashpw/time--get-week-times (current-time)))
+    (with-current-buffer (get-buffer-create cashpw/day-log--buffer-name)
+      (goto-char (point-min))
+      (insert "* Clocktable \n\n")
+      (goto-char (point-min))
+      (cashpw/org-clocktable-by-category-this-week))))
+
+;; (use-package! org-transclusion
+;;   :after org
+;;   :config
+;;   (setq
+;;    org-transclusion-extensions-loaded t
+;;   (add-hook! 'org-mode-hook 'org-transclusion-mode)
+;;   ;; (set-face-attribute
+;;   ;;  'org-transclusion-fringe nil
+;;   ;;  :foreground "white"
+;;   ;;  :background nil)
+;;   (define-fringe-bitmap 'org-transclusion-fringe-bitmap
+;;     [17 34 68 136 68 34 17]
+;;     nil nil 'center)
+;;   ;; Re-load extensions to activate `org-transclusion-indent-mode'.
+;;   (org-transclusion-load-extensions-maybe t))
 
 (use-package! org-tree-slide)
 
@@ -5355,7 +5797,7 @@ Return nil if no attendee exists with that EMAIL."
       ox-hugo
     :after ox
     :custom
-    (org-hugo-base-dir "~/proj/notes.cashpw.com")
+    (org-hugo-base-dir "~/proj/cashpw.com")
     (org-hugo-section "posts")
     :config
     (add-hook 'cashpw/org-mode-done-cut-hook 'org-roam-file-p)))
@@ -5668,6 +6110,23 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
          ((and start-time)
           (org-schedule nil (format-time-string "%F %a" start-time))))))))
 
+(defun cashpw/org-insert-progress-cookie ()
+  "Insert a progress cookie [/] at the end of the heading title and update it."
+  (interactive)
+  (save-excursion
+    (when (org-back-to-heading t)
+      (let ((progress-cookie-regexp
+             ;; Thanks, org-modern!
+             " \\(\\[\\(?:\\([0-9]+\\)%\\|\\([0-9]+\\)/\\([0-9]+\\)\\)]\\)"))
+        (unless (s-matches-p progress-cookie-regexp (org-get-heading))
+          (end-of-line)
+          (when (re-search-backward ":[[:alnum:]_@#%:]+:[ \t]*$"
+                                    (line-beginning-position)
+                                    t)
+            (skip-chars-backward " \t"))
+          (insert " [/]")
+          (org-ctrl-c-ctrl-c))))))
+
 (setq
  cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
  cashpw/-schedule-block-one '(:start "07:00" :end "09:00")
@@ -5715,47 +6174,6 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
  'org-mode-hook
  (lambda ()
    (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified)))
-
-(defun cashpw/org--insert-holiday-reminders (year)
-  "Insert TODO reminders for holidays."
-  (interactive (let* ((year
-                       (calendar-read-sexp
-                        "Year?"
-                        (lambda (x) (> x 0))
-                        (calendar-extract-year (calendar-current-date)))))
-                 (list year)))
-  (let ((all-holidays
-         (s-split
-          "\n"
-          (progn
-            (list-holidays
-             year year
-             (append holiday-general-holidays holiday-christian-holidays))
-            (with-current-buffer holiday-buffer
-              (buffer-string))))))
-    (cl-labels
-        ((insert-reminder
-           (name schedule-time)
-           (progn
-             (org-insert-heading)
-             (org-todo "TODO")
-             (insert name)
-             (org-schedule nil (format-time-string "%F %a" schedule-time)))))
-      (--map
-       (cl-destructuring-bind
-           (date-string holiday-name)
-           ;; Example Monday, January 1, 2024: New Year's Day
-           (s-split ": " it)
-         (let ((holiday-time (date-to-time date-string)))
-           (insert-reminder holiday-name holiday-time)
-           (insert-reminder
-            (s-concat holiday-name " in 30 days")
-            (time-subtract holiday-time (days-to-time 30)))
-           (insert-reminder
-            (s-concat holiday-name " in 90 days")
-            (time-subtract holiday-time (days-to-time 90)))))
-       all-holidays)))
-  (kill-buffer holiday-buffer))
 
 (defun cashpw/org-agenda-files--notes-all ()
   "Return list of all notes files.
@@ -5919,6 +6337,97 @@ Don't call directly. Use `cashpw/org-agenda-files'."
      '("doc" "xls" "ppt" "odt" "ods" "odg" "odp"))
     "libreoffice %s")))
 
+(defun cashpw/flatten-categories (nested-list)
+  "Flatten a NESTED-LIST of categories into a single list of strings.
+
+The hierarchy is represented by '>'. For example, the input
+'((\"A\" (\"B\")) (\"C\")) is flattened to '(\"A\" \"A>B\" \"C\")."
+  (let (result)
+    (cl-labels
+        ((process-node
+           (node prefix)
+           (when (and (listp node) (stringp (car node)))
+             (let* ((category-name (car node))
+                    (full-path
+                     (if (string-empty-p prefix)
+                         category-name
+                       (concat prefix ">" category-name))))
+               (push full-path result)
+               (dolist (child (cdr node))
+                 (process-node child full-path))))))
+      (dolist (top-level-node nested-list)
+        (process-node top-level-node "")))
+    (nreverse result)))
+
+(defvar cashpw/org-categories
+  (cashpw/flatten-categories
+   '(("Personal"
+      ("Health"
+       ("Fitness"
+        ("Cardio")
+        ("Mobility")
+        ("Strength"))
+       ("Hygiene")
+       ("Medical")
+       ("Mental")
+       ("Sleep"))
+      ("Hobby"
+       ("Pottery")
+       ("Photography")
+       ("Emacs"))
+      ("Rest"
+       ("Meaningful")
+       ("NonMeaningful"))
+      ("Learn")
+      ("Journal")
+      ("Eat")
+      ("Housework"))
+     ("Family"
+      ;; Cayla
+      ("Parents"
+       ;; Dave
+       ;; Cindy
+       ;; Denise
+       ;; Chip
+       )
+      ("Children"
+       ;; Charles
+       )
+      ("Pets"
+       ;; Finn
+       ;; Myth
+       ;; Jynx
+       ))
+     ("Transit")
+     ("Friend")
+     ("Finance")
+     ("Work"
+      ("Transit")
+      ("Focused")
+      ("Social"))
+     ("Vacation")
+     ("Uncategorized")))
+  "Hierarchical categories.")
+
+(defun cashpw/org-property-values (old-fn key)
+  "Return custom categories; else default behavior."
+  (cond
+   ((string= key "CATEGORY")
+    cashpw/org-categories)
+   (t
+    (funcall old-fn key))))
+
+(advice-add 'org-property-values :around 'cashpw/org-property-values)
+
+(defun cashpw/org-categorized-p ()
+  "Return non-nil when the heading at point is categorized."
+  (let ((category (org-get-category)))
+    (and
+     (--any-p
+      (s-starts-with-p it category)
+      cashpw/org-categories)
+     (not (string= "Uncategorized" category)))))
+
 (after! org
   ;; Allow in-word emphasis (e.g. c**a**t with bold 'a')
   ;; Reference: https://stackoverflow.com/a/24540651
@@ -6076,8 +6585,10 @@ Don't call directly. Use `cashpw/org-agenda-files'."
        :before-finalize
        (lambda ()
          (save-excursion
+           (widen)
            (let ((id (org-entry-get (point-min) "ID")))
              (goto-char (point-min))
+             (org-node-ensure-crtime-property)
              (org-set-property
               "DIR"
               (format "attachments/%s/%s"
@@ -6086,22 +6597,27 @@ Don't call directly. Use `cashpw/org-agenda-files'."
        :children
        (("Concept"
          :keys "c"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :concept:"))
+#+filetags: :concept:
+* TODO [#2] Expand
+"))
         ("On X"
          :keys "o"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :concept:
 
-An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
+An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]].
+
+* TODO [#2] Expand
+"))
         ("American sign language (ASL)"
          :keys "a"
          :prepare-finalize
@@ -6115,7 +6631,7 @@ An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]]."))
                (cashpw/replace-regexp-in-buffer
                 "ATTACH_\\(.*\\)_END_ATTACH"
                 (format "[[attachment:%s][\\1]]" attachment-file-name)))))
-         :head
+         :template
          (
           "#+title: ${title} (ASL)
 #+author: Cash Prokop-Weaver
@@ -6141,8 +6657,9 @@ ${title}
         ("Decision"
          :keys "d"
          :file "decision--${slug}.org"
-         :head
-         ("#+title: Decision: ${title}
+         :template
+         (
+          "#+title: Decision: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+filetags: :decision:private:
@@ -6187,7 +6704,7 @@ Communicate project status, blockers, etc, to relevant stakeholders.
         ("Project"
          :keys "P"
          :file "proj--${slug}.org"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6214,7 +6731,7 @@ Communicate project status, blockers, etc, to relevant stakeholders.
 "))
         ("Person"
          :keys "p"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6225,7 +6742,7 @@ Communicate project status, blockers, etc, to relevant stakeholders.
 
         ("Photographer"
          :keys "h"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6238,7 +6755,7 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 
         ("Friend (person)"
          :keys "f"
-         :head
+         :template
          (
           "#+title: ${title}
 #+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
@@ -6254,7 +6771,7 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 * Notes"))
         ("Verse"
          :keys "v"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6262,7 +6779,7 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 #+filetags: :verse:"))
         ("Quote"
          :keys "u"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6270,7 +6787,7 @@ A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
 #+filetags: :quote:"))
         ("Recipe"
          :keys "r"
-         :head
+         :template
          (
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
@@ -6888,39 +7405,32 @@ This is an internal function."
 (add-hook! 'org-export-before-processing-hook
            'cashpw/org-roam--export-backlinks)
 
-(defun cashpw/journal--create (name)
-  "Create a daily, journal, entry with NAME."
-  (org-roam-dailies--capture time t)
-  (save-buffer))
-
-(defun cashpw/journal--remove-old-hastodo (pattern)
+(defun cashpw/journal--remove-old-hastodo ()
   "Remove hastodo tag from old journal entries matching PATTERN."
+  (interactive)
   (let ((journal-files
-         (--filter
-          (string-match-p pattern it)
-          (cashpw/org-files-with-tag "hastodo" org-roam-directory))))
+          (cashpw/org-files-with-tags '("hastodo" "journal") org-roam-directory)))
     (dolist (journal-file journal-files)
       (with-current-buffer (find-file-noselect journal-file)
         (set-buffer-modified-p t)
         (save-buffer)))))
 
-(after! doct-org-roam
+(after!
+  doct-org-roam
   (setq
    org-roam-dailies-directory cashpw/path--notes-dir
-   org-roam-dailies-capture-templates (doct-org-roam `((:group "org-roam-dailies"
-                                                        :type plain
-                                                        :template "%?"
-                                                        :file "%<%Y-%m-%d>.org"
-                                                        :unnarrowed t
-                                                        :immediate-finish t
-                                                        :children (("Day"
-                                                                    :keys "d"
-                                                                    :head ("#+title: %<%Y-%m-%d>"
-                                                                           "#+author: Cash Prokop-Weaver"
-                                                                           "#+date: [%<%Y-%m-%d %a %H:%M>]"
-                                                                           "#+category: Journal"
-                                                                           "#+filetags: :journal:private:hastodo:"
-                                                                           "
+   org-roam-dailies-capture-templates
+   '(("d" "default" entry "* %?" :target
+      (file+head "%<%Y-%m-%d>.org"
+                 ":PROPERTIES:
+:ID: %(org-id-new)
+:END:
+#+title: %<%Y-%m-%d>
+#+author: Cash Prokop-Weaver
+#+date: [%<%Y-%m-%d %a %H:%M>]
+#+category: Personal>Journal
+#+filetags: :journal:private:hastodo:
+
 * TODO [#2] Journal
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :PROPERTIES:
@@ -6960,38 +7470,46 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:0
 (dotimes (i 8) (delete-line))
 #+end_src
 
-* Flashcards :noexport:"))))))))
+* Flashcards :noexport:")))
+   ;; (doct-org-roam
+   ;;  `((:group
+   ;;     "org-roam-dailies"
+   ;;     :type plain
+   ;;     :file "%<%Y-%m-%d>.org"
+   ;;     :unnarrowed t
+   ;;     ;; :immediate-finish t
+   ;;     :children
+   ;;     (("Day"
+   ;;       :keys "d"
+   ;;       :template
+   ;;       )))))
+   ))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
   (interactive)
   (let ((clocktable-by-category--default-properties
-         (cashpw/clocktable-by-category--properties
-          (time-subtract
-           (current-time)
-           (days-to-time
-            1)))))
+         (cashpw/clocktable-by-categories--day-properties
+          (time-subtract (current-time) (days-to-time 1)))))
     (clocktable-by-category-report)))
 
-(defun cashpw/org-clocktable-by-category-last-week ()
+(defun cashpw/org-clocktable-by-category--week (time)
   "Insert a retrospective clocktable for yesterday."
   (interactive)
   (let ((clocktable-by-category--default-properties
-         (cashpw/clocktable-by-category--properties
-          (time-subtract
-           (current-time)
-           (days-to-time
-            1)))))
-    (plist-put
-     clocktable-by-category--default-properties
-     :block
-     (format-time-string
-      "%Y-W%W"
-      (time-subtract
-       (current-time)
-       (days-to-time
-        7))))
+         (cashpw/clocktable-by-categories--week-properties time)))
     (clocktable-by-category-report)))
+
+(defun cashpw/org-clocktable-by-category-this-week ()
+  "Insert a retrospective clocktable for last week."
+  (interactive)
+  (cashpw/org-clocktable-by-category--week (current-time)))
+
+(defun cashpw/org-clocktable-by-category-last-week ()
+  "Insert a retrospective clocktable for last week."
+  (interactive)
+  (cashpw/org-clocktable-by-category--week
+   (time-subtract (current-time) (days-to-time 7))))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -7195,30 +7713,32 @@ Intended for use with `org-super-agenda' `:transformer'. "
   "Dim color/brightness of LINE."
   (propertize line 'face 'shadow))
 
-(defcustom cashpw/org-agenda--dim-headline-regexps
+(setq cashpw/org-agenda--dim-headline-regexps
   '(
     ;; "Stretch"
     "Slack"
     "Huel"
     "Meditate"
+    "Stretch"
+    "Train Finn"
     ;; "Shower"
     ;; "Shave"
     ;; "Walk"
     "Lunch"
     "Dinner"
-    "Journal.*Journal"
-    "Journal.*Retrospective"
-    "Journal.*Gratitude"
+    ;; "Journal.*Journal"
+    ;; "Journal.*Retrospective"
+    ;; "Journal.*Gratitude"
     ;; "Debrief"
-    "Tidy: "
+    ;; "Tidy: "
     "Diet: "
     "forsale mailing lists"
     ;; <= 5 minutes effort
     ;; " [12345]m "
     ;; No duration, no effort; brittle
-    " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  ")
-  "List of headlines to dim in the org agenda view."
-  :type '(repeat string))
+    " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  "))
+  ;; "List of headlines to dim in the org agenda view."
+  ;; :type '(repeat string))
 
 (defun cashpw/time-hh-mm-to-minutes (hh-mm)
   "Return number of minutes since midnight for HH-MM."
@@ -7248,11 +7768,18 @@ Intended for use with `org-super-agenda' `:transformer'. "
     line))
 
 (defun cashpw/org-agenda-category (max-length)
+  "Return formatted category per MAX-LENGTH."
   (s-truncate
    max-length
-   (or (org-entry-get (point) "CATEGORY" t)
-       (org-get-title)
-       "")))
+   (let ((category (or
+                    (org-entry-get (point) "CATEGORY" t)
+                    (org-get-title)
+                    "")))
+     ;; (when (s-contains-p "charles" category 'ignore-case)
+     ;;   (message "category: %s" category))
+     (if (s-contains-p ">" category)
+         (car (cdr (s-split ">" category 'omit-nulls)))
+       category))))
 
 (defun cashpw/org-agenda-icon ()
   (let ((properties (org-entry-properties (point))))
@@ -7386,6 +7913,8 @@ Intended for use with `org-super-agenda' `:transformer'. "
            :scheduled past
            :deadline future
            :deadline past))
+         (:name "Holiday(s)"
+          :tag "holiday")
          (:name "Schedule"
           :time-grid t
           :order 0
@@ -8373,9 +8902,6 @@ Clock in at CLOCK-IN-TIME and clock out at CLOCK-OUT-TIME."
    (list
     (org-read-date t t nil "Clock in")
     (org-read-date t t nil "Clock out")))
-  (message "Clocking from %s to %s"
-           (format-time-string "%F %T%Z" clock-in-time)
-           (format-time-string "%F %T%Z" clock-out-time))
   (org-clock-in nil clock-in-time)
   (org-clock-out nil nil clock-out-time))
 
@@ -8500,10 +9026,9 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-clock--clocktable--properties (time)
   "Return default clocktable properties."
-  `(:scope cashpw/org-clock--agenda-with-archives
-    :block ,(format-time-string
-             "%Y-%m-%d"
-             time)
+  `(:scope
+    cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d" time)
     :narrow 200
     :fileskip0 t
     :filetitle t
@@ -8511,30 +9036,61 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-clock--clocktable-update-default-properties ()
   "Return default clocktable properties"
-  (setq
-   org-clock-clocktable-default-properties (cashpw/org-clock--clocktable--properties
-                                            (current-time))))
+  (setq org-clock-clocktable-default-properties
+        (cashpw/org-clock--clocktable--properties (current-time))))
 
 (cashpw/org-clock--clocktable-update-default-properties)
 ;; Update the properties once per day as they include `:block' with today's date.
 (let ((seconds-in-day (* 60 60 24)))
-  (cancel-function-timers #'cashpw/org-clock--clocktable-update-default-properties)
-  (run-at-time "00:00"
-               seconds-in-day
-               #'cashpw/org-clock--clocktable-update-default-properties))
+  (cancel-function-timers
+   #'cashpw/org-clock--clocktable-update-default-properties)
+  (run-at-time
+   "00:00"
+   seconds-in-day
+   #'cashpw/org-clock--clocktable-update-default-properties))
 
+(defun cashpw/org-clocktable-files-with-entries-at-yyyy-mm-dd (yyyy-mm-dd)
+  "Return list of files with clock entries at TIME."
+  (cashpw/rgrep
+   (format "-l \"\\[%s\" %s/*.org*" yyyy-mm-dd cashpw/path--notes-dir)))
 
-(defun cashpw/org-clocktable-files-for-yyyy-mm-dd (yyyy-mm-dd)
-  "Return list of files with clock entries for YYYY-MM-DD."
-  (cashpw/rgrep (format "-l \"\\[%s\" %s/*.org*" yyyy-mm-dd cashpw/path--notes-dir)))
+(defun cashpw/org-clocktable-files-with-entries-at-yyyy-w (yyyy-w)
+  "Return list of files with clock entries at TIME."
+  (-uniq
+   (-reduce
+    #'append
+    (--map
+     (cashpw/rgrep
+      (format "-l \"\\[%s\" %s/*.org*"
+              (format-time-string "%F" it)
+              cashpw/path--notes-dir))
+     (cashpw/time--get-week-times
+      (encode-time
+       (cl-destructuring-bind
+           (_ _ _ day month year _ _ _)
+           (parse-time-string yyyy-w)
+         `(0 0 0 ,day ,month ,year nil nil nil))))))))
 
-(defun cashpw/clocktable-by-category--properties (time)
+(defun cashpw/clocktable-by-categories--day-properties (time)
   "Return clocktable-by-category properties."
   `(:files-fn
     (lambda ()
-      (cashpw/org-clocktable-files-for-yyyy-mm-dd
+      (cashpw/org-clocktable-files-with-entries-at-yyyy-mm-dd
        ,(format-time-string "%F" time)))
     :block ,(format-time-string "%F" time)
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-categories--week-properties (time)
+  "Return clocktable-by-category properties."
+  `(:files-fn
+    (lambda ()
+      (cashpw/org-clocktable-files-with-entries-at-yyyy-w
+       ,(format-time-string "%Y-W%W" time)))
+    :block ,(format-time-string "%Y-W%W" time)
     :merge-duplicate-headlines t
     ;; :narrow 200
     ;; :fileskip0 t
@@ -8544,7 +9100,7 @@ See `org-clock-special-range' for KEY."
 (defun cashpw/clocktable-by-category--update-default-properties ()
   "Return default clocktable-by-category properties"
   (setq clocktable-by-category--default-properties
-        (cashpw/clocktable-by-category--properties (current-time))))
+        (cashpw/clocktable-by-categories--day-properties (current-time))))
 
 (cashpw/clocktable-by-category--update-default-properties)
 ;; Update the properties once per day as they include `:block' with today's date.
@@ -8663,13 +9219,12 @@ See `org-clock-special-range' for KEY."
    org-todo-keywords '((sequence
                         ;; A task that needs doing & is ready to do
                         "TODO(t)"
+                        "SOMEDAY(s)"
                         ;; A task that is in progress
                         "INPROGRESS(i)"
                         "INPROGRESS-AT(I)"
                         ;; Something external is holding up this task
                         "BLOCKED(b)"
-                        ;; This task is paused/on hold because of me
-                        "HOLD(h)"
                         ;; A project, which usually contains other tasks
                         "PROJ(p)"
                         "|"
@@ -8681,9 +9236,9 @@ See `org-clock-special-range' for KEY."
                         "CANCELLED(~)"
                         ;; Task was moved
                         "MOVE(m)"
-                        ;; Task was moved
+                        ;; Task was rescheduled
                         "RESCHEDULE(_)"
-                        ;; Task was cancelled, aborted or is no longer applicable
+                        ;; Task was cancelled, aborted, or is no longer applicable
                         "KILL(k)")
                        (sequence
                         ;; A task that needs doing
@@ -8702,40 +9257,27 @@ See `org-clock-special-range' for KEY."
                             ("HOLD" . +org-todo-onhold)
                             ("PROJ" . +org-todo-project))))
 
-(defcustom cashpw/org-mode-on-inprogress--clock-in-paths
-  nil
-  "TODOs marked as INPROGRESS in these files will trigger a clock in.")
-
-(defun cashpw/org-mode-on-inprogress--in-clock-in-file-p ()
-  (member
-   buffer-file-name
-   cashpw/org-mode-on-inprogress--clock-in-paths))
-
-(defun cashpw/org-mode-when-inprogress ()
+(defun run-on-todo-state-change--INPROGRESS ()
   "Handle inprogress behavior."
-  (let ((todo-state (org-get-todo-state)))
-    (message "todo-state: %s" todo-state)
-    (when (cl-member todo-state (list "INPROGRESS" "INPROGRESS-AT") :test #'string=)
-      (when (string= "INPROGRESS" todo-state)
-        (org-clock-in))
-      (when (string= "INPROGRESS-AT" todo-state)
-        (search-backward "INPROGRESS-AT")
-        (replace-match "INPROGRESS")
-        (org-clock-in nil (org-read-date nil 'to-time))))))
+  (when (not (cashpw/org-categorized-p))
+    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (org-clock-in))
 
-(after! org
-  :config
-  (setq
-   cashpw/org-mode-on-inprogress--clock-in-paths (append
-                                                  (f-glob "*.org"
-                                                          cashpw/path--notes-dir)
+(defun run-on-todo-state-change--INPROGRESS-AT ()
+  "Handle \"INPROGRESS-AT\" behavior."
+  (search-backward "INPROGRESS-AT")
+  (replace-match "INPROGRESS")
+  (when (not (cashpw/org-categorized-p))
+    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (org-clock-in nil (org-read-date nil 'to-time)))
 
-                                                  ;; DEBUGGING
-                                                  ;; (let* ((org-roam-directory cashpw/path--notes-dir)
-                                                  ;;        (org-roam-db-location (expand-file-name "org-roam.db"
-                                                  ;;                                                org-roam-directory)))
-                                                  ;;   (cashpw/notes-files-with-tag "person"))
-                                                  )))
+(defun run-on-todo-state-change--PROJ ()
+  "Handle a todo being set to \"PROJ\"."
+  (cashpw/org-insert-progress-cookie))
+
+(defun run-on-todo-state-change--KILL ()
+  "Handle a todo being set to \"KILL\"."
+  (org-cut-subtree))
 
 (after! org
   :config
@@ -8753,11 +9295,6 @@ See `org-clock-special-range' for KEY."
 
 (defcustom cashpw/org-mode-on-done--keep-hook nil
   "List of functions which return non-nil to indicate we should keep the current heading in the done state."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
-
-(defcustom cashpw/org-mode-on-done--delete-hook nil
-  "List of functions which return non-nil to indicate we should delete the current heading."
   :group 'cashpw/org-mode-on-done
   :type 'hook)
 
@@ -8796,9 +9333,6 @@ See `org-clock-special-range' for KEY."
 (add-hook 'cashpw/org-mode-on-done--keep-hook
           (lambda ()
             (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)))
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--delete)))
 
 (defcustom cashpw/org-mode-on-done--noop-file-paths '()
   "TODOs in these files will be noop by default."
@@ -8813,11 +9347,6 @@ See `org-clock-special-range' for KEY."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
 
-(defcustom cashpw/org-mode-on-done--delete-file-paths '()
-  "TODOs in these files will be delete by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
 (defun cashpw/org-mode-on-done--noop-file-p ()
   "Return non-nil if current file is a no-op file."
   (member buffer-file-name
@@ -8828,17 +9357,10 @@ See `org-clock-special-range' for KEY."
   (member buffer-file-name
           cashpw/org-mode-on-done--keep-file-paths))
 
-(defun cashpw/org-mode-on-done--delete-file-p ()
-  "Return non-nil if current file is a delete file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--delete-file-paths))
-
 (add-hook 'cashpw/org-mode-on-done--noop-hook
           'cashpw/org-mode-on-done--noop-file-p)
 (add-hook 'cashpw/org-mode-on-done--keep-hook
           'cashpw/org-mode-on-done--keep-file-p)
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          'cashpw/org-mode-on-done--delete-file-p)
 
 (defcustom cashpw/org-mode-on-done--noop-filetags
   '("noop_on_done")
@@ -8898,14 +9420,6 @@ See `org-clock-special-range' for KEY."
 (add-hook 'cashpw/org-mode-on-done--noop-hook
           #'org-get-repeat)
 
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          (lambda ()
-            (string= org-state
-                     "KILL")))
-;; (add-hook
-;;  'cashpw/org-mode-on-done--delete-hook
-;;  'org-roam-file-p)
-
 (defun cashpw/org-mode-on-done--is-noop ()
   "Return non-nil if we should noop the current entry."
   (-any 'funcall
@@ -8921,32 +9435,33 @@ See `org-clock-special-range' for KEY."
   (-any 'funcall
         cashpw/org-mode-on-done--delete-hook))
 
-(defun cashpw/org-mode-when-done ()
+(defun run-on-todo-state-change--DONE ()
   "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (when (org-entry-is-done-p)
-    (org-clock-out-if-current)
-    (when-let (asana-id (org-entry-get nil "ASANA_ID"))
-      (asana-task-complete (string-trim-left asana-id ".+-")))
-    (repeat-todo--reschedule (point))
-    (cond
-     ((cashpw/org-mode-on-done--is-noop)
-      ;; (unless (org-get-repeat)
-      ;; (org-schedule '(4)))
-      (org-todo "TODO"))
-     ((cashpw/org-mode-on-done--is-keep)
-      nil)
-     ((cashpw/org-mode-on-done--is-delete)
-      (org-cut-subtree))
-     (t
-      (org-archive-subtree-default)))))
+  (org-clock-out-if-current)
+  (when-let (asana-id (org-entry-get nil "ASANA_ID"))
+    (asana-task-complete (string-trim-left asana-id ".+-")))
+  (repeat-todo--reschedule (point))
+  (cond
+   ((cashpw/org-mode-on-done--is-noop)
+    ;; (unless (org-get-repeat)
+    ;; (org-schedule '(4)))
+    (org-todo "TODO"))
+   ((cashpw/org-mode-on-done--is-keep)
+    nil)
+   ((cashpw/org-mode-on-done--is-delete)
+    (org-cut-subtree))
+   (t
+    (org-archive-subtree-default))))
 
 (after! org
   :config
   (add-hook! 'org-after-todo-state-change-hook
              ;; run-on-todo-state-change must be first
              'run-on-todo-state-change
-             'cashpw/org-mode-when-inprogress
-             'cashpw/org-mode-when-done))
+             ;; 'cashpw/org-mode-when-inprogress
+             ;; 'cashpw/org-mode-when-proj
+             ;; 'cashpw/org-mode-when-done
+             ))
 
 (after! org
   :config
@@ -8968,6 +9483,91 @@ See `org-clock-special-range' for KEY."
      ("sp" . "src python :results output")
      ("ss" . "src sh :results output")
      ("v" . "verse"))))
+
+(defun cashpw/org--populate-missing-todo-props ()
+  "Prompot user for missing todo properties and apply them.."
+  (cl-destructuring-bind
+      (priority effort category scheduled deadline)
+      (let ((categories
+             (mapcar #'list (org-property-values "CATEGORY"))))
+        (read-multi
+         `((:prompt
+            "Priority"
+            :default
+            ,(if (org-extras-get-priority (point))
+                 (org-priority-to-value (org-extras-get-priority (point)))
+               nil)
+            :read-fn
+            (lambda (_ default)
+              (string-to-number
+               (read-string (format "Priority %s-%s: "
+                                    (number-to-string org-priority-highest)
+                                    (number-to-string org-priority-lowest))
+                            (when default
+                              (number-to-string default)))))
+            :stringify-fn (lambda (response) (number-to-string response)))
+           (:prompt
+            "Effort"
+            :default ,(org-extras-get-property (point) "Effort")
+            :read-fn (lambda (_ default) (read-string "Effort: " default)))
+           (:prompt
+            "Category"
+            :default
+            ,(let ((category (org-get-category)))
+               (cond
+                ((or (string-equal "???" category)
+                     (string-equal "Uncategorized" category))
+                 nil)
+                ((string-equal (file-name-base) category)
+                 nil)
+                (t
+                 category)))
+            :read-fn
+            (lambda (_ default)
+              (completing-read "Category: " categories nil 'require-match default)))
+           (:prompt
+            "Schedule"
+            :default ,(org-get-scheduled-time (point))
+            :read-fn
+            (lambda (_ default)
+              (with-temp-buffer
+                (org-mode)
+                (org-insert-heading)
+                (condition-case nil
+                    (shut-up
+                      (when default
+                        (org-schedule nil default))
+                      (org-schedule nil))
+                  (quit
+                   nil))
+                (org-get-scheduled-time (point))))
+            :stringify-fn (lambda (response) (format-time-string "%F %T%Z" response)))
+           (:prompt
+            "Deadline"
+            :default ,(org-get-deadline-time (point))
+            :read-fn
+            (lambda (_ default)
+              (with-temp-buffer
+                (org-mode)
+                (org-insert-heading)
+                (condition-case nil
+                    (shut-up
+                      (when default
+                        (org-deadline nil default))
+                      (org-deadline nil))
+                  (quit
+                   nil))
+                (org-get-deadline-time (point))))
+            :stringify-fn (lambda (response) (format-time-string "%F %T%Z" response))))))
+    (org-priority priority)
+    (org-set-effort nil effort)
+    (org-set-property "CATEGORY" category)
+    (if scheduled
+        (org-schedule nil scheduled)
+      (org-schedule '(4)))
+    (if deadline
+        (org-deadline nil deadline)
+      (org-deadline '(4)))))
 
 (defun cashpw/org--prompt-for-priority-when-missing ()
   "Prompt for Effort if it's missing."
@@ -9026,11 +9626,13 @@ See `org-clock-special-range' for KEY."
            (save-excursion
              (with-current-buffer (marker-buffer org-capture-last-stored-marker)
                (goto-char org-capture-last-stored-marker)
-               (cashpw/org--prompt-for-priority-when-missing)
-               (cashpw/org--prompt-for-effort-when-missing)
-               (cashpw/org--prompt-for-category-when-missing)
-               (cashpw/org--prompt-for-schedule-when-missing)
-               (cashpw/org--prompt-for-deadline-when-missing))))
+               (cashpw/org--populate-missing-todo-props)
+               ;; (cashpw/org--prompt-for-priority-when-missing)
+               ;; (cashpw/org--prompt-for-effort-when-missing)
+               ;; (cashpw/org--prompt-for-category-when-missing)
+               ;; (cashpw/org--prompt-for-schedule-when-missing)
+               ;; (cashpw/org--prompt-for-deadline-when-missing)
+               )))
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Roam"
          :keys "r"
@@ -9038,12 +9640,10 @@ See `org-clock-special-range' for KEY."
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Email"
          :keys "e"
-         :message-id
-         (lambda ()
-           (cashpw/email-get-message-id))
+         :message-id (lambda () (cashpw/email-get-message-id))
          :message-subject
          (lambda ()
-           (s-trim (truncate-string-to-width (cashpw/email-get-subject) 30)))
+           (s-trim (truncate-string-to-width (cashpw/email-get-subject) 50)))
          :message-from-to
          (lambda ()
            (let* ((to
@@ -9067,9 +9667,7 @@ See `org-clock-special-range' for KEY."
          :children
          (("Follow-up"
            :keys "F"
-           :before-finalize
-           (lambda ()
-             (org-schedule nil))
+           :before-finalize (lambda () (org-schedule nil))
            :immediate-finish t
            :template
            ("* TODO [#2] Follow-up: [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
@@ -9350,11 +9948,7 @@ See `org-clock-special-range' for KEY."
                       (downcase artist-name)
                       (replace-regexp-in-string " " "_" it)
                       (replace-regexp-in-string "-" "_" it))))
-                  (tags
-                   (org-make-tag-string
-                    (list
-                     "photo"
-                     artist-tag)))
+                  (tags (org-make-tag-string (list "photo" artist-tag)))
                   (image-link
                    (progn
                      (cashpw/org-download-image--no-insert image-url)
@@ -9493,27 +10087,6 @@ All args are passed to `org-roam-node-read'."
 (advice-add
  'org--create-inline-image
  :around 'cashpw/org--create-inline-image-to-fit-window-width)
-
-;; (use-package! org-transclusion
-;;   :after org
-;;   :config
-;;   (setq
-;;    org-transclusion-exclude-elements '(property-drawer
-;;                                        keyword)
-;;    org-transclusion-extensions-loaded t
-;;    org-transclusion-extensions '(org-transclusion-src-lines
-;;                                  org-transclusion-font-lock
-;;                                  org-transclusion-indent-mode))
-;;   (add-hook! 'org-mode-hook 'org-transclusion-mode)
-;;   ;; (set-face-attribute
-;;   ;;  'org-transclusion-fringe nil
-;;   ;;  :foreground "white"
-;;   ;;  :background nil)
-;;   (define-fringe-bitmap 'org-transclusion-fringe-bitmap
-;;     [17 34 68 136 68 34 17]
-;;     nil nil 'center)
-;;   ;; Re-load extensions to activate `org-transclusion-indent-mode'.
-;;   (org-transclusion-load-extensions-maybe t))
 
 (setq
  org-format-latex-header "\\documentclass{article}
@@ -9762,7 +10335,8 @@ All args are passed to `org-roam-node-read'."
 
 (defun cashpw/org-hugo--remove-missing-relrefs (directory)
   "Remove missing relref links from hugo DIRECTORY."
-  (let ((post-paths (directory-files (format "%s/content/posts" directory) t "\\.md$"))
+  (let ((post-paths
+         (directory-files (format "%s/content/posts" directory) t "\\.md$"))
         (missing-relrefs
          (mapcar
           (lambda (result)
@@ -9776,14 +10350,16 @@ All args are passed to `org-roam-node-read'."
       (with-current-buffer (find-file-noselect post-path)
         (dolist (missing-relref missing-relrefs)
           (cashpw/replace-regexp-in-buffer
-            (format "relref \"%s\"" missing-relref)
-           "REPLACED"))
+           (format "relref \"%s\"" missing-relref) "REPLACED"))
         (save-buffer)))))
 
-(defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
+(defun cashpw/org-hugo-export-directory--bak
+    (directory &optional files-to-ignore)
   "Export all hugo files in DIRECTORY.
 
-Optionally skip FILES-TO-IGNORE."
+Optionally skip FILES-TO-IGNORE.
+
+Note that only files tagged \"public\" will be exported."
   (interactive)
   (let* ((org-roam-directory directory)
          (files-to-export
@@ -9791,7 +10367,7 @@ Optionally skip FILES-TO-IGNORE."
            (cashpw/org-files-with-tag
             "public" org-roam-directory)
            files-to-ignore))
-         (org-id-extra-files (org-roam-list-files))
+         (org-id-extra-files (org-node-list-files))
          (file-index 0)
          (log-file-path "/tmp/hugo-export.log")
          (count-files-to-export (length files-to-export))
@@ -9800,10 +10376,11 @@ Optionally skip FILES-TO-IGNORE."
          ;; Last updated: 2023-12-05
          (recent-run-seconds 7791)
          (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
-    (cl-flet ((remaining-minutes
-                (file-number)
-                (let ((files-left (- count-files-to-export file-number)))
-                  (/ (* seconds-per-file files-left) 60))))
+    (cl-flet
+        ((remaining-minutes
+           (file-number)
+           (let ((files-left (- count-files-to-export file-number)))
+             (/ (* seconds-per-file files-left) 60))))
       (let*
           ((run-time-estimate
             (org-duration-from-minutes (remaining-minutes 0)))
@@ -9816,12 +10393,12 @@ Optionally skip FILES-TO-IGNORE."
                   (make-progress-reporter "Exporting roam notes"
                                           0 count-files-to-export))
                  (start-time (current-time)))
-            (org-roam-db-sync)
+            ;; (org-roam-db-sync)
             ;; Speed up the export
             ;; (cashpw/eglot-pause)
             (memoize 'citeproc-hash-itemgetter-from-any)
-            (advice-add 'org-id-find :override 'org-roam-id-find)
-            (memoize 'org-roam-id-find)
+            (advice-add 'org-id-find :override 'cashpw/org-mem-id-find)
+            ;; (memoize 'org-roam-id-find)
             ;; (memoize 'org-roam-node-id)
             ;; (memoize 'org-roam-node-file)
             ;; (global-flycheck-mode -1)
@@ -9871,8 +10448,8 @@ Optionally skip FILES-TO-IGNORE."
 
             ;; Remove speed-up changes
             ;; (cashpw/eglot-unpause)
-            (advice-remove 'org-id-find 'org-roam-id-find)
-            (memoize-restore 'org-roam-id-find)
+            (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
+            ;; (memoize-restore 'org-roam-id-find)
             ;; (memoize-restore 'org-roam-node-id)
             ;; (memoize-restore 'org-roam-node-file)
             (memoize-restore 'citeproc-hash-itemgetter-from-any)
@@ -9888,8 +10465,7 @@ Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
 See `org-hugo-tag-processing-functions'."
   (if (org-roam-file-p)
       (append
-       tag-list
-       (-map #'downcase (org-extras-filetags-in-buffer (current-buffer))))
+       tag-list (-map #'downcase (org-extras-get-inbuffer-option "filetags")))
     tag-list))
 
 (after!
@@ -9937,11 +10513,6 @@ are the arguments of the ORIG-FUN."
   ;; (memoize 'org-roam-node-file)
   )
 
-(defun cashpw/org-hugo-export-all ()
-  "Export all hugo notes files.."
-  (interactive)
-  (cashpw/org-hugo-export-directory cashpw/path--notes-dir))
-
 ;; (defun cashpw/org-hugo-export-to-md--maybe
 ;;     (&optional async subtreep visible-only)
 ;;   "Conditional export."
@@ -9984,6 +10555,120 @@ Reference: https://superuser.com/a/604264"
   (cashpw/replace-smart-quotes
    (point-min)
    (point-max)))
+
+(defun cashpw/org-mem-id-find (id &optional markerp)
+  "TODO."
+  (when-let ((entry (org-mem-entry-by-id id)))
+    (cons (org-mem-entry-file entry) (org-mem-entry-pos entry))))
+
+(defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
+  "Export all hugo files in DIRECTORY.
+
+Optionally skip FILES-TO-IGNORE.
+
+Note that only files tagged \"public\" will be exported."
+  (interactive)
+  (let* (
+         ;; (org-roam-directory directory)
+         (files-to-export
+          (seq-difference
+           (cashpw/org-files-with-tag
+            "public" cashpw/path--notes-dir)
+           files-to-ignore))
+         (org-id-extra-files (org-mem-all-files))
+         (file-index 0)
+         (log-file-path "/tmp/hugo-export.log")
+         (count-files-to-export (length files-to-export))
+         ;; Last updated: 2023-12-05
+         (recent-run-file-count 1467)
+         ;; Last updated: 2023-12-05
+         (recent-run-seconds 7791)
+         (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
+    (cl-flet
+        ((remaining-minutes
+           (file-number)
+           (let ((files-left (- count-files-to-export file-number)))
+             (/ (* seconds-per-file files-left) 60))))
+      (let*
+          ((run-time-estimate
+            (org-duration-from-minutes (remaining-minutes 0)))
+           (should-run
+            (y-or-n-p
+             (s-lex-format
+              "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
+        (when should-run
+          (let* ((progress-reporter
+                  (make-progress-reporter "Exporting roam notes"
+                                          0 count-files-to-export))
+                 (start-time (current-time)))
+            (org-roam-db-sync)
+            ;; Speed up the export
+            ;; (cashpw/eglot-pause)
+            (memoize 'citeproc-hash-itemgetter-from-any)
+            (advice-add 'org-id-find :override 'org-roam-id-find)
+            (memoize 'org-roam-id-find)
+            ;; (memoize 'org-roam-node-id)
+            ;; (memoize 'org-roam-node-file)
+            ;; (global-flycheck-mode -1)
+
+            (-each
+                files-to-export
+              (lambda (file-path)
+                (let ((file-export-start-time (current-time))
+                      (note-buffer (find-file-noselect file-path)))
+                  (shut-up
+                    (when (= 0 (% file-index 10))
+                      ;; (message "[cashpw] fix cannot redirect stderr too many open files")
+                      ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
+                      (cashpw/kill-all-markdown-buffers)
+                      (file-notify-rm-all-watches))
+                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
+                    ;;          (1+ file-index)
+                    ;;          count-files-to-export
+                    ;;          file-path)
+                    (unwind-protect
+                        (with-current-buffer note-buffer
+                          ;; (remove-hook 'before-save-hook 'org-encrypt-entries t)
+                          (org-hugo-export-to-md))
+                      (kill-buffer note-buffer))
+                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+                    ;;          (1+ file-index)
+                    ;;          count-files-to-export
+                    ;;          file-path
+                    ;;          (float-time
+                    ;;           (time-since
+                    ;;            file-export-start-time)))
+                    (let* ((file-number (1+ file-index))
+                           (time-string (format-time-string "%F %H:%M:%S"))
+                           (export-duration-in-seconds (time-since file-export-start-time)))
+                      (append-to-file
+                       (s-lex-format
+                        "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
+                       nil log-file-path))))
+                (progress-reporter-update progress-reporter
+                                          file-index
+                                          (concat
+                                           "Remaining time (estimate): "
+                                           (org-duration-from-minutes
+                                            (remaining-minutes file-index))))
+                (setq file-index (1+ file-index))))
+            (progress-reporter-done progress-reporter)
+
+            ;; Remove speed-up changes
+            ;; (cashpw/eglot-unpause)
+            (advice-remove 'org-id-find 'org-roam-id-find)
+            (memoize-restore 'org-roam-id-find)
+            ;; (memoize-restore 'org-roam-node-id)
+            ;; (memoize-restore 'org-roam-node-file)
+            (memoize-restore 'citeproc-hash-itemgetter-from-any)
+
+            (message "cashpw/org-hugo-export-all %.06f"
+                     (float-time (time-since start-time)))))))))
+
+(defun cashpw/org-hugo-export-all ()
+  "Export all hugo notes files.."
+  (interactive)
+  (cashpw/org-hugo-export-directory cashpw/path--notes-dir))
 
 (after! citar
   :when (modulep! :completion vertico)
@@ -10135,10 +10820,14 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
             (:prefix ("T" . "transclusion")
              :n "a" #'org-transclusion-add
              :n "A" #'org-transclusion-add-all
-             :n "i" #'org-transclusion-make-from-link
-             :n "l" #'org-transclusion-live-sync-start
-             :n "r" #'org-transclusion-remove
-             :n "R" #'org-transclusion-remove-all))
+             :n "l" #'org-transclusion-make-from-link
+             :n "e" #'org-transclusion-live-sync-start
+             :n "r" #'org-transclusion-refresh
+             :desc "org-transclusion-open-source"
+             :n "o"
+             (cmd! (org-transclusion-open-source '(4)))
+             :n "d" #'org-transclusion-remove
+             :n "D" #'org-transclusion-remove-all))
 
    (:prefix ("L" . "Latex")
     :desc "toggle preview" :n "t" #'cashpw/latex-toggle-preview)
@@ -10248,6 +10937,62 @@ Exclude project names listed in PROJECTS-TO-EXCLUDE."
 
 (unless (cashpw/machine-p 'work-cloudtop)
   (after! projectile (cashpw/projectile-refresh-known-paths)))
+
+;; (use-package! emacs-rag
+;;   :after gptel
+;;   :custom
+;;   (emacs-rag-search-limit 5)
+;;   (emacs-rag-server-working-directory "/home/cashpw/third-party/emacs-rag-libsql/emacs-rag-server")
+;;   (emacs-rag-db-path "/home/cashpw/proj/notes/rag-db")
+;;   (emacs-rag-result-display-width (frame-width))
+;;   :config
+;;   (setq
+;;    emacs-rag-chunk-size 256
+;;    emacs-rag-chunk-overlap 16)
+
+;;   (defun emacs-rag--maybe-index-on-save ()
+;;     "Hook function to reindex buffer after saving.
+;; Only indexes if auto-indexing is enabled and file is eligible."
+;;     (when (and emacs-rag-auto-index-on-save
+;;                (buffer-file-name)
+;;                (emacs-rag--eligible-file-p (buffer-file-name)))
+;;       (condition-case err
+;;           (emacs-rag--index-files-async `(,(buffer-file-name)) 0 1)
+;;         (error
+;;          (message "Auto-indexing failed: %s" (error-message-string err))))))
+
+;;   (defun emacs-rag-start-server ()
+;;     "Start the RAG server process if not already running."
+;;     (interactive)
+;;     (if (emacs-rag-server-running-p)
+;;         (message "Emacs RAG server is already running")
+;;       (let* ((default-directory (emacs-rag--get-server-directory))
+;;              (process-environment
+;;               (cons (format "EMACS_RAG_DB_PATH=%s"
+;;                             (expand-file-name emacs-rag-db-path))
+;;                     (cons (format "EMACS_RAG_CHUNK_SIZE=%d"
+;;                                   emacs-rag-chunk-size)
+;;                           (cons (format "EMACS_RAG_CHUNK_OVERLAP=%d"
+;;                                         emacs-rag-chunk-overlap)
+;;                                 (cons (format "EMACS_RAG_HOST=%s" emacs-rag-server-host)
+;;                                       (cons (format "EMACS_RAG_PORT=%d" emacs-rag-server-port)
+;;                                             process-environment)))))))
+;;         (setq emacs-rag-server-process
+;;               (make-process
+;;                :name "emacs-rag-server"
+;;                :buffer "*emacs-rag-server*"
+;;                :command emacs-rag-server-command
+;;                :noquery t
+;;                :sentinel #'emacs-rag--server-sentinel))
+;;         (message "Starting Emacs RAG server on %s:%d..."
+;;                  emacs-rag-server-host emacs-rag-server-port)
+;;         ;; Give the server a moment to start
+;;         (run-with-timer 2 nil
+;;                         (lambda ()
+;;                           (if (emacs-rag-server-running-p)
+;;                               (message "Emacs RAG server started successfully")
+;;                             (message "Warning: Server may not have started properly")))))))
+;;   )
 
 (use-package! pomm
   :custom
@@ -10434,55 +11179,3 @@ Reference:https://stackoverflow.com/q/23622296"
     (goto-char marker)))
 
 (use-package! font-lock-profiler)
-
-(defun eww--capture-headings-on-page ()
-  "Return an alist in the form \"LABEL . POINT\" for the current buffer."
-  (let ((heading-stack '())
-        headings match)
-    (save-excursion
-      (goto-char (point-min))
-      (while (setq match (text-property-search-forward 'outline-level))
-        (let* ((level (prop-match-value match))
-               (start-point-prop (prop-match-beginning match))
-               (end-point-prop (prop-match-end match))
-               (text (replace-regexp-in-string
-                      "\n" " "      ; NOTE 2021-07-25: newlines break completion
-                      (buffer-substring-no-properties
-                       start-point-prop end-point-prop))))
-          (cond
-           ((= level (length heading-stack))
-            (pop heading-stack)
-            (push text heading-stack))
-           ((< level (length heading-stack))
-            ;; There's an upward gap between headings (for example: h5, then h2)
-            (dotimes (_ (1+ (- (length heading-stack) level)))
-              (pop heading-stack))
-            (push text heading-stack))
-           ((> level (length heading-stack))
-            ;; There's a downward gap between headings (for example: h2, then h5)
-            (dotimes (_ (1- (- level (length heading-stack))))
-              (push nil heading-stack))
-            (push text heading-stack)))
-          (push (cons
-                 (concat
-                  (let ((preceeding-heading-stack (remove nil (cdr heading-stack))))
-                    (when preceeding-heading-stack
-                      (propertize
-                       (concat
-                        (string-join (reverse preceeding-heading-stack) "/")
-                        "/")
-                       'face 'shadow)))
-                  (car heading-stack))
-                 start-point-prop)
-                headings))))
-    headings))
-
-(defun +eww/jump-to-heading-on-page ()
-  "Jump to heading position on the page (whole buffer) using completion."
-  (interactive nil 'eww-mode)
-  (unless (derived-mode-p 'eww-mode)
-    (user-error "Not in an eww buffer!"))
-  (let* ((headings (eww--capture-headings-on-page))
-         (selection (completing-read "Jump to heading: " headings nil t)))
-    (goto-char (alist-get selection headings nil nil #'string=))
-    (recenter)))
