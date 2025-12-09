@@ -125,9 +125,7 @@
  (lookup              ; navigate your code and its documentation
   +docsets
   +dictionary
-  ;; Disabled because I can't figure out how to download wordnet on corp machines
-  ;; +offline
-  )
+  +offline)
  llm
  (lsp               ; M-x vscode
   ;; Prefer `eglot' because corporate tools also use Eglot.

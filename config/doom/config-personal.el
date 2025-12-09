@@ -504,6 +504,15 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (kill-new number)
     (message number)))
 
+(defun cashpw/url-get-title (url)
+  "Return the title of URL."
+  (shell-command-to-string
+   (concat
+    "curl --silent --location \""
+    url
+    "\" | grep '<title>' | sed 's/.*<title>\\(.*\\)<\\/title>.*/\\1/'"))
+  )
+
 (unless
     ;; Avoid 'void-variable mouse-wheel-up-event' error
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
@@ -656,7 +665,7 @@ Invokes SUCCESS on success."
    whisper-translate nil
    whisper-use-threads (/ (num-processors) 2)
    ;; whisper--ffmpeg-input-device "hw:0"
-   whisper--ffmpeg-input-device "default"
+   ;; whisper--ffmpeg-input-device "default"
    whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
@@ -1716,6 +1725,9 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (let ((x '(:hash-table-contains-p)))
     (not (eq x (gethash key table x)))))
 
+(setq
+ +lookup-open-url-fn #'eww)
+
 ;; (use-package go
 ;;   :custom
 ;;   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
@@ -1837,7 +1849,11 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
   (set-face-attribute 'shr-h3 nil :height 1.6 :weight 'bold)
   (set-face-attribute 'shr-h4 nil :height 1.4 :weight 'bold)
   (set-face-attribute 'shr-h5 nil :height 1.2 :weight 'bold)
-  (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold))
+  (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold)
+
+  (setq
+   ;; https://emacs.stackexchange.com/a/3523/37010
+   shr-color-visible-luminance-min 70))
 
 (let ((plru-directory cashpw/path--browser-history-dir)
       (plru-debug t))
@@ -3132,124 +3148,138 @@ Task: "
   llm-prompts-prompt--solo-performance-prompt)
 
 (use-package!
-    gptel
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-track-media t)
+ gptel
+ :custom
+ (gptel-default-mode 'org-mode)
+ (gptel-track-media t)
 
-  :config
-  (setq-default
-   gptel-show-progress-in-mode-line t
-   gptel-mode-line--indicator-querying " "
-   gptel-mode-line--indicator-responding "💬 "
-   gptel-backend
-   (gptel-make-gemini
-       "Gemini"
-     :key
-     (secret-get
-      (if (cashpw/machine-p 'work-cloudtop)
-          "corporate-gemini"
-        "personal-gemini"))
-     :stream t
-     ;; :request-params '(:tools [(:google_search ())])
-     )
-   ;; gptel-model 'gemini-pro-latest
-   gptel-model 'gemini-3-pro-preview
-   gptel-tools '()
-   ;; (list
-   ;;              (gptel-make-tool
-   ;;                    :name "cashpw_log"
-   ;;                    :description "Custom logging fucntion."
-   ;;                    :function (lambda (text)
-   ;;                                (cashpw/log text))
-   ;;                    :args '((:name "text"
-   ;;                             :type string
-   ;;                             :description "The text to log."))))
+ :config
+ (setq-default
+  gptel-show-progress-in-mode-line t
+  gptel-mode-line--indicator-querying " "
+  gptel-mode-line--indicator-responding "💬 "
+  gptel-backend
+  (gptel-make-gemini
+   "Gemini"
+   :key
+   (secret-get
+    (if (cashpw/machine-p 'work-cloudtop)
+        "corporate-gemini"
+      "personal-gemini"))
+   :stream t
+   ;; :request-params '(:tools [(:google_search ())])
+   )
+  ;; gptel-model 'gemini-pro-latest
+  gptel-model 'gemini-3-pro-preview
+  gptel-tools '()
+  ;; (list
+  ;;              (gptel-make-tool
+  ;;                    :name "cashpw_log"
+  ;;                    :description "Custom logging fucntion."
+  ;;                    :function (lambda (text)
+  ;;                                (cashpw/log text))
+  ;;                    :args '((:name "text"
+  ;;                             :type string
+  ;;                             :description "The text to log."))))
+  )
 
-   gptel-quick-system-message
-   (lambda (count) (format llm-prompts-prompt--summarize-short count))
-   gptel-quick-backend gptel-backend
-   ;; gptel-quick-display nil
-   gptel-quick-display 'posframe
-   gptel-quick-timeout 60
-   gptel-quick-word-count 35
-   gptel-quick-model 'gemini-flash-latest)
+ (defun gptel-mode-line--indicator (mode)
+   "Return indicator string for MODE."
+   (pcase mode
+     ('querying gptel-mode-line--indicator-querying)
+     ('responding gptel-mode-line--indicator-responding)
+     (_ "")))
+ (defun gptel-mode-line (command mode)
+   "Update mode line to COMMAND (show|hide) indicator for MODE."
+   (when gptel-show-progress-in-mode-line
+     (let ((indicator (list t (gptel-mode-line--indicator mode))))
+       (pcase command
+         ('show (cl-pushnew indicator global-mode-string :test #'equal))
+         ('hide
+          (setf global-mode-string (remove indicator global-mode-string)))))
+     (force-mode-line-update t)))
+ (defun gptel-mode-line--hide-all (&rest _)
+   (message "[gptel] Done")
+   (gptel-mode-line 'hide 'querying)
+   (gptel-mode-line 'hide 'responding))
+ (defun gptel-mode-line--show-querying ()
+   (message "[gptel] Querying")
+   (gptel-mode-line--hide-all)
+   (gptel-mode-line 'show 'querying))
+ (defun gptel-mode-line--show-responding ()
+   (message "[gptel] Responding")
+   (gptel-mode-line--hide-all)
+   (gptel-mode-line 'show 'responding))
+ (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
+ (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
+ (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
 
-  (defun gptel-mode-line--indicator (mode)
-    "Return indicator string for MODE."
-    (pcase mode
-      ('querying gptel-mode-line--indicator-querying)
-      ('responding gptel-mode-line--indicator-responding)
-      (_ "")))
-  (defun gptel-mode-line (command mode)
-    "Update mode line to COMMAND (show|hide) indicator for MODE."
-    (when gptel-show-progress-in-mode-line
-      (let ((indicator (list t (gptel-mode-line--indicator mode))))
-        (pcase command
-          ('show (cl-pushnew indicator global-mode-string :test #'equal))
-          ('hide
-           (setf global-mode-string (remove indicator global-mode-string)))))
-      (force-mode-line-update t)))
-  (defun gptel-mode-line--hide-all (&rest _)
-    (message "[gptel] Done")
-    (gptel-mode-line 'hide 'querying)
-    (gptel-mode-line 'hide 'responding))
-  (defun gptel-mode-line--show-querying ()
-    (message "[gptel] Querying")
-    (gptel-mode-line--hide-all)
-    (gptel-mode-line 'show 'querying))
-  (defun gptel-mode-line--show-responding ()
-    (message "[gptel] Responding")
-    (gptel-mode-line--hide-all)
-    (gptel-mode-line 'show 'responding))
-  (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
-  (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
-  (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
+ (defun cashpw/gptel-context-add-file-glob (pattern)
+   "Add glob of files matched by PATTERN."
+   (interactive "sPattern: ")
+   (dolist (file (f-glob pattern))
+     (gptel-context-add-file file)))
 
-  (defun cashpw/gptel-context-add-file-glob (pattern)
-    "Add glob of files matched by PATTERN."
-    (interactive "sPattern: ")
-    (dolist (file (f-glob pattern))
-      (gptel-context-add-file file)))
 
-  (defun cashpw/gptel-quick-buffer ()
-    (gptel-quick (buffer-substring-no-properties (point-min) (point-max))))
-  (defun gptel-quick (query-text &optional count)
-    "Explain or summarize region or thing at point with an LLM.
+ (defun cashpw/gptel-send (prompt)
+   "Invoke `gptel-send' with specific PROMPT."
+   (interactive (list (llm-prompts-select)))
+   (let ((gptel--system-message prompt))
+     (gptel-send))))
+
+(use-package!
+ gptel-quick
+ :after gptel
+ :config
+ (setq
+  gptel-quick-system-message
+  (lambda (count) (format llm-prompts-prompt--summarize-short count))
+  gptel-quick-backend gptel-backend
+  ;; gptel-quick-display nil
+  gptel-quick-display 'posframe
+  gptel-quick-timeout 60
+  gptel-quick-word-count 35
+  gptel-quick-model 'gemini-flash-latest)
+
+ (defun cashpw/gptel-quick-buffer ()
+   (gptel-quick (buffer-substring-no-properties (point-min) (point-max))))
+
+ (defun gptel-quick (query-text &optional count)
+   "Explain or summarize region or thing at point with an LLM.
 
 QUERY-TEXT is the text being explained.  COUNT is the approximate
 word count of the response."
-    (interactive
-     (list (cond
-            ((use-region-p) (buffer-substring-no-properties (region-beginning)
-                                                            (region-end)))
-            ((and (derived-mode-p 'pdf-view-mode)
-                  (pdf-view-active-region-p))
-             (mapconcat #'identity (pdf-view-active-region-text) "\n\n"))
-            (t (thing-at-point 'sexp)))
-           current-prefix-arg))
+   (interactive (list
+                 (cond
+                  ((use-region-p)
+                   (buffer-substring-no-properties
+                    (region-beginning) (region-end)))
+                  ((and (derived-mode-p 'pdf-view-mode)
+                        (pdf-view-active-region-p))
+                   (mapconcat #'identity (pdf-view-active-region-text) "\n\n"))
+                  (t
+                   (thing-at-point 'sexp)))
+                 current-prefix-arg))
 
-    (when (xor gptel-quick-backend gptel-quick-model)
-      (error "gptel-quick-backend and gptel-quick-model must be both set or unset"))
+   (when (xor gptel-quick-backend gptel-quick-model)
+     (error
+      "gptel-quick-backend and gptel-quick-model must be both set or unset"))
 
-    (let* ((count (or count gptel-quick-word-count))
-           ;; (gptel-max-tokens (floor (+ (sqrt (length query-text))
-           ;;                             (* count 2.5))))
-           (gptel-use-curl)
-           (gptel-use-context (and gptel-quick-use-context 'system))
-           (gptel-backend (or gptel-quick-backend gptel-backend))
-           (gptel-model (or gptel-quick-model gptel-model)))
-      (gptel-request query-text
-        :system (funcall gptel-quick-system-message count)
-        :context (list query-text count
-                       (posn-at-point (and (use-region-p) (region-beginning))))
-        :callback #'gptel-quick--callback-posframe)))
-
-  (defun cashpw/gptel-send (prompt)
-    "Invoke `gptel-send' with specific PROMPT."
-    (interactive (list (llm-prompts-select)))
-    (let ((gptel--system-message prompt))
-      (gptel-send))))
+   (let* ((count (or count gptel-quick-word-count))
+          ;; (gptel-max-tokens (floor (+ (sqrt (length query-text))
+          ;;                             (* count 2.5))))
+          (gptel-use-curl)
+          (gptel-use-context (and gptel-quick-use-context 'system))
+          (gptel-backend (or gptel-quick-backend gptel-backend))
+          (gptel-model (or gptel-quick-model gptel-model)))
+     (gptel-request
+      query-text
+      :system (funcall gptel-quick-system-message count)
+      :context
+      (list
+       query-text count
+       (posn-at-point (and (use-region-p) (region-beginning))))
+      :callback #'gptel-quick--callback-posframe))))
 
 (defun cashpw/gptel-kill-curl-process ()
   "Kill any running gptel curl process."
@@ -3257,21 +3287,22 @@ word count of the response."
   (kill-process "gptel-curl"))
 
 (after!
-  (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
+ (:and gptel whisper) (setq cashpw/gptel-after-whisper nil)
 
-  (defun cashpw/whisper-run-and-cue-gptel ()
-    (interactive)
-    (setq cashpw/gptel-after-whisper t)
-    (whisper-run))
+ (defun cashpw/whisper-run-and-cue-gptel ()
+   (interactive)
+   (setq cashpw/gptel-after-whisper t)
+   (whisper-run))
 
-  (defun cashpw/maybe-gptel-after-whisper ()
-    (when cashpw/gptel-after-whisper
-      (gptel-send)
-      (setq cashpw/gptel-after-whisper nil)))
+ (defun cashpw/maybe-gptel-after-whisper ()
+   (when cashpw/gptel-after-whisper
+     (gptel-send)
+     (setq cashpw/gptel-after-whisper nil)))
 
-  (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
+ (add-hook 'whisper-post-insert-hook #'cashpw/maybe-gptel-after-whisper))
 
-(cl-defmethod gptel--request-data :around ((backend gptel-gemini) prompts)
+(cl-defmethod gptel--request-data :around
+  ((backend gptel-gemini) prompts)
   "Add search ability."
   (plist-put (cl-call-next-method) :tools (append '(:google_search ()))))
 
@@ -4317,7 +4348,7 @@ The key is in the form: (authors|journal)_title_year."
      :html-background "Transparent"
      :html-scale 1.0
      :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
-   ;org-image-actual-width nil
+                                        ;org-image-actual-width nil
    )
   ;; (global-flycheck-mode)
   ;; (cashpw/eglot-unpause)
@@ -4361,7 +4392,7 @@ The key is in the form: (authors|journal)_title_year."
                     ;; This happends automatically.
                     ;; (org-link-preview)
                     )
-                   ((member extension '(".mp4"))
+                   ((member extension '(".mp4" ".mkv"))
                     (org-open-at-point))))))))))))
 
 (defun cashpw/org-fc--after-flip ()
@@ -4381,155 +4412,149 @@ The key is in the form: (authors|journal)_title_year."
   (org-fc-review-session--next org-fc-review--session))
 
 (use-package!
- org-fc
- :after org
- :custom
- (org-fc-directories `(,cashpw/path--notes-dir))
- (org-fc-review-history-file
-  (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
- (org-fc-bury-siblings t)
- (org-fc-bury-siblings t)
- (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
- (org-fc-review-new-limit 20)
- (org-fc-review-new-limit-schedule 'day)
- (org-fc-review-hide-title-in-header-line t)
- ;; Define twice so the keys show up in the hint
- ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
- (org-fc-review-flip-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "n") 'org-fc-review-flip)
-    (define-key map (kbd "q") 'org-fc-review-quit)
-    (define-key map (kbd "e") 'org-fc-review-edit)
-    (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
-    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-    (define-key map (kbd "S") 'org-fc-review-suspend-card)
-    map))
- (org-fc-review-rate-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "0") 'org-fc-review-rate-again)
-    (define-key map (kbd "1") 'org-fc-review-rate-hard)
-    (define-key map (kbd "2") 'org-fc-review-rate-good)
-    (define-key map (kbd "3") 'org-fc-review-rate-easy)
-    (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
-    (define-key map (kbd "S") 'org-fc-review-suspend-card)
-    (define-key map (kbd "e") 'org-fc-review-edit)
-    (define-key map (kbd "q") 'org-fc-review-quit)
-    map))
+    org-fc
+  :after org
+  :custom
+  (org-fc-directories `(,cashpw/path--notes-dir))
+  (org-fc-review-history-file
+   (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
+  (org-fc-bury-siblings t)
+  (org-fc-bury-siblings t)
+  (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
+  (org-fc-review-new-limit 20)
+  (org-fc-review-new-limit-schedule 'day)
+  (org-fc-review-hide-title-in-header-line t)
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (org-fc-review-flip-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "n") 'org-fc-review-flip)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
+     (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
+     map))
+  (org-fc-review-rate-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "0") 'org-fc-review-rate-again)
+     (define-key map (kbd "1") 'org-fc-review-rate-hard)
+     (define-key map (kbd "2") 'org-fc-review-rate-good)
+     (define-key map (kbd "3") 'org-fc-review-rate-easy)
+     (define-key map (kbd "s") 'cashpw/org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     map))
 
- :config
- (require 'org-fc-hydra)
- (require 'org-fc-keymap-hint)
+  :config
+  (require 'org-fc-hydra)
+  (require 'org-fc-keymap-hint)
 
- (setq cashpw/org-fc--seconds-per-card 10)
+  (setq cashpw/org-fc--seconds-per-card 10)
 
- (add-to-list
-  'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
- (add-to-list
-  'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
+  (add-to-list
+   'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
+  (add-to-list
+   'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
 
- ;; Define twice so the keys show up in the hint
- ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
- (evil-define-minor-mode-key
-  '(normal insert emacs)
-  'org-fc-review-flip-mode
-  (kbd "n")
-  'org-fc-review-flip
-  (kbd "s")
-  'cashpw/org-fc-review-skip-card
-  (kbd "S")
-  'org-fc-review-suspend-card
-  (kbd "e")
-  'org-fc-review-edit
-  (kbd "p")
-  'cashpw/org-fc-review-pause
-  (kbd "q")
-  'org-fc-review-quit)
- (evil-define-minor-mode-key
-  '(normal insert emacs)
-  'org-fc-review-rate-mode
-  (kbd "0")
-  'org-fc-review-rate-again
-  (kbd "1")
-  'org-fc-review-rate-hard
-  (kbd "2")
-  'org-fc-review-rate-good
-  (kbd "3")
-  'org-fc-review-rate-easy
-  (kbd "s")
-  'cashpw/org-fc-review-skip-card
-  (kbd "S")
-  'org-fc-review-suspend-card
-  (kbd "e")
-  'org-fc-review-edit
-  (kbd "q")
-  'org-fc-review-quit)
- (add-hook!
-  'org-fc-review-edit-mode-hook
-  #'cashpw/org-fc--reset-card-timer-expired-effects)
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (evil-define-minor-mode-key
+    '(normal insert emacs)
+    'org-fc-review-flip-mode
+    (kbd "n")
+    'org-fc-review-flip
+    (kbd "s")
+    'cashpw/org-fc-review-skip-card
+    (kbd "S")
+    'org-fc-review-suspend-card
+    (kbd "e")
+    'org-fc-review-edit
+    (kbd "p")
+    'cashpw/org-fc-review-pause
+    (kbd "q")
+    'org-fc-review-quit)
+  (evil-define-minor-mode-key
+    '(normal insert emacs)
+    'org-fc-review-rate-mode
+    (kbd "0")
+    'org-fc-review-rate-again
+    (kbd "1")
+    'org-fc-review-rate-hard
+    (kbd "2")
+    'org-fc-review-rate-good
+    (kbd "3")
+    'org-fc-review-rate-easy
+    (kbd "s")
+    'cashpw/org-fc-review-skip-card
+    (kbd "S")
+    'org-fc-review-suspend-card
+    (kbd "e")
+    'org-fc-review-edit
+    (kbd "q")
+    'org-fc-review-quit)
+  (add-hook!
+   'org-fc-review-edit-mode-hook
+   #'cashpw/org-fc--reset-card-timer-expired-effects)
 
- (add-hook! 'org-fc-before-setup-hook '(cashpw/org-fc--before-setup))
- (add-hook! 'org-fc-after-setup-hook '(cashpw/org-fc--open-front-link))
+  (add-hook! 'org-fc-before-setup-hook '(cashpw/org-fc--before-setup))
+  (add-hook! 'org-fc-after-setup-hook '(cashpw/org-fc--open-front-link))
 
- (add-hook!
-  'org-fc-after-flip-hook
-  '(cashpw/org-fc--after-flip
-    cashpw/org-fc--maybe-increment-new-seen-today
-    cashpw/org-fc--show-latex-for-tree))
+  (add-hook!
+   'org-fc-after-flip-hook
+   '(cashpw/org-fc--after-flip
+     cashpw/org-fc--maybe-increment-new-seen-today
+     cashpw/org-fc--show-latex-for-tree))
 
- (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
+  (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
 
- (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
- ;; (setq
- ;;  org-fc-review-position-filters '())
- ;; (setq
- ;;  org-fc-review-position-filters '(cashpw/org-fc--filter-one-per-file
- ;;                                   cashpw/org-fc--filter-limit-implement
- ;;                                   cashpw/org-fc--filter-limit-new))
+  (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
 
- (setq org-roam-db-node-include-function
-       (lambda ()
-         ;; Exclude org-fc cards from roam
-         (not (org-fc-entry-p)))))
+  (setq org-roam-db-node-include-function
+        (lambda ()
+          ;; Exclude org-fc cards from roam
+          (not (org-fc-entry-p)))))
 
 (use-package! org-fc-type-vocab :after org-fc)
 
-(defun cashpw/org-fc-awk-index-files (files)
-  "Generate a list of all cards and positions in FILES.
-Unlike `org-fc-awk-index-paths', files are included directly in
-the AWK command and directories are not supported."
-  (mapcar
-   (lambda (file)
-     (plist-put
-      file
-      :cards
-      (mapcar
-       (lambda (card)
-         (plist-put
-          card
-          :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
-         (plist-put
-          card
-          :tags
-          (org-fc-awk-combine-tags
-           (plist-get card :inherited-tags) (plist-get card :local-tags))))
-       (plist-get file :cards))))
-   (read
-    (shell-command-to-string
-     (org-fc-awk--command
-      "awk/index.awk"
-      :variables (org-fc-awk--indexer-variables)
-      ;; Avoid "Argument list too long" error
-      ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
-      :input
-      (concat
-       (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
-       "*.org"))))))
+;; (defun cashpw/org-fc-awk-index-files (files)
+;;   "Generate a list of all cards and positions in FILES.
+;; Unlike `org-fc-awk-index-paths', files are included directly in
+;; the AWK command and directories are not supported."
+;;   (mapcar
+;;    (lambda (file)
+;;      (plist-put
+;;       file
+;;       :cards
+;;       (mapcar
+;;        (lambda (card)
+;;          (plist-put
+;;           card
+;;           :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
+;;          (plist-put
+;;           card
+;;           :tags
+;;           (org-fc-awk-combine-tags
+;;            (plist-get card :inherited-tags) (plist-get card :local-tags))))
+;;        (plist-get file :cards))))
+;;    (read
+;;     (shell-command-to-string
+;;      (org-fc-awk--command
+;;       "awk/index.awk"
+;;       :variables (org-fc-awk--indexer-variables)
+;;       ;; Avoid "Argument list too long" error
+;;       ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
+;;       :input
+;;       (concat
+;;        (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
+;;        "*.org"))))))
 
-(after!
-  org-fc
-  (advice-add
-   'org-fc-awk-index-files
-   :override 'cashpw/org-fc-awk-index-files))
+;; (after!
+;;   org-fc
+;;   (advice-add
+;;    'org-fc-awk-index-files
+;;    :override 'cashpw/org-fc-awk-index-files))
 
 (defcustom cashpw/org-fc--one-per-file-exceptions
   '()
@@ -4548,6 +4573,52 @@ the AWK command and directories are not supported."
                                      (oref (oref position-b card) filetitle)))))
     (append excluded-positions
             (-uniq one-per-file-positions))))
+
+(after! org-fc
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-one-per-file 'append))
+
+(defmacro cashpw/org-fc--make-tag-limit-fn (tag max-count)
+  "Return a function suitable for `org-fc-review-card-filters' which limits tagged cards.
+
+- TAG: The tag to limit
+- MAX-COUNT: The maximum count of cards tagged with TAG to include in a review."
+  (let ((function-name (format "cashpw/org-fc--filter-limit-tag-%s" tag)))
+    `(defun ,(intern function-name) (positions)
+       ,(format "Remove all but %d positions which are tagged %s."
+                max-count
+                tag)
+       (let ((position-limit ,max-count)
+             (included-count 0)
+             (removed-count 0))
+         (prog1 (--filter
+                 (let ((tags (oref (oref it card) tags)))
+                   (if (member ,tag tags)
+                       (if (= included-count position-limit)
+                           (progn
+                             (cl-incf removed-count)
+                             nil)
+                         (cl-incf included-count)
+                         t)
+                     t))
+                 positions)
+           (message
+            "[%s] %d positions were tagged with %s. We removed %d from the set, leaving %d for review."
+            ,function-name
+            (+ removed-count included-count)
+            ,tag
+            removed-count
+            included-count))))))
+
+
+(after! org-fc
+  (cashpw/org-fc--make-tag-limit-fn "implement" 1)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-implement 'append)
+
+  (cashpw/org-fc--make-tag-limit-fn "asl" 5)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-asl 'append)
+
+  (cashpw/org-fc--make-tag-limit-fn "photo" 3)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-photo 'append))
 
 (defcustom cashpw/org-fc-review-new-limit -1
   "Limits the number of new positions shown per `org-fc-review-new-limit-schedule'.
@@ -4613,160 +4684,107 @@ Not persisted; resets when reloading Emacs!")
 (after! org-fc
   (setq
    cashpw/org-fc-review-new-limit 10
-   cashpw/org-fc-review-new-limit-schedule 'day))
-
-(defmacro cashpw/org-fc--make-tag-limit-fn (tag max-count)
-  "Return a function suitable for `org-fc-review-position-filters' which limits tagged cards.
-
-- TAG: The tag to limit
-- MAX-COUNT: The maximum count of cards tagged with TAG to include in a review."
-  (let ((function-name (format "cashpw/org-fc--filter-limit-tag-%s" tag)))
-    `(defun ,(intern function-name) (positions)
-       ,(format "Remove all but %d positions which are tagged %s."
-                max-count
-                tag)
-       (let ((position-limit ,max-count)
-             (included-count 0)
-             (removed-count 0))
-         (prog1 (--filter
-                 (let ((tags (oref (oref it card) tags)))
-                   (if (member ,tag tags)
-                       (if (= included-count position-limit)
-                           (progn
-                             (cl-incf removed-count)
-                             nil)
-                         (cl-incf included-count)
-                         t)
-                     t))
-                 positions)
-           (message
-            "[%s] %d positions were tagged with %s. We removed %d from the set, leaving %d for review."
-            ,function-name
-            (+ removed-count included-count)
-            ,tag
-            removed-count
-            included-count))))))
-
-(cashpw/org-fc--make-tag-limit-fn "implement" 1)
-(cashpw/org-fc--make-tag-limit-fn "asl" 5)
-(cashpw/org-fc--make-tag-limit-fn "photo" 3)
-
-(after!
-  org-fc
-  (setq
-   org-fc-review-position-filters
-   '(cashpw/org-fc--filter-one-per-file
-     cashpw/org-fc--filter-limit-new
-     cashpw/org-fc--filter-limit-tag-implement
-     cashpw/org-fc--filter-limit-tag-asl
-     cashpw/org-fc--filter-limit-tag-photo
-     org-fc-positions--filter-blocked)))
+   cashpw/org-fc-review-new-limit-schedule 'day)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-new 'append))
 
 (after! org-fc
-  (setq
-   cashpw/org-fc--sm2-initial-review-spacing-interval 7.0)
+  (defcustom cashpw/org-fc--review-position-interval 7
+    "Number of days between initial review due dates successive positions in a card.")
 
-  ;; Override
-  (defun org-fc-review-data-update (positions)
-    "Update review data to POSITIONS.
-If a doesn't exist already, it is initialized with default
-values.  Entries in the table not contained in POSITIONS are
-removed."
-    (let* ((old-data (org-fc-review-data-get))
-           (index -1)
-           (data (mapcar
-                  (lambda (pos)
-                    (cl-incf index)
-                    (or
-                     (assoc pos old-data #'string=)
-                     (org-fc-review-data-default pos index)))
-                  positions)))
-      (org-fc-review-data-set data)))
+  ;; Override to allow offset days
+  (defun org-fc-algo-fsrs6--cli-get-initial (&optional interval)
+    (org-fc-algo-fsrs6--cli-wrap-json
+     nil
+     (list "initial" "--now" (org-fc-timestamp-in (or interval 0)))))
 
-  (defun org-fc-review-data-default (position index)
-    "Default review data for position POSITION."
-    (cl-case org-fc-algorithm
-      (sm2-v1 (org-fc-algo-sm2-initial-review-data position index))
-      (sm2-v2 (org-fc-algo-sm2-initial-review-data position index))))
+  (cl-defmethod org-fc-algo-initial-review-data ((_algo org-fc-algo-fsrs6) name)
+    "Initial FSRS_6 review data for position NAME."
+    (cl-list*
+     'position
+     name
+     (cond
+      ((string= name "front")
+       (org-fc-algo-fsrs6--cli-get-initial))
+      ((string= name "back")
+       (org-fc-algo-fsrs6--cli-get-initial cashpw/org-fc--review-position-interval))
+      (
+       ;; Cloze positions
+       (string-match-p "^[0-9]+$" name)
+       (org-fc-algo-fsrs6--cli-get-initial
+        (* (string-to-number name)
+           cashpw/org-fc--review-position-interval)))
+      (t
+       (org-fc-algo-fsrs6--cli-get-initial))))))
 
-  (defun org-fc-algo-sm2-initial-review-data (position index)
-    "Initial SM2 review data for POSITION."
-    (let* ((box -1)
-           (ease (org-fc-algo-sm2-ease-initial))
-           (interval 0)
-           (due (org-fc-timestamp-in (* index
-                                        cashpw/org-fc--sm2-initial-review-spacing-interval))))
-      (list position ease box interval due))))
+;; (after! org-fc
+;;   (cl-defmethod org-fc-review-session--next ((review-session org-fc-review-session) &optional resuming)
+;;     "Review the next card of the current session.
 
-(after! org-fc
-  (cl-defmethod org-fc-review-session--next ((review-session org-fc-review-session) &optional resuming)
-    "Review the next card of the current session.
+;; If RESUMING is non-nil, some parts of the buffer setup are skipped."
+;;     (if (not (null (oref review-session positions)))
+;;         (condition-case err
+;;             (let* ((pos (pop (oref review-session positions)))
+;;                    (card (oref pos card))
+;;                    (path (oref card path))
+;;                    (id (oref card id))
+;;                    (type (oref card type)))
+;;               (setf (oref review-session current-item) pos)
+;;               (let ((buffer (find-buffer-visiting path)))
+;;                 (with-current-buffer (find-file path)
+;;                   (unless resuming
+;;                     ;; If buffer was already open, don't kill it after rating the card
+;;                     (if buffer
+;;                         (setq-local org-fc-reviewing-existing-buffer t)
+;;                       (setq-local org-fc-reviewing-existing-buffer nil))
+;;                     (org-fc-set-header-line))
 
-If RESUMING is non-nil, some parts of the buffer setup are skipped."
-    (if (not (null (oref review-session positions)))
-        (condition-case err
-            (let* ((pos (pop (oref review-session positions)))
-                   (card (oref pos card))
-                   (path (oref card path))
-                   (id (oref card id))
-                   (type (oref card type)))
-              (setf (oref review-session current-item) pos)
-              (let ((buffer (find-buffer-visiting path)))
-                (with-current-buffer (find-file path)
-                  (unless resuming
-                    ;; If buffer was already open, don't kill it after rating the card
-                    (if buffer
-                        (setq-local org-fc-reviewing-existing-buffer t)
-                      (setq-local org-fc-reviewing-existing-buffer nil))
-                    (org-fc-set-header-line))
+;;                   (goto-char (point-min))
+;;                   (org-fc-id-goto id path)
 
-                  (goto-char (point-min))
-                  (org-fc-id-goto id path)
+;;                   (org-fc-indent)
+;;                   ;; Make sure the headline the card is in is expanded
+;;                   (org-reveal)
+;;                   (redisplay t)
+;;                   (org-fc-narrow)
+;;                   (org-fc-hide-keyword-times)
+;;                   (org-fc-hide-drawers)
+;;                   (org-fc-show-latex)
+;;                   (org-display-inline-images)
+;;                   (run-hooks 'org-fc-before-setup-hook)
 
-                  (org-fc-indent)
-                  ;; Make sure the headline the card is in is expanded
-                  (org-reveal)
-                  (redisplay t)
-                  (org-fc-narrow)
-                  (org-fc-hide-keyword-times)
-                  (org-fc-hide-drawers)
-                  (org-fc-show-latex)
-                  (org-display-inline-images)
-                  (run-hooks 'org-fc-before-setup-hook)
+;;                   (setq org-fc-review--timestamp (time-to-seconds (current-time)))
+;;                   (let ((step (funcall (org-fc-type-setup-fn type) (oref pos pos))))
+;;                     (run-hooks 'org-fc-after-setup-hook)
 
-                  (setq org-fc-review--timestamp (time-to-seconds (current-time)))
-                  (let ((step (funcall (org-fc-type-setup-fn type) (oref pos pos))))
-                    (run-hooks 'org-fc-after-setup-hook)
+;;                     ;; If the card has a no-noop flip function,
+;;                     ;; skip to rate-mode
+;;                     (let ((flip-fn (org-fc-type-flip-fn type)))
+;;                       (if (or
+;;                            (eq step 'rate)
+;;                            (null flip-fn)
+;;                            (eq flip-fn #'org-fc-noop))
+;;                           (org-fc-review-rate-mode 1)
+;;                         (org-fc-review-flip-mode 1)))))))
+;;           (error
+;;            (org-fc-review-quit)
+;;            (signal (car err) (cdr err))))
+;;       (message "Review Done")
+;;       (org-fc-review-quit))))
 
-                    ;; If the card has a no-noop flip function,
-                    ;; skip to rate-mode
-                    (let ((flip-fn (org-fc-type-flip-fn type)))
-                      (if (or
-                           (eq step 'rate)
-                           (null flip-fn)
-                           (eq flip-fn #'org-fc-noop))
-                          (org-fc-review-rate-mode 1)
-                        (org-fc-review-flip-mode 1)))))))
-          (error
-           (org-fc-review-quit)
-           (signal (car err) (cdr err))))
-      (message "Review Done")
-      (org-fc-review-quit))))
-
-(defun org-fc-narrow ()
-  "Narrow the outline tree.
-Only parent headings of the current heading remain visible."
-  (interactive)
-  (let* ((tags (org-get-tags nil 'local)))
-    ;; Find the first heading with a :narrow: tag or the top level
-    ;; ancestor of the current heading and narrow to its region
-    (save-excursion
-      (while (org-up-heading-safe))
-      (org-narrow-to-subtree)
-      (outline-hide-subtree))
-    ;; Show only the ancestors of the current card
-    (org-show-set-visibility org-fc-narrow-visibility)
-    (if (member "noheading" tags) (org-fc-hide-heading))))
+;; (defun org-fc-narrow ()
+;;   "Narrow the outline tree.
+;; Only parent headings of the current heading remain visible."
+;;   (interactive)
+;;   (let* ((tags (org-get-tags nil 'local)))
+;;     ;; Find the first heading with a :narrow: tag or the top level
+;;     ;; ancestor of the current heading and narrow to its region
+;;     (save-excursion
+;;       (while (org-up-heading-safe))
+;;       (org-narrow-to-subtree)
+;;       (outline-hide-subtree))
+;;     ;; Show only the ancestors of the current card
+;;     (org-show-set-visibility org-fc-narrow-visibility)
+;;     (if (member "noheading" tags) (org-fc-hide-heading))))
 
 (use-package!
     org-gallery
@@ -5555,7 +5573,11 @@ Return nil if no attendee exists with that EMAIL."
    '(org-transclusion-src-lines
      org-transclusion-font-lock org-transclusion-indent-mode))
   (org-transclusion-exclude-elements '(property-drawer keyword))
+
   :config
+  ;; Make it easier to tell what's transcluded
+  (set-face-background 'org-transclusion "gray20")
+
   (defun cashpw/day-log--get-org-files-with-heading (haystack-path needle)
     "Search org files in HAYSTACK-PATH for headings matching NEEDLE regexp.
 Returns an alist of (absolute-path . line-number)."
@@ -5596,7 +5618,7 @@ Note: This saves the buffers to persist the created IDs."
     "Visit files in alist, ensure they have an Org ID, and return the IDs.
 FILE-PATH-LINE-NUMBER-ALIST is an alist of (path . line-number).
 Note: This saves the buffers to persist the created IDs."
-    (--map (cashpw/day-log--get-id-from-match (car it) (cdr it)) matches))
+    (--map (cashpw/day-log--get-id-from-match (car it) (cdr it)) file-path-line-number-alist))
 
   (defun cashpw/org-transclusion--insert (id &optional extra)
     "Insert transclusion links for the provided ID."
@@ -5943,18 +5965,19 @@ The exporting happens only when Org Capture is not in progress."
 
 (defun cashpw/org-get-filetags (&optional file-path)
   "Return filetags in FILE-PATH."
-  (let ((filetag-string
-         (shell-command-to-string
-          (concat
-           (format "rg '^#+filetags:' %s"
-                   (or file-path
-                       (buffer-file-name)))
-           "| sed 's/.*#+filetags: \\(.*\\)/\\1/'"))))
-    (s-split ":" filetag-string 'omit-nulls)))
+  (when-let ((file-path (or file-path (buffer-file-name))))
+    (let ((filetag-string
+           (shell-command-to-string
+            (concat
+             (format "rg '^#\\+filetags:' %s" file-path)
+             "| sed 's/.*#+filetags: \\(.*\\)/\\1/'"))))
+      (s-split ":" filetag-string 'omit-nulls))))
 
 (defun cashpw/org-files-and-filetags (directory)
   "Return list of org files in DIRECTORY and their filetags."
   (let ((grep-result
+         ;; Outputs <filepath> <tags>
+         ;; For example: /tmp/foo.org :cats:
          (shell-command-to-string
           (concat
            (format "rg --max-count=1 '^#\\+filetags:' %s/*.org"
@@ -6313,6 +6336,31 @@ Don't call directly. Use `cashpw/org-agenda-files'."
    "#+end_quote"
    (cashpw/replace-regexp-in-buffer "\\( \\)?\\[[^]]*\\]\\(,\\)?" "")))
 
+(defun cashpw/org-set-link-description (description)
+  "Set the description of the org-mode link at point with DESCRIPTION.
+If the provided DESCRIPTION is an empty string, the link will be converted
+to a bare link (e.g., [[path]])."
+  (interactive "sNew description: ")
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an Org-mode buffer"))
+  (let ((context (org-element-context)))
+    (unless (eq (org-element-type context) 'link)
+      (user-error "Point is not on a link"))
+    (let ((target (org-element-property :raw-link context))
+          (beg (org-element-property :begin context))
+          (end (org-element-property :end context)))
+      (delete-region beg end)
+      (insert (org-link-make-string target description)))))
+
+(defun cashpw/org-replace-link-description-with-title ()
+  "Replace link at point's description with the it's HTML title."
+  (interactive)
+  (let ((context (org-element-context)))
+    (unless (eq (org-element-type context) 'link)
+      (user-error "Point is not on a link"))
+    (let ((url (org-element-property :raw-link context)))
+      (cashpw/org-set-link-description (cashpw/url-get-title url)))))
+
 (setq
  org-image-max-width 'window
  org-id-locations-file-relative nil
@@ -6422,6 +6470,7 @@ The hierarchy is represented by '>'. For example, the input
 (defun cashpw/org-categorized-p ()
   "Return non-nil when the heading at point is categorized."
   (let ((category (org-get-category)))
+    (message "Testing category: %s" category)
     (and
      (--any-p
       (s-starts-with-p it category)
@@ -6662,7 +6711,7 @@ ${title}
           "#+title: Decision: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :decision:private:
+#+filetags: :decision:
 
 * TODO Background
 * TODO Decison
@@ -6709,12 +6758,12 @@ Communicate project status, blockers, etc, to relevant stakeholders.
           "#+title: ${title}
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
-#+filetags: :project:private:
+#+filetags: :project:
 
 * Notes
 * Log
 * Questions
-* PROJ ${title}
+* PROJ ${title} [/]
 ** TODO Close out :unscheduled:
 *** TODO Retrospective :unscheduled:
 *** TODO Communicate :unscheduled:
@@ -6885,11 +6934,13 @@ See: https://jethrokuan.github.io/org-roam-guide"
   "Create a roam node based on bibliography citation.
 
 See: https://jethrokuan.github.io/org-roam-guide"
-  (interactive (list (citar-select-ref)))
-  (org-roam-capture- :templates
-                     '(("r" "reference" plain "%?" :if-new
-                        (file+head "${slug}.org"
-                                   ":PROPERTIES:
+  (org-roam-capture-
+   :templates
+   '(("r" "reference" plain "%?"
+      :if-new
+      (file+head
+       "${slug}.org"
+       ":PROPERTIES:
 :ROAM_REFS: [cite:@${citekey}]
 :END:
 #+title: ${title}
@@ -6901,26 +6952,25 @@ TODO_AUTHOR, [cite:@${citekey}]
 * TODO [#2] Summary
 * TODO [#2] Thoughts
 * TODO [#2] Notes")
-                        :immediate-finish t
-                        :unnarrowed t))
-                     :info (list
-                            :citekey entry)
-                     :node (org-roam-node-create
-                            :title title)
-                     :props '(:finalize find-file)))
+      :immediate-finish t
+      :unnarrowed t))
+   :info (list :citekey entry)
+   :node (org-roam-node-create :title title)
+   :props '(:finalize find-file)))
 
 (defun cashpw/format-cited-author-for-org-roam (raw-authors)
   (if (not (s-contains? "," raw-authors))
       raw-authors
     (cond
-     (;; e.g. "Doe, Jane and Doe, John"
+     ( ;; e.g. "Doe, Jane and Doe, John"
       (s-contains? " and " raw-authors)
-      (s-join " and "
-              (mapcar
-               (lambda (author)
-                 (s-join " " (reverse (s-split ", " author))))
-               (s-split " and " raw-authors 'omit-nulls))))
-     (;; e.g. "Doe, Jane"
+      (s-join
+       " and "
+       (mapcar
+        (lambda (author)
+          (s-join " " (reverse (s-split ", " author))))
+        (s-split " and " raw-authors 'omit-nulls))))
+     ( ;; e.g. "Doe, Jane"
       t
       (s-join " " (reverse (s-split ", " raw-authors 'omit-nulls)))))))
 
@@ -6930,22 +6980,26 @@ TODO_AUTHOR, [cite:@${citekey}]
 See: https://jethrokuan.github.io/org-roam-guide"
   (interactive)
   (let* ((entry (citar-select-ref))
-         (author (cashpw/format-cited-author-for-org-roam
-                  (citar-format--entry (citar-format--parse "${author editor journal}")
-                                       entry)))
-         (citation-title (citar-format--entry (citar-format--parse "${title}")
-                                              entry))
-         (default-title (cond
-                         ((string-empty-p citation-title)
-                          "Something went wrong when extracting the title.")
-                         ((string-empty-p author)
-                          citation-title)
-                         (t
-                          (s-lex-format
-                           "${author} | ${citation-title}"))))
-         (title (read-string "Title: "
-                             default-title)))
-    (cashpw/org-roam-node-from-cite--inner entry title)))
+         (author
+          (cashpw/format-cited-author-for-org-roam
+           (citar-format--entry
+            (citar-format--parse "${author editor journal}") entry)))
+         (citation-title
+          (citar-format--entry (citar-format--parse "${title}") entry))
+         (default-title
+          (cond
+           ((string-empty-p citation-title)
+            "Something went wrong when extracting the title.")
+           ((string-empty-p author)
+            citation-title)
+           (t
+            (s-lex-format "${author} | ${citation-title}"))))
+         (title (read-string "Title: " default-title)))
+    (cashpw/org-roam-node-from-cite--inner entry title)
+    (save-excursion
+      (goto-char (poin-min))
+      (cashpw/org-set-dir-property-from-id)
+      (org-node-ensure-crtime-property))))
 
 (defvar cashpw/org-roam--file-path-exceptions-to-export-after-save
   '()
@@ -7429,7 +7483,7 @@ This is an internal function."
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+category: Personal>Journal
-#+filetags: :journal:private:hastodo:
+#+filetags: :journal:hastodo:
 
 * TODO [#2] Journal
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
@@ -9185,6 +9239,32 @@ See `org-clock-special-range' for KEY."
 
 (after!
   org
+  (defun cashpw/org-refile (oldfun &optional arg default-buffer rfloc msg)
+    "Refile advice with custom functionality."
+    (interactive "P")
+    (cond
+     ((org-extras-get-property (point) "ASANA_ID")
+      ;; Asana TODOs are special in that their source of truth is Asana. If I'm re-filing it, then I'm moving the source of truth into my notes. I want to (1) refile it and (2) remove it from asana.
+      (let ((org-refile-keep t)
+            (asana-id (org-extras-get-property (point) "ASANA_ID"))
+            (asana-url (org-extras-get-property (point) "ASANA_URL")))
+        ;; Remove Asana metadata from the TODO before we copy it
+        (org-delete-property "ASANA_ID")
+        (org-delete-property "ASANA_URL")
+        (org-deadline '(4))
+
+        (funcall oldfun arg default-buffer rfloc msg)
+
+        ;; Restore Asana metadata so we can delete the TODO from Asana
+        (org-set-property "ASANA_ID" asana-id)
+        (org-set-property "ASANA_URL" asana-url)
+
+        ;; DONE is set up to remove the TODO in Asana
+        (org-todo "DONE")))
+     (t
+      (funcall oldfun arg default-buffer rfloc msg))))
+  (advice-add 'org-refile :around 'cashpw/org-refile)
+
   (defun cashpw/org--set-refile-targets ()
     "Refresh refile targets."
     (setq
@@ -9288,15 +9368,21 @@ See `org-clock-special-range' for KEY."
   "Handle Org-mode DONE headlines."
   :tag "Org-mode on done.")
 
-(defcustom cashpw/org-mode-on-done--noop-hook nil
-  "List of functions which return non-nil to indicate we should do nothing with the current heading."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
-
-(defcustom cashpw/org-mode-on-done--keep-hook nil
-  "List of functions which return non-nil to indicate we should keep the current heading in the done state."
-  :group 'cashpw/org-mode-on-done
-  :type 'hook)
+(defun run-on-todo-state-change--DONE ()
+  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
+  (org-clock-out-if-current)
+  (when-let (asana-id (org-entry-get nil "ASANA_ID"))
+    (asana-task-complete (string-trim-left asana-id ".+-")))
+  (repeat-todo--reschedule (point))
+  (cond
+   ((cashpw/org-mode-on-done--noop-p)
+    (cashpw/org-mode-on-done--noop))
+   ((cashpw/org-mode-on-done--keep-p)
+    (cashpw/org-mode-on-done--keep))
+   ((cashpw/org-mode-on-done--delete-p)
+    (cashpw/org-mode-on-done--delete))
+   (t
+    (org-archive-subtree-default))))
 
 (defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
   "Property name to indicate how to handle DONE event."
@@ -9327,61 +9413,9 @@ See `org-clock-special-range' for KEY."
     (equal actual-value
            expected-value)))
 
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--noop)))
-(add-hook 'cashpw/org-mode-on-done--keep-hook
-          (lambda ()
-            (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)))
-
-(defcustom cashpw/org-mode-on-done--noop-file-paths '()
-  "TODOs in these files will be noop by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defcustom cashpw/org-mode-on-done--keep-file-paths
-  (append
-   `(,(s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")
-     ,(s-lex-format "${cashpw/path--notes-dir}/retrospective-2024.org")))
-  "TODOs in these files will be keep by default."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defun cashpw/org-mode-on-done--noop-file-p ()
-  "Return non-nil if current file is a no-op file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--noop-file-paths))
-
-(defun cashpw/org-mode-on-done--keep-file-p ()
-  "Return non-nil if current file is a keep file."
-  (member buffer-file-name
-          cashpw/org-mode-on-done--keep-file-paths))
-
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          'cashpw/org-mode-on-done--noop-file-p)
-(add-hook 'cashpw/org-mode-on-done--keep-hook
-          'cashpw/org-mode-on-done--keep-file-p)
-
 (defcustom cashpw/org-mode-on-done--noop-filetags
   '("noop_on_done")
   "Filetags for which we should noop on done."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defcustom cashpw/org-mode-on-done--keep-filetags
-  '("keep_on_done"
-    "journal"
-    "person"
-    "pet"
-    "decision"
-    "project")
-  "Filetags for which we should keep on done."
-  :group 'cashpw/org-mode-on-done
-  :type '(repeat string))
-
-(defcustom cashpw/org-mode-on-done--delete-filetags
-  '("delete_on_done")
-  "Filetags for which we should delete on done."
   :group 'cashpw/org-mode-on-done
   :type '(repeat string))
 
@@ -9394,6 +9428,40 @@ See `org-clock-special-range' for KEY."
      (org-extras-get-inbuffer-option "filetags")))
    0))
 
+(defun cashpw/org-mode-on-done--noop-p ()
+  "Return non-nil if we should noop the current entry."
+  (or (org-get-repeat)
+      (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--noop)
+      (cashpw/org-mode-on-done--noop-filetag-p)))
+
+(defun cashpw/org-mode-on-done--noop ()
+  "Handle noop decision."
+  (org-todo "TODO"))
+
+(defcustom cashpw/org-mode-on-done--keep-file-paths
+  (append
+   `(,(s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")
+     ,(s-lex-format "${cashpw/path--notes-dir}/retrospective-2024.org")))
+  "TODOs in these files will be keep by default."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--keep-file-p ()
+  "Return non-nil if current file is a keep file."
+  (member buffer-file-name
+          cashpw/org-mode-on-done--keep-file-paths))
+
+(defcustom cashpw/org-mode-on-done--keep-filetags
+  '("keep_on_done"
+    "journal"
+    "person"
+    "pet"
+    "decision"
+    "project")
+  "Filetags for which we should keep on done."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
 (defun cashpw/org-mode-on-done--keep-filetag-p ()
   "Return non-nil if current file has a keep filetag."
   (> (length
@@ -9401,6 +9469,23 @@ See `org-clock-special-range' for KEY."
        cashpw/org-mode-on-done--keep-filetags
        (org-extras-get-inbuffer-option "filetags")))
      0))
+
+(defun cashpw/org-mode-on-done--keep-p ()
+  "Return non-nil if we should keep the current entry."
+  (or
+   (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)
+   (cashpw/org-mode-on-done--keep-filetag-p)
+   (cashpw/org-mode-on-done--keep-file-p)))
+
+(defun cashpw/org-mode-on-done--keep ()
+  "Handle keep decision."
+  nil)
+
+(defcustom cashpw/org-mode-on-done--delete-filetags
+  '("delete_on_done")
+  "Filetags for which we should delete on done."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
 
 (defun cashpw/org-mode-on-done--delete-filetag-p ()
   "Return non-nil if current file has a delete filetag."
@@ -9410,48 +9495,13 @@ See `org-clock-special-range' for KEY."
        (org-extras-get-inbuffer-option "filetags")))
      0))
 
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          'cashpw/org-mode-on-done--noop-filetag-p)
-(add-hook 'cashpw/org-mode-on-done--keep-hook
-          'cashpw/org-mode-on-done--keep-filetag-p)
-(add-hook 'cashpw/org-mode-on-done--delete-hook
-          'cashpw/org-mode-on-done--delete-filetag-p)
-
-(add-hook 'cashpw/org-mode-on-done--noop-hook
-          #'org-get-repeat)
-
-(defun cashpw/org-mode-on-done--is-noop ()
-  "Return non-nil if we should noop the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--noop-hook))
-
-(defun cashpw/org-mode-on-done--is-keep ()
-  "Return non-nil if we should keep the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--keep-hook))
-
-(defun cashpw/org-mode-on-done--is-delete ()
+(defun cashpw/org-mode-on-done--delete-p ()
   "Return non-nil if we should delete the current entry."
-  (-any 'funcall
-        cashpw/org-mode-on-done--delete-hook))
+  (cashpw/org-mode-on-done--delete-filetag-p))
 
-(defun run-on-todo-state-change--DONE ()
-  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
-  (org-clock-out-if-current)
-  (when-let (asana-id (org-entry-get nil "ASANA_ID"))
-    (asana-task-complete (string-trim-left asana-id ".+-")))
-  (repeat-todo--reschedule (point))
-  (cond
-   ((cashpw/org-mode-on-done--is-noop)
-    ;; (unless (org-get-repeat)
-    ;; (org-schedule '(4)))
-    (org-todo "TODO"))
-   ((cashpw/org-mode-on-done--is-keep)
-    nil)
-   ((cashpw/org-mode-on-done--is-delete)
-    (org-cut-subtree))
-   (t
-    (org-archive-subtree-default))))
+(defun cashpw/org-mode-on-done--delete ()
+  "Handle delete decision."
+  (org-cut-subtree))
 
 (after! org
   :config
@@ -9488,8 +9538,7 @@ See `org-clock-special-range' for KEY."
   "Prompot user for missing todo properties and apply them.."
   (cl-destructuring-bind
       (priority effort category scheduled deadline)
-      (let ((categories
-             (mapcar #'list (org-property-values "CATEGORY"))))
+      (let ((categories (mapcar #'list (org-property-values "CATEGORY"))))
         (read-multi
          `((:prompt
             "Priority"
@@ -9524,7 +9573,10 @@ See `org-clock-special-range' for KEY."
                  category)))
             :read-fn
             (lambda (_ default)
-              (completing-read "Category: " categories nil 'require-match default)))
+              (completing-read "Category: " categories
+                               nil
+                               'require-match
+                               default)))
            (:prompt
             "Schedule"
             :default ,(org-get-scheduled-time (point))
@@ -9623,16 +9675,12 @@ See `org-clock-special-range' for KEY."
          :keys "t"
          :after-finalize
          (lambda ()
-           (save-excursion
-             (with-current-buffer (marker-buffer org-capture-last-stored-marker)
-               (goto-char org-capture-last-stored-marker)
-               (cashpw/org--populate-missing-todo-props)
-               ;; (cashpw/org--prompt-for-priority-when-missing)
-               ;; (cashpw/org--prompt-for-effort-when-missing)
-               ;; (cashpw/org--prompt-for-category-when-missing)
-               ;; (cashpw/org--prompt-for-schedule-when-missing)
-               ;; (cashpw/org--prompt-for-deadline-when-missing)
-               )))
+           (when (not org-note-abort)
+             (save-excursion
+               (with-current-buffer (marker-buffer
+                                     org-capture-last-stored-marker)
+                 (goto-char org-capture-last-stored-marker)
+                 (cashpw/org--populate-missing-todo-props)))))
          :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
         ("Roam"
          :keys "r"
@@ -10319,6 +10367,19 @@ All args are passed to `org-roam-node-read'."
   "Publish to markdown using Pandoc."
   (org-pandoc-publish-to 'plain plist filename pub-dir))
 
+(defun cashpw/org-hugo-link-except-private-links (oldfun link desc info)
+  "Run `org-hugo-link' when the link is public; otherwise return a non-link."
+  (if (and (string= (org-element-property :type link) "id")
+           (not
+            (member
+             "public"
+             (cashpw/org-get-filetags
+              (org-id-find-id-file (org-element-property :path link))))))
+      desc
+    (funcall oldfun link desc info)))
+
+(advice-add 'org-hugo-link :around 'cashpw/org-hugo-link-except-private-links)
+
 (defun cashpw/kill-all-markdown-buffers ()
   "Kill all other org-roam buffers except current."
   (let ((buffers-to-kill
@@ -10353,109 +10414,111 @@ All args are passed to `org-roam-node-read'."
            (format "relref \"%s\"" missing-relref) "REPLACED"))
         (save-buffer)))))
 
-(defun cashpw/org-hugo-export-directory--bak
-    (directory &optional files-to-ignore)
-  "Export all hugo files in DIRECTORY.
+;; (defun cashpw/org-hugo-export-directory
+;;     (directory &optional files-to-ignore)
+;;   "Export all hugo files in DIRECTORY.
 
-Optionally skip FILES-TO-IGNORE.
+;; Optionally skip FILES-TO-IGNORE.
 
-Note that only files tagged \"public\" will be exported."
-  (interactive)
-  (let* ((org-roam-directory directory)
-         (files-to-export
-          (seq-difference
-           (cashpw/org-files-with-tag
-            "public" org-roam-directory)
-           files-to-ignore))
-         (org-id-extra-files (org-node-list-files))
-         (file-index 0)
-         (log-file-path "/tmp/hugo-export.log")
-         (count-files-to-export (length files-to-export))
-         ;; Last updated: 2023-12-05
-         (recent-run-file-count 1467)
-         ;; Last updated: 2023-12-05
-         (recent-run-seconds 7791)
-         (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
-    (cl-flet
-        ((remaining-minutes
-           (file-number)
-           (let ((files-left (- count-files-to-export file-number)))
-             (/ (* seconds-per-file files-left) 60))))
-      (let*
-          ((run-time-estimate
-            (org-duration-from-minutes (remaining-minutes 0)))
-           (should-run
-            (y-or-n-p
-             (s-lex-format
-              "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
-        (when should-run
-          (let* ((progress-reporter
-                  (make-progress-reporter "Exporting roam notes"
-                                          0 count-files-to-export))
-                 (start-time (current-time)))
-            ;; (org-roam-db-sync)
-            ;; Speed up the export
-            ;; (cashpw/eglot-pause)
-            (memoize 'citeproc-hash-itemgetter-from-any)
-            (advice-add 'org-id-find :override 'cashpw/org-mem-id-find)
-            ;; (memoize 'org-roam-id-find)
-            ;; (memoize 'org-roam-node-id)
-            ;; (memoize 'org-roam-node-file)
-            ;; (global-flycheck-mode -1)
+;; Note that only files tagged \"public\" will be exported."
+;;   (interactive)
+;;   (let* ((org-roam-directory directory)
+;;          (files-to-export
+;;           (seq-difference
+;;            (cashpw/org-files-with-tag
+;;             "public" org-roam-directory)
+;;            files-to-ignore))
+;;          (org-id-extra-files (org-node-list-files))
+;;          (file-index 0)
+;;          (log-file-path "/tmp/hugo-export.log")
+;;          (count-files-to-export (length files-to-export))
+;;          ;; Last updated: 2023-12-05
+;;          (recent-run-file-count 1467)
+;;          ;; Last updated: 2023-12-05
+;;          (recent-run-seconds 7791)
+;;          (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
+;;     (cl-flet
+;;         ((remaining-minutes
+;;            (file-number)
+;;            (let ((files-left (- count-files-to-export file-number)))
+;;              (/ (* seconds-per-file files-left) 60))))
+;;       (let*
+;;           ((run-time-estimate
+;;             (org-duration-from-minutes (remaining-minutes 0)))
+;;            (should-run
+;;             (y-or-n-p
+;;              (s-lex-format
+;;               "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
+;;         (when should-run
+;;           (let* ((progress-reporter
+;;                   (make-progress-reporter "Exporting roam notes"
+;;                                           0 count-files-to-export))
+;;                  (start-time (current-time)))
+;;             ;; (org-roam-db-sync)
+;;             ;; Speed up the export
+;;             ;; (cashpw/eglot-pause)
+;;             (memoize 'citeproc-hash-itemgetter-from-any)
+;;             (advice-add 'org-id-find :override 'cashpw/org-mem-id-find)
+;;             ;; (memoize 'org-roam-id-find)
+;;             ;; (memoize 'org-roam-node-id)
+;;             ;; (memoize 'org-roam-node-file)
+;;             ;; (global-flycheck-mode -1)
 
-            (-each
-                files-to-export
-              (lambda (file-path)
-                (let ((file-export-start-time (current-time))
-                      (roam-file-buffer (find-file-noselect file-path))
-                      (start-time (current-time)))
-                  (shut-up
-                    (when (= 0 (% file-index 10))
-                      ;; (message "[cashpw] fix cannot redirect stderr too many open files")
-                      ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
-                      (cashpw/kill-all-markdown-buffers)
-                      (file-notify-rm-all-watches))
-                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
-                    ;;          (1+ file-index)
-                    ;;          count-files-to-export
-                    ;;          file-path)
-                    (with-current-buffer roam-file-buffer
-                      (remove-hook 'before-save-hook 'org-encrypt-entries t)
-                      (org-hugo-export-to-md))
-                    (kill-buffer roam-file-buffer)
-                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
-                    ;;          (1+ file-index)
-                    ;;          count-files-to-export
-                    ;;          file-path
-                    ;;          (float-time
-                    ;;           (time-since
-                    ;;            file-export-start-time)))
-                    (let* ((file-number (1+ file-index))
-                           (time-string (format-time-string "%F %H:%M:%S"))
-                           (export-duration-in-seconds (time-since start-time)))
-                      (append-to-file
-                       (s-lex-format
-                        "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
-                       nil log-file-path))))
-                (progress-reporter-update progress-reporter
-                                          file-index
-                                          (concat
-                                           "Remaining time (estimate): "
-                                           (org-duration-from-minutes
-                                            (remaining-minutes file-index))))
-                (setq file-index (1+ file-index))))
-            (progress-reporter-done progress-reporter)
+;;             (unwind-protect
+;;                 (progn
+;;                   (-each
+;;                       files-to-export
+;;                     (lambda (file-path)
+;;                       (let ((file-export-start-time (current-time))
+;;                             (roam-file-buffer (find-file-noselect file-path))
+;;                             (start-time (current-time)))
+;;                         (shut-up
+;;                           (when (= 0 (% file-index 10))
+;;                             ;; (message "[cashpw] fix cannot redirect stderr too many open files")
+;;                             ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
+;;                             (cashpw/kill-all-markdown-buffers)
+;;                             (file-notify-rm-all-watches))
+;;                           ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
+;;                           ;;          (1+ file-index)
+;;                           ;;          count-files-to-export
+;;                           ;;          file-path)
+;;                           (with-current-buffer roam-file-buffer
+;;                             (remove-hook 'before-save-hook 'org-encrypt-entries t)
+;;                             (org-hugo-export-to-md))
+;;                           (kill-buffer roam-file-buffer)
+;;                           ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+;;                           ;;          (1+ file-index)
+;;                           ;;          count-files-to-export
+;;                           ;;          file-path
+;;                           ;;          (float-time
+;;                           ;;           (time-since
+;;                           ;;            file-export-start-time)))
+;;                           (let* ((file-number (1+ file-index))
+;;                                  (time-string (format-time-string "%F %H:%M:%S"))
+;;                                  (export-duration-in-seconds (time-since start-time)))
+;;                             (append-to-file
+;;                              (s-lex-format
+;;                               "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
+;;                              nil log-file-path))))
+;;                       (progress-reporter-update progress-reporter
+;;                                                 file-index
+;;                                                 (concat
+;;                                                  "Remaining time (estimate): "
+;;                                                  (org-duration-from-minutes
+;;                                                   (remaining-minutes file-index))))
+;;                       (setq file-index (1+ file-index)))))
+;;               (progress-reporter-done progress-reporter)
 
-            ;; Remove speed-up changes
-            ;; (cashpw/eglot-unpause)
-            (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
-            ;; (memoize-restore 'org-roam-id-find)
-            ;; (memoize-restore 'org-roam-node-id)
-            ;; (memoize-restore 'org-roam-node-file)
-            (memoize-restore 'citeproc-hash-itemgetter-from-any)
+;;               ;; Remove speed-up changes
+;;               ;; (cashpw/eglot-unpause)
+;;               (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
+;;               ;; (memoize-restore 'org-roam-id-find)
+;;               ;; (memoize-restore 'org-roam-node-id)
+;;               ;; (memoize-restore 'org-roam-node-file)
+;;               (memoize-restore 'citeproc-hash-itemgetter-from-any)
 
-            (message "cashpw/org-hugo-export-all %.06f"
-                     (float-time (time-since start-time)))))))))
+;;               (message "cashpw/org-hugo-export-all %.06f"
+;;                        (float-time (time-since start-time))))))))))
 
 (defun cashpw/org-hugo--tag-processing-fn-roam-tags (tag-list info)
   "Add tags from filetags to tag-list for org-roam to ox-hugo compatibility.
@@ -10464,8 +10527,15 @@ Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
 
 See `org-hugo-tag-processing-functions'."
   (if (org-roam-file-p)
-      (append
-       tag-list (-map #'downcase (org-extras-get-inbuffer-option "filetags")))
+      (--remove
+       (or
+        (string= it "public")
+        (string= it "concept")
+        (string= it "hastodo"))
+       (-uniq
+        (append
+         tag-list
+         (-map #'downcase (org-extras-get-inbuffer-option "filetags")))))
     tag-list))
 
 (after!
@@ -10568,9 +10638,7 @@ Optionally skip FILES-TO-IGNORE.
 
 Note that only files tagged \"public\" will be exported."
   (interactive)
-  (let* (
-         ;; (org-roam-directory directory)
-         (files-to-export
+  (let* ((files-to-export
           (seq-difference
            (cashpw/org-files-with-tag
             "public" cashpw/path--notes-dir)
@@ -10605,65 +10673,68 @@ Note that only files tagged \"public\" will be exported."
             ;; Speed up the export
             ;; (cashpw/eglot-pause)
             (memoize 'citeproc-hash-itemgetter-from-any)
-            (advice-add 'org-id-find :override 'org-roam-id-find)
+            (advice-add 'org-id-find :override 'cashpw/org-mem-id-find)
             (memoize 'org-roam-id-find)
             ;; (memoize 'org-roam-node-id)
             ;; (memoize 'org-roam-node-file)
             ;; (global-flycheck-mode -1)
 
-            (-each
-                files-to-export
-              (lambda (file-path)
-                (let ((file-export-start-time (current-time))
-                      (note-buffer (find-file-noselect file-path)))
-                  (shut-up
-                    (when (= 0 (% file-index 10))
-                      ;; (message "[cashpw] fix cannot redirect stderr too many open files")
-                      ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
-                      (cashpw/kill-all-markdown-buffers)
-                      (file-notify-rm-all-watches))
-                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
-                    ;;          (1+ file-index)
-                    ;;          count-files-to-export
-                    ;;          file-path)
-                    (unwind-protect
-                        (with-current-buffer note-buffer
-                          ;; (remove-hook 'before-save-hook 'org-encrypt-entries t)
-                          (org-hugo-export-to-md))
-                      (kill-buffer note-buffer))
-                    ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
-                    ;;          (1+ file-index)
-                    ;;          count-files-to-export
-                    ;;          file-path
-                    ;;          (float-time
-                    ;;           (time-since
-                    ;;            file-export-start-time)))
-                    (let* ((file-number (1+ file-index))
-                           (time-string (format-time-string "%F %H:%M:%S"))
-                           (export-duration-in-seconds (time-since file-export-start-time)))
-                      (append-to-file
-                       (s-lex-format
-                        "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
-                       nil log-file-path))))
-                (progress-reporter-update progress-reporter
-                                          file-index
-                                          (concat
-                                           "Remaining time (estimate): "
-                                           (org-duration-from-minutes
-                                            (remaining-minutes file-index))))
-                (setq file-index (1+ file-index))))
-            (progress-reporter-done progress-reporter)
+            (unwind-protect
+                (-each
+                    files-to-export
+                  (lambda (file-path)
+                    (let ((file-export-start-time (current-time))
+                          (note-buffer (find-file-noselect file-path)))
+                      (shut-up
+                        ;; (when (= 0 (% file-index 10))
+                        ;;   ;; (message "[cashpw] fix cannot redirect stderr too many open files")
+                        ;;   ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
+                        ;;   (cashpw/kill-all-markdown-buffers)
+                        ;;   (file-notify-rm-all-watches))
+                        ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
+                        ;;          (1+ file-index)
+                        ;;          count-files-to-export
+                        ;;          file-path)
+                        (unwind-protect
+                            (with-current-buffer note-buffer
+                              ;; (remove-hook 'before-save-hook 'org-encrypt-entries t)
+                              (org-hugo-export-to-md))
+                          nil
+                          ;; (kill-buffer note-buffer)
+                          )
+                        ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+                        ;;          (1+ file-index)
+                        ;;          count-files-to-export
+                        ;;          file-path
+                        ;;          (float-time
+                        ;;           (time-since
+                        ;;            file-export-start-time)))
+                        (let* ((file-number (1+ file-index))
+                               (time-string (format-time-string "%F %H:%M:%S"))
+                               (export-duration
+                                (format-seconds
+                                 "%.2h:%.2m:%.2s"
+                                 (time-since file-export-start-time))))
+                          (append-to-file
+                           (s-lex-format
+                            "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration})\n")
+                           nil log-file-path))))
+                    (progress-reporter-update progress-reporter
+                                              file-index
+                                              (concat
+                                               "Remaining time (estimate): "
+                                               (org-duration-from-minutes
+                                                (remaining-minutes file-index))))
+                    (setq file-index (1+ file-index))))
+              (progress-reporter-done progress-reporter)
 
-            ;; Remove speed-up changes
-            ;; (cashpw/eglot-unpause)
-            (advice-remove 'org-id-find 'org-roam-id-find)
-            (memoize-restore 'org-roam-id-find)
-            ;; (memoize-restore 'org-roam-node-id)
-            ;; (memoize-restore 'org-roam-node-file)
-            (memoize-restore 'citeproc-hash-itemgetter-from-any)
+              ;; Remove speed-up changes
+              (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
+              (memoize-restore 'org-roam-id-find)
+              (memoize-restore 'citeproc-hash-itemgetter-from-any)
 
-            (message "cashpw/org-hugo-export-all %.06f"
-                     (float-time (time-since start-time)))))))))
+              (message "cashpw/org-hugo-export-all %.06f"
+                       (float-time (time-since start-time))))))))))
 
 (defun cashpw/org-hugo-export-all ()
   "Export all hugo notes files.."
@@ -10763,40 +10834,40 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
             (:prefix ("S")
                      (:prefix ("h" . "hour")
                               (:prefix ("0" . "0?:??")
-                               :desc "00:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "00:00" "00:45"))
-                               :desc "01:00" :n "1" (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:45"))
-                               :desc "02:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "02:00" "02:45"))
-                               :desc "03:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:45"))
-                               :desc "04:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:45"))
-                               :desc "05:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:45"))
-                               :desc "06:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:45"))
-                               :desc "07:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:45"))
-                               :desc "08:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:45"))
-                               :desc "09:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:45")))
+                               :desc "00:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "00:00" "00:50"))
+                               :desc "01:00" :n "1" (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:50"))
+                               :desc "02:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "02:00" "02:50"))
+                               :desc "03:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:50"))
+                               :desc "04:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:50"))
+                               :desc "05:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:50"))
+                               :desc "06:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:50"))
+                               :desc "07:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:50"))
+                               :desc "08:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:50"))
+                               :desc "09:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:50")))
                               (:prefix ("1" . "1?:??")
-                               :desc "01:00" :n "RET" (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:45"))
-                               :desc "10:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "10:00" "10:45"))
-                               :desc "11:00" :n "1" (cmd! (cashpw/org-schedule-today-from-to "11:00" "11:45"))
-                               :desc "12:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "12:00" "12:45"))
-                               :desc "13:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "13:00" "13:45"))
-                               :desc "14:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "14:00" "14:45"))
-                               :desc "15:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "15:00" "15:45"))
-                               :desc "16:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "16:00" "16:45"))
-                               :desc "17:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "17:00" "17:45"))
-                               :desc "18:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "18:00" "18:45"))
-                               :desc "19:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "19:00" "19:45")))
+                               :desc "01:00" :n "RET" (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:50"))
+                               :desc "10:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "10:00" "10:50"))
+                               :desc "11:00" :n "1" (cmd! (cashpw/org-schedule-today-from-to "11:00" "11:50"))
+                               :desc "12:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "12:00" "12:50"))
+                               :desc "13:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "13:00" "13:50"))
+                               :desc "14:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "14:00" "14:50"))
+                               :desc "15:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "15:00" "15:50"))
+                               :desc "16:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "16:00" "16:50"))
+                               :desc "17:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "17:00" "17:50"))
+                               :desc "18:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "18:00" "18:50"))
+                               :desc "19:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "19:00" "19:50")))
                               (:prefix ("2" . "2?:??")
-                               :desc "20:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "20:00" "20:45"))
-                               :desc "21:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "21:00" "21:45"))
-                               :desc "22:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "22:00" "22:45"))
-                               :desc "23:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "23:00" "23:45")))
-                              :desc "03:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:45"))
-                              :desc "04:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:45"))
-                              :desc "05:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:45"))
-                              :desc "06:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:45"))
-                              :desc "07:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:45"))
-                              :desc "08:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:45"))
-                              :desc "09:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:45")))))
+                               :desc "20:00" :n "0" (cmd! (cashpw/org-schedule-today-from-to "20:00" "20:50"))
+                               :desc "21:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "21:00" "21:50"))
+                               :desc "22:00" :n "2" (cmd! (cashpw/org-schedule-today-from-to "22:00" "22:50"))
+                               :desc "23:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "23:00" "23:50")))
+                              :desc "03:00" :n "3" (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:50"))
+                              :desc "04:00" :n "4" (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:50"))
+                              :desc "05:00" :n "5" (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:50"))
+                              :desc "06:00" :n "6" (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:50"))
+                              :desc "07:00" :n "7" (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:50"))
+                              :desc "08:00" :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:50"))
+                              :desc "09:00" :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:50")))))
 
    (:prefix ("D" . "Download")
     :n "R" #'org-download-rename-last-file
@@ -10835,7 +10906,9 @@ Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
    (:prefix ("m" . "org-roam")
     :desc "Open ref" :n "O" #'cashpw/org-roam-open-ref
     (:prefix ("o")
-     :n "r" #'cashpw/org-roam-add-citation-as-ref)
+     :n "r" #'citar-org-roam-ref-add
+     ;; #'cashpw/org-roam-add-citation-as-ref
+     )
     (:prefix ("l" . "link")
      :n "q" #'cashpw/org-roam-insert-tag-link)
     :desc "Publish all" :n "p" #'cashpw/org-hugo-export-all)
@@ -11179,3 +11252,101 @@ Reference:https://stackoverflow.com/q/23622296"
     (goto-char marker)))
 
 (use-package! font-lock-profiler)
+
+(defun cashpw/org-set-dir-property-from-id ()
+  "Set \"DIR\" property by the \"ID\" at point."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (if-let ((id (org-id-get)))
+        (org-set-property
+         "DIR"
+         (format "attachments/%s/%s" (substring id 0 2) (substring id 2)))
+      (cashpw/log "Couldn't set DIR for %s because it's missing an ID." (buffer-name)))))
+
+(defcustom cashpw/notes-background-color--private "#1d1f21"
+  "Background color used for private notes."
+  :type 'color
+  :group 'cashpw)
+
+(defcustom cashpw/notes-background-color--public "RoyalBlue4"
+  "Background color used for public notes."
+  :type 'color
+  :group 'cashpw)
+(setq cashpw/notes-background-color--public "RoyalBlue4")
+
+(defvar-local cashpw/notes--bg-cookie nil
+  "Stores the face-remap cookie for the current buffer background.")
+
+(defun cashpw/notes-set-background-color--private ()
+  "Sets the current buffer background to the private color."
+  (when cashpw/notes--bg-cookie
+    (face-remap-remove-relative cashpw/notes--bg-cookie))
+  (setq cashpw/notes--bg-cookie
+        (face-remap-add-relative
+         'line-number
+         :foreground (face-foreground 'line-number)
+         :background cashpw/notes-background-color--private)))
+
+(defun cashpw/notes-set-background-color--public ()
+  "Sets the current buffer background to the public color."
+  (when cashpw/notes--bg-cookie
+    (face-remap-remove-relative cashpw/notes--bg-cookie))
+  (setq cashpw/notes--bg-cookie
+        (face-remap-add-relative
+         'line-number
+         :foreground "#FFFFFF"
+         :background cashpw/notes-background-color--public)))
+
+(defun cashpw/notes-public-p (&optional file-path-or-buffer)
+  "Return non-nil if FILE-PATH-OR-BUFFER has a \"public\" filetag.
+TODO"
+  (with-current-buffer (or (and (stringp file-or-buffer)
+                                (find-file-noselect file-or-buffer))
+                           (and (bufferp file-or-buffer) file-or-buffer)
+                           (current-buffer))
+    (and (derived-mode-p 'org-mode)
+         (buffer-file-name)
+         (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
+         (member "public" (org-node--get-filetags)))))
+
+(defun cashpw/notes-set-background-color ()
+  "Sets the background color based on the presence of the 'public' filetag."
+  (interactive)
+  (if (and (derived-mode-p 'org-mode)
+           (buffer-file-name)
+           (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
+           (member "public" (org-node--get-filetags)))
+      (cashpw/notes-set-background-color--public)
+    (cashpw/notes-set-background-color--private)))
+
+(defun cashpw/notes-set-background-color--on-save ()
+  "Helper to apply background color only if the saved buffer is in Org mode."
+  (when (derived-mode-p 'org-mode)
+    (cashpw/notes-set-background-color)))
+
+(defun cashpw/notes-set-background-color-all-buffers (&optional state)
+  "Set background of all org-mode buffers for STATE."
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (derived-mode-p 'org-mode)
+        (pcase state
+          ('public (cashpw/notes-set-background-color--public))
+          ('private (cashpw/notes-set-background-color--private))
+          (_ (cashpw/notes-set-background-color)))))))
+
+(define-minor-mode cashpw/org-private-note-mode
+  "Global minor mode to manage Org buffer background colors based on privacy status."
+  :global t
+  :group
+  'cashpw
+  (if cashpw/org-private-note-mode
+      (progn
+        (cashpw/notes-set-background-color-all-buffers)
+        (add-hook 'after-save-hook #'cashpw/notes-set-background-color--on-save)
+        (add-hook 'org-mode-hook #'cashpw/notes-set-background-color))
+    (progn
+      (cashpw/notes-set-background-color-all-buffers 'private)
+      (remove-hook
+       'after-save-hook #'cashpw/notes-set-background-color--on-save)
+      (remove-hook 'org-mode-hook #'cashpw/notes-set-background-color))))

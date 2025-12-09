@@ -221,10 +221,11 @@
 
 (package! org-fc
   :recipe (:host github
-           ;; :repo "l3kn/org-fc"
-           :repo "cashpw/org-fc"
-           :branch "feat/classes"
-           :files (:defaults "awk" "demo.org")))
+           :repo "l3kn/org-fc"
+           ;; :repo "cashpw/org-fc"
+           ;; :branch "feat/classes"
+           ;; :files (:defaults "awk" "demo.org")
+           ))
 
 (package! org-gallery
   :recipe (:host github
