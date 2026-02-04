@@ -1291,9 +1291,10 @@ returns nil."
            (cashpw/weather-schedule-insert-todos
             (cashpw/time-tomorrow-at-hh-mm 5 00))))))
 
-(add-hook
- 'cashpw/run-once-a-day-hooks
- (lambda () (cashpw/weather-insert-todays-open-close-window-todos 74 74)))
+(unless (cashpw/machine-p 'work)
+  (add-hook
+   'cashpw/run-once-a-day-hooks
+   (lambda () (cashpw/weather-insert-todays-open-close-window-todos 74 74))))
 
 (use-package! sunshine
   :custom
@@ -1653,7 +1654,9 @@ This be hooked to `projectile-after-switch-project-hook'."
   (asana-token (secret-get "asana"))
   (asana-sync-stories nil)
   (asana-schedule-pattern 'schedule-due)
-  :config (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks)
+  :config
+  (unless (cashpw/machine-p 'work)
+    (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks))
 
   (setq
    cashpw/asana-categories-by-task-name '()
