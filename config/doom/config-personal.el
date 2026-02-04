@@ -481,24 +481,29 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (time-subtract (current-time) (days-to-time 1))
     "Last time we ran the once-a-day functions.")
 
+  (defun cashpw/run-once-a-day ()
+    "Invoke hooks once per day."
+    (if (and cashpw/run-once-a-day--last-run
+             (not
+              (time-less-p
+               cashpw/run-once-a-day--last-run
+               (cashpw/time-today-at-hh-mm 0 1))))
+        (cashpw/log
+         "[once-a-day] Skipping; already run today at %s"
+         (format-time-string "%F %T%Z" cashpw/run-once-a-day--last-run))
+      (cashpw/log "[once-a-day] Running")
+      (cashpw/run-once-a-day--runner)))
+
   (defun cashpw/run-once-a-day--runner ()
-    "Invoke FN if we haven't run it yet today; as checked by LAST-RUN-SYM."
-    (if (or (not cashpw/run-once-a-day--last-run)
-            (time-less-p
-             cashpw/run-once-a-day--last-run (cashpw/time-today-at-hh-mm 0 1)))
-        (progn
-          (cashpw/log "[once-a-day] Running")
-          (run-hooks 'cashpw/run-once-a-day-hooks)
-          (setq cashpw/run-once-a-day--last-run (current-time)))
-      (cashpw/log
-       "[once-a-day] Skipping; already run today at %s"
-       (format-time-string "%F %T%Z" cashpw/run-once-a-day--last-run))))
+    "Invoke hooks."
+    (run-hooks 'cashpw/run-once-a-day-hooks)
+    (setq cashpw/run-once-a-day--last-run (current-time)))
 
   (add-hook
    'cashpw/personal-config-loaded-hooks
    (lambda ()
      (setq cashpw/run-once-a-day-timer
-           (run-with-timer nil (* 60 60) #'cashpw/run-once-a-day--runner)))))
+           (run-with-timer nil (* 60 60) #'cashpw/run-once-a-day)))))
 
 (defun number-to-words-clisp (n)
   "Returns the cardinal English number representation, for example if N is 4, it would return \"four\""
