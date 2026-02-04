@@ -200,7 +200,7 @@
   ;; +hugo
   +noter
   ;; +pretty ;; disabled because it was slow
-  +roam2
+  +roam
   +pandoc)
  ;;php               ; perl's insecure younger brother
  ;;plantuml          ; diagrams for confusing people more

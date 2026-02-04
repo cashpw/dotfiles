@@ -4,7 +4,8 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(safe-local-variable-values
-   '((eval and (fboundp 'toc-org-mode) (toc-org-mode 1)) (toc-org-max-depth . 4))))
+   '((eval toggle-truncate-lines 1)
+     (eval and (fboundp 'toc-org-mode) (toc-org-mode 1)) (toc-org-max-depth . 4))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -12,3 +13,4 @@
  ;; If there is more than one, they won't work right.
  )
 (put 'list-timers 'disabled nil)
+(put 'erase-buffer 'disabled nil)

@@ -224,7 +224,7 @@
            :repo "l3kn/org-fc"
            ;; :repo "cashpw/org-fc"
            ;; :branch "feat/classes"
-           ;; :files (:defaults "awk" "demo.org")
+           :files (:defaults "awk" "python")
            ))
 
 (package! org-gallery
@@ -268,6 +268,8 @@
            :repo "cashpw/org-recipes"))
 
 (unpin! org-roam)
+
+;; (package! org-roam-bibtex)
 
 (package! org-daily-reflection)
 

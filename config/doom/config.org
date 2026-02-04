@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2025-08-25 Mon 16:09]
+:LAST_MODIFIED: [2026-01-05 Mon 21:41]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
@@ -129,38 +129,47 @@ https://akrl.sdf.org/#orgc15a10d"
 (defcustom cashpw/debug nil
   "Non-nil if my personal debug mode is active.")
 
+(define-minor-mode cashpw-debug-mode
+  "Minor mode to toggle my personal debug settings."
+  :global t
+  :lighter nil
+  (setq cashpw/debug cashpw-debug-mode))
+
 (cl-defun
     cashpw/log--internal
-    (format-string state args)
-  "Call `message' with FORMAT-STRING and ARGS."
-  (message
-   (apply #'format
-          (append
-           (list
-            (format "[%s %s] %s"
-                    state
-                    (format-time-string "%F %T%Z")
-                    format-string))
-           args))))
+    (partial-log-string type &optional buffer)
+  "Log PARTIAL-LOG-STRING with TYPE to BUFFER (or message, if nil)."
+  (let ((full-log-string (format
+                              "[%s %s] %s"
+                              type
+                              (format-time-string "%F %T%Z")
+                              partial-log-string)))
+    (if (and buffer (bufferp buffer))
+        (with-current-buffer buffer
+          (insert full-log-string "\n"))
+      (message full-log-string))))
 
 (cl-defun
     cashpw/log-info
     (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS."
-  (cashpw/log--internal format-string "INFO" args))
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"INFO\"."
+  (cashpw/log--internal (apply #'format format-string args) "INFO"))
+(defalias 'cashpw/log 'cashpw/log-info)
 
 (cl-defun
-    cashpw/log
-    (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS."
-  (apply #'cashpw/log-info (append (list format-string) args)))
+    cashpw/log-to-buffer-info
+    (buffer format-string &rest args)
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"INFO\" to BUFFER."
+  (cashpw/log--internal (apply #'format format-string args) "INFO" buffer))
+(defalias 'cashpw/log-to-buffer 'cashpw/log-to-buffer-info)
 
 (cl-defun
     cashpw/log-debug
     (format-string &rest args)
-  "Call `message' with FORMAT-STRING and ARGS."
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"DEBUG\"."
   (when cashpw/debug
-    (cashpw/log--internal format-string "DEBUG" args)))
+    (cashpw/log--internal (apply #'format format-string args) "DEBUG")))
+
 #+end_src
 
 #+RESULTS: cashpw/log
