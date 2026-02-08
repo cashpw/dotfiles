@@ -771,6 +771,23 @@ NAME determines variable names."
   (use-package! centered-cursor-mode))
 #+end_src
 
+*** =kkp=
+**** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! kkp)
+#+end_src
+
+**** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! kkp
+  :ensure t
+  :config
+  (setq kkp-alt-modifier 'meta)
+  (global-kkp-mode +1))
+#+end_src
+
 *** =helm=
 **** Package
 

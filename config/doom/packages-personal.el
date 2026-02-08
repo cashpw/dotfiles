@@ -12,6 +12,8 @@
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (package! centered-cursor-mode))
 
+(package! kkp)
+
 (package! openwith)
 
 ;; (package! electric-case
