@@ -532,6 +532,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 
+(use-package! kkp
+  :ensure t
+  :config
+  (setq kkp-alt-modifier 'meta)
+  (global-kkp-mode +1))
+
 (after! helm
   (setq helm-posframe-border-width 8
         helm-posframe-min-width 120))
@@ -5591,7 +5597,8 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
 
-(add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch)
+(unless (cashpw/machine-p 'work)
+  (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
 
 (after! org-gcal-extras
   (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id"))
@@ -7358,10 +7365,6 @@ Work in progress"
   "Add bibiliography to the current buffer."
   (interactive)
   (when (and (org-roam-file-p)
-             (not
-              (member
-               (buffer-file-name)
-               cashpw/org-roam--file-path-exceptions-to-add-bibliography))
              (not (cashpw/bibliography-present-in-buffer-p))
              (cashpw/citation-present-in-buffer-p))
     (save-excursion
@@ -9556,6 +9559,17 @@ See `org-clock-special-range' for KEY."
    org-priority-default 2
    org-priority-lowest 4))
 
+(defun cashpw/org-schedule-remove-unscheduled (arg _)
+  "Remove the \"unscheduled\" tag from scheduled headings. "
+  ;; Do not message if the intent was to *remove* the schedule.
+  (unless (equal arg '(4))
+    (save-excursion
+      (org-back-to-heading t)
+      (when (org-get-scheduled-time (point))
+        (org-set-tags (seq-difference (org-get-tags nil 'local) '("unscheduled")))))))
+
+(advice-add 'org-schedule :after #'cashpw/org-schedule-remove-unscheduled)
+
 (after! org
   :config
   (setq
@@ -9600,26 +9614,30 @@ See `org-clock-special-range' for KEY."
                             ("HOLD" . +org-todo-onhold)
                             ("PROJ" . +org-todo-project))))
 
-(defun run-on-todo-state-change--INPROGRESS ()
-  "Handle inprogress behavior."
+(defun cashpw/org--on-state-change-to-inprogress ()
+  "Things to do when I mark a headline as inprogress."
   (when (not (cashpw/org-categorized-p))
     (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  ;; Commented out because this is handed by the specific run-on-todo-... functions
+  ;; (org-clock-in)
+  )
+(defun run-on-todo-state-change--INPROGRESS ()
+  "Handle inprogress behavior."
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in))
 
 (defun run-on-todo-state-change--INPROGRESS-AT ()
   "Handle \"INPROGRESS-AT\" behavior."
   (search-backward "INPROGRESS-AT")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in nil (org-read-date nil 'to-time)))
 
 (defun run-on-todo-state-change--INPROGRESS-FROM-LAST ()
   "Handle \"INPROGRESS-FROM-LAST\" behavior."
   (search-backward "INPROGRESS-FROM-LAST")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
 
 (defun run-on-todo-state-change--PROJ ()

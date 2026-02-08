@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-02-04 Wed 10:26]
+:LAST_MODIFIED: [2026-02-08 Sun 05:40]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Emacs Config: Personal
@@ -7821,7 +7821,8 @@ Return nil if no attendee exists with that EMAIL."
 ******* Fetch once a day
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch)
+(unless (cashpw/machine-p 'work)
+  (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
 #+end_src
 
 ***** =use-package=
@@ -10256,10 +10257,6 @@ Work in progress"
   "Add bibiliography to the current buffer."
   (interactive)
   (when (and (org-roam-file-p)
-             (not
-              (member
-               (buffer-file-name)
-               cashpw/org-roam--file-path-exceptions-to-add-bibliography))
              (not (cashpw/bibliography-present-in-buffer-p))
              (cashpw/citation-present-in-buffer-p))
     (save-excursion
@@ -12700,6 +12697,22 @@ I use a numeric scale for priorities rather than the default alphabetic.
    org-priority-lowest 4))
 #+end_src
 
+***** Schedule and deadline
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-schedule-remove-unscheduled (arg _)
+  "Remove the \"unscheduled\" tag from scheduled headings. "
+  ;; Do not message if the intent was to *remove* the schedule.
+  (unless (equal arg '(4))
+    (save-excursion
+      (org-back-to-heading t)
+      (when (org-get-scheduled-time (point))
+        (org-set-tags (seq-difference (org-get-tags nil 'local) '("unscheduled")))))))
+
+(advice-add 'org-schedule :after #'cashpw/org-schedule-remove-unscheduled)
+#+end_src
+
+
 ***** Keywords
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
@@ -12753,26 +12766,30 @@ I use a numeric scale for priorities rather than the default alphabetic.
 ****** =INPROGRESS=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun run-on-todo-state-change--INPROGRESS ()
-  "Handle inprogress behavior."
+(defun cashpw/org--on-state-change-to-inprogress ()
+  "Things to do when I mark a headline as inprogress."
   (when (not (cashpw/org-categorized-p))
     (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  ;; Commented out because this is handed by the specific run-on-todo-... functions
+  ;; (org-clock-in)
+  )
+(defun run-on-todo-state-change--INPROGRESS ()
+  "Handle inprogress behavior."
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in))
 
 (defun run-on-todo-state-change--INPROGRESS-AT ()
   "Handle \"INPROGRESS-AT\" behavior."
   (search-backward "INPROGRESS-AT")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in nil (org-read-date nil 'to-time)))
 
 (defun run-on-todo-state-change--INPROGRESS-FROM-LAST ()
   "Handle \"INPROGRESS-FROM-LAST\" behavior."
   (search-backward "INPROGRESS-FROM-LAST")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
 #+end_src
 
