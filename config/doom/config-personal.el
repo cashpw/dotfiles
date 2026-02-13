@@ -810,23 +810,25 @@ Invokes SUCCESS on success."
     (cmd!
      (cashpw/org-select-and-go-to-todo
       (-difference
-       (cl-loop
-        for file in (org-mem-all-files) unless
-        (or (s-ends-with-p "archive" file)
-            (member
-             (f-expand file)
-             (list
-              (f-expand (cashpw/path-calendar))
-              (f-expand (cashpw/path-todos))
-              (f-expand cashpw/path--reading-list))))
-        when
-        (seq-find
-         (lambda
-           (entry)
-           (member (org-mem-entry-todo-state entry) org-not-done-keywords))
-         (org-mem-entries-in file))
-        collect (f-expand file))
-       (cashpw/notes-files-with-tag "journal"))))
+       (-difference
+        (cl-loop
+         for file in (org-mem-all-files) unless
+         (or (s-ends-with-p "archive" file)
+             (member
+              (f-expand file)
+              (list
+               (f-expand (cashpw/path-calendar))
+               (f-expand (cashpw/path-todos))
+               (f-expand cashpw/path--reading-list))))
+         when
+         (seq-find
+          (lambda
+            (entry)
+            (member (org-mem-entry-todo-state entry) org-not-done-keywords))
+          (org-mem-entries-in file))
+         collect (f-expand file))
+        (cashpw/notes-files-with-tag "journal"))
+       (cashpw/notes-files-with-tag "contact"))))
     :desc "Reading List"
     :n
     "r"
@@ -865,63 +867,129 @@ Invokes SUCCESS on success."
     (cmd! (org-agenda nil ".plan-week")))
    :desc "Go to TODO"
    :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
-  (:prefix ("l")
-   :desc "gptel-send" :n "l" (cmd! (cashpw/gptel-send (llm-prompts-select-prompt)))
-   :desc "No system prompt" :n "L" (cmd! (cashpw/gptel-send ""))
-   :desc "Set model" :n "m" #'cashpw/gptel-set-model
-   (:prefix ("c" . "Context")
-    :desc "Add text to context" :n "t" #'gptel-add
-    :desc "Add file to context" :n "f" #'gptel-add-file
-    :desc "Add attachment to context" :n "f" #'cashpw/gptel-context-add-file-attachment
-    :desc "Remove context" :n "d" #'cashpw/gptel-remove-context
-    :desc "Remove all context" :n "D" #'gptel-context-remove-all)
-   :desc "explain" :n "e" #'gptel-quick
-   :desc "explain" :n "E" (cmd! (cashpw/gptel-quick-buffer))
-   :n "k" #'cashpw/gptel-kill-curl-process
-   :desc "Solo performance" :n "p" (cmd! (cashpw/gptel-send (llm-prompts-prompt-solo-performance-prompt)))
-   :desc "Follow up" :n "f" (cmd! (cashpw/gptel-send (llm-prompts-prompt-follow-up-questions)))
-   :desc "YouTube" :n "y" (cmd!
-                           (let ((buffer (get-buffer-create "*Gptel YouTube*")))
-                             (with-current-buffer buffer
-                               (org-mode)
-                               (delete-region (point-min) (point-max))
-                               ;; (insert
-                               ;;  (format "\n** %s\n"
-                               ;;          (with-temp-buffer
-                               ;;            (org-mode)
-                               ;;            (org-timestamp '(16) t)
-                               ;;            (buffer-string))))
-                               (insert
-                                (llm-prompts-prompt-extract-wisdom-yt
-                                 (read-string "YouTube URL: "
-                                              (ignore-errors
-                                                (current-kill 0 t)))))
-                               (cashpw/gptel-send ""))
-                             (display-buffer buffer)))
-   (:prefix ("C" . "Chain of thought")
-    :desc "Basic" :n "c" (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--chain-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-chain-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("t" . "Tree of thought")
-    :desc "Basic" :n "t" (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--tree-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-tree-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("a" . "Agent")
-    :desc "Software engineer" :n "s" (cmd!
-                                      (cashpw/gptel-send
-                                       (llm-prompts-prompt-append-chain-of-thought
-                                        (llm-prompts-prompt-agent "TODO"))))
-    :desc "Editor (non-fiction)" :n "e" (cmd!
-                                         (cashpw/gptel-send
-                                          (llm-prompts-prompt-append-chain-of-thought
-                                           (llm-prompts-prompt-agent
-                                            "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
+  (:prefix
+   ("l")
+   :desc "gptel-send"
+   :n
+   "l"
+   (cmd! (cashpw/gptel-send (llm-prompts-select-prompt)))
+   :desc "No system prompt"
+   :n
+   "L"
+   (cmd! (cashpw/gptel-send ""))
+   :desc "Set model"
+   :n
+   "m"
+   #'cashpw/gptel-set-model
+   (:prefix
+    ("c" . "Context")
+    :desc "Add text to context"
+    :n
+    "t"
+    #'gptel-add
+    :desc "Add file to context"
+    :n
+    "f"
+    #'gptel-context-add-file
+    :desc "Add attachment to context"
+    :n
+    "f"
+    #'cashpw/gptel-context-add-file-attachment
+    :desc "Remove context"
+    :n
+    "d"
+    #'cashpw/gptel-remove-context
+    :desc "Remove all context"
+    :n
+    "D"
+    #'gptel-context-remove-all)
+   :desc "explain"
+   :n
+   "e"
+   #'gptel-quick
+   :desc "explain"
+   :n
+   "E"
+   (cmd! (cashpw/gptel-quick-buffer))
+   :n
+   "k"
+   #'cashpw/gptel-kill-curl-process
+   :desc "Solo performance"
+   :n
+   "p"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-solo-performance-prompt)))
+   :desc "Follow up"
+   :n
+   "f"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-follow-up-questions)))
+   :desc "Summarize"
+   :n
+   "s"
+   (cmd! (cashpw/gptel-send llm-prompts-prompt--summarize))
+   :desc "YouTube"
+   :n
+   "y"
+   (cmd!
+    (let ((buffer (get-buffer-create "*Gptel YouTube*")))
+      (with-current-buffer buffer
+        (org-mode)
+        (delete-region (point-min) (point-max))
+        ;; (insert
+        ;;  (format "\n** %s\n"
+        ;;          (with-temp-buffer
+        ;;            (org-mode)
+        ;;            (org-timestamp '(16) t)
+        ;;            (buffer-string))))
+        (insert
+         (llm-prompts-prompt-extract-wisdom-yt
+          (read-string "YouTube URL: "
+                       (ignore-errors
+                         (current-kill 0 t)))))
+        (cashpw/gptel-send ""))
+      (display-buffer buffer)))
+   (:prefix
+    ("C" . "Chain of thought")
+    :desc "Basic"
+    :n
+    "c"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--chain-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("t" . "Tree of thought")
+    :desc "Basic"
+    :n
+    "t"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--tree-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-tree-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("a" . "Agent")
+    :desc "Software engineer"
+    :n "s"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent "TODO"))))
+    :desc "Editor (non-fiction)"
+    :n "e"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
   (:prefix
    ("o")
    :desc "Elfeed"
@@ -979,7 +1047,8 @@ Invokes SUCCESS on success."
   (:prefix
    ("t")
    :n "C" #'centered-cursor-mode
-   (:prefix ("d" . "Debug")
+   (:prefix
+    ("d" . "Debug")
     :n "d" #'cashpw-debug-mode
     :n "D" #'toggle-debug-on-error)
    :desc "Diff Highlights"
@@ -1656,10 +1725,11 @@ This be hooked to `projectile-after-switch-project-hook'."
     asana
   :custom
   (asana-tasks-org-file cashpw/path--personal-asana)
-  (asana-token (secret-get "asana"))
   (asana-sync-stories nil)
   (asana-schedule-pattern 'schedule-due)
   :config
+  (setq
+   asana-token (secret-get "asana"))
   (unless (cashpw/machine-p 'work)
     (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks))
 
@@ -2954,8 +3024,8 @@ Categorize this:
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers.
 2. In a section titled \"Summary\": If the text is arranged in chapters, sections, or as a list, etc, summarize each section or item in 200 words or less. Otherwise, summarize the entire text in 500 words or less.
-4. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
-3. In a section titled \"Thesis\": Identify and describe the thesis statement(s).
+3. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
+4. In a section titled \"Thesis\": Identify and describe the thesis statement(s).
 5. In a section titled \"Antithesis\": Push back on the thesis and supporting points in 200 words or less. Discuss inaccuracies, omissions, fallacies, and offer counterpoints and an opposition thesis."
   "LLM prompt to summarize content.")
 
@@ -3313,7 +3383,6 @@ Task: "
     (interactive "sPattern: ")
     (dolist (file (f-glob pattern))
       (gptel-context-add-file file)))
-
 
   (defun cashpw/gptel-send (prompt)
     "Invoke `gptel-send' with specific PROMPT."
@@ -3720,10 +3789,10 @@ TODO")))))
 (use-package!
     zotra
   :custom
-  (zotra-backend 'zotra-server)
+  (zotra-backend 'translation-server)
   (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
-  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
+  (zotra-local-server-directory (f-expand "~/third-party/translation-server"))
   (zotra-after-get-bibtex-entry-hook nil)
   (zotra-default-entry-format "biblatex")
 
