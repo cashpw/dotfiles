@@ -695,13 +695,14 @@ Invokes SUCCESS on success."
  alert-fade-time 60
  alert-default-style 'libnotify)
 
-(use-package! org-wild-notifier
-  :after org
-  :defer t
-  :custom
-  (org-wild-notifier-alert-time '(0))
-  :init
-  (add-hook 'after-init-hook #'org-wild-notifier-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (use-package! org-wild-notifier
+    :after org
+    :defer t
+    :custom
+    (org-wild-notifier-alert-time '(0))
+    :init
+    (add-hook 'after-init-hook #'org-wild-notifier-mode)))
 
 (use-package! scheduled-alert)
 
@@ -1370,21 +1371,21 @@ returns nil."
    'cashpw/run-once-a-day-hooks
    (lambda () (cashpw/weather-insert-todays-open-close-window-todos 74 74))))
 
-(use-package! sunshine
-  :custom
-  (sunshine-location "95125,USA")
-  (sunshine-appid cashpw/openweather-api-key))
+;; (use-package! sunshine
+;;   :custom
+;;   (sunshine-location "95125,USA")
+;;   (sunshine-appid cashpw/openweather-api-key))
 
-(defun sunshine-make-url (location units appid)
-  "Make a URL for retrieving the weather for LOCATION in UNITS.
+;; (defun sunshine-make-url (location units appid)
+;;   "Make a URL for retrieving the weather for LOCATION in UNITS.
 
-Requires your OpenWeatherMap APPID."
-  (concat "http://api.openweathermap.org/data/2.5/forecast?"
-          "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
-          "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
-          "&APPID=" appid
-          "&units=" (url-encode-url (symbol-name units))
-          "&cnt=5"))
+;; Requires your OpenWeatherMap APPID."
+;;   (concat "http://api.openweathermap.org/data/2.5/forecast?"
+;;           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
+;;           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
+;;           "&APPID=" appid
+;;           "&units=" (url-encode-url (symbol-name units))
+;;           "&cnt=5"))
 
 (defvar cashpw/holiday-mothers-day
   '(holiday-float
@@ -5675,7 +5676,8 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
 
-(add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch)
+(when (cashpw/machine-p 'personal)
+  (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
 
 (after! org-gcal-extras
   (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id" nil (cashpw/machine-p 'personal-phone)))
@@ -7656,6 +7658,8 @@ This is an internal function."
     (cashpw/org-hugo-export-wim-to-md))
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
+
+(global-auto-revert-mode)
 
 (defun cashpw/revert-file (filename)
   "Revert FILENAME."

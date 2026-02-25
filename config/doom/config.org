@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-01-05 Mon 21:41]
+:LAST_MODIFIED: [2026-02-21 Sat 07:37]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
