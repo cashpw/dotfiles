@@ -49,6 +49,7 @@
 (defun cashpw/error (error-message &rest args)
   (error
    "[cashpw %s] %s"
+   (format-time-string "%F %T%Z")
    (apply
     #'format
     error-message
