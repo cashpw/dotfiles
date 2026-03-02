@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-03-02 Mon 07:31]
+:LAST_MODIFIED: [2026-03-02 Mon 07:38]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Emacs Config: Personal
@@ -1190,13 +1190,14 @@ Doom Emacs provides =alert=.
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! org-wild-notifier
-  :after org
-  :defer t
-  :custom
-  (org-wild-notifier-alert-time '(0))
-  :init
-  (add-hook 'after-init-hook #'org-wild-notifier-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (use-package! org-wild-notifier
+    :after org
+    :defer t
+    :custom
+    (org-wild-notifier-alert-time '(0))
+    :init
+    (add-hook 'after-init-hook #'org-wild-notifier-mode)))
 #+end_src
 
 **** =scheduled-alert=
@@ -1627,7 +1628,7 @@ https://akrl.sdf.org/#orgc15a10d
 #+end_src
 
 ** Weather
-*** OpenWeather
+*** Forecast
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 ;; (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
@@ -1922,31 +1923,31 @@ returns nil."
 #+end_src
 
 *** Packages
-**** =sunshine=
+**** =sunshine= :disabled:
 ***** Package
 
 #+begin_src emacs-lisp :tangle packages-personal.el
-(package! sunshine)
+;; (package! sunshine)
 #+end_src
 
 ***** Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! sunshine
-  :custom
-  (sunshine-location "95125,USA")
-  (sunshine-appid cashpw/openweather-api-key))
+;; (use-package! sunshine
+;;   :custom
+;;   (sunshine-location "95125,USA")
+;;   (sunshine-appid cashpw/openweather-api-key))
 
-(defun sunshine-make-url (location units appid)
-  "Make a URL for retrieving the weather for LOCATION in UNITS.
+;; (defun sunshine-make-url (location units appid)
+;;   "Make a URL for retrieving the weather for LOCATION in UNITS.
 
-Requires your OpenWeatherMap APPID."
-  (concat "http://api.openweathermap.org/data/2.5/forecast?"
-          "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
-          "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
-          "&APPID=" appid
-          "&units=" (url-encode-url (symbol-name units))
-          "&cnt=5"))
+;; Requires your OpenWeatherMap APPID."
+;;   (concat "http://api.openweathermap.org/data/2.5/forecast?"
+;;           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
+;;           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
+;;           "&APPID=" appid
+;;           "&units=" (url-encode-url (symbol-name units))
+;;           "&cnt=5"))
 #+end_src
 
 ** Holidays
@@ -7877,7 +7878,8 @@ Return nil if no attendee exists with that EMAIL."
 ******* Fetch once a day
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch)
+(when (cashpw/machine-p 'personal)
+  (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
 #+end_src
 
 ***** =use-package=
@@ -10535,6 +10537,8 @@ This is an internal function."
 ****** Revert
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(global-auto-revert-mode)
+
 (defun cashpw/revert-file (filename)
   "Revert FILENAME."
   (with-current-buffer
