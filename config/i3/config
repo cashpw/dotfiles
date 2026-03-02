@@ -36,9 +36,9 @@ bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 
 # start a terminal
-bindsym $mod+Return exec rxvt-unicode
+bindsym $mod+Return exec kitty
 # start a work SSH terminal
-bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "gmosh cashweaver.c.googlers.com"
+bindsym $mod+Shift+Return exec kitty kitty +kitten ssh cashweaver.c.googlers.com
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -318,6 +318,6 @@ assign [class="firefox-esr"] 9
 #         Autolaunch
 ################################################################################
 
-exec rxvt-unicode
-exec firefox-esr
+exec kitty
+exec google-chrome
 exec --no-startup-id redshift -O 3000

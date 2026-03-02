@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-01-05 Mon 21:41]
+:LAST_MODIFIED: [2026-02-21 Sat 07:37]
 :END:
 #+title: Emacs Config: Base
 #+author: Cash Weaver
@@ -118,6 +118,7 @@ https://akrl.sdf.org/#orgc15a10d"
 (defun cashpw/error (error-message &rest args)
   (error
    "[cashpw %s] %s"
+   (format-time-string "%F %T%Z")
    (apply
     #'format
     error-message
@@ -197,7 +198,7 @@ https://akrl.sdf.org/#orgc15a10d"
   "Return true if executed on my work machine."
   (pcase machine
     ('personal-phone
-     (file-exists-p cashpw/path--personal-phone-id-file))
+     (file-directory-p cashpw/path--personal-phone-home-dir))
     ('personal
      (file-directory-p cashpw/path--personal-home-dir))
     ('work
@@ -243,10 +244,6 @@ https://akrl.sdf.org/#orgc15a10d"
 (defvar cashpw/path--personal-phone-home-dir
   "/data/data/com.termux/files/home"
   "Path to home directory on my personal phone.")
-
-(defvar cashpw/path--personal-phone-id-file
-  "/data/data/com.termux/files/home/is-phone"
-  "File that, when present, indicates the current machine is my personal phone.")
 
 (defvar cashpw/path--home-dir
   (cond

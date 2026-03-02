@@ -16,4 +16,4 @@
 	ignore = dirty
 [submodule "local/share/zotra-server"]
 	path = local/share/zotra-server
-	url = https://github.com/mpedramfar/zotra-server.git
+	url = https://github.com/cashpw/zotra-server

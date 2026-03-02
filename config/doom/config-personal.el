@@ -286,8 +286,8 @@ Reference: https://emacs.stackexchange.com/a/43985"
 
 (use-package!
  secret
- :config
- (set-secret-dir (format "%s/.config/secrets" cashpw/path--home-dir)))
+ :custom
+ (secret-dir (format "%s/.config/secrets" cashpw/path--home-dir)))
 
 (defun cashpw/string-normalize-length
     (str max-length &optional truncation-char padding-char)
@@ -618,7 +618,7 @@ Invokes SUCCESS on success."
   "Select ISBN from Google Books."
   (interactive "MQuery: ")
   (cashpw/google-books--list
-   query (secret-get "google-books")
+   query (secret-get "google-books" nil (cashpw/machine-p 'personal-phone))
    (cl-function
     (lambda (&key data &allow-other-keys)
       (let ((options
@@ -671,25 +671,14 @@ Invokes SUCCESS on success."
 
 (use-package!
     whisper
-  :config
-  (setq
-   whisper-install-directory (locate-user-emacs-file "./")
-   whisper--install-path
-   (concat
-    (expand-file-name (file-name-as-directory whisper-install-directory))
-    "whisper.cpp/")
-   whisper-server-mode 'local
-   ;; whisper-model "large-v3-turbo"
-   ;; whisper-model "medium"
-   ;; whisper-model "small"
-   whisper-model "base"
-   ;; whisper-quantize "q5_0"
-   whisper-language "en"
-   whisper-translate nil
-   whisper-use-threads (/ (num-processors) 2)
-   ;; whisper--ffmpeg-input-device "hw:0"
-   ;; whisper--ffmpeg-input-device "default"
-   whisper-return-cursor-to-start nil))
+  :custom
+  (whisper-install-directory (locate-user-emacs-file "./"))
+  (whisper-server-mode nil)
+  (whisper-server-baseurl "http://localhost:8642")
+  (whisper-model "base")
+  (whisper-language "en")
+  (whisper-use-threads (/ (num-processors) 2))
+  (whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
   :config
@@ -701,13 +690,14 @@ Invokes SUCCESS on success."
  alert-fade-time 60
  alert-default-style 'libnotify)
 
-(use-package! org-wild-notifier
-  :after org
-  :defer t
-  :custom
-  (org-wild-notifier-alert-time '(0))
-  :init
-  (add-hook 'after-init-hook #'org-wild-notifier-mode))
+(unless (cashpw/machine-p 'personal-phone)
+  (use-package! org-wild-notifier
+    :after org
+    :defer t
+    :custom
+    (org-wild-notifier-alert-time '(0))
+    :init
+    (add-hook 'after-init-hook #'org-wild-notifier-mode)))
 
 (use-package! scheduled-alert)
 
@@ -816,23 +806,25 @@ Invokes SUCCESS on success."
     (cmd!
      (cashpw/org-select-and-go-to-todo
       (-difference
-       (cl-loop
-        for file in (org-mem-all-files) unless
-        (or (s-ends-with-p "archive" file)
-            (member
-             (f-expand file)
-             (list
-              (f-expand (cashpw/path-calendar))
-              (f-expand (cashpw/path-todos))
-              (f-expand cashpw/path--reading-list))))
-        when
-        (seq-find
-         (lambda
-           (entry)
-           (member (org-mem-entry-todo-state entry) org-not-done-keywords))
-         (org-mem-entries-in file))
-        collect (f-expand file))
-       (cashpw/notes-files-with-tag "journal"))))
+       (-difference
+        (cl-loop
+         for file in (org-mem-all-files) unless
+         (or (s-ends-with-p "archive" file)
+             (member
+              (f-expand file)
+              (list
+               (f-expand (cashpw/path-calendar))
+               (f-expand (cashpw/path-todos))
+               (f-expand cashpw/path--reading-list))))
+         when
+         (seq-find
+          (lambda
+            (entry)
+            (member (org-mem-entry-todo-state entry) org-not-done-keywords))
+          (org-mem-entries-in file))
+         collect (f-expand file))
+        (cashpw/notes-files-with-tag "journal"))
+       (cashpw/notes-files-with-tag "contact"))))
     :desc "Reading List"
     :n
     "r"
@@ -871,63 +863,129 @@ Invokes SUCCESS on success."
     (cmd! (org-agenda nil ".plan-week")))
    :desc "Go to TODO"
    :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
-  (:prefix ("l")
-   :desc "gptel-send" :n "l" (cmd! (cashpw/gptel-send (llm-prompts-select-prompt)))
-   :desc "No system prompt" :n "L" (cmd! (cashpw/gptel-send ""))
-   :desc "Set model" :n "m" #'cashpw/gptel-set-model
-   (:prefix ("c" . "Context")
-    :desc "Add text to context" :n "t" #'gptel-add
-    :desc "Add file to context" :n "f" #'gptel-add-file
-    :desc "Add attachment to context" :n "f" #'cashpw/gptel-context-add-file-attachment
-    :desc "Remove context" :n "d" #'cashpw/gptel-remove-context
-    :desc "Remove all context" :n "D" #'gptel-context-remove-all)
-   :desc "explain" :n "e" #'gptel-quick
-   :desc "explain" :n "E" (cmd! (cashpw/gptel-quick-buffer))
-   :n "k" #'cashpw/gptel-kill-curl-process
-   :desc "Solo performance" :n "p" (cmd! (cashpw/gptel-send (llm-prompts-prompt-solo-performance-prompt)))
-   :desc "Follow up" :n "f" (cmd! (cashpw/gptel-send (llm-prompts-prompt-follow-up-questions)))
-   :desc "YouTube" :n "y" (cmd!
-                           (let ((buffer (get-buffer-create "*Gptel YouTube*")))
-                             (with-current-buffer buffer
-                               (org-mode)
-                               (delete-region (point-min) (point-max))
-                               ;; (insert
-                               ;;  (format "\n** %s\n"
-                               ;;          (with-temp-buffer
-                               ;;            (org-mode)
-                               ;;            (org-timestamp '(16) t)
-                               ;;            (buffer-string))))
-                               (insert
-                                (llm-prompts-prompt-extract-wisdom-yt
-                                 (read-string "YouTube URL: "
-                                              (ignore-errors
-                                                (current-kill 0 t)))))
-                               (cashpw/gptel-send ""))
-                             (display-buffer buffer)))
-   (:prefix ("C" . "Chain of thought")
-    :desc "Basic" :n "c" (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--chain-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-chain-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("t" . "Tree of thought")
-    :desc "Basic" :n "t" (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--tree-of-thought))
-    :desc "Agent" :n "a" (cmd!
-                          (cashpw/gptel-send
-                           (llm-prompts-prompt-append-tree-of-thought
-                            (llm-prompts-prompt-agent
-                             (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
-   (:prefix ("a" . "Agent")
-    :desc "Software engineer" :n "s" (cmd!
-                                      (cashpw/gptel-send
-                                       (llm-prompts-prompt-append-chain-of-thought
-                                        (llm-prompts-prompt-agent "TODO"))))
-    :desc "Editor (non-fiction)" :n "e" (cmd!
-                                         (cashpw/gptel-send
-                                          (llm-prompts-prompt-append-chain-of-thought
-                                           (llm-prompts-prompt-agent
-                                            "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
+  (:prefix
+   ("l")
+   :desc "gptel-send"
+   :n
+   "l"
+   (cmd! (cashpw/gptel-send (llm-prompts-select-prompt)))
+   :desc "No system prompt"
+   :n
+   "L"
+   (cmd! (cashpw/gptel-send ""))
+   :desc "Set model"
+   :n
+   "m"
+   #'cashpw/gptel-set-model
+   (:prefix
+    ("c" . "Context")
+    :desc "Add text to context"
+    :n
+    "t"
+    #'gptel-add
+    :desc "Add file to context"
+    :n
+    "f"
+    #'gptel-context-add-file
+    :desc "Add attachment to context"
+    :n
+    "f"
+    #'cashpw/gptel-context-add-file-attachment
+    :desc "Remove context"
+    :n
+    "d"
+    #'cashpw/gptel-remove-context
+    :desc "Remove all context"
+    :n
+    "D"
+    #'gptel-context-remove-all)
+   :desc "explain"
+   :n
+   "e"
+   #'gptel-quick
+   :desc "explain"
+   :n
+   "E"
+   (cmd! (cashpw/gptel-quick-buffer))
+   :n
+   "k"
+   #'cashpw/gptel-kill-curl-process
+   :desc "Solo performance"
+   :n
+   "p"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-solo-performance-prompt)))
+   :desc "Follow up"
+   :n
+   "f"
+   (cmd! (cashpw/gptel-send (llm-prompts-prompt-follow-up-questions)))
+   :desc "Summarize"
+   :n
+   "s"
+   (cmd! (cashpw/gptel-send llm-prompts-prompt--summarize))
+   :desc "YouTube"
+   :n
+   "y"
+   (cmd!
+    (let ((buffer (get-buffer-create "*Gptel YouTube*")))
+      (with-current-buffer buffer
+        (org-mode)
+        (delete-region (point-min) (point-max))
+        ;; (insert
+        ;;  (format "\n** %s\n"
+        ;;          (with-temp-buffer
+        ;;            (org-mode)
+        ;;            (org-timestamp '(16) t)
+        ;;            (buffer-string))))
+        (insert
+         (llm-prompts-prompt-extract-wisdom-yt
+          (read-string "YouTube URL: "
+                       (ignore-errors
+                         (current-kill 0 t)))))
+        (cashpw/gptel-send ""))
+      (display-buffer buffer)))
+   (:prefix
+    ("C" . "Chain of thought")
+    :desc "Basic"
+    :n
+    "c"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--chain-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("t" . "Tree of thought")
+    :desc "Basic"
+    :n
+    "t"
+    (cmd! (cashpw/gptel-send llm-prompts-prompt-fragment--tree-of-thought))
+    :desc "Agent"
+    :n
+    "a"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-tree-of-thought
+       (llm-prompts-prompt-agent
+        (read-string "Agent (e.g. \"a writer\", \"Abraham Lincoln\"): "))))))
+   (:prefix
+    ("a" . "Agent")
+    :desc "Software engineer"
+    :n "s"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent "TODO"))))
+    :desc "Editor (non-fiction)"
+    :n "e"
+    (cmd!
+     (cashpw/gptel-send
+      (llm-prompts-prompt-append-chain-of-thought
+       (llm-prompts-prompt-agent
+        "an editor and technical writer. You excel at improving spelling, grammar, clarity, concision, and overall readability of text while breaking down long sentences, reducing repetition, and suggesting improvements. You follow a style guide which emphasizes plain language, serial commas, being useful, avoiding qualifying language, being explicit, putting the bottom line up front, and using formatting (headings, lists, emphasis) to improve readability"))))))
   (:prefix
    ("o")
    :desc "Elfeed"
@@ -985,7 +1043,8 @@ Invokes SUCCESS on success."
   (:prefix
    ("t")
    :n "C" #'centered-cursor-mode
-   (:prefix ("d" . "Debug")
+   (:prefix
+    ("d" . "Debug")
     :n "d" #'cashpw-debug-mode
     :n "D" #'toggle-debug-on-error)
    :desc "Diff Highlights"
@@ -1026,10 +1085,10 @@ Invokes SUCCESS on success."
 (defconst cashpw/location-name "San Jose, CA"
   "Human-readable name for current location.")
 
-(defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
-  "API key for OpenWeatherMap.")
+;; (defconst cashpw/openweather-api-key (secret-get "openweather-api-key")
+;;   "API key for OpenWeatherMap.")
 
-(defconst cashpw/google-weather-api-key (secret-get "google-weather")
+(defconst cashpw/google-weather-api-key (secret-get "google-weather" nil (cashpw/machine-p 'personal-phone))
   "API key for Google Weather.")
 
 (defun cashpw/google-weather-get-hourly-forecast (success-fn)
@@ -1045,18 +1104,18 @@ Invokes SUCCESS on success."
       ("unitsSystem" . "IMPERIAL")
       ("location.latitude" . "37.283") ("location.longitude" . "-121.86"))))
 
-(defun cashpw/openweather-get-forecast (success-fn)
-  "Get weather forecast, then call SUCCESS-FN."
-  (request
-    "https://api.openweathermap.org/data/2.5/forecast"
-    :sync t
-    :parser 'json-read
-    :success success-fn
-    :params
-    `(("appid" . ,cashpw/openweather-api-key)
-      ("units" . "imperial")
-      ;; ("exclude" . "current,minutely,alerts")
-      ("lat" . "37.283") ("lon" . "-121.86"))))
+;; (defun cashpw/openweather-get-forecast (success-fn)
+;;   "Get weather forecast, then call SUCCESS-FN."
+;;   (request
+;;     "https://api.openweathermap.org/data/2.5/forecast"
+;;     :sync t
+;;     :parser 'json-read
+;;     :success success-fn
+;;     :params
+;;     `(("appid" . ,cashpw/openweather-api-key)
+;;       ("units" . "imperial")
+;;       ;; ("exclude" . "current,minutely,alerts")
+;;       ("lat" . "37.283") ("lon" . "-121.86"))))
 
 ;; (defvar cashpw/openweather-data nil)
 ;; (cashpw/openweather-get-forecast
@@ -1302,26 +1361,26 @@ returns nil."
            (cashpw/weather-schedule-insert-todos
             (cashpw/time-tomorrow-at-hh-mm 5 00))))))
 
-(unless (cashpw/machine-p 'work)
+(when (cashpw/machine-p 'personal)
   (add-hook
    'cashpw/run-once-a-day-hooks
    (lambda () (cashpw/weather-insert-todays-open-close-window-todos 74 74))))
 
-(use-package! sunshine
-  :custom
-  (sunshine-location "95125,USA")
-  (sunshine-appid cashpw/openweather-api-key))
+;; (use-package! sunshine
+;;   :custom
+;;   (sunshine-location "95125,USA")
+;;   (sunshine-appid cashpw/openweather-api-key))
 
-(defun sunshine-make-url (location units appid)
-  "Make a URL for retrieving the weather for LOCATION in UNITS.
+;; (defun sunshine-make-url (location units appid)
+;;   "Make a URL for retrieving the weather for LOCATION in UNITS.
 
-Requires your OpenWeatherMap APPID."
-  (concat "http://api.openweathermap.org/data/2.5/forecast?"
-          "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
-          "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
-          "&APPID=" appid
-          "&units=" (url-encode-url (symbol-name units))
-          "&cnt=5"))
+;; Requires your OpenWeatherMap APPID."
+;;   (concat "http://api.openweathermap.org/data/2.5/forecast?"
+;;           "lat=" (url-encode-url (number-to-string cashpw/location-latitude))
+;;           "&lon=" (url-encode-url (number-to-string cashpw/location-longitude))
+;;           "&APPID=" appid
+;;           "&units=" (url-encode-url (symbol-name units))
+;;           "&cnt=5"))
 
 (defvar cashpw/holiday-mothers-day
   '(holiday-float
@@ -1662,12 +1721,13 @@ This be hooked to `projectile-after-switch-project-hook'."
     asana
   :custom
   (asana-tasks-org-file cashpw/path--personal-asana)
-  (asana-token (secret-get "asana"))
   (asana-sync-stories nil)
   (asana-schedule-pattern 'schedule-due)
   :config
-  (unless (cashpw/machine-p 'work)
-    (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks))
+  (setq
+   asana-token (secret-get "asana" nil (cashpw/machine-p 'personal-phone)))
+   (when (cashpw/machine-p 'personal)
+     (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks))
 
   (setq
    cashpw/asana-categories-by-task-name '()
@@ -2863,7 +2923,7 @@ TAGS which start with \"-\" are excluded."
   (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
   (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
                             :api-url "http://rss.cashpw.com/fever/"
-                            :password ,(secret-get "rss.cashpw.com"))))
+                            :password ,(secret-get "rss.cashpw.com" nil (cashpw/machine-p 'personal-phone)))))
   :config
   (elfeed-protocol-enable))
 
@@ -2960,8 +3020,8 @@ Categorize this:
 
 1. In a section titled \"Speakers\": Identify the speaker, or speakers.
 2. In a section titled \"Summary\": If the text is arranged in chapters, sections, or as a list, etc, summarize each section or item in 200 words or less. Otherwise, summarize the entire text in 500 words or less.
-4. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
-3. In a section titled \"Thesis\": Identify and describe the thesis statement(s).
+3. In a section titled \"References\": List all of the external sources referenced in the text. This includes books, papers, articles, songs, movies, etc.
+4. In a section titled \"Thesis\": Identify and describe the thesis statement(s).
 5. In a section titled \"Antithesis\": Push back on the thesis and supporting points in 200 words or less. Discuss inaccuracies, omissions, fallacies, and offer counterpoints and an opposition thesis."
   "LLM prompt to summarize content.")
 
@@ -3250,142 +3310,147 @@ Task: "
   llm-prompts-prompt--solo-performance-prompt)
 
 (use-package!
-    gptel
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-track-media t)
+ gptel
+ :custom
+ (gptel-default-mode 'org-mode)
+ (gptel-track-media t)
 
-  :config
-  (setq-default
-   gptel-show-progress-in-mode-line t
-   gptel-mode-line--indicator-querying " "
-   gptel-mode-line--indicator-responding "💬 "
-   gptel-backend
-   (gptel-make-gemini
-       "Gemini"
-     :key
-     (secret-get
-      (if (cashpw/machine-p 'work-cloudtop)
-          "corporate-gemini"
-        "personal-gemini"))
-     :stream t)
-   gptel-model cashpw/llm-model-small
-   gptel-tools '()
-   ;; (list
-   ;;              (gptel-make-tool
-   ;;                    :name "cashpw_log"
-   ;;                    :description "Custom logging fucntion."
-   ;;                    :function (lambda (text)
-   ;;                                (cashpw/log text))
-   ;;                    :args '((:name "text"
-   ;;                             :type string
-   ;;                             :description "The text to log."))))
-   )
+ :config
+ (setq-default
+  gptel-show-progress-in-mode-line t
+  gptel-mode-line--indicator-querying " "
+  gptel-mode-line--indicator-responding "💬 "
+  gptel-backend
+  (gptel-make-gemini
+   "Gemini"
+   :key
+   (secret-get
+    (if (cashpw/machine-p 'work-cloudtop)
+        "corporate-gemini"
+      "personal-gemini")
+    nil (cashpw/machine-p 'personal-phone))
+   :stream t)
+  gptel-model cashpw/llm-model-small
+  gptel-tools '()
+  ;; (list
+  ;;              (gptel-make-tool
+  ;;                    :name "cashpw_log"
+  ;;                    :description "Custom logging fucntion."
+  ;;                    :function (lambda (text)
+  ;;                                (cashpw/log text))
+  ;;                    :args '((:name "text"
+  ;;                             :type string
+  ;;                             :description "The text to log."))))
+  )
 
-  (defun gptel-mode-line--indicator (mode)
-    "Return indicator string for MODE."
-    (pcase mode
-      ('querying gptel-mode-line--indicator-querying)
-      ('responding gptel-mode-line--indicator-responding)
-      (_ "")))
+ (defun gptel-mode-line--indicator (mode)
+   "Return indicator string for MODE."
+   (pcase mode
+     ('querying gptel-mode-line--indicator-querying)
+     ('responding gptel-mode-line--indicator-responding)
+     (_ "")))
 
-  (defun gptel-mode-line (command mode)
-    "Update mode line to COMMAND (show|hide) indicator for MODE."
-    (when gptel-show-progress-in-mode-line
-      (let ((indicator (list t (gptel-mode-line--indicator mode))))
-        (pcase command
-          ('show (cl-pushnew indicator global-mode-string :test #'equal))
-          ('hide
-           (setf global-mode-string (remove indicator global-mode-string)))))
-      (force-mode-line-update t)))
-  (defun gptel-mode-line--hide-all (&rest _)
-    (message "[gptel] Done")
-    (gptel-mode-line 'hide 'querying)
-    (gptel-mode-line 'hide 'responding))
-  (defun gptel-mode-line--show-querying ()
-    (message "[gptel] Querying")
-    (gptel-mode-line--hide-all)
-    (gptel-mode-line 'show 'querying))
-  (defun gptel-mode-line--show-responding ()
-    (message "[gptel] Responding")
-    (gptel-mode-line--hide-all)
-    (gptel-mode-line 'show 'responding))
-  (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
-  (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
-  (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
+ (defun gptel-mode-line (command mode)
+   "Update mode line to COMMAND (show|hide) indicator for MODE."
+   (when gptel-show-progress-in-mode-line
+     (let ((indicator (list t (gptel-mode-line--indicator mode))))
+       (pcase command
+         ('show (cl-pushnew indicator global-mode-string :test #'equal))
+         ('hide
+          (setf global-mode-string (remove indicator global-mode-string)))))
+     (force-mode-line-update t)))
+ (defun gptel-mode-line--hide-all (&rest _)
+   (message "[gptel] Done")
+   (gptel-mode-line 'hide 'querying)
+   (gptel-mode-line 'hide 'responding))
+ (defun gptel-mode-line--show-querying ()
+   (message "[gptel] Querying")
+   (gptel-mode-line--hide-all)
+   (gptel-mode-line 'show 'querying))
+ (defun gptel-mode-line--show-responding ()
+   (message "[gptel] Responding")
+   (gptel-mode-line--hide-all)
+   (gptel-mode-line 'show 'responding))
+ (add-hook! 'gptel-post-request-hook 'gptel-mode-line--show-querying)
+ (add-hook! 'gptel-pre-response-hook 'gptel-mode-line--show-responding)
+ (add-hook! 'gptel-post-response-functions 'gptel-mode-line--hide-all)
 
-  (defun cashpw/gptel-context-add-file-glob (pattern)
-    "Add glob of files matched by PATTERN."
-    (interactive "sPattern: ")
-    (dolist (file (f-glob pattern))
-      (gptel-context-add-file file)))
+ (defun cashpw/gptel-context-add-file-glob (pattern)
+   "Add glob of files matched by PATTERN."
+   (interactive "sPattern: ")
+   (dolist (file (f-glob pattern))
+     (gptel-context-add-file file)))
 
-
-  (defun cashpw/gptel-send (prompt)
-    "Invoke `gptel-send' with specific PROMPT."
-    (interactive (list (llm-prompts-select)))
-    (let ((gptel--system-message prompt))
-      (gptel-send))))
+ (defun cashpw/gptel-send (prompt)
+   "Invoke `gptel-send' with specific PROMPT."
+   (interactive (list (llm-prompts-select)))
+   (let ((gptel--system-message prompt))
+     (gptel-send))))
 
 (use-package!
-    gptel-quick
-  :after gptel
-  :config
-  (setq
-   gptel-quick-system-message
-   (lambda (count) (format llm-prompts-prompt--summarize-short count))
-   gptel-quick-backend gptel-backend
-   ;; gptel-quick-display nil
-   gptel-quick-display 'posframe
-   gptel-quick-timeout 60
-   gptel-quick-word-count 35
-   gptel-quick-model 'gemini-flash-latest)
+ gptel-quick
+ :after gptel
+ :config
+ (setq
+  gptel-quick-system-message
+  (lambda (count) (format llm-prompts-prompt--summarize-short count))
+  gptel-quick-backend gptel-backend
+  ;; gptel-quick-display nil
+  gptel-quick-display 'posframe
+  gptel-quick-timeout 60
+  gptel-quick-word-count 35
+  gptel-quick-model 'gemini-flash-latest)
 
-  (defun cashpw/gptel-quick-buffer ()
-    (gptel-quick (buffer-substring-no-properties (point-min) (point-max))))
+ (defun cashpw/gptel-quick-buffer ()
+   (gptel-quick (buffer-substring-no-properties (point-min) (point-max))))
 
-  (defun gptel-quick (query-text &optional count)
-    "Explain or summarize region or thing at point with an LLM.
+ (defun gptel-quick (query-text &optional count)
+   "Explain or summarize region or thing at point with an LLM.
 
 QUERY-TEXT is the text being explained.  COUNT is the approximate
 word count of the response."
-    (interactive (list
-                  (cond
-                   ((use-region-p)
-                    (buffer-substring-no-properties
-                     (region-beginning) (region-end)))
-                   ((and (derived-mode-p 'pdf-view-mode)
-                         (pdf-view-active-region-p))
-                    (mapconcat #'identity (pdf-view-active-region-text) "\n\n"))
-                   (t
-                    (thing-at-point 'sexp)))
-                  current-prefix-arg))
+   (interactive (list
+                 (cond
+                  ((use-region-p)
+                   (buffer-substring-no-properties
+                    (region-beginning) (region-end)))
+                  ((and (derived-mode-p 'pdf-view-mode)
+                        (pdf-view-active-region-p))
+                   (mapconcat #'identity (pdf-view-active-region-text) "\n\n"))
+                  (t
+                   (thing-at-point 'sexp)))
+                 current-prefix-arg))
 
-    (when (xor gptel-quick-backend gptel-quick-model)
-      (error
-       "gptel-quick-backend and gptel-quick-model must be both set or unset"))
+   (when (xor gptel-quick-backend gptel-quick-model)
+     (error
+      "gptel-quick-backend and gptel-quick-model must be both set or unset"))
 
-    (let* ((count (or count gptel-quick-word-count))
-           ;; (gptel-max-tokens (floor (+ (sqrt (length query-text))
-           ;;                             (* count 2.5))))
-           (gptel-use-curl)
-           (gptel-use-context (and gptel-quick-use-context 'system))
-           (gptel-backend (or gptel-quick-backend gptel-backend))
-           (gptel-model (or gptel-quick-model gptel-model)))
-      (gptel-request
-          query-text
-        :system (funcall gptel-quick-system-message count)
-        :context
-        (list
-         query-text count
-         (posn-at-point (and (use-region-p) (region-beginning))))
-        :callback #'gptel-quick--callback-posframe))))
+   (let* ((count (or count gptel-quick-word-count))
+          ;; (gptel-max-tokens (floor (+ (sqrt (length query-text))
+          ;;                             (* count 2.5))))
+          (gptel-use-curl)
+          (gptel-use-context (and gptel-quick-use-context 'system))
+          (gptel-backend (or gptel-quick-backend gptel-backend))
+          (gptel-model (or gptel-quick-model gptel-model)))
+     (gptel-request
+      query-text
+      :system (funcall gptel-quick-system-message count)
+      :context
+      (list
+       query-text count
+       (posn-at-point (and (use-region-p) (region-beginning))))
+      :callback #'gptel-quick--callback-posframe))))
 
 (defun cashpw/gptel-set-model (model)
   "Set `gptel-model' to MODEL."
-  (interactive
-   (list
-    (cdr (assoc (completing-read "Select model" cashpw/llm-models nil t) cashpw/llm-models))))
+  (interactive (list
+                (cdr
+                 (assoc
+                  (completing-read (format "Select model (currently %s): "
+                                           gptel-model)
+                                   cashpw/llm-models
+                                   nil t)
+                  cashpw/llm-models))))
   (setq gptel-model model))
 
 (defun cashpw/gptel-kill-curl-process ()
@@ -3416,7 +3481,8 @@ word count of the response."
 (defun cashpw/gptel-context-add-file-attachment ()
   "Add context to gptel in a DWIM fashion."
   (interactive)
-  (let ((default-directory (expand-file-name (format "./%s/" (org-attach-dir)))))
+  (let ((default-directory
+         (expand-file-name (format "./%s/" (org-attach-dir)))))
     (call-interactively #'gptel-context-add-file)))
 
 (defun cashpw/gptel-remove-context ()
@@ -3449,20 +3515,23 @@ Executes `gptel-context-remove' on the selection."
                          (end (overlay-end overlay))
                          (line-start (line-number-at-pos start))
                          (line-end (line-number-at-pos end))
-                         (file-or-buf (if (buffer-file-name source)
-                                          (abbreviate-file-name (buffer-file-name source))
-                                        (buffer-name source)))
+                         (file-or-buf
+                          (if (buffer-file-name source)
+                              (abbreviate-file-name (buffer-file-name source))
+                            (buffer-name source)))
                          ;; Extract up to 3 lines
                          (content (buffer-substring-no-properties start end))
                          (lines (split-string content "\n" t))
-                         (preview (mapconcat #'identity (seq-take lines 3) "\n")))
+                         (preview
+                          (mapconcat #'identity (seq-take lines 3) "\n")))
 
-                    (push (cons (format "%s (%d-%d)\n%s"
-                                        file-or-buf
-                                        line-start
-                                        line-end
-                                        preview)
-                                overlay)
+                    (push (cons
+                           (format "%s (%d-%d)\n%s"
+                                   file-or-buf
+                                   line-start
+                                   line-end
+                                   preview)
+                           overlay)
                           candidates))))))))))
 
     (unless candidates
@@ -3726,12 +3795,16 @@ TODO")))))
 (use-package!
     zotra
   :custom
-  (zotra-backend 'zotra-server)
+  ;; (zotra-backend 'zotra-server)
+  ;; (zotra-local-server-directory (f-expand "~/.local/share/zotra-server"))
+  (zotra-backend 'translation-server)
+  (zotra-local-server-directory (f-expand "~/third-party/translation-server"))
+  (zotra-url-retrieve-timeout 30)
   (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
-  (zotra-local-server-directory (f-expand "~/.local/share/zotra-server/"))
   (zotra-after-get-bibtex-entry-hook nil)
   (zotra-default-entry-format "biblatex")
+  ;; (zotra-default-entry-format "zotero")
 
   (bibtex-dialect 'biblatex)
   (bibtex-entry-format
@@ -5427,7 +5500,7 @@ Return nil if no attendee exists with that EMAIL."
   (make-org-gcal-profile
    :fetch-file-alist `(("cashbweaver@gmail.com" . ,(cashpw/path-calendar)))
    :client-id "878906466019-lfm5pph17736noimc9n8rth7vne1u566.apps.googleusercontent.com"
-   :client-secret (secret-get "org-gcal--personal")
+   :client-secret (secret-get "org-gcal--personal" nil (cashpw/machine-p 'personal-phone))
    :after-update-entry-functions
    '(org-gcal-extras--set-scheduled
      org-gcal-extras--set-category
@@ -5439,6 +5512,7 @@ Return nil if no attendee exists with that EMAIL."
    :summaries-to-skip
    '("^Nap$"
      "^Sleeping$"
+     "^Sleep$"
      "^Slack$"
      "^Flashcards$"
      "^Drive "
@@ -5510,7 +5584,7 @@ Return nil if no attendee exists with that EMAIL."
      .
      ,cashpw/path--sleep-calendar))
   :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
-  :client-secret (secret-get "org-gcal--personal")
+  :client-secret (secret-get "org-gcal--personal" nil (cashpw/machine-p 'personal-phone))
   :after-update-entry-functions '(cashpw/org-gcal--remove-gcal-timestamp
                                   cashpw/org-gcal--maybe-handle-sleep)
   :categories
@@ -5597,11 +5671,11 @@ Return nil if no attendee exists with that EMAIL."
       (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
     (cashpw/org-gcal-fetch)))
 
-(unless (cashpw/machine-p 'work)
+(when (cashpw/machine-p 'personal)
   (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
 
 (after! org-gcal-extras
-  (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id"))
+  (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id" nil (cashpw/machine-p 'personal-phone)))
   (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
   (use-package! org-gcal
     :custom
@@ -7575,6 +7649,8 @@ This is an internal function."
     (cashpw/org-hugo-export-wim-to-md))
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
+
+(global-auto-revert-mode)
 
 (defun cashpw/revert-file (filename)
   "Revert FILENAME."
@@ -11633,3 +11709,268 @@ Reference:https://stackoverflow.com/q/23622296"
          "DIR"
          (format "attachments/%s/%s" (substring id 0 2) (substring id 2)))
       (cashpw/log "Couldn't set DIR for %s because it's missing an ID." (buffer-name)))))
+
+(defun cashpw/visualize-date-range-weeks (start end highlights success-fn)
+  "Return a visual string representation of the weeks between START and END.
+
+START and END are time objects.
+HIGHLIGHTS is a list of time objects to mark with 'x'. Other days are '.'.
+SUCCESS-FN is a function accepting a list of 7 booleans (Mon-Sun).
+It returns non-nil if the week is successful.
+
+The output includes month names, week numbers, day markers, and a status
+indicator (🟢/🔴) determined by SUCCESS-FN."
+  (let* ((highlight-map (make-hash-table :test 'equal))
+         (current start)
+         ;; Determine visual format widths
+         (fmt-month-width 4) ;; "Jan "
+         (fmt-week-width 3)  ;; "01 "
+         ;; State trackers for the current week being built
+         (week-acc "")    ;; Accumulates day characters
+         (week-month nil) ;; Captures month name if Day 1 is seen
+         (week-num nil)   ;; Captures week number
+         (current-dow nil)
+         ;; Track booleans for success-fn (Vector 0=Mon ... 6=Sun)
+         (week-bools (make-vector 7 nil)))
+
+    ;; 1. Pre-process highlights into a hash set
+    (dolist (h highlights)
+      (puthash (format-time-string "%F" h) t highlight-map))
+
+    (with-temp-buffer
+      ;; Helper: Flush current week to buffer
+      (let ((flush-week
+             (lambda ()
+               (let* ((bool-list (mapcar #'identity week-bools)) ;; Convert vector to list
+                      (success-p (funcall success-fn bool-list))
+                      (indicator (if success-p "🟢" "🔴")))
+                 (insert
+                  (format "%s%s %s %s\n"
+                          (format (format "%%%ds" fmt-month-width) (or week-month ""))
+                          (format (format "%%%ds" fmt-week-width) (or week-num ""))
+                          week-acc
+                          indicator)))
+               ;; Reset row state
+               (setq week-acc ""
+                     week-month nil
+                     week-num nil)
+               (fillarray week-bools nil))))
+
+        ;; 2. Handle initial padding
+        (let ((start-dow (string-to-number (format-time-string "%u" start))))
+          ;; Loop runs 0 times for Monday (1-1), 6 times for Sunday (7-1)
+          (dotimes (_ (1- start-dow))
+            (setq week-acc (concat week-acc " "))))
+
+        ;; 3. Iterate day by day
+        (while (not (time-less-p end current))
+          (let* ((date-key (format-time-string "%F" current))
+                 (day-of-month (string-to-number (format-time-string "%d" current)))
+                 (dow (string-to-number (format-time-string "%u" current))) ; 1=Mon..7=Sun
+                 (is-highlighted (gethash date-key highlight-map))
+                 (char (if is-highlighted "x" ".")))
+
+            ;; Update loop state for current day
+            (setq current-dow dow)
+
+            ;; Record boolean status for this specific day of week (0-indexed)
+            (aset week-bools (1- dow) (if is-highlighted t nil))
+
+            ;; If we hit the 1st, record Month Name
+            (when (= day-of-month 1)
+              (setq week-month (format-time-string "%b" current)))
+
+            ;; Capture week number
+            (unless week-num
+              (setq week-num (format-time-string "%W" current)))
+
+            ;; Append character
+            (setq week-acc (concat week-acc char))
+
+            ;; 4. End of Week Check (Sunday=7)
+            (when (= dow 7)
+              (funcall flush-week))
+
+            ;; 5. Increment day (Robust DST handling)
+            (let ((decoded (decode-time current)))
+              (setf (decoded-time-day decoded) (1+ (decoded-time-day decoded)))
+              (setf (decoded-time-dst decoded) -1)
+              (setq current (apply #'encode-time decoded)))))
+
+        ;; 6. Post-loop: Flush partial week if exists
+        (when (> (length week-acc) 0)
+          ;; Don't print empty lines if loop ended exactly on Sun (already flushed)
+          (unless (= current-dow 7)
+            (funcall flush-week))))
+
+      ;; Return the built string
+      (buffer-string))))
+
+(defun cashpw/time-days-between (time1 time2)
+  "Return the number of days between TIME1 and TIME2."
+  (- (time-to-days time2) (time-to-days time1)))
+
+(defun cashpw/org-heading-completion-dates (heading-regex files)
+  "Return a list of Emacs time objects for completed headings matching HEADING-REGEX.
+Checks CLOSED, LOGBOOK DONE states, and ARCHIVE_TIME in .org_archive files."
+  (let ((completion-dates '()))
+    (dolist (file files)
+      (when (file-exists-p file)
+        (with-current-buffer (find-file-noselect file)
+          (let ((is-archive (string-suffix-p ".org_archive" file)))
+            (org-element-map
+                (org-element-parse-buffer) 'headline
+              (lambda (hl)
+                (let ((title (org-element-property :raw-value hl)))
+                  (when (and title (string-match-p heading-regex title))
+
+                    ;; 1. Check standard CLOSED property
+                    (let ((closed (org-element-property :closed hl)))
+                      (if closed
+                          (push (org-time-string-to-time
+                                 (org-element-interpret-data closed))
+                                completion-dates)
+
+                        ;; 2. For archive files: Check ARCHIVE_TIME if ARCHIVE_TODO is DONE
+                        (when is-archive
+                          (save-excursion
+                            (goto-char (org-element-property :begin hl))
+                            (let ((a-todo (org-entry-get nil "ARCHIVE_TODO"))
+                                  (a-time (org-entry-get nil "ARCHIVE_TIME")))
+                              (when (and (string= a-todo "DONE") a-time)
+                                ;; ARCHIVE_TIME usually lacks brackets; org-time-string-to-time handles it
+                                (push (org-time-string-to-time a-time)
+                                      completion-dates)))))))
+
+                    ;; 3. Check LOGBOOK for "DONE" state changes
+                    (org-element-map
+                        (org-element-contents hl) 'drawer
+                      (lambda (dr)
+                        (when (string=
+                               (org-element-property :drawer-name dr) "LOGBOOK")
+                          (let ((content (org-element-interpret-data dr)))
+                            (with-temp-buffer
+                              (insert content)
+                              (goto-char (point-min))
+                              (while (re-search-forward
+                                      "- State \"DONE\".*\\[\\([^]]+\\)\\]"
+                                      nil t)
+                                (push (org-time-string-to-time (match-string 1))
+                                      completion-dates)))))))))))))))
+    completion-dates))
+
+(defun cashpw/org-heading-completion-dates-by-count
+    (heading-regex files minimum-completion-count)
+  "Return a list of Emacs time objects for completed headings matching HEADING-REGEX.
+Checks CLOSED, LOGBOOK DONE states, and ARCHIVE_TIME in .org_archive files."
+  (let ((completion-dates '()))
+    (dolist (file files)
+      (when (file-exists-p file)
+        (with-current-buffer (find-file-noselect file)
+          (let ((is-archive (string-suffix-p ".org_archive" file)))
+            (org-element-map
+                (org-element-parse-buffer) 'headline
+              (lambda (hl)
+                (when-let ((title (org-element-property :raw-value hl)))
+                  (when (string-match-p heading-regex title)
+
+                    ;; 1. Check standard CLOSED property
+                    (when-let ((closed (org-element-property :closed hl)))
+                      (push (org-time-string-to-time
+                             (org-element-interpret-data closed))
+                            completion-dates))
+
+                    ;; 2. For archive files: Check ARCHIVE_TIME if ARCHIVE_TODO is DONE
+                    (when is-archive
+                      (save-excursion
+                        (goto-char (org-element-property :begin hl))
+                        (let ((a-todo (org-entry-get nil "ARCHIVE_TODO"))
+                              (a-time (org-entry-get nil "ARCHIVE_TIME")))
+                          (when (and (string= a-todo "DONE") a-time)
+                            ;; ARCHIVE_TIME usually lacks brackets; org-time-string-to-time handles it
+                            (push (org-time-string-to-time a-time)
+                                  completion-dates)))))
+
+                    ;; 3. Check LOGBOOK for "DONE" state changes
+                    (org-element-map
+                        (org-element-contents hl) 'drawer
+                      (lambda (dr)
+                        (when (string=
+                               (org-element-property :drawer-name dr) "LOGBOOK")
+                          (let ((content (org-element-interpret-data dr)))
+                            (with-temp-buffer
+                              (insert content)
+                              (goto-char (point-min))
+                              (while (re-search-forward
+                                      "- State \"DONE\".*\\[\\([^]]+\\)\\]"
+                                      nil t)
+                                (push (org-time-string-to-time (match-string 1))
+                                      completion-dates)))))))))))))))
+    (cl-loop
+     for
+     (key . value)
+     in
+     (-group-by #'identity completion-dates)
+     when
+     (>= (length value) minimum-completion-count)
+     collect
+     key)))
+
+(defun cashpw/org-heading-completion-dates-by-duration
+    (heading-regex files threshold-minutes)
+  "Return a list of Emacs time objects for days where the sum of CLOCK intervals
+for headings matching HEADING-REGEX is greater than or equal to THRESHOLD-MINUTES.
+
+This aggregates clock times across all provided FILES by day.
+Open clocks (active tasks without an end time) are ignored."
+  (let ((day-totals (make-hash-table :test 'equal))
+        (qualifying-dates '()))
+
+    ;; 1. Aggregate duration per day across all files
+    (dolist (file files)
+      (when (file-exists-p file)
+        (with-current-buffer (find-file-noselect file)
+          (org-element-map
+              (org-element-parse-buffer) 'headline
+            (lambda (hl)
+              (let ((title (org-element-property :raw-value hl)))
+                (when (and title (string-match-p heading-regex title))
+                  ;; Map over clock entries within the matched headline
+                  (org-element-map
+                      hl 'clock
+                    (lambda (clk)
+                      (let ((ts (org-element-property :value clk)))
+                        ;; Ensure it is a range with a defined end time (ignore currently running clocks)
+                        (when (and ts (org-element-property :year-end ts))
+                          (let*
+                              ((start-time (org-timestamp-to-time ts))
+                               ;; Manually construct end-time from properties to handle ranges correctly
+                               (end-time
+                                (encode-time 0
+                                             (org-element-property :minute-end ts)
+                                             (org-element-property :hour-end ts)
+                                             (org-element-property :day-end ts)
+                                             (org-element-property :month-end ts)
+                                             (org-element-property :year-end ts)))
+                               (duration-mins
+                                (/ (float-time
+                                    (time-subtract end-time start-time))
+                                   60.0))
+                               ;; Group by YYYY-MM-DD
+                               (date-key (format-time-string "%F" start-time)))
+
+                            (puthash
+                             date-key
+                             (+ duration-mins
+                                (gethash date-key day-totals 0.0))
+                             day-totals)))))))))))))
+
+    ;; 2. Filter days meeting the threshold
+    (maphash
+     (lambda (key minutes)
+       (when (>= minutes threshold-minutes)
+         ;; Convert date string "YYYY-MM-DD" back to an Emacs time object
+         (push (org-time-string-to-time key) qualifying-dates)))
+     day-totals)
+
+    qualifying-dates))

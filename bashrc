@@ -138,9 +138,9 @@ export VISUAL='nvim'
 # Cask
 export PATH="/home/cashweaver/.cask/bin:$PATH"
 
-if is_work_laptop; then
-  /usr/bin/setxkbmap -option "ctrl:nocaps"
-fi
+#if is_work_laptop; then
+  #/usr/bin/setxkbmap -option "ctrl:nocaps"
+#fi
 
 # Snap
 export PATH="/snap/bin:$PATH"
