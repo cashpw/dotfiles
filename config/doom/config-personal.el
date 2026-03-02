@@ -665,25 +665,14 @@ Invokes SUCCESS on success."
 
 (use-package!
     whisper
-  :config
-  (setq
-   whisper-install-directory (locate-user-emacs-file "./")
-   whisper--install-path
-   (concat
-    (expand-file-name (file-name-as-directory whisper-install-directory))
-    "whisper.cpp/")
-   whisper-server-mode 'local
-   ;; whisper-model "large-v3-turbo"
-   ;; whisper-model "medium"
-   ;; whisper-model "small"
-   whisper-model "base"
-   ;; whisper-quantize "q5_0"
-   whisper-language "en"
-   whisper-translate nil
-   whisper-use-threads (/ (num-processors) 2)
-   ;; whisper--ffmpeg-input-device "hw:0"
-   ;; whisper--ffmpeg-input-device "default"
-   whisper-return-cursor-to-start nil))
+  :custom
+  (whisper-install-directory (locate-user-emacs-file "./"))
+  (whisper-server-mode nil)
+  (whisper-server-baseurl "http://localhost:8642")
+  (whisper-model "base")
+  (whisper-language "en")
+  (whisper-use-threads (/ (num-processors) 2))
+  (whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
   :config
