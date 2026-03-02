@@ -1,7 +1,7 @@
 icons_format = "{icon}"
 
 [theme]
-theme = "/home/cashpw/proj/i3status-rust/files/themes/tomorrow-night.toml"
+theme = "tomorrow-night"
 
 [theme.overrides]
 separator = ""
