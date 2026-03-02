@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-03-02 Mon 07:38]
+:LAST_MODIFIED: [2026-03-02 Mon 13:26]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Emacs Config: Personal
@@ -12867,6 +12867,15 @@ I use a numeric scale for priorities rather than the default alphabetic.
   (replace-match "INPROGRESS")
   (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
+#+end_src
+
+****** =BLOCKED=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun run-on-todo-state-change--BLOCKED ()
+  "Handle a todo being set to \"BLOCKED\"."
+  (org-clock-out-if-current)
+  (org-add-log-setup 'state "BLOCKED" (org-get-todo-state) 'note))
 #+end_src
 
 ****** =PROJ=

@@ -9716,6 +9716,11 @@ See `org-clock-special-range' for KEY."
   (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
 
+(defun run-on-todo-state-change--BLOCKED ()
+  "Handle a todo being set to \"BLOCKED\"."
+  (org-clock-out-if-current)
+  (org-add-log-setup 'state "BLOCKED" (org-get-todo-state) 'note))
+
 (defun run-on-todo-state-change--PROJ ()
   "Handle a todo being set to \"PROJ\"."
   (cashpw/org-insert-progress-cookie))
