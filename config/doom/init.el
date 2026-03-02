@@ -164,19 +164,19 @@
  ;;elm               ; care for a cup of TEA?
  emacs-lisp          ; drown in parentheses
  ;;erlang            ; an elegant language for a more civilized age
- ess               ; emacs speaks statistics
+ ;;ess               ; emacs speaks statistics
  ;;factor
  ;;faust             ; dsp, but you get to keep your soul
  ;;fortran
  ;;fsharp            ; ML stands for Microsoft's Language
  ;;fstar             ; (dependent) types and (monadic) effects and Z3
  ;;gdscript          ; the language you waited for
- ;;(go +lsp)         ; the hipster dialect
+ (go +lsp)         ; the hipster dialect
  ;;(graphql +lsp)
  ;;(haskell +dante)  ; a language that's lazier than I am
  ;;hy                ; readability of scheme w/ speed of python
  ;;idris             ; a language you can depend on
- ;;json              ; At least it ain't XML
+ json              ; At least it ain't XML
  ;;janet
  (java                                        ; the poster child for carpal tunnel syndrome
   +lsp
