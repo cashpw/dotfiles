@@ -7886,6 +7886,21 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:0
   (cashpw/org-clocktable-by-category--week
    (time-subtract (current-time) (days-to-time 7))))
 
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto)
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
+
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
 
