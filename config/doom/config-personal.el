@@ -1613,10 +1613,7 @@ This be hooked to `projectile-after-switch-project-hook'."
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/machine-p 'work-laptop)
-                      ;; Laptop has a different DPI
-                      28
-                    14)))
+            :size 14))
 
 (setq
  +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
@@ -6104,22 +6101,26 @@ The exporting happens only when Org Capture is not in progress."
      (s-split "\n" grep-result 'omit-nulls))))
 
 (defun cashpw/org-files-and-filetags-with-tag (tag directory)
-  "Return list of org files tagged with TAG in DIRECTORY and their filetags."
-  (let ((grep-result
-         ;; Outputs <filepath> <tags>
-         ;; For example: /tmp/foo.org :cats:
-         (shell-command-to-string
-          (concat
-           (format "rg --max-count=1 '^#\\+filetags:.*:%s:' %s/*.org"
-                   tag
-                   (directory-file-name directory))
-           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
-    (--map
-     (cl-destructuring-bind
-         (file filetags)
-         (s-split " " it 'omit-nulls)
-       (cons file (s-split ":" filetags 'omit-nulls)))
-     (s-split "\n" grep-result 'omit-nulls))))
+  "Return list of org files tagged with TAG in DIRECTORY and their filetags.
+Gracefully returns nil if no org files are found."
+  ;; 1. Guard clause: Only execute if directory exists and contains .org files
+  (when (and (file-directory-p directory)
+             (directory-files directory nil "\\.org\\'"))
+    (let ((grep-result
+           ;; Outputs <filepath>\t<tags>
+           ;; For example: /tmp/foo.org:cats:
+           (shell-command-to-string
+            (format "rg --max-count=1 --max-depth=1 -g '*.org' '^#\\+filetags:.*:%s:' %s | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1\t\\2/'"
+                    tag
+                    ;; 2. Secure the directory path against shell injection and spaces
+                    (shell-quote-argument (directory-file-name directory))))))
+      (--map
+       (cl-destructuring-bind
+           (file filetags)
+           ;; 3. Split by literal tab instead of space to handle filenames containing spaces
+           (s-split "\t" it 'omit-nulls)
+         (cons file (s-split ":" filetags 'omit-nulls)))
+       (s-split "\n" grep-result 'omit-nulls)))))
 
 (defun cashpw/org-files-with-tag (tag directory)
   "Return list of org files in DIRECTORY tagged (filetag) with TAG."
