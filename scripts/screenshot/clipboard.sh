@@ -1,7 +1,7 @@
 #!/bin/bash
 # Take a screenshot of the selected area
 
-if [[ "$XDG_CURRENT_DESKTOP" == "sway" ]]; then
+if [[ "$XDG_CURRENT_DESKTOP" =~ ^sway ]]; then
   grim -g "$(slurp)" - | wl-copy
 else
   maim -m 10 -s | xclip -selection clipboard -t image/png

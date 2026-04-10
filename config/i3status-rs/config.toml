@@ -1,7 +1,7 @@
 icons_format = "{icon}"
 
 [theme]
-theme = "/home/cashpw/proj/i3status-rust/files/themes/tomorrow-night.toml"
+theme = "tomorrow-night"
 
 [theme.overrides]
 separator = ""
@@ -10,17 +10,17 @@ separator = ""
 icons = "material-nf"
 [icons.overrides]
 
-[[block]]
-block = "packages"
-package_manager = ["dnf"]
-interval = 1800
-format = " $icon $dnf.eng(w:1) updates available "
-format_singular = " $icon One update available "
-format_up_to_date = ""
-[[block.click]]
-# shows dmenu with cached available updates. Any dmenu alternative should also work.
-button = "left"
-cmd = "dnf list -q --upgrades | tail -n +2 | rofi -dmenu"
+#[[block]]
+#block = "packages"
+#package_manager = ["dnf"]
+#interval = 1800
+#format = " $icon $dnf.eng(w:1) updates available "
+#format_singular = " $icon One update available "
+#format_up_to_date = ""
+#[[block.click]]
+## shows dmenu with cached available updates. Any dmenu alternative should also work.
+#button = "left"
+#cmd = "dnf list -q --upgrades | tail -n +2 | rofi -dmenu"
 
 [[block]]
 block = "disk_space"
