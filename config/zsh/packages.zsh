@@ -16,6 +16,11 @@ bindkey "$terminfo[kcud1]" history-substring-search-down
 
 antigen bundle MichaelAquilina/zsh-you-should-use
 
+if [[ $IS_WORK -eq 1 ]]; then
+    # Add work-only bundles here
+    # antigen bundle some/work-plugin
+fi
+
 export NVM_DIR="$HOME/.config/nvm"
 antigen bundle lukechilds/zsh-nvm
 

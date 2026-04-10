@@ -12,9 +12,6 @@ alias ..3="cd ../../../"
 alias ..4="cd ../../../../"
 alias ..5="cd ../../../../../"
 
-# Navigation
-alias cdminecraft="cd ~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances/Forever\ 2025\ 1.21.1/minecraft"
-
 # Editor
 alias e='emacsclient -t -a ""'
 alias v='nvim'
