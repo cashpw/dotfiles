@@ -77,6 +77,10 @@ To start off, we'll define a [[https://www.gnu.org/software/emacs/manual/html_no
   "Group for my customizations and configurations.")
 #+end_src
 
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+<<cashpw>>
+#+end_src
+
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashpw>>
 #+end_src
@@ -176,6 +180,13 @@ https://akrl.sdf.org/#orgc15a10d"
 #+RESULTS: cashpw/log
 : cashpw/log-debug
 
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+<<cashpw/log>>
+<<cashpw/error>>
+<<cashpw/load>>
+<<k-time>>
+#+end_src
+
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashpw/log>>
 <<cashpw/error>>
@@ -211,6 +222,10 @@ https://akrl.sdf.org/#orgc15a10d"
      (cashpw/error
       "Unknown machine: %s"
       machine))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+<<cashpw/machine-p>>
 #+end_src
 
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
@@ -270,9 +285,16 @@ https://akrl.sdf.org/#orgc15a10d"
   "Full path to Emacs configuration files.")
 #+end_src
 
+#+RESULTS: paths
+: cashpw/path--emacs-config-dir
+
 #+RESULTS: cashpw/home-dir
 : cashpw/path--emacs-config-dir
 
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+<<paths>>
+#+end_src
+
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<paths>>
 #+end_src
@@ -281,80 +303,74 @@ https://akrl.sdf.org/#orgc15a10d"
 <<paths>>
 #+end_src
 
-* Load Additional Config Files
+* Load additional files
 
-Configuration files should follow the naming convention =(config|packages)-<type>.el= (eg: =config-personal.el=).
+Configuration files should follow the naming convention =(config|packages|init)-<type>.el= (eg: =config-personal.el=).
 
-** Personal
+** Init
 
-#+begin_src emacs-lisp :tangle packages.el :noweb no-export
-(defcustom
-  cashpw/personal-packages-loaded-p
-  nil
-  "Non-nil if my packages have finished loading."
-  :group 'cashpw
-  :type 'boolean)
-(defvar cashpw/personal-packages-loaded-hooks '()
-  "Hooks to run after we finish loading personal packages.")
-(setq
- cashpw/personal-packages-loaded-p (cashpw/load
-                                    (format
-                                     "%s/packages-personal.el"
-                                     cashpw/path--emacs-config-dir)))
-(run-hooks 'cashpw/personal-packages-loaded-hooks)
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+(cashpw/load
+ (format
+  (if (cashpw/machine-p 'work-cloudtop)
+      "%s/init-work.el"
+    "%s/init-personal.el")
+  cashpw/path--emacs-config-dir))
 #+end_src
 
+** Config
+
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
-(defcustom
-  cashpw/personal-config-loaded-p
-  nil
+(defcustom cashpw/personal-config-loaded-p nil
   "Non-nil if my config has finished loading."
   :group 'cashpw
   :type 'boolean)
 (defvar cashpw/personal-config-loaded-hooks '()
   "Hooks to run after we finish loading personal config.")
-(setq
- cashpw/personal-config-loaded-p (cashpw/load
-                                  (format
-                                   "%s/config-personal.el"
-                                   cashpw/path--emacs-config-dir)))
+;; Always load personal config
+(setq cashpw/personal-config-loaded-p
+      (cashpw/load
+       (format "%s/config-personal.el" cashpw/path--emacs-config-dir)))
 (run-hooks 'cashpw/personal-config-loaded-hooks)
-#+end_src
 
-** Work
-
-#+begin_src emacs-lisp :tangle packages.el :noweb no-export
 (when (cashpw/machine-p 'work-cloudtop)
-  (defcustom
-    cashpw/work-packages-loaded-p
-    nil
-    "Non-nil if my packages have finished loading."
-    :group 'cashpw
-    :type 'boolean)
-(defvar cashpw/work-packages-loaded-hooks '()
-  "Hooks to run after we finish loading work packages.")
-  (setq
-   cashpw/work-packages-loaded-p (cashpw/load
-                                  (format
-                                   "%s/packages-work.el"
-                                   cashpw/path--emacs-config-dir))))
-(run-hooks 'cashpw/work-packages-loaded-hooks)
-#+end_src
-
-#+begin_src emacs-lisp :tangle config.el :noweb no-export
-(when (cashpw/machine-p 'work-cloudtop)
-  (defcustom
-    cashpw/work-config-loaded-p
-    nil
+  (defcustom cashpw/work-config-loaded-p nil
     "Non-nil if my config has finished loading."
     :group 'cashpw
     :type 'boolean)
-(defvar cashpw/work-config-loaded-hooks '()
-  "Hooks to run after we finish loading work config.")
-  (setq
-   cashpw/work-config-loaded-p (cashpw/load
-                                (format
-                                 "%s/config-work.el"
-                                 cashpw/path--emacs-config-dir))))
-(run-hooks 'cashpw/work-config-loaded-hooks)
+  (defvar cashpw/work-config-loaded-hooks '()
+    "Hooks to run after we finish loading work config.")
+  (setq cashpw/work-config-loaded-p
+        (cashpw/load
+         (format "%s/config-work.el" cashpw/path--emacs-config-dir)))
+  (run-hooks 'cashpw/work-config-loaded-hooks))
 #+end_src
+
+** Packages
+
+#+begin_src emacs-lisp :tangle packages.el :noweb no-export
+(defcustom cashpw/personal-packages-loaded-p nil
+  "Non-nil if my packages have finished loading."
+  :group 'cashpw
+  :type 'boolean)
+(defvar cashpw/personal-packages-loaded-hooks '()
+  "Hooks to run after we finish loading personal packages.")
+;; Always load personal packages
+(setq cashpw/personal-packages-loaded-p
+      (cashpw/load
+       (format "%s/packages-personal.el" cashpw/path--emacs-config-dir)))
+(run-hooks 'cashpw/personal-packages-loaded-hooks)
+
+(when (cashpw/machine-p 'work-cloudtop)
+  (defcustom cashpw/work-packages-loaded-p nil
+    "Non-nil if my packages have finished loading."
+    :group 'cashpw
+    :type 'boolean)
+  (defvar cashpw/work-packages-loaded-hooks '()
+    "Hooks to run after we finish loading work packages.")
+  (setq cashpw/work-packages-loaded-p
+        (cashpw/load
+         (format "%s/packages-work.el" cashpw/path--emacs-config-dir)))
+  (run-hooks 'cashpw/work-packages-loaded-hooks))
+#+end_src
+

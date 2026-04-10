@@ -811,18 +811,18 @@ Invokes SUCCESS on success."
          for file in (org-mem-all-files) unless
          (or (s-ends-with-p "archive" file)
              (member
-              (f-expand file)
+              (expand-file-name file)
               (list
-               (f-expand (cashpw/path-calendar))
-               (f-expand (cashpw/path-todos))
-               (f-expand cashpw/path--reading-list))))
+               (expand-file-name (cashpw/path-calendar))
+               (expand-file-name (cashpw/path-todos))
+               (expand-file-name cashpw/path--reading-list))))
          when
          (seq-find
           (lambda
             (entry)
             (member (org-mem-entry-todo-state entry) org-not-done-keywords))
           (org-mem-entries-in file))
-         collect (f-expand file))
+         collect (expand-file-name file))
         (cashpw/notes-files-with-tag "journal"))
        (cashpw/notes-files-with-tag "contact"))))
     :desc "Reading List"
@@ -995,11 +995,11 @@ Invokes SUCCESS on success."
    (:prefix
     ("n" . "Notes")
     :desc "Calendar"
-    :n "c" (cmd! (cashpw/open-file cashpw/path--personal-calendar))
-    :n "C"
+    :n "c"
     (cmd!
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :n "C" (cmd! (cashpw/open-file cashpw/path--personal-calendar))
     :desc "Journal"
     :n "j"
     (cmd!
@@ -3793,9 +3793,9 @@ TODO")))))
     zotra
   :custom
   ;; (zotra-backend 'zotra-server)
-  ;; (zotra-local-server-directory (f-expand "~/.local/share/zotra-server"))
+  ;; (zotra-local-server-directory (expand-file-name "~/.local/share/zotra-server"))
   (zotra-backend 'translation-server)
-  (zotra-local-server-directory (f-expand "~/third-party/translation-server"))
+  (zotra-local-server-directory (expand-file-name "~/third-party/translation-server"))
   (zotra-url-retrieve-timeout 30)
   (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
@@ -7651,8 +7651,6 @@ This is an internal function."
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
 
-(global-auto-revert-mode)
-
 (defun cashpw/revert-file (filename)
   "Revert FILENAME."
   (with-current-buffer
@@ -7886,6 +7884,21 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:0
   (interactive)
   (cashpw/org-clocktable-by-category--week
    (time-subtract (current-time) (days-to-time 7))))
+
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto)
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -8192,23 +8205,15 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (org-todo-yesterday 'done)))
 
 (defun cashpw/org-reschedule-to-today-at-point ()
-  "Reschedule heading at point to today. Keep duration and repeater."
+  "Reschedule heading at point to today. Keep time, duration, and repeater."
   (interactive)
-  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED"))
-             (scheduled-time-string-without-year-month-day
-              (replace-regexp-in-string
-               "[0-9]\+-[0-9]\\{2\\}-[0-9]\\{2\\}"
-               ""
-               scheduled-time-string)))
-    (cl-destructuring-bind
-        (_ _ _ today-day today-month today-year _ _ _) (decode-time (current-time))
-      (org-schedule
-       nil
-       (format "%s-%s-%s%s"
-               today-year
-               today-month
-               today-day
-               scheduled-time-string-without-year-month-day)))))
+  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED")))
+    (let ((new-time-string
+           (replace-regexp-in-string
+            "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\(?: [A-Za-z]+\\)?"
+            (format-time-string "%Y-%m-%d %a")
+            scheduled-time-string)))
+      (org-schedule nil new-time-string))))
 
 (defun cashpw/org-agenda-reschedule-to-today ()
   "Reschedule event at point to today."
@@ -9716,6 +9721,11 @@ See `org-clock-special-range' for KEY."
   (replace-match "INPROGRESS")
   (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
+
+(defun run-on-todo-state-change--BLOCKED ()
+  "Handle a todo being set to \"BLOCKED\"."
+  (org-clock-out-if-current)
+  (org-add-log-setup 'state "BLOCKED" (org-get-todo-state) 'note))
 
 (defun run-on-todo-state-change--PROJ ()
   "Handle a todo being set to \"PROJ\"."
