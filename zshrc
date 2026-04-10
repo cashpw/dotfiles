@@ -4,8 +4,10 @@ else
     IS_WORK=0
 fi
 
-eval $(keychain --eval --quiet cashbweaver)
-eval $(keychain --eval --quiet ultracc)
+if [[ $IS_WORK -eq 0 ]]; then
+    eval $(keychain --eval --quiet cashbweaver)
+    eval $(keychain --eval --quiet ultracc)
+fi
 
 source "$HOME/.config/zsh/packages.zsh"
 source "$HOME/.config/zsh/path.zsh"
@@ -19,7 +21,5 @@ else
     [[ -f "$HOME/.config/zsh/personal.zsh" ]] && source "$HOME/.config/zsh/personal.zsh"
 fi
 
-source "$HOME/.config/zsh/nvm.zsh"
-source "$HOME/.config/zsh/pyenv.zsh"
 
 eval "$(starship init zsh)"
