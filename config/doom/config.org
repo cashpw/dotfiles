@@ -180,6 +180,13 @@ https://akrl.sdf.org/#orgc15a10d"
 #+RESULTS: cashpw/log
 : cashpw/log-debug
 
+#+begin_src emacs-lisp :tangle init.el :noweb no-export
+<<cashpw/log>>
+<<cashpw/error>>
+<<cashpw/load>>
+<<k-time>>
+#+end_src
+
 #+begin_src emacs-lisp :tangle config.el :noweb no-export
 <<cashpw/log>>
 <<cashpw/error>>
@@ -277,6 +284,9 @@ https://akrl.sdf.org/#orgc15a10d"
    cashpw/path--config-dir)
   "Full path to Emacs configuration files.")
 #+end_src
+
+#+RESULTS: paths
+: cashpw/path--emacs-config-dir
 
 #+RESULTS: cashpw/home-dir
 : cashpw/path--emacs-config-dir

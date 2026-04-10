@@ -2,6 +2,77 @@
   nil
   "Group for my customizations and configurations.")
 
+(defcustom cashpw/debug nil
+  "Non-nil if my personal debug mode is active.")
+
+(define-minor-mode cashpw-debug-mode
+  "Minor mode to toggle my personal debug settings."
+  :global t
+  :lighter nil
+  (setq cashpw/debug cashpw-debug-mode))
+
+(cl-defun
+    cashpw/log--internal
+    (partial-log-string type &optional buffer)
+  "Log PARTIAL-LOG-STRING with TYPE to BUFFER (or message, if nil)."
+  (let ((full-log-string (format
+                              "[%s %s] %s"
+                              type
+                              (format-time-string "%F %T%Z")
+                              partial-log-string)))
+    (if (and buffer (bufferp buffer))
+        (with-current-buffer buffer
+          (insert full-log-string "\n"))
+      (message full-log-string))))
+
+(cl-defun
+    cashpw/log-info
+    (format-string &rest args)
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"INFO\"."
+  (cashpw/log--internal (apply #'format format-string args) "INFO"))
+(defalias 'cashpw/log 'cashpw/log-info)
+
+(cl-defun
+    cashpw/log-to-buffer-info
+    (buffer format-string &rest args)
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"INFO\" to BUFFER."
+  (cashpw/log--internal (apply #'format format-string args) "INFO" buffer))
+(defalias 'cashpw/log-to-buffer 'cashpw/log-to-buffer-info)
+
+(cl-defun
+    cashpw/log-debug
+    (format-string &rest args)
+  "Log formatted, with ARGS, FORMAT-STRING with state of \"DEBUG\"."
+  (when cashpw/debug
+    (cashpw/log--internal (apply #'format format-string args) "DEBUG")))
+
+(defun cashpw/error (error-message &rest args)
+  (error
+   "[cashpw %s] %s"
+   (format-time-string "%F %T%Z")
+   (apply
+    #'format
+    error-message
+    args)))
+(defun cashpw/load (path)
+  "Return non-nil after loading PATH."
+  (cashpw/log
+   "Loading %s ..."
+   path)
+  (cashpw/log
+   "Loaded %s in %.06f seconds."
+   path
+   (k-time
+    (load path)))
+  t)
+(defmacro k-time (&rest body)
+  "Measure and return the time it takes evaluating BODY.
+
+https://akrl.sdf.org/#orgc15a10d"
+  `(let ((time (current-time)))
+     ,@body
+     (float-time (time-since time))))
+
 (defun cashpw/machine-p (machine)
   "Return true if executed on my work machine."
   (pcase machine
