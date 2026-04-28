@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: da2qe-ymgnz
+created: 2026-02-18T21:28:57-08:00

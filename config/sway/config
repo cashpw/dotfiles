@@ -29,6 +29,7 @@ set $rofi_cmd rofi \
         # -modi drun#window#ssh \
         # -modes combi
 bindsym $mod+d exec $rofi_cmd
+bindsym $mod+c exec rofi -show calc -modi calc -no-show-match -no-sort
 
 
 
@@ -95,7 +96,7 @@ bindsym $mod+d exec $rofi_cmd
     bindsym $mod+Shift+space floating toggle
 
     # Swap focus between the tiling area and the floating area
-    bindsym $mod+space focus mode_toggle
+    #bindsym $mod+space focus mode_toggle
 
     # Move focus to the parent container
     bindsym $mod+a focus parent
@@ -410,3 +411,4 @@ exec emacs
 exec firefox
 exec swaync
 exec autotiling-rs
+exec fcitx5 -d -r

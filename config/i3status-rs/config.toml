@@ -1,7 +1,7 @@
 icons_format = "{icon}"
 
 [theme]
-theme = "/home/cashpw/proj/i3status-rust/files/themes/tomorrow-night.toml"
+theme = "tomorrow-night"
 
 [theme.overrides]
 separator = ""
@@ -9,6 +9,8 @@ separator = ""
 [icons]
 icons = "material-nf"
 [icons.overrides]
+sync = "\U000f04e6"
+sync_disabled = "\U000f04e8"
 
 [[block]]
 block = "packages"
@@ -48,10 +50,16 @@ block = "temperature"
 format = " $average "
 format_alt = " $icon $min min, $max max, $average avg "
 interval = 10
+[block.theme_overrides]
+info_bg = "#373b41" # Idle
+info_fg = "#c5c8c6" # Idle
 
 [[block]]
 block = "music"
 format = "{ $icon $combo.str(max_w:40,rot_interval:0.5) $play |}"
+[block.theme_overrides]
+info_bg = "#373b41" # Idle
+info_fg = "#c5c8c6" # Idle
 
 [[block]]
 block = "sound"
@@ -65,6 +73,8 @@ warning_bg = "#373b41" # idle_bg
 # Idle is used when unmuted
 idle_bg = "#81a2be" # Blue
 idle_fg = "#1d1f21" # Background
+#idle_bg = "#373b41" # Selection
+#idle_fg = "#c5c8c6" # Foreground
 
 [[block]]
 block = "bluetooth"
@@ -89,6 +99,24 @@ cmd = "bluetoothctl connect C3:FD:60:D2:CE:74"
 [[block.click]]
 button = "right"
 cmd = "bluetoothctl disconnect C3:FD:60:D2:CE:74"
+
+[[block]]
+block = "service_status"
+service = "syncthing"
+user = true
+active_format = " ^icon_sync "
+inactive_format = " ^icon_sync_disabled "
+inactive_state = "Warning"
+[block.theme_overrides]
+warning_bg = "#cc6666" # Red
+warning_fg = "#1d1f21" # Background
+# Idle is used when unmuted
+idle_bg = "#373b41" # Idle
+idle_fg = "#c5c8c6" # Idle
+
+[[block.click]]
+button = "left"
+cmd = "firefox --new-tab 'http://127.0.0.1:8384'"
 
 [[block]]
 block = "net"
