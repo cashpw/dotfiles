@@ -1613,10 +1613,7 @@ This be hooked to `projectile-after-switch-project-hook'."
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/machine-p 'work-laptop)
-                      ;; Laptop has a different DPI
-                      28
-                    14)))
+            :size 14))
 
 (setq
  +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
@@ -1680,6 +1677,13 @@ This be hooked to `projectile-after-switch-project-hook'."
 ;;     :list_property "::"
 ;;     :em_dash       "---"
 ;;     :ellipsis      "..."))
+
+(when (cashpw/machine-p 'personal)
+  (use-package! cnfonts
+    :custom
+    (cnfonts-profiles '("universal"))
+    :custom
+    (cnfonts-enable)))
 
 (setq
  cashpw/indent-level 2)
@@ -1764,12 +1768,12 @@ This be hooked to `projectile-after-switch-project-hook'."
   (defun cashpw/asana--set-scheduled (_)
     "Set scheduled after syncing tasks."
     (when-let ((deadline-time (org-get-deadline-time (point))))
-      (shut-up (org-schedule nil deadline-time))))
+      (quiet! (org-schedule nil deadline-time))))
   ;; (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-scheduled)
 
   (defun cashpw/asana--set-priority (_)
     "Set priority after syncing tasks."
-    (shut-up (org-priority org-priority-default)))
+    (quiet! (org-priority org-priority-default)))
   (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-priority)
 
   (defun cashpw/asana--set-category (task)
@@ -2085,9 +2089,6 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (after!
   emacs-everywhere
   (setq
-   emacs-everywhere-paste-command
-   (list "wtype" "-M" "Ctrl" "-P" "v" "-m" "Ctrl" "-p" "v")
-   emacs-everywhere-copy-command (list "sh" "-c" "wl-copy < %f")
    emacs-everywhere-org-export-options
    "#+property: header-args :exports both
 #+options: toc:nil ':nil -:nil <:nil\n"
@@ -2096,6 +2097,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
      ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
      "--to"
      "org"))
+  (add-to-list
+   'emacs-everywhere-system-configs
+   '((wayland . sway:wlroots)
+     :focus-command ("swaymsg" "[con_id=%w]" "focus")
+     :paste-command ("wtype" "-M" "Ctrl" "-P" "v" "-p" "v")
+     :info-function emacs-everywhere--app-info-linux-sway)
+   'append)
   (--each
       '( ;; Google issue tracker
         "Buganizer"
@@ -2697,27 +2705,26 @@ TAGS which start with \"-\" are excluded."
   ;;     (cashpw/notmuch-search-toggle-tag "waiting")))
   )
 
-(defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
-  "Converts the current buffer to org-mode in place."
-  (interactive)
-  (let ((buffer-content (buffer-string))
-        (tmp-file
-         (format "/tmp/%s.md" (format-time-string "%s" (current-time)))))
-    (with-temp-buffer
-      (insert buffer-content)
-      (write-file tmp-file))
-    (erase-buffer)
-    (insert
-     (shell-command-to-string
-      (concat
-       (format "pandoc --wrap=none -f markdown -t org %s" tmp-file)
-       ;; Remove :PROPERTIES: drawers beneath headings
-       " | sed -E '/^[[:space:]]*:/d'")))
-    (org-mode)))
+(defun cashpw/pandoc-convert-markdown-to-org (beg end)
+  "Convert the current region (or buffer) from Markdown to Org-mode using Pandoc."
+  (interactive (if (use-region-p)
+                   (list (region-beginning) (region-end))
+                 (list (point-min) (point-max))))
+  (let ((pandoc (executable-find "pandoc")))
+    (if (not pandoc)
+        (error "Pandoc not found. Please install it to use this command")
+      (shell-command-on-region beg end
+                               (concat
+                                "pandoc -f markdown -t org --wrap=preserve "
+                                ;; Remove :PROPERTIES: drawers beneath headings
+                                "| sed -E '/^[[:space:]]*:/d'")
+                               nil t)
+      ;; If we converted the whole buffer, switch the major mode to Org
+      (unless (use-region-p)
+        (org-mode)))))
 
 (defun cashpw/pandoc-cli (command)
   (let ((pandoc-command (format "pandoc %s" command)))
-    (message "Running %s" pandoc-command)
     (shell-command-to-string pandoc-command)))
 
 (defun cashpw/pandoc-convert (text source-format target-format)
@@ -3477,6 +3484,14 @@ word count of the response."
   ((backend gptel-gemini) prompts)
   "Add search ability."
   (plist-put (cl-call-next-method) :tools (append '(:google_search ()))))
+
+(cl-defmethod gptel--request-data :around ((backend gptel-gemini) prompts)
+  "Add search ability ONLY if no other tools are active to avoid API errors."
+  (let* ((data (cl-call-next-method)))
+    ;; Only add Search if no custom functions are already defined
+    (if (null (plist-get data :tools))
+        (plist-put data :tools [(:google_search ())])
+      data)))
 
 (defun cashpw/gptel-context-add-file-attachment ()
   "Add context to gptel in a DWIM fashion."
@@ -6104,22 +6119,26 @@ The exporting happens only when Org Capture is not in progress."
      (s-split "\n" grep-result 'omit-nulls))))
 
 (defun cashpw/org-files-and-filetags-with-tag (tag directory)
-  "Return list of org files tagged with TAG in DIRECTORY and their filetags."
-  (let ((grep-result
-         ;; Outputs <filepath> <tags>
-         ;; For example: /tmp/foo.org :cats:
-         (shell-command-to-string
-          (concat
-           (format "rg --max-count=1 '^#\\+filetags:.*:%s:' %s/*.org"
-                   tag
-                   (directory-file-name directory))
-           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
-    (--map
-     (cl-destructuring-bind
-         (file filetags)
-         (s-split " " it 'omit-nulls)
-       (cons file (s-split ":" filetags 'omit-nulls)))
-     (s-split "\n" grep-result 'omit-nulls))))
+  "Return list of org files tagged with TAG in DIRECTORY and their filetags.
+Gracefully returns nil if no org files are found."
+  ;; 1. Guard clause: Only execute if directory exists and contains .org files
+  (when (and (file-directory-p directory)
+             (directory-files directory nil "\\.org\\'"))
+    (let ((grep-result
+           ;; Outputs <filepath>\t<tags>
+           ;; For example: /tmp/foo.org:cats:
+           (shell-command-to-string
+            (format "rg --max-count=1 --max-depth=1 -g '*.org' '^#\\+filetags:.*:%s:' %s | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1\t\\2/'"
+                    tag
+                    ;; 2. Secure the directory path against shell injection and spaces
+                    (shell-quote-argument (directory-file-name directory))))))
+      (--map
+       (cl-destructuring-bind
+           (file filetags)
+           ;; 3. Split by literal tab instead of space to handle filenames containing spaces
+           (s-split "\t" it 'omit-nulls)
+         (cons file (s-split ":" filetags 'omit-nulls)))
+       (s-split "\n" grep-result 'omit-nulls)))))
 
 (defun cashpw/org-files-with-tag (tag directory)
   "Return list of org files in DIRECTORY tagged (filetag) with TAG."
@@ -6416,7 +6435,7 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
       (goto-char point-or-marker))
     (org-insert-todo-heading-respect-content)
     (insert text)
-    (shut-up
+    (quiet!
       (when priority
         (org-priority priority))
       (when effort
@@ -9961,7 +9980,7 @@ See `org-clock-special-range' for KEY."
                 (org-mode)
                 (org-insert-heading)
                 (condition-case nil
-                    (shut-up
+                    (quiet!
                       (when default
                         (org-schedule nil default))
                       (org-schedule nil))
@@ -9978,7 +9997,7 @@ See `org-clock-special-range' for KEY."
                 (org-mode)
                 (org-insert-heading)
                 (condition-case nil
-                    (shut-up
+                    (quiet!
                       (when default
                         (org-deadline nil default))
                       (org-deadline nil))
@@ -10901,7 +10920,7 @@ All args are passed to `org-roam-node-read'."
 ;;                       (let ((file-export-start-time (current-time))
 ;;                             (roam-file-buffer (find-file-noselect file-path))
 ;;                             (start-time (current-time)))
-;;                         (shut-up
+;;                         (quiet!
 ;;                           (when (= 0 (% file-index 10))
 ;;                             ;; (message "[cashpw] fix cannot redirect stderr too many open files")
 ;;                             ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
@@ -11117,7 +11136,7 @@ Note that only files tagged \"public\" will be exported."
                   (lambda (file-path)
                     (let ((file-export-start-time (current-time))
                           (note-buffer (find-file-noselect file-path)))
-                      (shut-up
+                      (quiet!
                         (unwind-protect
                             (with-current-buffer note-buffer
                               (org-transclusion-remove-all)

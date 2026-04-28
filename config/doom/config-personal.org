@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-03-16 Mon 15:54]
+:LAST_MODIFIED: [2026-04-10 Fri 14:31]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Emacs Config: Personal
@@ -2288,7 +2288,9 @@ The [[github:doomemacs/doomemacs/tree/master/templates][default configuration fi
 #+begin_src emacs-lisp
 :input
 ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
-chinese
+(chinese
+ +rime
+ +childframe)
 ;;japanese
 ;;layout            ; auie,ctsrnm is the superior home row
 #+end_src
@@ -2729,10 +2731,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/machine-p 'work-laptop)
-                      ;; Laptop has a different DPI
-                      28
-                    14)))
+            :size 14))
 #+end_src
 
 *** Ligatures
@@ -2800,6 +2799,27 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
 ;;     :list_property "::"
 ;;     :em_dash       "---"
 ;;     :ellipsis      "..."))
+#+end_src
+
+*** Language
+**** Chinese
+***** =cnfonts=
+****** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(when (cashpw/machine-p 'personal)
+  (package! cnfonts))
+#+end_src
+
+****** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(when (cashpw/machine-p 'personal)
+  (use-package! cnfonts
+    :custom
+    (cnfonts-profiles '("universal"))
+    :custom
+    (cnfonts-enable)))
 #+end_src
 
 ** Indentation
@@ -2906,12 +2926,12 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, `
   (defun cashpw/asana--set-scheduled (_)
     "Set scheduled after syncing tasks."
     (when-let ((deadline-time (org-get-deadline-time (point))))
-      (shut-up (org-schedule nil deadline-time))))
+      (quiet! (org-schedule nil deadline-time))))
   ;; (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-scheduled)
 
   (defun cashpw/asana--set-priority (_)
     "Set priority after syncing tasks."
-    (shut-up (org-priority org-priority-default)))
+    (quiet! (org-priority org-priority-default)))
   (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-priority)
 
   (defun cashpw/asana--set-category (task)
@@ -3201,7 +3221,7 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 
 #+RESULTS:
 
-*** WWWを見る (w3m) :disabled:
+*** WWW を見る (w3m) :disabled:
 
 #+begin_src emacs-lisp :tangle packages-personal.el
 ;; (package! w3m)
@@ -3399,9 +3419,6 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
 (after!
   emacs-everywhere
   (setq
-   emacs-everywhere-paste-command
-   (list "wtype" "-M" "Ctrl" "-P" "v" "-m" "Ctrl" "-p" "v")
-   emacs-everywhere-copy-command (list "sh" "-c" "wl-copy < %f")
    emacs-everywhere-org-export-options
    "#+property: header-args :exports both
 ,#+options: toc:nil ':nil -:nil <:nil\n"
@@ -3410,6 +3427,13 @@ Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
      ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
      "--to"
      "org"))
+  (add-to-list
+   'emacs-everywhere-system-configs
+   '((wayland . sway:wlroots)
+     :focus-command ("swaymsg" "[con_id=%w]" "focus")
+     :paste-command ("wtype" "-M" "Ctrl" "-P" "v" "-p" "v")
+     :info-function emacs-everywhere--app-info-linux-sway)
+   'append)
   (--each
       '( ;; Google issue tracker
         "Buganizer"
@@ -4135,27 +4159,26 @@ https://pandoc.org/
 *** Helper functions
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/pandoc--convert-buffer-from-markdown-to-org-in-place ()
-  "Converts the current buffer to org-mode in place."
-  (interactive)
-  (let ((buffer-content (buffer-string))
-        (tmp-file
-         (format "/tmp/%s.md" (format-time-string "%s" (current-time)))))
-    (with-temp-buffer
-      (insert buffer-content)
-      (write-file tmp-file))
-    (erase-buffer)
-    (insert
-     (shell-command-to-string
-      (concat
-       (format "pandoc --wrap=none -f markdown -t org %s" tmp-file)
-       ;; Remove :PROPERTIES: drawers beneath headings
-       " | sed -E '/^[[:space:]]*:/d'")))
-    (org-mode)))
+(defun cashpw/pandoc-convert-markdown-to-org (beg end)
+  "Convert the current region (or buffer) from Markdown to Org-mode using Pandoc."
+  (interactive (if (use-region-p)
+                   (list (region-beginning) (region-end))
+                 (list (point-min) (point-max))))
+  (let ((pandoc (executable-find "pandoc")))
+    (if (not pandoc)
+        (error "Pandoc not found. Please install it to use this command")
+      (shell-command-on-region beg end
+                               (concat
+                                "pandoc -f markdown -t org --wrap=preserve "
+                                ;; Remove :PROPERTIES: drawers beneath headings
+                                "| sed -E '/^[[:space:]]*:/d'")
+                               nil t)
+      ;; If we converted the whole buffer, switch the major mode to Org
+      (unless (use-region-p)
+        (org-mode)))))
 
 (defun cashpw/pandoc-cli (command)
   (let ((pandoc-command (format "pandoc %s" command)))
-    (message "Running %s" pandoc-command)
     (shell-command-to-string pandoc-command)))
 
 (defun cashpw/pandoc-convert (text source-format target-format)
@@ -5124,6 +5147,14 @@ word count of the response."
   ((backend gptel-gemini) prompts)
   "Add search ability."
   (plist-put (cl-call-next-method) :tools (append '(:google_search ()))))
+
+(cl-defmethod gptel--request-data :around ((backend gptel-gemini) prompts)
+  "Add search ability ONLY if no other tools are active to avoid API errors."
+  (let* ((data (cl-call-next-method)))
+    ;; Only add Search if no custom functions are already defined
+    (if (null (plist-get data :tools))
+        (plist-put data :tools [(:google_search ())])
+      data)))
 
 (defun cashpw/gptel-context-add-file-attachment ()
   "Add context to gptel in a DWIM fashion."
@@ -8821,22 +8852,26 @@ The exporting happens only when Org Capture is not in progress."
      (s-split "\n" grep-result 'omit-nulls))))
 
 (defun cashpw/org-files-and-filetags-with-tag (tag directory)
-  "Return list of org files tagged with TAG in DIRECTORY and their filetags."
-  (let ((grep-result
-         ;; Outputs <filepath> <tags>
-         ;; For example: /tmp/foo.org :cats:
-         (shell-command-to-string
-          (concat
-           (format "rg --max-count=1 '^#\\+filetags:.*:%s:' %s/*.org"
-                   tag
-                   (directory-file-name directory))
-           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
-    (--map
-     (cl-destructuring-bind
-         (file filetags)
-         (s-split " " it 'omit-nulls)
-       (cons file (s-split ":" filetags 'omit-nulls)))
-     (s-split "\n" grep-result 'omit-nulls))))
+  "Return list of org files tagged with TAG in DIRECTORY and their filetags.
+Gracefully returns nil if no org files are found."
+  ;; 1. Guard clause: Only execute if directory exists and contains .org files
+  (when (and (file-directory-p directory)
+             (directory-files directory nil "\\.org\\'"))
+    (let ((grep-result
+           ;; Outputs <filepath>\t<tags>
+           ;; For example: /tmp/foo.org:cats:
+           (shell-command-to-string
+            (format "rg --max-count=1 --max-depth=1 -g '*.org' '^#\\+filetags:.*:%s:' %s | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1\t\\2/'"
+                    tag
+                    ;; 2. Secure the directory path against shell injection and spaces
+                    (shell-quote-argument (directory-file-name directory))))))
+      (--map
+       (cl-destructuring-bind
+           (file filetags)
+           ;; 3. Split by literal tab instead of space to handle filenames containing spaces
+           (s-split "\t" it 'omit-nulls)
+         (cons file (s-split ":" filetags 'omit-nulls)))
+       (s-split "\n" grep-result 'omit-nulls)))))
 
 (defun cashpw/org-files-with-tag (tag directory)
   "Return list of org files in DIRECTORY tagged (filetag) with TAG."
@@ -9160,7 +9195,7 @@ Optionally set the TODO's TEXT, PRIORITY, EFFORT, and START-TIME/END-TIME (INCLU
       (goto-char point-or-marker))
     (org-insert-todo-heading-respect-content)
     (insert text)
-    (shut-up
+    (quiet!
       (when priority
         (org-priority priority))
       (when effort
@@ -13231,7 +13266,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
                 (org-mode)
                 (org-insert-heading)
                 (condition-case nil
-                    (shut-up
+                    (quiet!
                       (when default
                         (org-schedule nil default))
                       (org-schedule nil))
@@ -13248,7 +13283,7 @@ They're not hooks. They're lists of functions which return non-nil to indicate m
                 (org-mode)
                 (org-insert-heading)
                 (condition-case nil
-                    (shut-up
+                    (quiet!
                       (when default
                         (org-deadline nil default))
                       (org-deadline nil))
@@ -14284,7 +14319,7 @@ Files are private by default. Files are only exported if they're tagged with =:p
 ;;                       (let ((file-export-start-time (current-time))
 ;;                             (roam-file-buffer (find-file-noselect file-path))
 ;;                             (start-time (current-time)))
-;;                         (shut-up
+;;                         (quiet!
 ;;                           (when (= 0 (% file-index 10))
 ;;                             ;; (message "[cashpw] fix cannot redirect stderr too many open files")
 ;;                             ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
@@ -14518,7 +14553,7 @@ Note that only files tagged \"public\" will be exported."
                   (lambda (file-path)
                     (let ((file-export-start-time (current-time))
                           (note-buffer (find-file-noselect file-path)))
-                      (shut-up
+                      (quiet!
                         (unwind-protect
                             (with-current-buffer note-buffer
                               (org-transclusion-remove-all)

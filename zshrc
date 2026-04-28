@@ -1,4 +1,4 @@
-if [[ -f /usr/local/google/home/cashweaver/is-cloudtop ]]; then
+if [[ -f /usr/local/google/home/cashweaver/is-cloudtop || -f /usr/local/google/home/cashweaver/is-work-laptop ]]; then
     IS_WORK=1
 else
     IS_WORK=0
@@ -9,6 +9,12 @@ if [[ $IS_WORK -eq 0 ]]; then
     eval $(keychain --eval --quiet ultracc)
 fi
 
+autoload -Uz edit-command-line
+zle -N edit-command-line
+bindkey '^x^e' edit-command-line
+bindkey -M vicmd 'v' edit-command-line
+
+source "$HOME/.config/zsh/config.zsh"
 source "$HOME/.config/zsh/packages.zsh"
 source "$HOME/.config/zsh/path.zsh"
 source "$HOME/.config/zsh/aliases.zsh"
@@ -21,5 +27,5 @@ else
     [[ -f "$HOME/.config/zsh/personal.zsh" ]] && source "$HOME/.config/zsh/personal.zsh"
 fi
 
-
 eval "$(starship init zsh)"
+
