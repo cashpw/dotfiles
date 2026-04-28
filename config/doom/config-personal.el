@@ -2082,9 +2082,6 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (after!
   emacs-everywhere
   (setq
-   emacs-everywhere-paste-command
-   (list "wtype" "-M" "Ctrl" "-P" "v" "-m" "Ctrl" "-p" "v")
-   emacs-everywhere-copy-command (list "sh" "-c" "wl-copy < %f")
    emacs-everywhere-org-export-options
    "#+property: header-args :exports both
 #+options: toc:nil ':nil -:nil <:nil\n"
@@ -2093,6 +2090,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
      ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
      "--to"
      "org"))
+  (add-to-list
+   'emacs-everywhere-system-configs
+   '((wayland . sway:wlroots)
+     :focus-command ("swaymsg" "[con_id=%w]" "focus")
+     :paste-command ("wtype" "-M" "Ctrl" "-P" "v" "-p" "v")
+     :info-function emacs-everywhere--app-info-linux-sway)
+   'append)
   (--each
       '( ;; Google issue tracker
         "Buganizer"
