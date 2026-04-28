@@ -23,6 +23,7 @@ alias pn='bash ~/.scripts/sync/pull_push_notes.sh'
 
 # Editor
 alias e='emacsclient -t -a ""'
+alias doom="~/.config/emacs/bin/doom"
 
 # Applications
 ## Fabric

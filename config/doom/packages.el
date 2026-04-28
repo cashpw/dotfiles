@@ -49,6 +49,7 @@
 (defun cashpw/error (error-message &rest args)
   (error
    "[cashpw %s] %s"
+   (format-time-string "%F %T%Z")
    (apply
     #'format
     error-message
@@ -134,33 +135,26 @@ https://akrl.sdf.org/#orgc15a10d"
    cashpw/path--config-dir)
   "Full path to Emacs configuration files.")
 
-(defcustom
-  cashpw/personal-packages-loaded-p
-  nil
+(defcustom cashpw/personal-packages-loaded-p nil
   "Non-nil if my packages have finished loading."
   :group 'cashpw
   :type 'boolean)
 (defvar cashpw/personal-packages-loaded-hooks '()
   "Hooks to run after we finish loading personal packages.")
-(setq
- cashpw/personal-packages-loaded-p (cashpw/load
-                                    (format
-                                     "%s/packages-personal.el"
-                                     cashpw/path--emacs-config-dir)))
+;; Always load personal packages
+(setq cashpw/personal-packages-loaded-p
+      (cashpw/load
+       (format "%s/packages-personal.el" cashpw/path--emacs-config-dir)))
 (run-hooks 'cashpw/personal-packages-loaded-hooks)
 
 (when (cashpw/machine-p 'work-cloudtop)
-  (defcustom
-    cashpw/work-packages-loaded-p
-    nil
+  (defcustom cashpw/work-packages-loaded-p nil
     "Non-nil if my packages have finished loading."
     :group 'cashpw
     :type 'boolean)
-(defvar cashpw/work-packages-loaded-hooks '()
-  "Hooks to run after we finish loading work packages.")
-  (setq
-   cashpw/work-packages-loaded-p (cashpw/load
-                                  (format
-                                   "%s/packages-work.el"
-                                   cashpw/path--emacs-config-dir))))
-(run-hooks 'cashpw/work-packages-loaded-hooks)
+  (defvar cashpw/work-packages-loaded-hooks '()
+    "Hooks to run after we finish loading work packages.")
+  (setq cashpw/work-packages-loaded-p
+        (cashpw/load
+         (format "%s/packages-work.el" cashpw/path--emacs-config-dir)))
+  (run-hooks 'cashpw/work-packages-loaded-hooks))

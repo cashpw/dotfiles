@@ -12,17 +12,17 @@ icons = "material-nf"
 sync = "\U000f04e6"
 sync_disabled = "\U000f04e8"
 
-[[block]]
-block = "packages"
-package_manager = ["dnf"]
-interval = 1800
-format = " $icon $dnf.eng(w:1) updates available "
-format_singular = " $icon One update available "
-format_up_to_date = ""
-[[block.click]]
-# shows dmenu with cached available updates. Any dmenu alternative should also work.
-button = "left"
-cmd = "dnf list -q --upgrades | tail -n +2 | rofi -dmenu"
+#[[block]]
+#block = "packages"
+#package_manager = ["dnf"]
+#interval = 1800
+#format = " $icon $dnf.eng(w:1) updates available "
+#format_singular = " $icon One update available "
+#format_up_to_date = ""
+#[[block.click]]
+## shows dmenu with cached available updates. Any dmenu alternative should also work.
+#button = "left"
+#cmd = "dnf list -q --upgrades | tail -n +2 | rofi -dmenu"
 
 [[block]]
 block = "disk_space"

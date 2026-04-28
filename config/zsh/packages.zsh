@@ -13,8 +13,15 @@ antigen bundle zsh-users/zsh-syntax-highlighting
 antigen bundle zsh-users/zsh-history-substring-search
 bindkey "$terminfo[kcuu1]" history-substring-search-up
 bindkey "$terminfo[kcud1]" history-substring-search-down
+bindkey -M vicmd 'k' history-substring-search-up
+bindkey -M vicmd 'j' history-substring-search-down
 
 antigen bundle MichaelAquilina/zsh-you-should-use
+
+if [[ $IS_WORK -eq 1 ]]; then
+    # Add work-only bundles here
+    # antigen bundle some/work-plugin
+fi
 
 export NVM_DIR="$HOME/.config/nvm"
 antigen bundle lukechilds/zsh-nvm

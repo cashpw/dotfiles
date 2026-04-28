@@ -532,6 +532,12 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (or (cashpw/machine-p 'work-cloudtop) (cashpw/machine-p 'personal-phone))
   (use-package! centered-cursor-mode))
 
+(use-package! kkp
+  :ensure t
+  :config
+  (setq kkp-alt-modifier 'meta)
+  (global-kkp-mode +1))
+
 (after! helm
   (setq helm-posframe-border-width 8
         helm-posframe-min-width 120))
@@ -665,25 +671,14 @@ Invokes SUCCESS on success."
 
 (use-package!
     whisper
-  :config
-  (setq
-   whisper-install-directory (locate-user-emacs-file "./")
-   whisper--install-path
-   (concat
-    (expand-file-name (file-name-as-directory whisper-install-directory))
-    "whisper.cpp/")
-   whisper-server-mode 'local
-   ;; whisper-model "large-v3-turbo"
-   ;; whisper-model "medium"
-   ;; whisper-model "small"
-   whisper-model "base"
-   ;; whisper-quantize "q5_0"
-   whisper-language "en"
-   whisper-translate nil
-   whisper-use-threads (/ (num-processors) 2)
-   ;; whisper--ffmpeg-input-device "hw:0"
-   ;; whisper--ffmpeg-input-device "default"
-   whisper-return-cursor-to-start nil))
+  :custom
+  (whisper-install-directory (locate-user-emacs-file "./"))
+  (whisper-server-mode nil)
+  (whisper-server-baseurl "http://localhost:8642")
+  (whisper-model "base")
+  (whisper-language "en")
+  (whisper-use-threads (/ (num-processors) 2))
+  (whisper-return-cursor-to-start nil))
 
 (use-package! writeroom-mode
   :config
@@ -816,18 +811,18 @@ Invokes SUCCESS on success."
          for file in (org-mem-all-files) unless
          (or (s-ends-with-p "archive" file)
              (member
-              (f-expand file)
+              (expand-file-name file)
               (list
-               (f-expand (cashpw/path-calendar))
-               (f-expand (cashpw/path-todos))
-               (f-expand cashpw/path--reading-list))))
+               (expand-file-name (cashpw/path-calendar))
+               (expand-file-name (cashpw/path-todos))
+               (expand-file-name cashpw/path--reading-list))))
          when
          (seq-find
           (lambda
             (entry)
             (member (org-mem-entry-todo-state entry) org-not-done-keywords))
           (org-mem-entries-in file))
-         collect (f-expand file))
+         collect (expand-file-name file))
         (cashpw/notes-files-with-tag "journal"))
        (cashpw/notes-files-with-tag "contact"))))
     :desc "Reading List"
@@ -1000,11 +995,11 @@ Invokes SUCCESS on success."
    (:prefix
     ("n" . "Notes")
     :desc "Calendar"
-    :n "c" (cmd! (cashpw/open-file cashpw/path--personal-calendar))
-    :n "C"
+    :n "c"
     (cmd!
      (cashpw/open-file
       (s-lex-format "${cashpw/path--notes-dir}/commonplace.org")))
+    :n "C" (cmd! (cashpw/open-file cashpw/path--personal-calendar))
     :desc "Journal"
     :n "j"
     (cmd!
@@ -1618,10 +1613,7 @@ This be hooked to `projectile-after-switch-project-hook'."
 (setq
  doom-font (font-spec
             :family "Fira Code"
-            :size (if (cashpw/machine-p 'work-laptop)
-                      ;; Laptop has a different DPI
-                      28
-                    14)))
+            :size 14))
 
 (setq
  +ligatures-extra-symbols '(;; org Disabled in favor of org-modern
@@ -2097,9 +2089,6 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
 (after!
   emacs-everywhere
   (setq
-   emacs-everywhere-paste-command
-   (list "wtype" "-M" "Ctrl" "-P" "v" "-m" "Ctrl" "-p" "v")
-   emacs-everywhere-copy-command (list "sh" "-c" "wl-copy < %f")
    emacs-everywhere-org-export-options
    "#+property: header-args :exports both
 #+options: toc:nil ':nil -:nil <:nil\n"
@@ -2108,6 +2097,13 @@ Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
      ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
      "--to"
      "org"))
+  (add-to-list
+   'emacs-everywhere-system-configs
+   '((wayland . sway:wlroots)
+     :focus-command ("swaymsg" "[con_id=%w]" "focus")
+     :paste-command ("wtype" "-M" "Ctrl" "-P" "v" "-p" "v")
+     :info-function emacs-everywhere--app-info-linux-sway)
+   'append)
   (--each
       '( ;; Google issue tracker
         "Buganizer"
@@ -3815,9 +3811,9 @@ TODO")))))
     zotra
   :custom
   ;; (zotra-backend 'zotra-server)
-  ;; (zotra-local-server-directory (f-expand "~/.local/share/zotra-server"))
+  ;; (zotra-local-server-directory (expand-file-name "~/.local/share/zotra-server"))
   (zotra-backend 'translation-server)
-  (zotra-local-server-directory (f-expand "~/third-party/translation-server"))
+  (zotra-local-server-directory (expand-file-name "~/third-party/translation-server"))
   (zotra-url-retrieve-timeout 30)
   (zotra-use-curl t)
   (zotra-default-bibliography cashpw/path--notes-bibliography)
@@ -6123,22 +6119,26 @@ The exporting happens only when Org Capture is not in progress."
      (s-split "\n" grep-result 'omit-nulls))))
 
 (defun cashpw/org-files-and-filetags-with-tag (tag directory)
-  "Return list of org files tagged with TAG in DIRECTORY and their filetags."
-  (let ((grep-result
-         ;; Outputs <filepath> <tags>
-         ;; For example: /tmp/foo.org :cats:
-         (shell-command-to-string
-          (concat
-           (format "rg --max-count=1 '^#\\+filetags:.*:%s:' %s/*.org"
-                   tag
-                   (directory-file-name directory))
-           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
-    (--map
-     (cl-destructuring-bind
-         (file filetags)
-         (s-split " " it 'omit-nulls)
-       (cons file (s-split ":" filetags 'omit-nulls)))
-     (s-split "\n" grep-result 'omit-nulls))))
+  "Return list of org files tagged with TAG in DIRECTORY and their filetags.
+Gracefully returns nil if no org files are found."
+  ;; 1. Guard clause: Only execute if directory exists and contains .org files
+  (when (and (file-directory-p directory)
+             (directory-files directory nil "\\.org\\'"))
+    (let ((grep-result
+           ;; Outputs <filepath>\t<tags>
+           ;; For example: /tmp/foo.org:cats:
+           (shell-command-to-string
+            (format "rg --max-count=1 --max-depth=1 -g '*.org' '^#\\+filetags:.*:%s:' %s | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1\t\\2/'"
+                    tag
+                    ;; 2. Secure the directory path against shell injection and spaces
+                    (shell-quote-argument (directory-file-name directory))))))
+      (--map
+       (cl-destructuring-bind
+           (file filetags)
+           ;; 3. Split by literal tab instead of space to handle filenames containing spaces
+           (s-split "\t" it 'omit-nulls)
+         (cons file (s-split ":" filetags 'omit-nulls)))
+       (s-split "\n" grep-result 'omit-nulls)))))
 
 (defun cashpw/org-files-with-tag (tag directory)
   "Return list of org files in DIRECTORY tagged (filetag) with TAG."
@@ -7458,10 +7458,6 @@ Work in progress"
   "Add bibiliography to the current buffer."
   (interactive)
   (when (and (org-roam-file-p)
-             (not
-              (member
-               (buffer-file-name)
-               cashpw/org-roam--file-path-exceptions-to-add-bibliography))
              (not (cashpw/bibliography-present-in-buffer-p))
              (cashpw/citation-present-in-buffer-p))
     (save-excursion
@@ -7672,8 +7668,6 @@ This is an internal function."
     (cashpw/org-hugo-export-wim-to-md))
   (setq
    cashpw/org-hugo-replace-front-matter-with-title nil))
-
-(global-auto-revert-mode)
 
 (defun cashpw/revert-file (filename)
   "Revert FILENAME."
@@ -7908,6 +7902,21 @@ SCHEDULED: %(org-insert-time-stamp (time-add (date-to-time \"%<%Y-%m-%d> 05:00:0
   (interactive)
   (cashpw/org-clocktable-by-category--week
    (time-subtract (current-time) (days-to-time 7))))
+
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto)
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
 
 (defun cashpw/org-noter-insert-selected-text-inside-note-content ()
   "Insert selected text in org-noter note.
@@ -8214,23 +8223,15 @@ Intended for use with `org-super-agenda' `:transformer'. "
     (org-todo-yesterday 'done)))
 
 (defun cashpw/org-reschedule-to-today-at-point ()
-  "Reschedule heading at point to today. Keep duration and repeater."
+  "Reschedule heading at point to today. Keep time, duration, and repeater."
   (interactive)
-  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED"))
-             (scheduled-time-string-without-year-month-day
-              (replace-regexp-in-string
-               "[0-9]\+-[0-9]\\{2\\}-[0-9]\\{2\\}"
-               ""
-               scheduled-time-string)))
-    (cl-destructuring-bind
-        (_ _ _ today-day today-month today-year _ _ _) (decode-time (current-time))
-      (org-schedule
-       nil
-       (format "%s-%s-%s%s"
-               today-year
-               today-month
-               today-day
-               scheduled-time-string-without-year-month-day)))))
+  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED")))
+    (let ((new-time-string
+           (replace-regexp-in-string
+            "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\(?: [A-Za-z]+\\)?"
+            (format-time-string "%Y-%m-%d %a")
+            scheduled-time-string)))
+      (org-schedule nil new-time-string))))
 
 (defun cashpw/org-agenda-reschedule-to-today ()
   "Reschedule event at point to today."
@@ -9658,6 +9659,17 @@ See `org-clock-special-range' for KEY."
    org-priority-default 2
    org-priority-lowest 4))
 
+(defun cashpw/org-schedule-remove-unscheduled (arg _)
+  "Remove the \"unscheduled\" tag from scheduled headings. "
+  ;; Do not message if the intent was to *remove* the schedule.
+  (unless (equal arg '(4))
+    (save-excursion
+      (org-back-to-heading t)
+      (when (org-get-scheduled-time (point))
+        (org-set-tags (seq-difference (org-get-tags nil 'local) '("unscheduled")))))))
+
+(advice-add 'org-schedule :after #'cashpw/org-schedule-remove-unscheduled)
+
 (after! org
   :config
   (setq
@@ -9702,27 +9714,36 @@ See `org-clock-special-range' for KEY."
                             ("HOLD" . +org-todo-onhold)
                             ("PROJ" . +org-todo-project))))
 
-(defun run-on-todo-state-change--INPROGRESS ()
-  "Handle inprogress behavior."
+(defun cashpw/org--on-state-change-to-inprogress ()
+  "Things to do when I mark a headline as inprogress."
   (when (not (cashpw/org-categorized-p))
     (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  ;; Commented out because this is handed by the specific run-on-todo-... functions
+  ;; (org-clock-in)
+  )
+(defun run-on-todo-state-change--INPROGRESS ()
+  "Handle inprogress behavior."
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in))
 
 (defun run-on-todo-state-change--INPROGRESS-AT ()
   "Handle \"INPROGRESS-AT\" behavior."
   (search-backward "INPROGRESS-AT")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in nil (org-read-date nil 'to-time)))
 
 (defun run-on-todo-state-change--INPROGRESS-FROM-LAST ()
   "Handle \"INPROGRESS-FROM-LAST\" behavior."
   (search-backward "INPROGRESS-FROM-LAST")
   (replace-match "INPROGRESS")
-  (when (not (cashpw/org-categorized-p))
-    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  (cashpw/org--on-state-change-to-inprogress)
   (org-clock-in '(64)))
+
+(defun run-on-todo-state-change--BLOCKED ()
+  "Handle a todo being set to \"BLOCKED\"."
+  (org-clock-out-if-current)
+  (org-add-log-setup 'state "BLOCKED" (org-get-todo-state) 'note))
 
 (defun run-on-todo-state-change--PROJ ()
   "Handle a todo being set to \"PROJ\"."

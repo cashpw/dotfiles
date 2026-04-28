@@ -1,6 +1,13 @@
 .uuid
 *_brightness.txt
 config/doom/foo.md
+
+# Work files
+config/doom/init-work.el
 config/doom/config-work.el
 config/doom/config-work.org
 config/doom/packages-work.el
+config/systemd/user/default.target.wants/shpool.service
+
+# zsh
+*.zwc

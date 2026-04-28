@@ -15,7 +15,7 @@ set $up k
 set $right l
 # Your preferred terminal emulator
 # Recommends: foot
-set $term foot
+set $term kitty --single-instance
 # Your preferred application launcher
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
@@ -91,6 +91,7 @@ bindsym $mod+c exec rofi -show calc -modi calc -no-show-match -no-sort
 #
     # Make the current focus fullscreen
     bindsym $mod+f fullscreen
+    #bindsym $mod+Shift+f fullscreen toggle global
 
     # Toggle the current focus between tiling and floating mode
     bindsym $mod+Shift+space floating toggle
@@ -150,7 +151,7 @@ bar {
   font pango:"Fira Code" 10, "FiraCode Nerd Font" 10
   #font pango:Source Code Pro 8
 
-  status_command i3status-rs ~/.config/i3status-rs/config.toml
+  status_command /home/cashweaver/.cargo/bin/i3status-rs /home/cashweaver/.config/i3status-rs/config.toml
   #status_command ~/.config/polybar/launch.sh
 }
 
@@ -260,18 +261,18 @@ bindsym $mod+Delete mode "$mode_system"
 
 set $mode_brightness Brightness: (↑/↓) ±5%, (1) 10%, (2) 20%, ..., (0) 100%
 mode "$mode_brightness" {
-  bindsym Down exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 5%-"
-  bindsym Up exec --no-startup-id "brightnessctl -d amdgpu_bl1 set +5%"
-  bindsym 1 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 10%"
-  bindsym 2 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 20%"
-  bindsym 3 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 30%"
-  bindsym 4 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 40%"
-  bindsym 5 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 50%"
-  bindsym 6 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 60%"
-  bindsym 7 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 70%"
-  bindsym 8 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 80%"
-  bindsym 9 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 90%"
-  bindsym 0 exec --no-startup-id "brightnessctl -d amdgpu_bl1 set 100%"
+  bindsym Down exec --no-startup-id "brightnessctl --device=* set 5%-"
+  bindsym Up exec --no-startup-id "brightnessctl --device=* set +5%"
+  bindsym 1 exec --no-startup-id "brightnessctl --device=* set 10%"
+  bindsym 2 exec --no-startup-id "brightnessctl --device=* set 20%"
+  bindsym 3 exec --no-startup-id "brightnessctl --device=* set 30%"
+  bindsym 4 exec --no-startup-id "brightnessctl --device=* set 40%"
+  bindsym 5 exec --no-startup-id "brightnessctl --device=* set 50%"
+  bindsym 6 exec --no-startup-id "brightnessctl --device=* set 60%"
+  bindsym 7 exec --no-startup-id "brightnessctl --device=* set 70%"
+  bindsym 8 exec --no-startup-id "brightnessctl --device=* set 80%"
+  bindsym 9 exec --no-startup-id "brightnessctl --device=* set 90%"
+  bindsym 0 exec --no-startup-id "brightnessctl --device=* set 100%"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"
@@ -310,11 +311,11 @@ bindsym $mod+b mode "$mode_brightness"
 # bindsym $mod+b mode "$mode_brightness"
 
 # Screenshots
-set $mode_screenshot Screenshot: (s) save, (c) clipboard, (o) OCR
+set $mode_screenshot Screenshot: (s) snipit, (c) clipboard, (o) OCR
 mode "$mode_screenshot" {
-  bindsym s exec --no-startup-id bash /home/cashpw/.scripts/screenshot/save.sh, mode "default"
-  bindsym o exec --no-startup-id bash /home/cashpw/.scripts/ocr/copy.sh, mode "default"
-  bindsym c exec --no-startup-id bash /home/cashpw/.scripts/screenshot/clipboard.sh, mode "default"
+  bindsym s exec --no-startup-id bash ~/.scripts/screenshot/snipit.sh, mode "default"
+  bindsym o exec --no-startup-id bash ~/.scripts/ocr/copy.sh, mode "default"
+  bindsym c exec --no-startup-id bash ~/.scripts/screenshot/clipboard.sh, mode "default"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"
@@ -334,26 +335,41 @@ mode "$mode_sound" {
   bindsym Shift+s exec "playerctl --all-players shuffle Toggle"
   bindsym k exec "playerctl --all-players play-pause"
 
-  bindsym Down exec "bash ~/.scripts/sound/set_volume.sh 2%-"
-  bindsym Up exec "bash ~/.scripts/sound/set_volume.sh 2%+"
-  bindsym 1 exec "bash ~/.scripts/sound/set_volume.sh 10%"
-  bindsym 2 exec "bash ~/.scripts/sound/set_volume.sh 20%"
-  bindsym 3 exec "bash ~/.scripts/sound/set_volume.sh 30%"
-  bindsym 4 exec "bash ~/.scripts/sound/set_volume.sh 40%"
-  bindsym 5 exec "bash ~/.scripts/sound/set_volume.sh 50%"
-  bindsym 6 exec "bash ~/.scripts/sound/set_volume.sh 60%"
-  bindsym 7 exec "bash ~/.scripts/sound/set_volume.sh 70%"
-  bindsym 8 exec "bash ~/.scripts/sound/set_volume.sh 80%"
-  bindsym 9 exec "bash ~/.scripts/sound/set_volume.sh 90%"
-  bindsym 0 exec "bash ~/.scripts/sound/set_volume.sh 100%"
-  bindsym m exec "bash ~/.scripts/sound/set_volume.sh mute"
-  bindsym Shift+m exec "bash ~/.scripts/sound/set_volume.sh unmute"
+  bindsym Down exec "bash ~/.scripts/sound/volume.sh down 2"
+  bindsym Up exec "bash ~/.scripts/sound/volume.sh up 2"
+  bindsym 1 exec "bash ~/.scripts/sound/volume.sh set 10"
+  bindsym 2 exec "bash ~/.scripts/sound/volume.sh set 20"
+  bindsym 3 exec "bash ~/.scripts/sound/volume.sh set 30"
+  bindsym 4 exec "bash ~/.scripts/sound/volume.sh set 40"
+  bindsym 5 exec "bash ~/.scripts/sound/volume.sh set 50"
+  bindsym 6 exec "bash ~/.scripts/sound/volume.sh set 60"
+  bindsym 7 exec "bash ~/.scripts/sound/volume.sh set 70"
+  bindsym 8 exec "bash ~/.scripts/sound/volume.sh set 80"
+  bindsym 9 exec "bash ~/.scripts/sound/volume.sh set 90"
+  bindsym 0 exec "bash ~/.scripts/sound/volume.sh set 100"
+  bindsym m exec "bash ~/.scripts/sound/volume.sh mute"
+  bindsym Shift+m exec "bash ~/.scripts/sound/volume.sh unmute"
 
   # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
 bindsym $mod+s mode "$mode_sound"
+
+# ================================================
+# Laptop
+# ================================================
+
+#bindswitch --locked --reload lid:on exec ~/.scripts/utility/lock.sh && systemctl suspend
+
+# Clamshell Mode / Closed Display Configuration
+set $laptop eDP-1
+bindswitch --reload --locked lid:on output $laptop disable
+bindswitch --reload --locked lid:off output $laptop enable
+
+# Automatic monitor management
+# https://github.com/emersion/kanshi/issues/43#issuecomment-531679213
+exec_always "pkill kanshi; exec kanshi"
 
 # ================================================
 # Output
@@ -363,7 +379,7 @@ output * bg #1d1f21 solid_color
 
 output eDP-1 {
   resolution 2880x1920@60Hz
-  scale 1.6
+  scale 1.0
 }
 
 # ================================================
@@ -376,18 +392,21 @@ for_window [class=".*"] border none
 # Applications
 # ================================================
 
-# Firefox
-for_window [app_id="firefox" title="Firefox — Sharing Indicator"] {
-    floating enable
-}
+# Floating notifications
+for_window [app_id="firefox" title="Firefox — Sharing Indicator"] floating enable
+for_window [app_id="google-chrome" title="^$"] floating enable
+# for_window [app_id="google-chrome" title="Notification"] floating enable
+for_window [title="^Notifications$"] floating enable
 
 # Sway Notification Center
 bindsym $mod+Shift+n exec swaync-client -t -sw
 
 # apply mark for Xwayland and wayland native browser windows
+for_window [class="google-chrome"] mark Browser
 for_window [class="Chromium-browser"] mark Browser
 for_window [class="Brave-browser"] mark Browser
 for_window [class="firefox"]  mark Browser
+for_window [app_id="google-chrome"] mark Browser
 for_window [app_id="Chromium-browser"] mark Browser
 for_window [app_id="brave-browser"] mark Browser
 for_window [app_id="firefox"] mark Browser
@@ -396,9 +415,28 @@ for_window [app_id="firefox"] mark Browser
 for_window [con_mark="Browser"] {
     inhibit_idle fullscreen
 }
-assign [app_id="firefox"]: workspace number 10
+
+assign [app_id="google-chrome"]: workspace number 10
 
 bindsym $mod+Return exec $term
+
+# No persistence
+#bindsym $mod+Shift+Return exec $term ssh cashweaver.c.googlers.com
+
+# Not working: cannot combine kitty with shpool
+#bindsym $mod+Shift+Return exec $term kitty +kitten ssh mycloudtop-shpool
+
+# Okay; not as persistent as I'd like
+bindsym $mod+Shift+Return exec $term ssh mycloudtop-shpool
+
+# Slow and cannot gcert
+#bindsym $mod+Shift+Return exec $term gmosh cashweaver.c.googlers.com
+
+# Tmux, which is much more than I want given I already work within a tiling window manager
+#bindsym $mod+Shift+Return exec $term -e tmx2 new-session -A -s work && ssh cashweaver.c.googlers.com
+
+
+
 bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 
 # ================================================
@@ -406,9 +444,9 @@ bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 # ================================================
 
 exec input-remapper-control --command autoload
-
-exec emacs
-exec firefox
+exec mako
+exec kitty
+exec google-chrome
 exec swaync
 exec autotiling-rs
 exec fcitx5 -d -r
