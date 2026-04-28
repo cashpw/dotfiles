@@ -32,23 +32,12 @@
   (cashpw/log--internal (apply #'format format-string args) "INFO"))
 (defalias 'cashpw/log 'cashpw/log-info)
 
-<<<<<<< HEAD
-(doom!
- :input
- ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
- (chinese
-  +rime
-  +childframe)
- ;;japanese
- ;;layout            ; auie,ctsrnm is the superior home row
-=======
 (cl-defun
     cashpw/log-to-buffer-info
     (buffer format-string &rest args)
   "Log formatted, with ARGS, FORMAT-STRING with state of \"INFO\" to BUFFER."
   (cashpw/log--internal (apply #'format format-string args) "INFO" buffer))
 (defalias 'cashpw/log-to-buffer 'cashpw/log-to-buffer-info)
->>>>>>> 3aaaac2e893c363bcbf248ffffddf485956833d9
 
 (cl-defun
     cashpw/log-debug
