@@ -377,10 +377,14 @@ exec_always "pkill kanshi; exec kanshi"
 
 output * bg #1d1f21 solid_color
 
-output eDP-1 {
-  resolution 2880x1920@60Hz
-  scale 1.0
-}
+# eDP-1 is now managed via kanshi profiles
+#output eDP-1 {
+#  resolution 2880x1920@60Hz
+#  scale 1.0
+#}
+
+# Include environment-specific configurations
+include ~/.config/sway/config.d/autostart-env.conf
 
 # ================================================
 # Appearance
@@ -435,8 +439,6 @@ bindsym $mod+Shift+Return exec $term ssh mycloudtop-shpool
 # Tmux, which is much more than I want given I already work within a tiling window manager
 #bindsym $mod+Shift+Return exec $term -e tmx2 new-session -A -s work && ssh cashweaver.c.googlers.com
 
-
-
 bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 
 # ================================================
@@ -446,7 +448,6 @@ bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 exec input-remapper-control --command autoload
 exec mako
 exec kitty
-exec google-chrome
 exec swaync
 exec autotiling-rs
 exec fcitx5 -d -r

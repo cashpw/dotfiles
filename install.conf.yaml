@@ -49,3 +49,7 @@
     command: bash check_programs.sh
     description: Checking for expected programs.
     stdout: true
+  -
+    command: bash scripts/config/setup_env.sh
+    description: Setting up environment-specific configurations.
+    stdout: true

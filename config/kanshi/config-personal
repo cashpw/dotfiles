@@ -1,0 +1,15 @@
+profile work-dual-vertical {
+  output eDP-1 disable
+  output "Lenovo Group Limited T27QD-40 VNAC79W0" mode 2560x1440 position 0,0
+  output "Lenovo Group Limited T27QD-40 VNAC79Y3" mode 2560x1440 position 1440,0
+}
+
+profile home-dual-vertical {
+  output eDP-1 disable
+  output "Dell Inc. S2719DGF BHM0CY2" mode 2560x1440 position 0,0 transform 270
+  output "Dell Inc. S2719DGF B8S0CY2" mode 2560x1440 position 1440,0 transform 90
+}
+
+profile laptop-only {
+  output eDP-1 enable scale 2.0
+}
