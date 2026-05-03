@@ -114,6 +114,9 @@ bindsym $mod+c exec rofi -show calc -modi calc -no-show-match -no-sort
     # If there are multiple scratchpad windows, this command cycles through them.
     bindsym $mod+minus scratchpad show
 
+# Include environment-specific configurations (must be before bar block)
+include ~/.config/sway/config.d/env.conf
+
 # Include configs from 3 locations:
 #  - /usr/share/sway/config.d
 #  - /etc/sway/config.d
@@ -151,7 +154,7 @@ bar {
   font pango:"Fira Code" 10, "FiraCode Nerd Font" 10
   #font pango:Source Code Pro 8
 
-  status_command /home/cashweaver/.cargo/bin/i3status-rs /home/cashweaver/.config/i3status-rs/config.toml
+  status_command $status_command
   #status_command ~/.config/polybar/launch.sh
 }
 
@@ -382,9 +385,6 @@ output * bg #1d1f21 solid_color
 #  resolution 2880x1920@60Hz
 #  scale 1.0
 #}
-
-# Include environment-specific configurations
-include ~/.config/sway/config.d/autostart-env.conf
 
 # ================================================
 # Appearance

@@ -11,3 +11,6 @@ config/systemd/user/default.target.wants/shpool.service
 
 # zsh
 *.zwc
+/config/sway/config.d/env.conf
+/config/sway/config.d/autostart-env.conf
+/config/kanshi/config
