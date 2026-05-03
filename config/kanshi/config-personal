@@ -11,5 +11,5 @@ profile home-dual-vertical {
 }
 
 profile laptop-only {
-  output eDP-1 enable scale 2.0
+  output eDP-1 enable scale 1.6
 }
