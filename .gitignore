@@ -14,3 +14,6 @@ config/systemd/user/timers.target.wants/cosmos-*
 
 # zsh
 *.zwc
+/config/sway/config.d/env.conf
+/config/sway/config.d/autostart-env.conf
+/config/kanshi/config

@@ -1,0 +1,18 @@
+[
+  {
+    "command": "-input.submit",
+    "key": "enter"
+  },
+  {
+    "command": "input.submit",
+    "key": "ctrl+enter"
+  },
+  {
+    "command": "-input.newline",
+    "key": "ctrl+enter"
+  },
+  {
+    "command": "input.newline",
+    "key": "enter"
+  }
+]
