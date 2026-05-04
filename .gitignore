@@ -8,6 +8,9 @@ config/doom/config-work.el
 config/doom/config-work.org
 config/doom/packages-work.el
 config/systemd/user/default.target.wants/shpool.service
+config/systemd/user/cosmos-*
+config/systemd/user/default.target.wants/cosmos-*
+config/systemd/user/timers.target.wants/cosmos-*
 
 # zsh
 *.zwc
