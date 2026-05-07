@@ -27,5 +27,7 @@ else
     [[ -f "$HOME/.config/zsh/personal.zsh" ]] && source "$HOME/.config/zsh/personal.zsh"
 fi
 
+alias rwc='rw -r --gmosh -S --shpool_session "tty-$(basename $(tty))" cashweaver.c.googlers.com'
+
 eval "$(starship init zsh)"
 
