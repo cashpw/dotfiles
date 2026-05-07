@@ -124,16 +124,6 @@ format = " $icon{ $ssid|} "
 format_alt = " $icon ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $speed_up.eng(prefix:K) {$signal_strength $ssid|Wired connection} $ip $ipv6 "
 
 [[block]]
-block = "weather"
-autolocate = true
-autolocate_interval = "once"
-format = " $icon $weather $temp "
-format_alt = " {($location $icon_ffin $weather_verbose_ffin $temp_favg.eng(w:0), {$temp_fmin.eng(w:0)}-{$temp_fmax.eng(w:0)}, {$wind_fmin.eng(w:0)}-{$wind_fmax.eng(w:0)} m/s $direction_ffin, up $sunrise.datetime(f:'%R') down $sunset.datetime(f:'%R')|Forecast unavailable} "
-[block.service]
-name = "nws"
-units = "imperial"
-
-[[block]]
 block = "battery"
 
 [[block]]

@@ -1,7 +1,11 @@
-if [[ -f /usr/local/google/home/cashweaver/is-cloudtop || -f /usr/local/google/home/cashweaver/is-work-laptop ]]; then
-    IS_WORK=1
+if [[ -f /usr/local/google/home/cashweaver/is-cloudtop ]]; then
+  IS_WORK_CLOUDTOP=1
+  IS_WORK=1
+elif [[ -f /usr/local/google/home/cashweaver/is-work-laptop ]]; then
+  IS_WORK_LAPTOP=1
+  IS_WORK=1
 else
-    IS_WORK=0
+  IS_WORK=0
 fi
 
 if [[ $IS_WORK -eq 0 ]]; then
