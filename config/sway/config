@@ -430,8 +430,8 @@ bindsym $mod+Return exec $term
 # Not working: cannot combine kitty with shpool
 #bindsym $mod+Shift+Return exec $term kitty +kitten ssh mycloudtop-shpool
 
-# Okay; not as persistent as I'd like
-bindsym $mod+Shift+Return exec $term ssh mycloudtop-shpool
+# Optimized shpool connection with caching and auto-reconnect
+bindsym $mod+Shift+Return exec $term $HOME/.scripts-work/shpool-cloudtop.sh
 
 # Slow and cannot gcert
 #bindsym $mod+Shift+Return exec $term gmosh cashweaver.c.googlers.com
