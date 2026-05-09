@@ -164,6 +164,8 @@
 
 (package! gnuplot)
 
+(package! majutsu :recipe (:host github :repo "0WD0/majutsu"))
+
 (unpin! gptel)
 (unpin! gptel-quick)
 

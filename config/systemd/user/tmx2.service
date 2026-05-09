@@ -1,0 +1,12 @@
+[Unit]
+Description=Tmux2 Session
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/tmx2 new-session -d -s default
+ExecStop=/usr/bin/tmx2 kill-session -t default
+
+[Install]
+WantedBy=default.target

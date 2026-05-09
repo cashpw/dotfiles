@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-04-10 Fri 14:31]
+:LAST_MODIFIED: [2026-05-08 Fri 13:28]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Emacs Config: Personal
@@ -20,12 +20,24 @@ Allow search and replace actions to affect hidden text.
 ** Early packages
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-;; (setq straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+;; Fix recurrring static-when error (2026-05-08)
+(eval-and-compile
+  (unless (fboundp 'static-when)
+    (defmacro static-when (condition &rest body)
+      "Runtime/Compile-time fallback for missing static-when macro."
+      (declare (indent 1) (debug t))
+      (if (eval condition) `(progn ,@body) nil))))
+
+;; Prevent Emacs from trying to natively-compile transient in the background,
+;; which is often the source of the recurring breakage.
+(after! comp
+  (add-to-list 'native-comp-deferred-compilation-deny-list "transient"))
 #+end_src
 
 Activate some packages early to prevent errors.
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
+(require 'cl)
 (use-package! s
   :demand t)
 (use-package! dash
@@ -475,10 +487,11 @@ If STR is longer than MAX-LENGTH, return a substring of MAX-LENGTH with the last
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/grep (command-string callback)
   "Invoke grep with COMMAND-STRING and call CALLBACK with the results as a list."
-  (cashpw/async-shell-command-to-string
-   (format "grep %s" command-string)
-   (lambda (output)
-     (funcall callback (split-string output)))))
+  (split-string
+   (shell-command-to-string
+    (format
+     "grep %s"
+     command-string))))
 #+end_src
 
 *** =rgrep=
@@ -752,11 +765,11 @@ NAME determines variable names."
 [[https://gnu.support/gnu-emacs/emacs-lisp/Emacs-Lisp-number-to-words-clisp-and-number-to-words-functions-using-CLISP-to-get-cardinal-English-numbers.html][Source]]
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun number-to-words-clisp (n callback)
-  "Invoke clisp to get the written representation of N and call CALLBACK with the result."
-  (cashpw/async-shell-command-to-string
-   (format "clisp -q -norc -x '(format t \"~R\" %d)'" n)
-   callback))
+(defun number-to-words-clisp (n)
+  "Returns the cardinal English number representation, for example if N is 4, it would return \"four\""
+  (let* ((command (format "clisp -q -norc -x '(format t \"~R\" %d)'" n))
+         (lines (split-string (shell-command-to-string command) "\n")))
+    (car lines)))
 
 (defun number-to-words (n)
   "Return written number representation of N using CLISP and save to kill ring."
@@ -771,14 +784,13 @@ NAME determines variable names."
 *** =cashpw/url-get-title=
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/url-get-title (url callback)
-  "Fetch the title of URL and call CALLBACK with the result."
-  (cashpw/async-shell-command-to-string
+(defun cashpw/url-get-title (url)
+  "Return the title of URL."
+  (shell-command-to-string
    (concat
     "curl --silent --location \""
     url
-    "\" | grep '<title>' | sed 's/.*<title>\\(.*\\)<\\/title>.*/\\1/'")
-   callback))
+    "\" | grep '<title>' | sed 's/.*<title>\\(.*\\)<\\/title>.*/\\1/'")))
 #+end_src
 
 ** Packages
@@ -1078,7 +1090,7 @@ Invokes SUCCESS on success."
       :error
       (cl-function
        (lambda (&key error-thrown &allow-other-keys)
-         (message "Google Books error: %S" error-thrown)))))
+         (message "Google Books error: %S" error-thrown))))))
 
 (defun cashpw/google-books-select-isbn-and-add-citation (query)
   "Select ISBN from Google Books matching QUERY and add citation."
@@ -1448,6 +1460,9 @@ Doom Emacs provides =alert=.
    :desc "Go to TODO"
    :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
   (:prefix
+   ("j" . "jujutsu")
+   :desc "majutsu" :n "j" #'majutsu)
+  (:prefix
    ("l")
    :desc "gptel-send"
    :n
@@ -1510,19 +1525,23 @@ Doom Emacs provides =alert=.
    :n
    "y"
    (cmd!
-    (let ((buffer (get-buffer-create "*Gptel YouTube*"))
-          (url (read-string "YouTube URL: "
-                            (ignore-errors
-                              (current-kill 0 t)))))
-      (llm-prompts-prompt-extract-wisdom-yt
-       url
-       (lambda (prompt)
-         (with-current-buffer buffer
-           (org-mode)
-           (delete-region (point-min) (point-max))
-           (insert prompt)
-           (cashpw/gptel-send ""))
-         (display-buffer buffer)))))
+    (let ((buffer (get-buffer-create "*Gptel YouTube*")))
+      (with-current-buffer buffer
+        (org-mode)
+        (delete-region (point-min) (point-max))
+        ;; (insert
+        ;;  (format "\n** %s\n"
+        ;;          (with-temp-buffer
+        ;;            (org-mode)
+        ;;            (org-timestamp '(16) t)
+        ;;            (buffer-string))))
+        (insert
+         (llm-prompts-prompt-extract-wisdom-yt
+          (read-string "YouTube URL: "
+                       (ignore-errors
+                         (current-kill 0 t)))))
+        (cashpw/gptel-send ""))
+      (display-buffer buffer)))
    (:prefix
     ("C" . "Chain of thought")
     :desc "Basic"
@@ -4581,6 +4600,20 @@ This package adds =XOAuth2= authentication capabilities to =auth-source=.
 (use-package! gnuplot)
 #+end_src
 
+** Jujutsu (=jj=)
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! majutsu :recipe (:host github :repo "0WD0/majutsu"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! gnuplot)
+#+end_src
+
+
 ** Large language models (LLMs)
 
 *** Models
@@ -4707,19 +4740,18 @@ Example: https://www.youtube.com/watch?v=xzseFskewlE"
   (when (string-match ".*youtube.com\\/watch\\?.*v=\\([^&]*\\)\\(&.*\\)?" url)
     (match-string 1 url)))
 
-(defun cashpw/ytt-api-transcript (youtube-video-id callback)
-  "Fetch transcript of YOUTUBE-VIDEO-ID and call CALLBACK with the result."
-  (cashpw/async-shell-command-to-string
-   (format "youtube_transcript_api --format text %s" youtube-video-id)
-   callback))
+(defun cashpw/ytt-api-transcript (youtube-video-id)
+  "Return transcript of YOUTUBE-VIDEO-ID."
+  (shell-command-to-string
+   (format "youtube_transcript_api --format text %s" youtube-video-id)))
 
-(defun llm-prompts-prompt-extract-wisdom-yt (youtube-url callback)
-  "Fetch transcript for YOUTUBE-URL and call CALLBACK with the wisdom extraction prompt."
-  (cashpw/ytt-api-transcript
-   (cashpw/youtube--video-id-from-url youtube-url)
-   (lambda (transcript)
-     (funcall callback
-              (format "%s\n\n%s" transcript llm-prompts-prompt--summarize)))))
+(defun llm-prompts-prompt-extract-wisdom-yt (youtube-url)
+  "Return prompt."
+  (format "%s
+
+%s"
+          (cashpw/ytt-api-transcript (cashpw/youtube--video-id-from-url youtube-url))
+          llm-prompts-prompt--summarize))
 #+end_src
 
 **** Summarize (short)
@@ -9775,6 +9807,14 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
     "Enable insert mode when entering a note buffer."
     (evil-insert-state nil))
   (add-hook 'org-log-buffer-setup-hook #'cashpw/org--enable-insert-in-note-buffer))
+
+(defun cashpw/notes-open-file (filepath)
+  "Open notes file."
+  (interactive)
+  (let ((note-buffer (find-file-other-window filepath)))
+    ;; (with-current-buffer note-buffer
+    ;;   (goto-char (point-max)))
+    (pop-to-buffer note-buffer)))
 #+end_src
 
 **** Roam (=org-roam=)
