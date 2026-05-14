@@ -1,0 +1,10 @@
+#:schema https://docs.jj-vcs.dev/latest/config-schema.json
+
+[snapshot]
+auto-update-stale = true
+
+[ui]
+default-command = "log"
+
+[aliases]
+su = ["util", "exec", "--", "sh", "-c", "jj sync && jj upload && jj"]
