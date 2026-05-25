@@ -8,3 +8,4 @@ default-command = "log"
 
 [aliases]
 su = ["util", "exec", "--", "sh", "-c", "jj sync && jj upload && jj"]
+squash-cls = ["util", "exec", "--", "/usr/local/google/home/cashweaver/.config/jj/scripts/squash_cls.sh"]
