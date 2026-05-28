@@ -46,6 +46,11 @@ format = " $icon $mem_used_percents.eng(w:2) "
 #format_alt = " $icon_swap $swap_used_percents.eng(w:2) "
 
 [[block]]
+block = "custom"
+command = "~/.config/i3status-rs/cloudtop_stats.sh"
+interval = 60
+
+[[block]]
 block = "temperature"
 format = " $average "
 format_alt = " $icon $min min, $max max, $average avg "
