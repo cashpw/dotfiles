@@ -11,6 +11,8 @@ icons = "material-nf"
 [icons.overrides]
 sync = "\U000f04e6"
 sync_disabled = "\U000f04e8"
+memory = "RAM"
+cpu = "CPU"
 
 #[[block]]
 #block = "packages"

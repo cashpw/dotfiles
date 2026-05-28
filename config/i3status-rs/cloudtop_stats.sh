@@ -12,10 +12,9 @@ if [ $? -eq 0 ] && [ -n "$stats" ]; then
   ram=$(echo "$stats" | sed -n '1p')
   cpu=$(echo "$stats" | sed -n '2p')
   
-  # Print formatted output with Material Design icons
-  # U+F0150 (󰅐) for Cloud, U+F061A (󰘚) for Memory, U+F04BC (󰒼) for CPU
-  # No space between cloud and RAM icon as requested.
-  printf "\U000f0150\U000f061a %s%% \U000f04bc %s%%\n" "$ram" "$cpu"
+  # Print formatted output with Material Design icons and text
+  # U+F0150 (󰅐) for Cloud
+  printf "\U000f0150 RAM %s%% CPU %s%%\n" "$ram" "$cpu"
 else
   # U+F0150 (󰅐) for Cloud
   printf "\U000f0150 offline\n"
