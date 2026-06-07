@@ -1,0 +1,22 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:25]
+:END:
+#+title: Personal Emacs config: PDF
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Packages
+** =pdf-tools=
+*** Package
+
+=pdf-tools= is provided by =init.el=.
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(unless (cashpw/machine-p 'personal-phone)
+(use-package! pdf-tools
+  :config
+  (pdf-tools-install)))
+#+end_src

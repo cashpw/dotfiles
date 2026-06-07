@@ -1,0 +1,2254 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-06-05 Fri 21:16]
+:END:
+#+title: Personal Emacs config: Org - Roam & Notes
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Notes
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  (defun cashpw/org--enable-insert-in-note-buffer ()
+    "Enable insert mode when entering a note buffer."
+    (evil-insert-state nil))
+  (add-hook 'org-log-buffer-setup-hook #'cashpw/org--enable-insert-in-note-buffer))
+
+(defun cashpw/notes-open-file (filepath)
+  "Open notes file."
+  (interactive)
+  (let ((note-buffer (find-file-other-window filepath)))
+    ;; (with-current-buffer note-buffer
+    ;;   (goto-char (point-max)))
+    (pop-to-buffer note-buffer)))
+#+end_src
+
+** Roam (=org-roam=)
+:PROPERTIES:
+:ID:       3d0e8be1-6d0f-4f4b-9025-f1ca312192bc
+:END:
+
+I use =org-roam= for public and private notes and keep them all in the same directory.
+
+*** Performance
+
+Also see [[id:e4497d7e-b015-4cb7-90af-69ad0e89a8fc][=quickroam=]].
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-roam
+  ;; Override to only replace if it's a roam link.
+  (defun cashpw/org-roam-link-replace-all ()
+    "Replace all \"roam:\" links in buffer with \"id:\" links."
+    (interactive)
+    (org-with-point-at 1
+      (while (re-search-forward org-link-bracket-re nil t)
+        (when (s-starts-with-p
+               "roam:"
+               (match-string 1))
+          (org-roam-link-replace-at-point)))))
+  (advice-add 'org-roam-link-replace-all :override #'cashpw/org-roam-link-replace-all)
+
+  ;; Disabling for now in favor of org-node. I don't use this for much outside of the org-roam-buffer.
+  (advice-add 'org-roam-db-sync :override #'ignore)
+
+  (setq
+   org-roam-db-update-on-save nil
+   org-roam-link-auto-replace nil)
+
+  ;; Deprecated in favor of =org-node='s cache.
+  ;; Sync when I'm away from keyoard.
+  ;; (setq
+  ;;  cashpw/org-roam-sync-timer (run-with-idle-timer
+  ;;                              60
+  ;;                              t
+  ;;                              (lambda ()
+  ;;                                (message "Roam sync: Running...")
+  ;;                                (let* ((org-roam-directory
+  ;;                                        (if (cashpw/machine-p 'work-cloudtop))
+  ;;                                            cashpw/path--work-notes-dir
+  ;;                                          cashpw/path--notes-dir))
+  ;;                                       (org-roam-db-location
+  ;;                                        (expand-file-name
+  ;;                                         "org-roam.db"
+  ;;                                         org-roam-directory)))
+  ;;                                  (message "Roam sync: Ran for %.06fsec"
+  ;;                                           (k-time (org-roam-db-sync)))))))
+  )
+#+end_src
+
+*** Config
+
+Override =org-roam-db-sync= to insert a =message= call to aid in understanding why it's called so often in my Emacs start-up.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  org-roam
+  ;; Disable to improve performance
+  (org-roam-db-autosync-mode -1)
+  (setq
+   ;; Disable org-roam completion in favor of (faster) org-node.
+   org-roam-completion-everywhere nil
+
+   org-roam-directory cashpw/path--notes-dir
+   org-attach-directory (file-truename (format "%s/attachments/" org-roam-directory))
+   org-directory org-roam-directory
+   org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+  (add-hook
+   'org-mode-hook
+   (lambda ()
+     (add-hook! 'before-save-hook :local #'cashpw/org-roam-before-save))))
+#+end_src
+
+#+begin_src emacs-lisp
+(defun org-roam-db-sync (&optional force)
+  "Synchronize the cache state with the current Org files on-disk.
+If FORCE, force a rebuild of the cache from scratch."
+  (interactive "P")
+  (org-roam-db--close) ;; Force a reconnect
+  (when force (delete-file org-roam-db-location))
+  (org-roam-db) ;; To initialize the database, no-op if already initialized
+  (org-roam-require '(org-ref oc))
+  (let* ((gc-cons-threshold org-roam-db-gc-threshold)
+         (org-agenda-files nil)
+         (org-roam-files (org-roam-list-files))
+         (current-files (org-roam-db--get-current-files))
+         (modified-files nil))
+    (dolist (file org-roam-files)
+      (let ((contents-hash (org-roam-db--file-hash file)))
+        (unless (string= (gethash file current-files)
+                         contents-hash)
+          (push file modified-files)))
+      (remhash file current-files))
+    (emacsql-with-transaction (org-roam-db)
+      (org-roam-dolist-with-progress (file (hash-table-keys current-files))
+          "Clearing removed files..."
+        (org-roam-db-clear-file file))
+      (org-roam-dolist-with-progress (file modified-files)
+          "Processing modified files..."
+        (condition-case err
+            (org-roam-db-update-file file 'no-require)
+          (error
+           (org-roam-db-clear-file file)
+           (lwarn 'org-roam :error "Failed to process %s with error %s, skipping..."
+                  file (error-message-string err))))))))
+#+end_src
+
+#+RESULTS:
+: org-roam-db-sync
+
+**** Capture templates
+:PROPERTIES:
+:ID:       268230cd-01a4-4726-a9df-265e25839a11
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  doct-org-roam
+  (setq
+   ;; Note that I've enumerated the "head" entries, rather than defining them in the "group"
+   ;; and specifying the tag with a variable, because this didn't produce the right output.
+   ;; I didn't have time to dive in an understand why.
+   org-roam-capture-templates
+   (doct-org-roam
+    `((:group
+       "org-roam"
+       :type plain
+       :template "%?"
+       :file "${slug}.org"
+       :unnarrowed t
+       :after-finalize cashpw/org--set-refile-targets
+       :before-finalize
+       (lambda ()
+         (save-excursion
+           (widen)
+           (let ((id (org-entry-get (point-min) "ID")))
+             (goto-char (point-min))
+             (org-node-ensure-crtime-property)
+             (org-set-property
+              "DIR"
+              (format "attachments/%s/%s"
+                      (substring id 0 2)
+                      (substring id 2))))))
+       :children
+       (("Concept"
+         :keys "c"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :concept:
+,* TODO [#2] Expand
+"))
+        ("On X"
+         :keys "o"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :concept:
+
+An [[id:2a6113b3-86e9-4e70-8b81-174c26bfeb01][On X]].
+
+,* TODO [#2] Expand
+"))
+        ("American sign language (ASL)"
+         :keys "a"
+         :prepare-finalize
+         (lambda ()
+           (org-with-point-at
+               (org-find-exact-headline-in-buffer "ASL") (org-fc-type-double-init))
+           (org-with-point-at (point-min) (org-attach))
+           (let ((attachment-file-name
+                  (nth 0 (directory-files (org-attach-dir) nil "mp4"))))
+             (save-excursion
+               (cashpw/replace-regexp-in-buffer
+                "ATTACH_\\(.*\\)_END_ATTACH"
+                (format "[[attachment:%s][\\1]]" attachment-file-name)))))
+         :template
+         (
+          "#+title: ${title} (ASL)
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :concept:
+
+ATTACH_${title}_END_ATTACH in [[id:1056a7fd-6e6c-4c83-9910-a3528277ab0b][American sign language]].
+
+,* Flashcards :noexport:
+,* ASL :asl:
+
+ATTACH_ASL_END_ATTACH
+
+,** Back
+
+${title}
+
+,** Source
+[cite:@asluniversityASLAmericanSignLanguage]
+
+,* Bibliography
+,#+print_bibliography:"))
+        ("Decision"
+         :keys "d"
+         :file "decision--${slug}.org"
+         :template
+         (
+          "#+title: Decision: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :decision:
+
+,* TODO Background
+,* TODO Decison
+
+The current, overall, decision taking all considerations into account.
+
+,* PROJ Consideration [%<%Y-%m-%d %a>]
+
+,* TODO Do I have enough ([[id:bceac98c-163f-4208-8ef5-75f98640553b][40-70%]]) information?
+
+,* TODO Options
+
+1. Option 1
+2. Option 2
+3. Option 3
+
+,* TODO Comparison
+
+|             | Option 1 | Option 2 | Option 3 |
+|-------------+----------+----------+----------|
+| Dimension 1 | 🟩 Great | 🟨 Good  | 🟥 Bad   |
+| Dimension 2 | 🟥 Bad   | 🟨 Good  | 🟥 Good  |
+
+,* TODO Conclusion
+
+Option 2
+
+,* PROJ Admin
+,* TODO Review
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1m\")
+
+Review current state of the project and update any tracking documentation.
+,* TODO Communicate
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1m\")
+
+Communicate project status, blockers, etc, to relevant stakeholders.
+,* Flashcards :noexport:
+"))
+        ("Project"
+         :keys "P"
+         :file "proj--${slug}.org"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :project:
+
+,* Notes
+,* Log
+,* Questions
+,* PROJ ${title} [/]
+,* TODO Close out :unscheduled:
+,** TODO Retrospective :unscheduled:
+,** TODO Communicate :unscheduled:
+,* TODO Administration :unscheduled:
+,* TODO [#2] Review
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
+
+Review current state of the project and update any tracking documentation.
+,* TODO [#2] Communicate
+SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"Friday\") nil nil nil nil \" ++1w\")
+
+Communicate project status, blockers, etc, to relevant stakeholders.
+,* Flashcards :noexport:
+"))
+        ("Person"
+         :keys "p"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :person:
+,* Flashcards :noexport:"))
+
+
+        ("Photographer"
+         :keys "h"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :person:
+
+A [[id:5ab4e578-5360-4b9b-b8f1-2cf57b7793c7][Photographer]].
+,* TODO [#2] Add photos :noexport:
+,* Flashcards :noexport:"))
+
+        ("Friend (person)"
+         :keys "f"
+         :template
+         (
+          "#+title: ${title}
+,#+category: %(replace-regexp-in-string \" \" \"\" \"${title}\")
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :person:
+
+,* Photo
+,* Relationships
+,* Gifts
+,* Events
+,* Reminders
+,* Notes"))
+        ("Verse"
+         :keys "v"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :verse:"))
+        ("Quote"
+         :keys "u"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :quote:"))
+        ("Recipe"
+         :keys "r"
+         :template
+         (
+          "#+title: ${title}
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :recipe:
+
+,* TODO [#2] Ingredients
+
+,#+begin_ingredients
+| Ingredients | Notes | Quantity |
+|-------------+-------+----------|
+|             |       |          |
+,#+end_ingredients
+
+,* TODO [#2] Steps"))))))))
+#+end_src
+
+**** Art
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-node-create--art-inner
+    (title artist-node-link &optional image-url citekey)
+  "Create an art Org-roam node with TITLE, ARTIST-NODE-LINK, and optional IMAGE-URL and CITEKEY.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (let ((citation
+         (format "%s%s"
+                 artist-node-link
+                 (if citekey
+                     (format ", [cite:@%s]" citekey)
+                   "")))
+        (node-properties
+         (format ":PROPERTIES:%s
+:END:"
+                 (if citekey
+                     (format "\n:ROAM_REFS: [cite:@%s]" citekey)
+                   "")))
+        (downloaded-image
+         (if image-url
+             (format "\n%s\n"
+                     (string-trim
+                      (let ((org-download-image-dir cashpw/path--notes-dir))
+                        (with-temp-buffer
+                          (org-mode)
+                          (org-download-image image-url)
+                          (buffer-string)))))
+           "")))
+    (org-roam-capture-
+     :templates
+     '(("a" "art" plain "%?"
+        :if-new
+        (file+head
+         "${slug}.org"
+         "${node-properties}
+,#+title: ${title}
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :art:
+
+${citation}
+${downloaded-image}
+,* TODO [#2] Notes :noexport:
+,* TODO [#2] Thoughts :noexport:")
+        :immediate-finish t
+        :unnarrowed t))
+     :info
+     (list
+      :citation citation
+      :node-properties node-properties
+      :downloaded-image downloaded-image)
+     :node (org-roam-node-create :title title)
+     :props '(:finalize find-file))))
+
+(defun cashpw/org-roam-node-create--art ()
+  "Create a roam node.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive)
+  (let* ((artist-node-link
+          (with-temp-buffer
+            (org-mode)
+            (org-node-insert-link nil)
+            (buffer-string)))
+         (artist-name (cashpw/org-link--get-description artist-node-link))
+         (reference
+          (when (y-or-n-p "Add citation? ")
+            (citar-select-ref)))
+         (reference-title
+          (when reference
+            (citar-format--entry (citar-format--parse "${title}") reference)))
+         (image-url
+          (when (y-or-n-p "Add image? ")
+            (read-string "Image URL: " (gui-get-selection 'CLIPBOARD 'STRING))))
+         (title (format "%s | %s" artist-name (read-string "Title: "))))
+    (cashpw/org-roam-node-create--art-inner title artist-node-link
+                                            image-url
+                                            reference)))
+#+end_src
+
+
+**** Citations
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-node-from-cite--inner (entry title)
+  "Create a roam node for TITLE based on bibliography citation ENTRY.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (org-roam-capture-
+   :templates
+   '(("r" "reference" plain "%?"
+      :if-new
+      (file+head
+       "${slug}.org"
+       ":PROPERTIES:
+:ROAM_REFS: [cite:@${citekey}]
+:END:
+,#+title: ${title}
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+filetags: :reference:
+
+TODO_AUTHOR, [cite:@${citekey}]
+
+,* TODO [#2] Summary
+,* TODO [#2] Thoughts
+,* TODO [#2] Notes")
+      :immediate-finish t
+      :unnarrowed t))
+   :info (list :citekey entry)
+   :node (org-roam-node-create :title title)
+   :props '(:finalize find-file)))
+
+(defun cashpw/format-cited-author-for-org-roam (raw-authors)
+  "Format RAW-AUTHORS for use in Org-roam by converting 'Surname, Firstname' to 'Firstname Surname'."
+  (if (not (s-contains? "," raw-authors))
+      raw-authors
+    (cond
+     ( ;; e.g. "Doe, Jane and Doe, John"
+      (s-contains? " and " raw-authors)
+      (s-join
+       " and "
+       (mapcar
+        (lambda (author)
+          (s-join " " (reverse (s-split ", " author))))
+        (s-split " and " raw-authors 'omit-nulls))))
+     ( ;; e.g. "Doe, Jane"
+      t
+      (s-join " " (reverse (s-split ", " raw-authors 'omit-nulls)))))))
+
+(defun cashpw/org-roam-node-from-cite ()
+  "Create a roam node based on bibliography citation.
+
+See: https://jethrokuan.github.io/org-roam-guide"
+  (interactive)
+  (let* ((entry (citar-select-ref))
+         (author
+          (cashpw/format-cited-author-for-org-roam
+           (citar-format--entry
+            (citar-format--parse "${author editor journal}") entry)))
+         (citation-title
+          (citar-format--entry (citar-format--parse "${title}") entry))
+         (default-title
+          (cond
+           ((string-empty-p citation-title)
+            "Something went wrong when extracting the title.")
+           ((string-empty-p author)
+            citation-title)
+           (t
+            (s-lex-format "${author} | ${citation-title}"))))
+         (title (read-string "Title: " default-title)))
+    (cashpw/org-roam-node-from-cite--inner entry title)
+    (save-excursion
+      (goto-char (point-min))
+      (cashpw/org-set-dir-property-from-id)
+      (org-node-ensure-crtime-property))))
+#+end_src
+
+**** Hooks
+
+
+
+
+
+**** Revert
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/revert-file (filename)
+  "Revert FILENAME."
+  (when (file-exists-p filename)
+    (with-current-buffer
+        (find-file-noselect
+         filename)
+      (revert-buffer))))
+
+(defun cashpw/revert-common-files ()
+  "Revert common Org files and their archives."
+  (interactive)
+  (let* ((files
+          `(,(cashpw/path-todos)
+            ,(cashpw/path-calendar)))
+         (files-with-archive
+          (append
+           files
+           (org-extras-files-archive-files
+            files))))
+    (--each
+        files-with-archive
+      (cashpw/revert-file it))))
+#+end_src
+
+*** Agenda view
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (defun vulpea-agenda-files-update (&rest _)
+;;   "Update the value of `org-agenda-files'."
+;;   (setq
+;;    org-agenda-files (cashpw/org-agenda-files 'notes-with-todo)))
+#+end_src
+
+*** Roam UI
+:PROPERTIES:
+:ID:       1b25653d-bb76-471c-b7f6-e8f4efa302c8
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! websocket
+  :after org-roam)
+
+(use-package! org-roam-ui
+  :after org-roam
+  ;; normally we'd recommend hooking orui after org-roam, but since org-roam does not have
+  ;; a hookable mode anymore, you're advised to pick something yourself
+  ;; if you don't care about startup time, use
+  ;; :hook (after-init . org-roam-ui-mode)
+  :config
+  (setq org-roam-ui-sync-theme t
+        org-roam-ui-follow t
+        org-roam-ui-update-on-save t
+        org-roam-ui-open-on-start t))
+
+#+end_src
+
+*** Journal / Daily / Dailies
+:PROPERTIES:
+:ID:       90108194-24a0-4b28-b3f0-b249e3b195c4
+:END:
+The capture template defines a structured retrospective section containing standard
+reflection prompts and a dynamic `clocktable-by-category` report. This dynamic
+block uses `:files-fn org-agenda-files` to automatically scan and summarize clocked
+time across active agenda files for the captured day.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/journal--remove-old-hastodo ()
+  "Remove hastodo tag from old journal entries matching PATTERN."
+  (interactive)
+  (let ((journal-files
+         (cashpw/org-files-with-tags
+          '("hastodo" "journal") org-roam-directory)))
+    (dolist (journal-file journal-files)
+      (with-current-buffer (find-file-noselect journal-file)
+        (set-buffer-modified-p t)
+        (save-buffer)))))
+#+end_src
+
+*** Helpers
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw-org-id-from-file (path)
+  "Get the Org ID from the file at PATH, if it exists."
+  (when (file-exists-p path)
+    (with-temp-buffer
+      (insert-file-contents path nil 0 1000)
+      (goto-char (point-min))
+      (when (re-search-forward "^:ID:\\s-+\\(\\S-+\\)" nil t)
+        (match-string 1)))))
+
+(defun cashpw-org-roam-week-dates (&optional time)
+  "Return a list of 5 time values representing Mon-Fri of the week containing TIME."
+  (let ((all-days (cashpw-time--get-week-times (or time (current-time)))))
+    (-take 5 all-days)))
+
+(defun cashpw-org-roam-daily-link-target (time)
+  "Return the link target for the daily journal at TIME.
+Use the Org ID if it exists, otherwise fallback to the file path."
+  (let* ((file-name (format-time-string "%Y-%m-%d.org" time))
+         (path (expand-file-name file-name org-roam-directory)))
+    (if-let ((id (cashpw-org-id-from-file path)))
+        (concat "id:" id)
+      (concat "file:" path))))
+
+(defun cashpw-org-roam-week-journal-links-string (&optional time)
+  "Return a string containing an Org-mode list of links to weekdays of the week containing TIME."
+  (let* ((dates (cashpw-org-roam-week-dates time))
+         (links (mapcar (lambda (date)
+                          (let ((target (cashpw-org-roam-daily-link-target date))
+                                (day-name (format-time-string "%A" date)))
+                              (format "- [[%s][%s]]" target day-name)))
+                        dates)))
+    (mapconcat #'identity links "\n")))
+#+end_src
+
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  doct-org-roam
+  (setq
+  org-roam-dailies-directory cashpw/path--notes-dir
+  org-roam-dailies-capture-templates
+  `(("d" "default" entry "* %?"
+     :target
+     (file+head
+      "%<%Y-%m-%d>.org"
+      ,(concat
+        ":PROPERTIES:
+:ID: %(org-id-new)
+:END:
+,#+title: %<%Y-%m-%d>
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+category: Personal>Journal
+,#+filetags: :journal:hastodo:
+
+,* TODO [#2] Journal
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
+:PROPERTIES:
+:Effort:   15m
+:END:
+
+,* Me
+
+,** Thought records
+
+,* Cayla
+
+,* About the day
+
+,* TODO [#2] Gratitude
+SCHEDULED: <%<%Y-%m-%d %a 19:30>>
+:PROPERTIES:
+:Effort:   2m
+:END:
+
+1. TODO
+2. TODO
+3. TODO
+
+,* Retrospective
+,** 1. Daily Clock Report Verification
+,#+BEGIN: clocktable-by-category :files-fn org-agenda-files :block \"%<%Y-%m-%d>\" :merge-duplicate-headlines t
+,#+END:
+
+,** 2. What went well today?
+,** 3. What were the bottlenecks, distractions, or mistakes?
+,** 4. Lessons learned & daily course corrections:
+
+,* Flashcards :noexport:")))
+    (w
+     " " week " plain " %?
+     " :target
+(file+head %<%Y-W%V>.org"
+     ,(concat
+       "#+title: %<%Y-W%V>
+,#+author: Cash Prokop-Weaver
+,#+date: [%<%Y-%m-%d %a %H:%M>]
+,#+category: Plan/Review
+,#+filetags: :journal:
+
+,* Journals
+%(cashpw-org-roam-week-journal-links-string)
+
+,* TODO [#1] Retrospective
+SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
+
+#+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
+#+END:
+
+,* Flashcards :noexport:")))))
+
+(defun cashpw/org-clocktable-by-category-yesterday ()
+  "Insert a retrospective clocktable for yesterday."
+  (interactive)
+  (let ((clocktable-by-category--default-properties
+         (cashpw/clocktable-by-categories--day-properties
+          (time-subtract (current-time) (days-to-time 1)))))
+    (clocktable-by-category-report)))
+
+(defun cashpw/org-clocktable-by-category--week (time)
+  "Insert a retrospective clocktable for the week containing TIME."
+  (interactive)
+  (let ((clocktable-by-category--default-properties
+         (cashpw/clocktable-by-categories--week-properties time)))
+    (clocktable-by-category-report)))
+
+(defun cashpw/org-clocktable-by-category-this-week ()
+  "Insert a retrospective clocktable for this week."
+  (interactive)
+  (cashpw/org-clocktable-by-category--week (current-time)))
+
+(defun cashpw/org-clocktable-by-category-last-week ()
+  "Insert a retrospective clocktable for last week."
+  (interactive)
+  (cashpw/org-clocktable-by-category--week
+   (time-subtract (current-time) (days-to-time 7))))
+
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto "d")
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
+
+(defun get-iso-week-dates (year week)
+  "Return a list of YYYY-MM-DD date strings for ISO WEEK of YEAR.
+The list starts with Monday and ends with Sunday."
+  (let ((monday-absolute (calendar-iso-to-absolute (list week 1 year))))
+    (mapcar
+     (lambda (abs-date)
+       (let ((gregorian (calendar-gregorian-from-absolute abs-date)))
+         (format "%04d-%02d-%02d"
+                 (nth 2 gregorian) ; year
+                 (nth 0 gregorian) ; month
+                 (nth 1 gregorian)))) ; day
+     (number-sequence monday-absolute (+ monday-absolute 6)))))
+#+end_src
+
+
+* Roam Packages
+
+
+** =zotra=, bibliography
+
+#+begin_quote
+This emacs library provides functions to fetch bibliographic information in different formats (e.g. bibtex) using website urls or search identifiers (e.g. DOI). It also provides functions to fetch attachments (e.g. PDF files) associated with a url.
+
+This is done using [[https://www.zotero.org/support/translators][ZOtero TRAnslators]], but without using the Zotero client.
+
+[[github:mpedramfar/zotra][mpedramfar/zotra]]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! zotra)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    zotra
+  :custom
+  ;; (zotra-backend 'zotra-server)
+  ;; (zotra-local-server-directory (expand-file-name "~/.local/share/zotra-server"))
+  (zotra-backend 'translation-server)
+  (zotra-local-server-directory (expand-file-name "~/third-party/translation-server"))
+  (zotra-url-retrieve-timeout 30)
+  (zotra-use-curl t)
+  (zotra-default-bibliography cashpw/path--notes-bibliography)
+  (zotra-after-get-bibtex-entry-hook nil)
+  (zotra-default-entry-format "biblatex")
+  ;; (zotra-default-entry-format "zotero")
+
+  (bibtex-dialect 'biblatex)
+  (bibtex-entry-format
+   '(opts-or-alts
+     ;; required-fields
+     numerical-fields))
+  (bibtex-autokey-edit-before-use nil)
+  (bibtex-autokey-year-length 4)
+  (bibtex-autokey-name-year-separator "")
+  (bibtex-autokey-year-title-separator "")
+  (bibtex-autokey-titleword-separator "")
+  (bibtex-autokey-titlewords 5)
+  (bibtex-autokey-titlewords-stretch 1)
+  (bibtex-autokey-titleword-length 'infty)
+  (bibtex-autokey-titleword-ignore
+   '("A"
+     "An"
+     "On"
+     "The"
+     "Eine?"
+     "Der"
+     "Die"
+     "Das"
+     ".*[^[:upper:][:lower:]0-9].*"))
+  (bibtex-autokey-name-case-convert-function #'identity)
+  (bibtex-autokey-titleword-case-convert-function
+   (lambda (str) (titlecase--string str nil)))
+
+  (bibtex-biblatex-entry-alist
+   ;; Compare in biblatex documentation:
+   ;; Sec. 2.1.1  Regular types (required and optional fields)
+   ;; Sec. 2.2.5  Field Aliases
+   ;; Appendix A  Default Crossref setup
+   '(("Article" "Article in Journal"
+      (("author") ("title")
+       ("journaltitle" nil nil 3) ("journal" nil nil -3)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("translator") ("annotator") ("commentator") ("subtitle") ("titleaddon")
+       ("editor") ("editora") ("editorb") ("editorc") ("journalsubtitle")
+       ("journaltitleaddon") ("issuetitle") ("issuesubtitle") ("issuetitleaddon")
+       ("language") ("origlanguage") ("series") ("volume") ("number") ("eid")
+       ("issue") ("month") ("pages") ("version") ("note") ("issn")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Book" "Single-Volume Book"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator")
+       ("introduction") ("foreword") ("afterword") ("subtitle") ("titleaddon")
+       ("maintitle") ("mainsubtitle") ("maintitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVBook" "Multi-Volume Book"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator")
+       ("introduction") ("foreword") ("afterword") ("subtitle")
+       ("titleaddon") ("language") ("origlanguage") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InBook" "Chapter or Pages in a Book"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("BookInBook" "Book in Collection" ; same as @inbook
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppBook" "Supplemental Material in a Book" ; same as @inbook
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("author") ("booktitle"))
+      (("bookauthor") ("editor") ("editora") ("editorb") ("editorc")
+       ("translator") ("annotator") ("commentator") ("introduction") ("foreword")
+       ("afterword") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition") ("volumes")
+       ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint")("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Booklet" "Booklet (Bound, but no Publisher)"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("note") ("location" nil nil 2) ("address" nil nil -2)
+       ("eid") ("chapter") ("pages") ("pagetotal")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Collection" "Single-Volume Collection"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("language") ("origlanguage") ("volume")
+       ("part") ("edition") ("volumes") ("series") ("number") ("note")
+       ("publisher") ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVCollection" "Multi-Volume Collection"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("language") ("origlanguage") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InCollection" "Article in a Collection"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppCollection" "Supplemental Material in a Collection" ; same as @incollection
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Dataset" "Data Set"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("edition") ("type") ("series")
+       ("number") ("version") ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Manual" "Technical Manual"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("edition")
+       ("type") ("series") ("number") ("version") ("note")
+       ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter")
+       ("pages") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+
+     ("Misc" "Miscellaneous"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Online" "Online Resource"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1)
+       ("doi" nil nil 2) ("eprint" nil nil 2) ("url" nil nil 2))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("version") ("note")
+       ("organization") ("month") ("addendum")
+       ("pubstate") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5) ("urldate")))
+     ("Patent" "Patent"
+      (("author") ("title") ("number")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("holder") ("subtitle") ("titleaddon") ("type") ("version")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("note") ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Periodical" "Complete Issue of a Periodical"
+      (("editor") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("subtitle") ("titleaddon")
+       ("issuetitle") ("issuesubtitle") ("issuetitleaddon") ("language")
+       ("series") ("volume") ("number") ("issue")
+       ("month") ("note") ("issn") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("SuppPeriodical" "Supplemental Material in a Periodical" ; same as @article
+      (("author") ("title")
+       ("journaltitle" nil nil 3) ("journal" nil nil -3)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("translator") ("annotator") ("commentator") ("subtitle") ("titleaddon")
+       ("editor") ("editora") ("editorb") ("editorc") ("journalsubtitle")
+       ("journaltitleaddon") ("issuetitle") ("issuesubtitle") ("issuetitleaddon")
+       ("language") ("origlanguage") ("series") ("volume") ("number") ("eid")
+       ("issue") ("month") ("pages") ("version") ("note") ("issn")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Proceedings" "Single-Volume Conference Proceedings"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("eventtitle") ("eventtitleaddon") ("eventdate")
+       ("venue") ("language") ("volume") ("part") ("volumes") ("series")
+       ("number") ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month")
+       ("isbn") ("eid") ("chapter") ("pages") ("pagetotal") ("addendum")
+       ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVProceedings" "Multi-Volume Conference Proceedings"
+      (("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editor") ("subtitle") ("titleaddon") ("eventtitle") ("eventtitleaddon")
+       ("eventdate") ("venue") ("language") ("volumes") ("series") ("number")
+       ("note") ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month")
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InProceedings" "Article in Conference Proceedings"
+      (("author") ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("eventtitle") ("eventtitleaddon") ("eventdate") ("venue") ("language")
+       ("volume") ("part") ("volumes") ("series") ("number") ("note")
+       ("organization") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2) ("month") ("isbn") ("eid")
+       ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Conference" "Article in Conference Proceedings" ; same as InProceedings
+      (("author")
+       ("title" "Title of the article in proceedings (BibTeX converts it to lowercase)"))
+      (("booktitle" "Name of the conference proceedings")
+       ("year"))
+      (("editor")
+       ("volume" "Volume of the conference proceedings in the series")
+       ("number" "Number of the conference proceedings in a small series (overwritten by volume)")
+       ("series" "Series in which the conference proceedings appeared")
+       ("pages" "Pages in the conference proceedings")
+       ("month") ("address")
+       ("organization" "Sponsoring organization of the conference")
+       ("publisher" "Publishing company, its location")
+       ("note")))
+     ("Reference" "Single-Volume Work of Reference" ; same as @collection
+      (("editor") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("language") ("origlanguage") ("volume")
+       ("part") ("edition") ("volumes") ("series") ("number") ("note")
+       ("publisher") ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("MVReference" "Multi-Volume Work of Reference" ; same as @mvcollection
+      (("editor") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("editora") ("editorb") ("editorc") ("translator") ("annotator")
+       ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("language") ("origlanguage") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("InReference" "Article in a Work of Reference" ; same as @incollection
+      (("author") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      (("booktitle"))
+      (("editor") ("editora") ("editorb") ("editorc") ("translator")
+       ("annotator") ("commentator") ("introduction") ("foreword") ("afterword")
+       ("subtitle") ("titleaddon") ("maintitle") ("mainsubtitle")
+       ("maintitleaddon") ("booksubtitle") ("booktitleaddon")
+       ("language") ("origlanguage") ("volume") ("part") ("edition")
+       ("volumes") ("series") ("number") ("note") ("publisher")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("eid") ("chapter") ("pages") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Report" "Technical or Research Report"
+      (("author") ("title") ("type")
+       ("institution" nil nil 6) ("school" nil nil -6)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("number") ("version") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("isrn") ("eid") ("chapter") ("pages")
+       ("pagetotal") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Software" "Computer Software"    ; Same as @misc.
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("Thesis" "PhD or Master's Thesis"
+      (("author") ("title") ("type")
+       ("institution" nil nil 6) ("school" nil nil -6)
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("isbn") ("eid") ("chapter") ("pages") ("pagetotal")
+       ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ("PhdThesis" "PhD Thesis"
+      (("author")
+       ("title" "Title of the PhD thesis")
+       ("school" "School where the PhD thesis was written")
+       ("year"))
+      nil
+      (("type" "Type of the PhD thesis")
+       ("address" "Address of the school (if not part of field \"school\") or country")
+       ("month") ("note")))
+     ("MastersThesis" "Master's Thesis"
+      (("author")
+       ("title" "Title of the master's thesis (BibTeX converts it to lowercase)")
+       ("school" "School where the master's thesis was written")
+       ("year"))
+      nil
+      (("type" "Type of the master's thesis (if other than \"Master's thesis\")")
+       ("address" "Address of the school (if not part of field \"school\") or country")
+       ("month") ("note")))
+     ("TechReport" "Technical Report"
+      (("author")
+       ("title" "Title of the technical report (BibTeX converts it to lowercase)")
+       ("institution" "Sponsoring institution of the report")
+       ("year"))
+      nil
+      (("type" "Type of the report (if other than \"technical report\")")
+       ("number" "Number of the technical report")
+       ("address") ("month") ("note")))
+     ("Unpublished" "Unpublished"
+      (("author") ("title") ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("type") ("eventtitle") ("eventtitleaddon")
+       ("eventdate") ("venue") ("language") ("howpublished") ("note")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("isbn") ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+
+     ;; My additions
+     ;; Video is unsupported but used by Zotero and is treated as miscellaneous. I've copied Misc and renamed it to Video.
+     ("Video" "Video"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))
+     ;; Movie is unsupported but used by Zotero and is treated as miscellaneous. I've copied Misc and renamed it to Movie.
+     ("Movie" "Movie"
+      (("author" nil nil 0) ("editor" nil nil 0) ("title")
+       ("date" nil nil 1) ("year" nil nil -1))
+      nil
+      (("subtitle") ("titleaddon") ("language") ("howpublished") ("type")
+       ("version") ("note") ("organization")
+       ("location" nil nil 2) ("address" nil nil -2)
+       ("month") ("addendum") ("pubstate") ("doi")
+       ("eprint") ("eprintclass" nil nil 4) ("primaryclass" nil nil -4)
+       ("eprinttype" nil nil 5) ("archiveprefix" nil nil -5)
+       ("url") ("urldate")))))
+
+
+
+  :config
+  (add-hook
+   'zotra-after-get-bibtex-entry-hook #'cashpw/bibtex-clean-entry-override-key))
+
+(defun cashpw/replace-tabs-with-two-spaces ()
+  "Replace all tabs in buffer with two spaces."
+  (interactive)
+  (cashpw/replace-regexp-in-buffer "\t" "  "))
+
+(defun cashpw/bibtex-clean-entry-override-key ()
+  "Invoke `bibtex-clean-entry' with key override."
+  (interactive)
+  (bibtex-clean-entry (bibtex-generate-autokey))
+  (cashpw/replace-tabs-with-two-spaces))
+
+(defun cashpw/bibtex--read-and-set-required-fields (buffer point-or-marker)
+  "Prompt user to set missing required fields in BUFFER at POINT-OR-MARKER."
+  (save-excursion
+    (let ((window
+           (select-window
+            (display-buffer-in-side-window buffer '((side . bottom))))))
+      (with-current-buffer (window-buffer window)
+        (goto-char point-or-marker)
+        (when (looking-at bibtex-entry-maybe-empty-head)
+          (with-restriction (point)
+              (save-excursion
+                (evil-jump-item)
+                (1+ (point)))
+            (bibtex-entry-update)
+            (while (let ((case-fold-search nil))
+                     (search-forward-regexp "^\s*\\([a-z]\\|ALT\\)" nil t))
+              (let* ((field
+                      (replace-regexp-in-string
+                       "^\s*\\([^\s]*\\).*" "\\1" (org-current-line-string)))
+                     (new-value
+                      (read-string (format "%s (leave empty to skip): " field)))
+                     (new-line
+                      (when new-value
+                        (replace-regexp-in-string
+                         "{}"
+                         (format "{%s}" new-value)
+                         (org-current-line-string)))))
+                (when new-line
+                  (delete-line)
+                  (insert new-line)
+                  (newline))))
+            (bibtex-format-entry))))
+      (+workspace/close-window-or-workspace))))
+
+;; Add 'urldate'
+(defun cashpw/bibtex-autokey-get-year ()
+  "Return year field contents as a string obeying `bibtex-autokey-year-length'."
+  (let* ((str (bibtex-autokey-get-field '("date" "year" "urldate"))) ; possibly ""
+         (year (or (and (iso8601-valid-p str)
+                        (let ((year (decoded-time-year (iso8601-parse str))))
+                          (and year (number-to-string year))))
+                   ;; BibTeX permits a year field "(about 1984)", where only
+                   ;; the last four nonpunctuation characters must be numerals.
+                   (and (string-match "\\([0-9][0-9][0-9][0-9]\\)[^[:alnum:]]*\\'" str)
+                        (match-string 1 str))
+                   (user-error "Year or date field `%s' invalid" str))))
+    (substring year (max 0 (- (length year) bibtex-autokey-year-length)))))
+(advice-add 'bibtex-autokey-get-year :override #'cashpw/bibtex-autokey-get-year)
+
+(defun cashpw/bibtex-generate-autokey ()
+  "Return a key for the current bibtex entry.
+
+The key is in the form: (authors|journal)_title_year."
+  (when
+      ;; Missing required fields
+      (or (string-empty-p (bibtex-autokey-get-names))
+          (not
+           (ignore-errors
+             (bibtex-autokey-get-year))))
+    (cashpw/bibtex--read-and-set-required-fields (current-buffer) (point)))
+  (let* ((journal (bibtex-autokey-get-field "journal"))
+         (names (bibtex-autokey-get-names))
+         (title (bibtex-autokey-get-title))
+         (year
+          (or (ignore-errors
+                (bibtex-autokey-get-year))
+              ""))
+         (key
+          (substring (concat
+                      (cond
+                       ((not (string-empty-p names))
+                        (s-lex-format "${names}_"))
+                       ((not (string-empty-p journal))
+                        (s-lex-format "${journal}_")))
+                      (if (string-empty-p title)
+                          ""
+                        (s-lex-format "${title}_"))
+                      (if (string-empty-p year)
+                          ""
+                        (s-lex-format "${year}_")))
+                     0 -1)))
+    (cashpw/log "key: %s" key)
+    (if bibtex-autokey-before-presentation-function
+        (funcall bibtex-autokey-before-presentation-function key)
+      key)))
+
+(advice-add 'bibtex-generate-autokey :override #'cashpw/bibtex-generate-autokey)
+
+(defun cashpw/zotra-add-entry-from-url (url)
+  "Add an entry for the current page's URL."
+  (interactive)
+  (let
+      ((rewriters
+        (list
+         (cons
+          "https:\\/\\/www.youtube.com\\/supported_browsers\\?next_url=\\(.*\\)"
+          (lambda () (url-unhex-string (match-string 1 url)))))))
+    (zotra-add-entry
+     (if-let ((rewriter (--first (string-match (car it) url) rewriters)))
+         (funcall (cdr rewriter))
+       url))))
+
+(defun cashpw/zotra-add-entry-from-eww ()
+  "Add an entry for the current eww buffer."
+  (interactive)
+  (let ((url (plist-get eww-data :url)))
+    (cond
+     ((string-match-p "isbnsearch\\.org" url)
+      (zotra-add-entry (cashpw/isbn-select-from-buffer)))
+     (t
+      (cashpw/zotra-add-entry-from-url url)))))
+#+end_src
+
+** =org-roam-contacts=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-roam-contacts
+  :recipe (:host github
+           :repo "cashpw/org-roam-contacts"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-roam-contacts
+  :after org-roam
+
+  :config
+  (defun org-roam-contacts--get-all ()
+    "Return list of contacts."
+    (-map
+     #'make-org-roam-contact-from-file
+     (cashpw/notes-files-with-tag org-roam-contacts-tag)))
+
+  (defun cashpw/email-set-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (search-backward ":" nil 'noerror)
+      (kill-line)
+      (insert ": " value)))
+
+  (defun cashpw/email-append-header (tag value)
+    "Set email header TAG to VALUE."
+    (save-excursion
+      (message-position-on-field tag)
+      (insert (format " %s" value))))
+
+  (defun cashpw/email-set-to (email)
+    "Set email \"To\" header to EMAIL."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "To" email))
+
+  (defun cashpw/email-append-to (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "To" email))
+
+  (defun cashpw/email-set-cc (email)
+    "Set email \"To\" header to EMAIL."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-set-header "CC" email))
+
+  (defun cashpw/email-append-cc (email)
+    "Append EMAIL onto email \"To\" header."
+    (interactive (list (cashpw/email-select-contact-email)))
+    (cashpw/email-append-header "CC" email))
+
+  (defun cashpw/email-select-contact-email ()
+    "Return user-selected email from org-roam contact list."
+    (interactive)
+    (let ((name-to-email-alist
+           (-reduce-from
+            (lambda (acc contact)
+              (let ((names (org-roam-contact-names contact))
+                    (emails (org-roam-contact-emails contact))
+                    (permutations '()))
+                (dotimes (name-index (length names))
+                  (dotimes (email-index (length emails))
+                    (let ((name (nth name-index names))
+                          (email (cdr (nth email-index emails)))
+                          (email-name (car (nth email-index emails))))
+                      (push (cons (format "%s (%s) %s" name email-name (cashpw/dim email)) email)
+                            permutations))))
+                (append acc permutations)))
+            '()
+            (--filter
+             (org-roam-contact-emails it) (org-roam-contacts--get-all)))))
+      (alist-get
+       (completing-read "Who?: " name-to-email-alist) name-to-email-alist
+       nil nil 'string=))))
+#+end_src
+
+** =citar=
+
+Doom emacs installs =citar= through the =biblio= [[id:d78d8b13-7ed7-470d-b4c4-9c44880fa29d][Tool]].
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  citar
+  ;; Don't use helm for citar's insert. You get stuck in an infinite loop
+  ;; because helm overrides the `last-command' which `citar--select-multiple'
+  ;; depends on to exit.
+  ;; (pushnew!
+  ;;  helm-completing-read-handlers-alist
+  ;;  '(org-cite-insert . completing-read-default))
+  )
+#+end_src
+
+** =citar-org-roam=
+
+Doom emacs installs =citar-org-roam= through the =biblio= [[id:d78d8b13-7ed7-470d-b4c4-9c44880fa29d][Tool]].
+
+** =doct-org-roam=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! doct-org-roam
+  :recipe (:host github
+           :repo "cashpw/doct-org-roam"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! doct-org-roam
+  :after doct)
+#+end_src
+
+I use =doct-org-roam= to configure my [[id:268230cd-01a4-4726-a9df-265e25839a11][capture templates]].
+
+** =org-roam=
+#+begin_quote
+Org-roam is a plain-text knowledge management system. It brings some of Roam's more powerful features into the Org-mode ecosystem.
+
+Org-roam borrows principles from the Zettelkasten method, providing a solution for non-hierarchical note-taking. It should also work as a plug-and-play solution for anyone already using Org-mode for their personal wiki.
+
+[[github:org-roam/org-roam][org-roam/org-roam]]
+#+end_quote
+
+Doom Emacs provides =org-roam=.
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(unpin! org-roam)
+#+end_src
+
+Configuration is done at [[id:3d0e8be1-6d0f-4f4b-9025-f1ca312192bc][Roam]].
+
+** =org-daily-reflection=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-daily-reflection)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-daily-reflection
+  :custom
+  (org-daily-reflection-close-unmodified-newly-opened-buffers t)
+  (org-daily-reflection-capture-nascent-files nil)
+  (org-daily-reflection-dailies-directory cashpw/path--notes-dir))
+#+end_src
+
+** =org-mem=
+
+#+begin_quote
+A cache of metadata about the structure of all your Org files – headings, links and so on.
+
+[[github:meedstrom/org-mem][meedstrom/org-mem]]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-mem)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-mem
+  :custom
+  (org-mem-watch-dirs `(,cashpw/path--notes-dir))
+  (org-mem-do-sync-with-org-id t)
+  (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
+  :config
+  (org-mem-updater-mode))
+#+end_src
+
+** =org-node=
+:PROPERTIES:
+:ID:       075ad0c5-9390-40c8-8158-e5cf02198adf
+:END:
+
+#+begin_quote
+I found org-roam too slow, so I made [[github:meedstrom/quickroam][quickroam]]. And that idea spun off into this package, a standalone thing. I hope it’s also easier to learn.
+
+[[github:meedstrom/org-node][meedstrom/org-node]]
+#+end_quote
+
+I use =org-node= as a speed-up layer on top of =org-roam= because only complaint with =org-roam= is its [[github:meedstrom/org-node/blob/master/README.org?plain=1#L56][performance in directories with thousands of nodes]].
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-node
+  :recipe (:host github
+           :repo "meedstrom/org-node"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-node
+  :demand t
+  :after org-roam
+  :custom
+  (org-node-creation-fn #'org-node-new-via-roam-capture)
+  (org-node-file-slug-fn #'org-node-slugify-like-roam-default)
+  (org-node-filter-fn
+   (lambda (node)
+     (and (not (assoc "ROAM_EXCLUDE" (org-mem-properties node)))
+          ;; Exclude archives
+          (not (s-ends-with-p "archive" (org-mem-file node)))
+          ;; Exclude flashcards
+          (not (member "fc" (org-mem-tags-local node))))))
+  (org-node-alter-candidates t)
+
+  :config
+  (org-node-cache-mode)
+  (org-node-context-follow-mode)
+  (org-node-roam-accelerator-mode)
+  (org-node-complete-at-point-mode)
+  (advice-add 'org-roam-node-find :override #'org-node-find)
+  (advice-add 'org-roam-node-insert :override #'org-node-insert-link))
+#+end_src
+
+** =org-roam-ui=
+
+#+begin_quote
+Org-Roam-UI is a frontend for exploring and interacting with your [[https://github.com/org-roam/org-roam][org-roam]] notes.
+
+https://github.com/org-roam/org-roam-ui
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-roam-ui)
+#+end_src
+
+*** Config
+
+Configured at [[id:1b25653d-bb76-471c-b7f6-e8f4efa302c8][Roam UI]].
+
+** =org-transclusion=
+#+begin_quote
+Org-transclusion lets you insert a copy of text content via a file link or ID link within an Org file. It lets you have the same content present in different buffers at the same time without copy-and-pasting it. Edit the source of the content, and you can refresh the transcluded copies to the up-to-date state. Org-transclusion keeps your files clear of the transcluded copies, leaving only the links to the original content.
+
+[[github:nobiot/org-transclusion]]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-transclusion)
+#+end_src
+
+** =vulpea=
+
+#+begin_quote
+A collection of functions for note taking based on =org= and =org-roam=. This repository primary goal is to be a tested library for other applications and utilities around note taking.
+
+[cite:@VulpeaVulpeabuffer6a735c34f1f64e1f70da77989e9ce8da7864e5ffD12frostedVulpea]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! vulpea)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! vulpea)
+#+end_src
+
+* Roam Helpers
+
+** Roam
+*** Tags
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam--get-filetags ()
+  "Return a list of all tags used in roam."
+  (org-roam-db-query [:select
+                      :distinct tag
+                      :from tags]))
+
+(defun cashpw/org-roam--get-filetags-not-in-node (node-id)
+  "Return a list of all tags used in roam, excluding those used in NODE-ID."
+  (org-roam-db-query [:select
+                      :distinct [tag]
+                      :from tags
+                      :where tag :not-in [:select tag
+                                          :from tags
+                                          :where (= node_id $s1)]]
+                     node-id))
+#+end_src
+
+*** File(path)
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-make-filepath (title &optional time time-zone)
+  "Return a filename for an org-roam node with TITLE at optional TIME in TIME-ZONE.
+
+Reference: https://ag91.github.io/blog/2020/11/12/write-org-roam-notes-via-elisp"
+  (let ((slug
+         (org-roam-node-slug
+          (org-roam-node-create
+           :title title))))
+    (format
+     "%s/%s.org"
+     org-roam-directory
+     slug)))
+#+end_src
+
+*** =org-mode= file options
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode-insert-option (option value)
+  "Insert an org-mode option (#+OPTION: VALUE).
+
+TODO: move to org-mode section"
+  (insert (s-lex-format "#+${option}: ${value}\n")))
+
+(defun cashpw/org-mode-insert-options (options)
+  "Insert an alist of org-mode OPTIONS (#+OPTION: VALUE)."
+  (cl-loop for (option . value) in options
+           do (cashpw/org-mode-insert-option
+               option
+               value)))
+
+
+#+end_src
+*** =org-mode= file properties
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode-insert-properties (properties)
+  "Insert an alist of org-mode PROPERTIES (:PROPERTY: VALUE)."
+  (interactive)
+  (cl-loop for (property . value) in properties
+           do (org-set-property
+               property
+               value)))
+#+end_src
+
+*** Citations
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-add-citation-as-ref ()
+  "Based on `citar-org-roam-ref-add."
+  (interactive)
+  (let ((citation (with-temp-buffer
+                    (org-cite-insert nil)
+                    (buffer-string))))
+    (org-roam-ref-add citation)))
+#+end_src
+
+*** Export
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-hugo--remove-empty-bibliography-from-export (export-file-path)
+  "Delete bibliography in EXPORT-FILE-PATH if there are no citations.
+
+The relevant markdown looks like either:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+  <div class=\"csl-entry\">...</div>
+</div>
+
+or:
+
+## Bibliography {#bibliography}
+
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class=\"csl-bib-body\">
+</div>"
+  (with-current-buffer (find-file-noselect export-file-path)
+    (when (save-excursion
+            (goto-char (point-min))
+            (search-forward "csl-entry" nil t))
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "## Bibliography" nil t)
+        ;; # Bibliography
+        (delete-line)
+        ;;
+        (delete-line)
+        ;; <style>...
+        (delete-line)
+        ;; </div>
+        (delete-line)
+        (save-buffer)))))
+
+(defun cashpw/org-hugo-export-wim-to-md ()
+  "Function for `after-save-hook' to run `org-hugo-export-wim-to-md'.
+
+The exporting happens only when Org Capture is not in progress."
+  (interactive)
+  (when (and (not (eq real-this-command
+                      'org-capture-finalize))
+             (not (member (buffer-file-name)
+                          cashpw/org-roam--file-path-exceptions-to-export-after-save)))
+    (save-excursion
+      (let* ((org-id-extra-files (org-roam-list-files))
+             (export-file-path (org-hugo-export-wim-to-md)))
+        (cashpw/org-hugo--remove-empty-bibliography-from-export export-file-path)
+        ;; (when cashpw/org-hugo-replace-front-matter-with-title
+        ;;   (with-current-buffer (find-file-noselect
+        ;;                         export-file-path)
+        ;;     (cashpw/replace-toml-front-matter-with-md-heading)
+        ;;     (save-buffer)))
+        ))))
+#+end_src
+
+*** Files by tag
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-get-filetags (&optional file-path)
+  "Return filetags in FILE-PATH."
+  (when-let ((file-path (or file-path (buffer-file-name))))
+    (let ((filetag-string
+           (shell-command-to-string
+            (concat
+             (format "rg '^#\\+filetags:' %s" file-path)
+             "| sed 's/.*#+filetags: \\(.*\\)/\\1/'"))))
+      (s-split ":" filetag-string 'omit-nulls))))
+
+(defun cashpw/org-files-and-filetags (directory)
+  "Return list of org files in DIRECTORY and their filetags."
+  (let ((grep-result
+         ;; Outputs <filepath> <tags>
+         ;; For example: /tmp/foo.org :cats:
+         (shell-command-to-string
+          (concat
+           (format "rg --max-count=1 '^#\\+filetags:' %s/*.org"
+                   (directory-file-name directory))
+           " | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1 \\2/'"))))
+    (--map
+     (cl-destructuring-bind
+         (file filetags)
+         (s-split " " it 'omit-nulls)
+       (cons file (s-split ":" filetags 'omit-nulls)))
+     (s-split "\n" grep-result 'omit-nulls))))
+
+(defun cashpw/org-files-and-filetags-with-tag (tag directory)
+  "Return list of org files tagged with TAG in DIRECTORY and their filetags.
+Gracefully returns nil if no org files are found."
+  ;; 1. Guard clause: Only execute if directory exists and contains .org files
+  (when (and (file-directory-p directory)
+             (directory-files directory nil "\\.org\\'"))
+    (let ((grep-result
+           ;; Outputs <filepath>\t<tags>
+           ;; For example: /tmp/foo.org:cats:
+           (shell-command-to-string
+            (format "rg --max-count=1 --max-depth=1 -g '*.org' '^#\\+filetags:.*:%s:' %s | sed 's/\\(.*\\):#+filetags: \\(.*\\)/\\1\t\\2/'"
+                    tag
+                    ;; 2. Secure the directory path against shell injection and spaces
+                    (shell-quote-argument (directory-file-name directory))))))
+      (--map
+       (cl-destructuring-bind
+           (file filetags)
+           ;; 3. Split by literal tab instead of space to handle filenames containing spaces
+           (s-split "\t" it 'omit-nulls)
+         (cons file (s-split ":" filetags 'omit-nulls)))
+       (s-split "\n" grep-result 'omit-nulls)))))
+
+(defun cashpw/org-files-with-tag (tag directory)
+  "Return list of org files in DIRECTORY tagged (filetag) with TAG."
+  (cashpw/org-files-with-tags (list tag) directory))
+
+(defun cashpw/org-files-with-tags (tags directory)
+  "Return list of org files in DIRECTORY tagged (filetag) with all TAGS."
+  (--map
+   (car it)
+   (-filter
+    (lambda (file-and-filetags)
+      (-every (lambda (tag) (member tag (cdr file-and-filetags))) tags))
+    (cashpw/org-files-and-filetags-with-tag (cl-first tags) directory))))
+
+(defun cashpw/notes-files-with-tag (tag)
+  "Return a list of note files containing TAG."
+  (cashpw/org-files-with-tag tag cashpw/path--notes-dir))
+
+(defun cashpw/notes-files-with-tags (&rest tags)
+  "Return a list of note files tagged with all TAGS."
+  (cashpw/org-files-with-tags tags cashpw/path--notes-dir))
+#+end_src
+
+*** Files by creation date
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-files-by-creation-range (directory start end)
+  "Return sorted list of .org files in DIRECTORY created between START and END.
+Arguments START and END should be Emacs time objects. Creation date is
+determined by the first \":CREATED:\" in the file."
+  (let (paths-and-times)
+    (with-temp-buffer
+      (insert
+       (shell-command-to-string
+        (format
+         "find %s -name \"*.org\" -exec grep -H -m 1 -Z \"^:CREATED:\" {} +"
+         (shell-quote-argument (expand-file-name directory)))))
+      (goto-char (point-min))
+      ;; Regex: [Filename]\0:CREATED: [Timestamp]
+      (while (re-search-forward
+              "^\\([^\0]+\\)\0:CREATED:[ \t]*\\(\\[[^]]+\\]\\|<[^>]+>\\)"
+              nil t)
+        (let* ((file-path (match-string 1))
+               (file-time
+                (ignore-errors
+                  (org-time-string-to-time
+                   (match-string 2)))))
+          (when (and file-time
+                     (not (time-less-p file-time start))
+                     (not (time-less-p end file-time)))
+            ;; start <= file-time <= end
+            (push (cons file-path file-time) paths-and-times)))))
+    (-map #'car (sort paths-and-times #'(lambda (a b) (time-less-p (cdr a) (cdr b)))))))
+#+end_src
+
+#+begin_src elisp
+(let ((start (date-to-time "2023-01-01"))
+      (end   (date-to-time "2023-12-31")))
+  (get-org-files-by-creation-range "~/proj/notes" start end))
+#+end_src
+
+*** Update =hastodo= tag
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode--buffer-has-todo-p ()
+  "Return non-nil if current buffer has any todo entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     "^\\*+ TODO")))
+
+(defun cashpw/magit-buffer-p ()
+  "Return non-nil if the current buffer is a Magit buffer."
+  (and
+   (derived-mode-p 'magit-mode)
+   (not
+    (eq major-mode 'magit-process-mode))))
+
+(defun cashpw/org-roam-update-hastodo-tag ()
+  "Update HASTODO tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (cashpw/magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-todo-p)
+            (setq tags (cons "hastodo" tags))
+          (setq tags (remove "hastodo" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+#+end_src
+
+*** Update =has_gallery= tag
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode--buffer-has-gallery-p ()
+  "Return non-nil if current buffer has a heading tagged as a gallery entry.
+
+TODO entries marked as done are ignored, meaning the this
+function returns nil if current buffer contains only completed
+tasks.
+
+Note that we explicitly don't use `org-element-parse-buffer'
+because it's slow."
+  (when (string-equal
+         mode-name
+         "Org")
+    (cashpw/buffer-contains-regexp-p
+     ":gallery:")))
+
+(defun cashpw/org-roam-update-has-gallery-tag ()
+  "Update :has-gallery: tag in the current buffer."
+  (when (and (not (active-minibuffer-window))
+             (not (cashpw/magit-buffer-p))
+             (vulpea-buffer-p))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((tags (vulpea-buffer-tags-get))
+             (original-tags tags))
+        (if (cashpw/org-mode--buffer-has-gallery-p)
+            (setq tags (cons "has_gallery" tags))
+          (setq tags (remove "has_gallery" tags)))
+
+        ;; cleanup duplicates
+        (setq tags (seq-uniq tags))
+
+        ;; update tags if changed
+        (when (or (seq-difference tags original-tags)
+                  (seq-difference original-tags tags))
+          (apply #'vulpea-buffer-tags-set tags))))))
+
+(defun vulpea-buffer-p ()
+  "Return non-nil if the currently visited buffer is a note."
+  (and buffer-file-name
+       (string-prefix-p (expand-file-name (file-name-as-directory org-roam-directory))
+                        (file-name-directory buffer-file-name))))
+#+end_src
+*** Private note mode
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/notes-background-color--private "#1d1f21"
+  "Background color used for private notes."
+  :type 'color
+  :group 'cashpw)
+
+(defcustom cashpw/notes-background-color--public "RoyalBlue4"
+  "Background color used for public notes."
+  :type 'color
+  :group 'cashpw)
+
+(defface cashpw/notes-public-face
+  '((t (:background "RoyalBlue4" :inherit org-link)))
+  "Face for public notes.")
+
+(defvar-local cashpw/notes--line-number-bg-cookie nil
+  "Stores the face-remap cookie for the current buffer background.")
+
+(defun cashpw/notes-set-background-color--private ()
+  "Sets the current buffer background to the private color."
+  (when cashpw/notes--line-number-bg-cookie
+    (face-remap-remove-relative cashpw/notes--line-number-bg-cookie))
+  (setq cashpw/notes--line-number-bg-cookie
+        (face-remap-add-relative
+         'line-number
+         :foreground (face-foreground 'line-number)
+         :background cashpw/notes-background-color--private)))
+
+(defun cashpw/notes-set-background-color--public ()
+  "Sets the current buffer background to the public color."
+  (when cashpw/notes--line-number-bg-cookie
+    (face-remap-remove-relative cashpw/notes--line-number-bg-cookie))
+  (setq cashpw/notes--line-number-bg-cookie
+        (face-remap-add-relative
+         'line-number
+         :foreground "#FFFFFF"
+         :background cashpw/notes-background-color--public)))
+
+(defun cashpw/notes-public-p (&optional file-path-or-buffer)
+  "Return non-nil if FILE-PATH-OR-BUFFER has a \"public\" filetag.
+TODO"
+  (with-current-buffer (or (and (stringp file-path-or-buffer)
+                                (find-file-noselect file-path-or-buffer))
+                           (and (bufferp file-path-or-buffer) file-path-or-buffer)
+                           (current-buffer))
+    (and (derived-mode-p 'org-mode)
+         (buffer-file-name)
+         (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
+         (member "public" (org-node--get-filetags)))))
+
+(defun cashpw/buffers-with-minor-mode (mode)
+  "Return a list of buffers where minor mode MODE is active."
+  (--filter
+   (with-current-buffer it
+     (and (boundp mode) (symbol-value mode)))
+   (buffer-list)))
+
+(defun cashpw/notes-set-background-color ()
+  "Sets the background color based on the presence of the 'public' filetag."
+  (interactive)
+  (if (and (derived-mode-p 'org-mode)
+           (buffer-file-name)
+           (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
+           (member "public" (org-node--get-filetags)))
+      (cashpw/notes-set-background-color--public)
+    (cashpw/notes-set-background-color--private))
+  (--each
+      (cashpw/buffers-with-minor-mode 'cashpw/org-notes-private-link-mode)
+    (with-current-buffer it
+      ;; Update highlighted links based on new public/private state.
+      (cashpw/org-notes-private-link-mode 'toggle)
+      (cashpw/org-notes-private-link-mode 'toggle))))
+
+(defun cashpw/notes-set-background-color--on-save ()
+  "Helper to apply background color only if the saved buffer is in Org mode."
+  (when (derived-mode-p 'org-mode)
+    (cashpw/notes-set-background-color)))
+
+(defun cashpw/notes-set-background-color-all-buffers (&optional state)
+  "Set background of all org-mode buffers for STATE."
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (derived-mode-p 'org-mode)
+        (pcase state
+          ('public (cashpw/notes-set-background-color--public))
+          ('private (cashpw/notes-set-background-color--private))
+          (_ (cashpw/notes-set-background-color)))))))
+
+(define-minor-mode cashpw/org-private-note-mode
+  "Global minor mode to manage Org buffer background colors based on privacy status."
+  :global t
+  :group
+  'cashpw
+  (if cashpw/org-private-note-mode
+      (progn
+        (cashpw/notes-set-background-color-all-buffers)
+        (add-hook 'after-save-hook #'cashpw/notes-set-background-color--on-save)
+        (add-hook 'org-mode-hook #'cashpw/notes-set-background-color))
+    (progn
+      (cashpw/notes-set-background-color-all-buffers 'private)
+      (remove-hook
+       'after-save-hook #'cashpw/notes-set-background-color--on-save)
+      (remove-hook 'org-mode-hook #'cashpw/notes-set-background-color))))
+(cashpw/org-private-note-mode)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/get-org-id-links ()
+  "Return a list of all 'id' link paths in the current buffer."
+  (let ((matches '()))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "\\[\\[id:\\([^]\\[]+\\)" nil t)
+        (push (match-string-no-properties 1) matches)))
+    (nreverse matches)))
+
+(defun cashpw/notes--public-font-lock-keyword (id)
+  "Return font-lock-keyword for ID."
+  `(,(format "\\[\\[id:%s\\]\\[[^]]*\\]\\]" id) 0 'cashpw/notes-public-face t))
+
+(defun cashpw/notes--add-public-font-lock-keywords ()
+  "Add public links to `font-lock-keywords'."
+  (cashpw/log "Adding font-lock keywords in %s" (current-buffer))
+  (let* ((public-ids
+          (--map
+           (with-current-buffer (find-file-noselect it)
+             (org-id-get (point-min)))
+           (cashpw/org-files-with-tag "public" cashpw/path--notes-dir)))
+         (keywords
+          (--map
+           (cashpw/notes--public-font-lock-keyword it)
+           public-ids)))
+    (setq-local cashpw/notes--public-font-lock-keywords keywords)
+    (font-lock-add-keywords nil keywords t)))
+
+(defun cashpw/notes--remove-public-font-lock-keywords ()
+  "Remove public links to `font-lock-keywords'."
+  (cashpw/log "Removing font-lock keywords in %s" (current-buffer))
+  (when (boundp 'cashpw/notes--public-font-lock-keywords)
+    (font-lock-remove-keywords nil cashpw/notes--public-font-lock-keywords)))
+
+(define-minor-mode cashpw/org-notes-private-link-mode
+  "Minor mode to manage Org-mode link background colors based on privacy status."
+  :group 'cashpw
+  (if cashpw/org-notes-private-link-mode
+      (cashpw/notes--add-public-font-lock-keywords)
+    (cashpw/notes--remove-public-font-lock-keywords))
+  (font-lock-fontify-buffer))
+#+end_src
+
+
+
+* TODO Citations
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! citar
+  :when (modulep! :completion vertico)
+  :config
+  (setq
+   citar-bibliography cashpw/bibliographies
+   citar-symbols `((file ,(nerd-icons-faicon "nf-fa-file_o" :face 'nerd-icons-green :v-adjust -0.1) . " ")
+                   (note ,(nerd-icons-faicon "nf-fa-sticky_note_o" :face 'nerd-icons-blue :v-adjust -0.3) . " ")
+                   (link ,(nerd-icons-octicon "nf-oct-link" :face 'nerd-icons-orange :v-adjust 0.01) . " "))
+   citar-symbol-separator "  "
+   citar-notes-paths `(,cashpw/path--notes-dir))
+
+  (defun cashpw/citar-full-names (names)
+    "Transform NAMES like LastName, FirstName to FirstName LastName.
+
+Reference: https://gist.github.com/bdarcus/a41ffd7070b849e09dfdd34511d1665d"
+    (when (stringp names)
+      (mapconcat
+       (lambda (name)
+         (if (eq 1 (length name))
+             (split-string name " ")
+           (let ((split-name (split-string name ", ")))
+             (cl-concatenate 'string (nth 1 split-name) " " (nth 0 split-name)))))
+       (split-string names " and ") ", ")))
+  (setq citar-display-transform-functions
+        '((("author" "editor") . cashpw/citar-full-names))))
+
+;; (use-package! citar-org)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! oc
+  :after org citar
+  :config
+  (setq
+   org-cite-global-bibliography cashpw/bibliographies
+   org-cite-insert-processor 'citar
+   org-cite-follow-processor 'citar
+   org-cite-activate-processor 'citar))
+#+end_src

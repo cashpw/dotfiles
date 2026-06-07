@@ -1,0 +1,569 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 11:55]
+:END:
+#+title: Personal Emacs config: Org - Flashcards
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Flashcards
+
+
+** =org-fc=
+
+#+begin_quote
+Org-fc is a spaced-repetition system for Emacs' org-mode.
+
+[cite:@leonOrgFlashcards2022]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-fc
+  :recipe (:host github
+           :repo "l3kn/org-fc"
+           ;; :repo "cashpw/org-fc"
+           ;; :branch "feat/classes"
+           :files (:defaults "awk" "python")
+           ))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/org-fc--card-timer nil
+  "The timer for the current card.")
+
+(defun cashpw/org-fc--handle-card-timer-expired ()
+  "Set the background color to black when a card timer expires."
+  (set-background-color "black"))
+
+(defun cashpw/org-fc--reset-card-timer-expired-effects ()
+  "Reset the visual effects and cancel the timer triggered by a card expiration."
+  (if cashpw/org-fc--card-timer
+      (cancel-timer cashpw/org-fc--card-timer))
+  (set-background-color "#1d1f21"))
+
+(defun cashpw/org-fc-review-pause ()
+  "Pause the current flashcard review session and restore UI elements."
+  (widen)
+  (global-hide-mode-line-mode -1)
+  ;; (global-flycheck-mode 1)
+  (ignore-errors
+    (doom/reset-font-size)))
+
+(defun cashpw/org-fc--before-review ()
+  "Perform setup actions before starting an org-fc review session."
+  (setq org-format-latex-options
+        '(:foreground
+          default
+          :background default
+          :scale 5.0
+          :html-foreground "Black"
+          :html-background "Transparent"
+          :html-scale 1.0
+          :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+  (ignore-errors
+    (doom/reset-font-size))
+  ;; (setq org-image-actual-width 1200)
+  ;; (cashpw/eglot-pause)
+  ;; (global-flycheck-mode -1)
+  (global-hide-mode-line-mode)
+  (doom/increase-font-size 2))
+
+(defun cashpw/org-fc--before-setup ()
+  "Perform setup actions for a flashcard before it is presented."
+  (cashpw/org-fc--reset-card-timer-expired-effects)
+  (setq cashpw/org-fc--card-timer
+        (run-with-timer
+         cashpw/org-fc--seconds-per-card
+         nil
+         #'cashpw/org-fc--handle-card-timer-expired)))
+
+(defun cashpw/org-fc--after-review ()
+  "Restore environment settings after finishing an org-fc review session."
+  (cashpw/org-fc--reset-card-timer-expired-effects)
+  (setq
+   org-format-latex-options
+   '(:foreground
+     default
+     :background default
+     :scale 1.5
+     :html-foreground "Black"
+     :html-background "Transparent"
+     :html-scale 1.0
+     :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
+                                        ;org-image-actual-width nil
+   )
+  ;; (global-flycheck-mode)
+  ;; (cashpw/eglot-unpause)
+  (global-hide-mode-line-mode -1)
+  (ignore-errors
+    (doom/reset-font-size)))
+
+(defun cashpw/org-fc--maybe-increment-new-seen-today ()
+  "Increment `cashpw/org-fc-review-new-limit--new-seen-today' if flipped card is new."
+  (let ((current-position (oref org-fc-review--session current-item)))
+    (when (org-fc-position--new-p current-position)
+      (cl-incf cashpw/org-fc-review-new-limit--new-seen-today))))
+
+(defun cashpw/org-fc--show-latex-for-tree ()
+  "Show latex under current tree."
+  (org-map-entries
+   (lambda () (org-latex-preview 4))
+   ;; match
+   nil
+   ;; scope
+   'tree))
+
+(defun cashpw/org-fc--open-front-link ()
+  "Open first link/attachment for \"front\" position if that's the one we're reviewing."
+  (unless (null org-fc-review--session)
+    (let* ((pos (oref org-fc-review--session current-item))
+           (card (oref pos card)))
+      (when (and (string= "double" (oref card type))
+                 (and (stringp (oref pos name))
+                      (string= "front" (oref pos name))))
+        (let ((bound (org-element-end (org-element-context))))
+          (dolist (target '("[[file:" "[[attachment:"))
+            (save-excursion
+              (when (search-forward target bound 'noerror)
+                (let ((extension
+                       (s-downcase
+                        (url-file-extension
+                         (org-element-property :path (org-element-context))))))
+                  (cond
+                   ((member extension '(".jpg" ".jpeg" ".gif" ".png"))
+                    ;; This happends automatically.
+                    ;; (org-link-preview)
+                    )
+                   ((member extension '(".mp4" ".mkv"))
+                    (org-open-at-point))))))))))))
+
+(defun cashpw/org-fc--after-flip ()
+  "Perform actions after a flashcard has been flipped."
+  (evil-open-fold-rec)
+  (cancel-timer cashpw/org-fc--card-timer))
+
+(defun cashpw/org-fc-review-all ()
+  "Review everything except reading flashcards."
+  (interactive)
+  (org-fc-cache-mode)
+  (org-fc-review '(:paths all :filter (not (tag "reading")))))
+
+(use-package!
+    org-fc
+  :after org
+  :custom
+  (org-fc-directories `(,cashpw/path--notes-dir))
+  (org-fc-review-history-file
+   (s-lex-format "${cashpw/path--notes-dir}/org-fc-reviews.tsv"))
+  (org-fc-bury-siblings t)
+  (org-fc-bury-siblings t)
+  (org-fc-algo-sm2-intervals '(0.0 1.0 2.0 6.0))
+  ;; (org-fc-review-new-limit 20)
+  ;; (org-fc-review-new-limit-schedule 'day)
+  (org-fc-review-hide-title-in-header-line t)
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (org-fc-review-flip-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "n") 'org-fc-review-flip)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "p") 'cashpw/org-fc-review-pause)
+     (define-key map (kbd "s") 'org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
+     map))
+  (org-fc-review-rate-mode-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map (kbd "0") 'org-fc-review-rate-again)
+     (define-key map (kbd "1") 'org-fc-review-rate-hard)
+     (define-key map (kbd "2") 'org-fc-review-rate-good)
+     (define-key map (kbd "3") 'org-fc-review-rate-easy)
+     (define-key map (kbd "s") 'org-fc-review-skip-card)
+     (define-key map (kbd "S") 'org-fc-review-suspend-card)
+     (define-key map (kbd "e") 'org-fc-review-edit)
+     (define-key map (kbd "q") 'org-fc-review-quit)
+     map))
+
+  :config
+  (require 'org-fc-hydra)
+  (require 'org-fc-keymap-hint)
+
+  (setq cashpw/org-fc--seconds-per-card 10)
+
+  (add-to-list
+   'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
+  (add-to-list
+   'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
+
+  ;; Define twice so the keys show up in the hint
+  ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
+  (evil-define-minor-mode-key
+    '(normal insert emacs)
+    'org-fc-review-flip-mode
+    (kbd "n")
+    'org-fc-review-flip
+    (kbd "s")
+    'org-fc-review-skip-card
+    (kbd "S")
+    'org-fc-review-suspend-card
+    (kbd "e")
+    'org-fc-review-edit
+    (kbd "p")
+    'cashpw/org-fc-review-pause
+    (kbd "q")
+    'org-fc-review-quit)
+  (evil-define-minor-mode-key
+    '(normal insert emacs)
+    'org-fc-review-rate-mode
+    (kbd "0")
+    'org-fc-review-rate-again
+    (kbd "1")
+    'org-fc-review-rate-hard
+    (kbd "2")
+    'org-fc-review-rate-good
+    (kbd "3")
+    'org-fc-review-rate-easy
+    (kbd "s")
+    'org-fc-review-skip-card
+    (kbd "S")
+    'org-fc-review-suspend-card
+    (kbd "e")
+    'org-fc-review-edit
+    (kbd "q")
+    'org-fc-review-quit)
+  (add-hook!
+   'org-fc-review-edit-mode-hook
+   #'cashpw/org-fc--reset-card-timer-expired-effects)
+
+  (add-hook! 'org-fc-before-setup-hook #'cashpw/org-fc--before-setup)
+  (add-hook! 'org-fc-after-setup-hook #'cashpw/org-fc--open-front-link)
+
+  (add-hook!
+   'org-fc-after-flip-hook
+   #'cashpw/org-fc--after-flip
+   #'cashpw/org-fc--maybe-increment-new-seen-today
+   #'cashpw/org-fc--show-latex-for-tree)
+
+  (add-hook! 'org-fc-before-review-hook #'cashpw/org-fc--before-review)
+
+  (add-hook! 'org-fc-after-review-hook #'cashpw/org-fc--after-review)
+
+  (setq org-roam-db-node-include-function
+        (lambda ()
+          ;; Exclude org-fc cards from roam
+          (not (org-fc-entry-p)))))
+
+(use-package! org-fc-type-vocab :after org-fc)
+#+end_src
+
+**** Override
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (defun cashpw/org-fc-awk-index-files (files)
+;;   "Generate a list of all cards and positions in FILES.
+;; Unlike `org-fc-awk-index-paths', files are included directly in
+;; the AWK command and directories are not supported."
+;;   (mapcar
+;;    (lambda (file)
+;;      (plist-put
+;;       file
+;;       :cards
+;;       (mapcar
+;;        (lambda (card)
+;;          (plist-put
+;;           card
+;;           :blocked-by (split-string (or (plist-get card :blocked-by) "") ","))
+;;          (plist-put
+;;           card
+;;           :tags
+;;           (org-fc-awk-combine-tags
+;;            (plist-get card :inherited-tags) (plist-get card :local-tags))))
+;;        (plist-get file :cards))))
+;;    (read
+;;     (shell-command-to-string
+;;      (org-fc-awk--command
+;;       "awk/index.awk"
+;;       :variables (org-fc-awk--indexer-variables)
+;;       ;; Avoid "Argument list too long" error
+;;       ;; Also appears as 'sequencep, /data/data/com.termux/files/usr/bin/emacs:'
+;;       :input
+;;       (concat
+;;        (cashpw/maybe-add-trailing-forward-slash cashpw/path--notes-dir)
+;;        "*.org"))))))
+
+;; (after!
+;;   org-fc
+;;   (advice-add
+;;    'org-fc-awk-index-files
+;;    :override 'cashpw/org-fc-awk-index-files))
+#+end_src
+
+*** Filters
+
+**** One card per file
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-fc--one-per-file-exceptions (list
+                                                   (concat cashpw/path--notes-dir "/vocabulary.org"))
+  "List of filetitles to exclude from the one-position-per-file filter.")
+
+(cl-defmethod cashpw/org-fc--filter-one-per-file ((cards list))
+  "Return nil to remove the CARDS (`org-fc-card's) from the review list."
+  (let ((file-path-hash (make-hash-table :test 'equal)))
+    (--filter
+     (let ((path (oref (oref it file) path)))
+       (if (and
+            (gethash path file-path-hash)
+            (not (member (expand-file-name path) cashpw/org-fc--one-per-file-exceptions)))
+           nil
+         (puthash path t file-path-hash)
+         t))
+     cards)))
+
+(after!
+  org-fc
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-one-per-file
+               'append))
+#+end_src
+
+**** Limit tagged cards in review sessions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defmacro cashpw/org-fc--make-tag-limit-fn (tag max-count)
+  "Return a function suitable for `org-fc-review-card-filters' which limits tagged cards.
+
+- TAG: The tag to limit
+- MAX-COUNT: The maximum count of cards tagged with TAG to include in a review."
+  (let ((function-name (format "cashpw/org-fc--filter-limit-tag-%s" tag)))
+    `(defun ,(intern function-name) (cards)
+       ,(format "Remove all but %d CARDS which are tagged \"%s\"."
+                max-count
+                tag)
+       (let ((limit ,max-count)
+             (included-count 0)
+             (removed-count 0))
+         (prog1
+             (--filter
+              (let ((tags (oref it tags)))
+                (if (member ,tag tags)
+                    (if (= included-count limit)
+                        (progn
+                          (cl-incf removed-count)
+                          nil)
+                      (cl-incf included-count)
+                      t)
+                  t))
+              cards)
+           (message
+            "[%s] %d cards were tagged with %s. We removed %d from the set, leaving %d for review."
+            ,function-name
+            (+ removed-count included-count)
+            ,tag
+            removed-count
+            included-count))))))
+
+
+(after! org-fc
+  (cashpw/org-fc--make-tag-limit-fn "implement" 1)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-implement 'append)
+
+  (cashpw/org-fc--make-tag-limit-fn "asl" 10)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-asl 'append)
+
+  (cashpw/org-fc--make-tag-limit-fn "photo" 5)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-tag-photo 'append))
+#+end_src
+
+**** Limit new cards
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-fc-review-new-limit -1
+  "Limits the number of new positions shown per `org-fc-review-new-limit-schedule'.
+-1 for unlimited."
+  :type 'integer
+  :group 'org-fc)
+
+(defcustom cashpw/org-fc-review-new-limit-schedule 'session
+  "The schedule at which to limit the inclusion of new positions.
+- `session': Each review session will include, at most, `org-fc-review-new-limit' new cards.
+- `day': New cards will be limited to `org-fc-review-new-limit' across review sessions; resets at midnight."
+  :type '(choice (const session)
+          (const day))
+  :group 'org-fc)
+
+(defvar cashpw/org-fc-review-new-limit--new-seen-today 0
+  "Remaining new cards for today's reviews.
+Don't access directly! Use `org-fc-review-new-limit--get-remaining'.
+Not persisted; resets when reloading Emacs!")
+
+(defvar cashpw/org-fc-review-new-limit--reset-day nil
+  "The day number on which we should reset `org-fc-review-new-limit--new-seen-today'.
+Not persisted; resets when reloading Emacs!")
+
+(cl-defmethod org-fc-position--new-p ((position org-fc-position))
+  "Return t if the provided CARD is new; nil otherwise."
+  (not (plist-get (oref position data) :last-review)))
+
+(cl-defmethod org-fc-position--new-p ((card org-fc-card))
+  "Return t if the provided CARD is new; nil otherwise."
+  (org-fc-position--new-p (nth 0 (oref card positions))))
+
+(defun cashpw/org-fc-review-new-limit--get-remaining ()
+  "Return the remaining new cards for the `org-fc-review-new-card-schedule'."
+  (cond
+   ((eq 'session cashpw/org-fc-review-new-limit-schedule)
+    cashpw/org-fc-review-new-limit)
+   ((eq 'day cashpw/org-fc-review-new-limit-schedule)
+    (let ((current-day (time-to-days (current-time))))
+      (cashpw/org-fc-review-new-limit--update-reset-day current-day)
+      (- cashpw/org-fc-review-new-limit
+         cashpw/org-fc-review-new-limit--new-seen-today)))))
+
+(defun cashpw/org-fc-review-new-limit--update-reset-day (day)
+  "Update the reset day and reset the count of new cards seen today using DAY."
+  (when (or (not cashpw/org-fc-review-new-limit--reset-day)
+            (= cashpw/org-fc-review-new-limit--reset-day day))
+    (setq cashpw/org-fc-review-new-limit--reset-day (1+ day)
+          cashpw/org-fc-review-new-limit--new-seen-today 0)))
+
+(cl-defmethod cashpw/org-fc--filter-limit-new ((cards list))
+  "Return nil to remove the CARDS (`org-fc-card's) from the review list."
+  (let ((remaining-new (cashpw/org-fc-review-new-limit--get-remaining)))
+    (--filter
+     (if (not (org-fc-position--new-p it))
+         t
+       (cond
+        ((< remaining-new 0)
+         ;; Negative `remaining-new' indicates unlimited new cards. Allow them all.
+         t)
+        ((= remaining-new 0)
+         nil)
+        (t
+         (cl-decf remaining-new)
+         t)))
+     cards)))
+
+(after! org-fc
+  (setq
+   cashpw/org-fc-review-new-limit 10
+   cashpw/org-fc-review-new-limit-schedule 'day)
+  (add-to-list 'org-fc-review-card-filters #'cashpw/org-fc--filter-limit-new 'append))
+#+end_src
+
+*** Space initial reviews
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-fc
+  ;; Explicitly require FSRS as it's still experimental as of 2025-12-11
+  (require 'org-fc-algo-fsrs)
+  
+  (defcustom cashpw/org-fc--review-position-interval 7
+    "Number of days between initial review due dates successive positions in a card.")
+
+  ;; Override to allow offset days
+  (defun org-fc-algo-fsrs6--cli-get-initial (&optional interval)
+    (org-fc-algo-fsrs6--cli-wrap-json
+     nil
+     (list "initial" "--now" (org-fc-timestamp-in (or interval 0)))))
+
+  (cl-defmethod org-fc-algo-initial-review-data ((_algo org-fc-algo-fsrs6) name)
+    "Initial FSRS_6 review data for position NAME."
+    (cl-list*
+     'position
+     name
+     (cond
+      ((string= name "front")
+       (org-fc-algo-fsrs6--cli-get-initial))
+      ((string= name "back")
+       (org-fc-algo-fsrs6--cli-get-initial cashpw/org-fc--review-position-interval))
+      (
+       ;; Cloze positions
+       (string-match-p "^[0-9]+$" name)
+       (org-fc-algo-fsrs6--cli-get-initial
+        (* (string-to-number name)
+           cashpw/org-fc--review-position-interval)))
+      (t
+       (org-fc-algo-fsrs6--cli-get-initial))))))
+#+end_src
+
+*** Redisplay
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (after! org-fc
+;;   (cl-defmethod org-fc-review-session--next ((review-session org-fc-review-session) &optional resuming)
+;;     "Review the next card of the current session.
+
+;; If RESUMING is non-nil, some parts of the buffer setup are skipped."
+;;     (if (not (null (oref review-session positions)))
+;;         (condition-case err
+;;             (let* ((pos (pop (oref review-session positions)))
+;;                    (card (oref pos card))
+;;                    (path (oref card path))
+;;                    (id (oref card id))
+;;                    (type (oref card type)))
+;;               (setf (oref review-session current-item) pos)
+;;               (let ((buffer (find-buffer-visiting path)))
+;;                 (with-current-buffer (find-file path)
+;;                   (unless resuming
+;;                     ;; If buffer was already open, don't kill it after rating the card
+;;                     (if buffer
+;;                         (setq-local org-fc-reviewing-existing-buffer t)
+;;                       (setq-local org-fc-reviewing-existing-buffer nil))
+;;                     (org-fc-set-header-line))
+
+;;                   (goto-char (point-min))
+;;                   (org-fc-id-goto id path)
+
+;;                   (org-fc-indent)
+;;                   ;; Make sure the headline the card is in is expanded
+;;                   (org-reveal)
+;;                   (redisplay t)
+;;                   (org-fc-narrow)
+;;                   (org-fc-hide-keyword-times)
+;;                   (org-fc-hide-drawers)
+;;                   (org-fc-show-latex)
+;;                   (org-display-inline-images)
+;;                   (run-hooks 'org-fc-before-setup-hook)
+
+;;                   (setq org-fc-review--timestamp (time-to-seconds (current-time)))
+;;                   (let ((step (funcall (org-fc-type-setup-fn type) (oref pos pos))))
+;;                     (run-hooks 'org-fc-after-setup-hook)
+
+;;                     ;; If the card has a no-noop flip function,
+;;                     ;; skip to rate-mode
+;;                     (let ((flip-fn (org-fc-type-flip-fn type)))
+;;                       (if (or
+;;                            (eq step 'rate)
+;;                            (null flip-fn)
+;;                            (eq flip-fn #'org-fc-noop))
+;;                           (org-fc-review-rate-mode 1)
+;;                         (org-fc-review-flip-mode 1)))))))
+;;           (error
+;;            (org-fc-review-quit)
+;;            (signal (car err) (cdr err))))
+;;       (message "Review Done")
+;;       (org-fc-review-quit))))
+#+end_src
+
+*** Narrow
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (defun org-fc-narrow ()
+;;   "Narrow the outline tree.
+;; Only parent headings of the current heading remain visible."
+;;   (interactive)
+;;   (let* ((tags (org-get-tags nil 'local)))
+;;     ;; Find the first heading with a :narrow: tag or the top level
+;;     ;; ancestor of the current heading and narrow to its region
+;;     (save-excursion
+;;       (while (org-up-heading-safe))
+;;       (org-narrow-to-subtree)
+;;       (outline-hide-subtree))
+;;     ;; Show only the ancestors of the current card
+;;     (org-show-set-visibility org-fc-narrow-visibility)
+;;     (if (member "noheading" tags) (org-fc-hide-heading))))
+#+end_src

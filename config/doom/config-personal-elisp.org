@@ -1,0 +1,35 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:27]
+:END:
+#+title: Personal Emacs config: Elisp
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Packages
+
+** =aggressive-indent=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! aggressive-indent
+  :config
+  (add-hook
+   'emacs-lisp-mode-hook
+   #'aggressive-indent-mode))
+#+end_src
+
+** =elisp-autofmt=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! elisp-autofmt)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package elisp-autofmt
+  :commands (elisp-autofmt-mode elisp-autofmt-buffer)
+  :hook (emacs-lisp-mode . elisp-autofmt-mode))
+#+end_src

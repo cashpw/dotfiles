@@ -1,0 +1,131 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Asana
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! asana
+  ;; :recipe (:host github :repo "lmartel/emacs-asana"))
+  :recipe (:host github :repo "cashpw/asana.el"))
+#+end_src
+
+* Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    asana
+  :custom
+  (asana-tasks-org-file cashpw/path--personal-asana)
+  (asana-sync-stories nil)
+  (asana-schedule-pattern 'schedule-due)
+  :config
+  (setq
+   asana-token (secret-get "asana" nil (cashpw/machine-p 'personal-phone)))
+   (when (cashpw/machine-p 'personal)
+     (add-hook 'cashpw/run-once-a-day-hooks #'asana-org-sync-tasks))
+
+  (setq
+   cashpw/asana-categories-by-task-name '()
+   cashpw/asana-categories-by-project-section-name
+   '((:project "Prokop-Weavers" :section "Pets" :category "Family>Pets")
+     (:project
+      "Prokop-Weavers"
+      :section "Cleaning and maintenance"
+      :category "Personal>Housework")))
+
+  (defun cashpw/asana-task-complete (task-gid)
+    "Complete an Asana task by TASK-GID."
+    (request
+      (format "https://app.asana.com/api/1.0/tasks/%s" task-gid)
+      ;; :sync t
+      :type "PUT"
+      :data (json-encode `((data (completed . t))))
+      :headers
+      `(("Content-Type" . "application/json")
+        ("Authorization" . ,(concat "Bearer " (asana-get-token))))
+      :parser 'json-read
+      :success
+      (cl-function
+       (lambda (&key data &allow-other-keys)
+         (lambda (data)
+           (let ((task-name (map-elt data 'name)))
+             (if (equal t (assoc 'completed data))
+                 (message "`%s' completed." task-name)
+               (message "Unknown error: couldn't complete `%s': %s"
+                        task-name
+                        data))))))
+      :error
+      (cl-function
+       (lambda (&key error-thrown &allow-other-keys)
+         (message "Asana error: %S" error-thrown)))))
+  (advice-add 'asana-task-complete :override #'cashpw/asana-task-complete)
+
+  (defun cashpw/asana--set-scheduled (_)
+    "Set scheduled after syncing tasks."
+    (when-let ((deadline-time (org-get-deadline-time (point))))
+      (quiet! (org-schedule nil deadline-time))))
+  ;; (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-scheduled)
+
+  (defun cashpw/asana--set-priority (_)
+    "Set priority after syncing tasks."
+    (quiet! (org-priority org-priority-default)))
+  (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-priority)
+
+  (defun cashpw/asana--set-category (task)
+    "Set priority after syncing tasks."
+    (cashpw/log-debug "task: %s" task)
+    (when-let*
+        ((task-name (map-elt task 'name))
+         (category
+          (or
+           (when-let*
+               ((project-name
+                 (-->
+                  (car (map-elt task 'memberships))
+                  (map-elt it 'project)
+                  (map-elt it 'name)))
+                (section-name
+                 (-->
+                  (car (map-elt task 'memberships))
+                  (map-elt it 'section)
+                  (map-elt it 'name)))
+                (match
+                 (--first
+                  (and (progn
+                         (cashpw/log-debug
+                          "Trying to match project (%s;%s) and section (%s;%s)"
+                          project-name
+                          (plist-get it :project)
+                          section-name
+                          (plist-get it :section))
+                         t)
+                       (string-match-p (plist-get it :project) project-name)
+                       (string-match-p (plist-get it :section) section-name))
+                  cashpw/asana-categories-by-project-section-name)))
+             (plist-get match :category))
+           (when-let* ((match
+                        (--first
+                         (string-match-p (car it) task-name)
+                         cashpw/asana-categories-by-task-name)))
+             (cdr match)))))
+      (org-set-property "CATEGORY" category)))
+  (add-hook 'asana-after-insert-task-hook #'cashpw/asana--set-category))
+#+end_src
+
+* Bug fixes
+
+** [[github:lmartel/emacs-asana/issues/26][Asana API callback-error: (void-function hash-table-contains-p)]]
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun hash-table-contains-p (key table)
+  "Return non-nil if TABLE contains KEY.
+
+Reference: https://lists.gnu.org/archive/html/emacs-devel/2018-02/msg00439.html"
+  (let ((x '(:hash-table-contains-p)))
+    (not (eq x (gethash key table x)))))
+#+end_src

@@ -1,0 +1,29 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:25]
+:END:
+#+title: Personal Emacs config: Protobuf
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Packages
+** =protobuf-mode=
+
+#+begin_quote
+This package adds =XOAuth2= authentication capabilities to =auth-source=.
+
+/[[github:ccrusius/auth-source-xoauth2][ccrusius/auth-source-xoauth2]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! protobuf-mode)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! protobuf-mode)
+#+end_src
+

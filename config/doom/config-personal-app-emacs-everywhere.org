@@ -1,0 +1,134 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: emacs-everywhere
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+
+Doom [[id:0a8e4124-a48a-42b4-869e-06ee26d4ff99][provides]] =emacs-everywhere=.
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! ox-gfm)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    ox-gfm
+  :config
+
+  (defun cashpw/org-gfm-timestamp (timestamp contents info)
+    "Translate TIMESTAMP to a compatible form. INFO is a plist holding contextual information."
+    (cashpw/log
+     "Converting timestamp (%s -> %s)"
+     timestamp
+     (org-timestamp-translate timestamp))
+    (format "%s" (org-timestamp-translate timestamp)))
+
+  ;; Override so we can set some add to translate-alist
+  (org-export-define-derived-backend
+      'gfm 'md
+    :filters-alist '((:filter-parse-tree . org-md-separate-elements))
+    :menu-entry
+    '(?g
+      "Export to Github Flavored Markdown"
+      ((?G
+        "To temporary buffer"
+        (lambda (a s v b) (org-gfm-export-as-markdown a s v)))
+       (?g "To file" (lambda (a s v b) (org-gfm-export-to-markdown a s v)))
+       (?o
+        "To file and open"
+        (lambda (a s v b)
+          (if a
+              (org-gfm-export-to-markdown t s v)
+            (org-open-file (org-gfm-export-to-markdown nil s v)))))))
+    :translate-alist
+    '((inner-template . org-gfm-inner-template)
+      (paragraph . org-gfm-paragraph)
+      (timestamp . cashpw/org-gfm-timestamp)
+      (strike-through . org-gfm-strike-through)
+      (example-block . org-gfm-example-block)
+      (src-block . org-gfm-src-block)
+      (table-cell . org-gfm-table-cell)
+      (table-row . org-gfm-table-row)
+      (table . org-gfm-table))))
+
+(after!
+  emacs-everywhere
+  (setq
+   emacs-everywhere-org-export-options
+   "#+property: header-args :exports both
+,#+options: toc:nil ':nil -:nil <:nil\n"
+   emacs-everywhere-pandoc-md-args
+   `("--from"
+     ,(concat "markdown" (concat "-auto_identifiers" "-smart" "+pipe_tables"))
+     "--to"
+     "org"))
+  (add-to-list
+   'emacs-everywhere-system-configs
+   '((wayland . sway:wlroots)
+     :focus-command ("swaymsg" "[con_id=%w]" "focus")
+     :paste-command ("wtype" "-M" "Ctrl" "-P" "v" "-p" "v")
+     :info-function emacs-everywhere--app-info-linux-sway)
+   'append)
+  (--each
+      '( ;; Google issue tracker
+        "Buganizer"
+        ;; Google code review
+        "Critique"
+        ;; Google chat
+        "Chat")
+    (add-to-list 'emacs-everywhere-markdown-windows it)))
+#+end_src
+
+
+#+RESULTS:
+: emacs-everywhere-finish
+
+* Fix for import
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (after!
+;;   emacs-everywhere
+;;   (defun emacs-everywhere-insert-selection ()
+;;     "Insert the last text selection into the buffer."
+;;     (pcase system-type
+;;       ('darwin
+;;        (progn
+;;          (call-process
+;;           "osascript"
+;;           nil
+;;           nil
+;;           nil
+;;           "-e"
+;;           "tell application \"System Events\" to keystroke \"c\" using command down")
+;;          (sleep-for emacs-everywhere-clipboard-sleep-delay) ; lets clipboard info propagate
+;;          (yank)))
+;;       ((or 'ms-dos 'windows-nt 'cygwin)
+;;        (emacs-everywhere-insert-selection--windows))
+;;       (_
+;;        (when-let ((selection (gui-get-selection 'PRIMARY 'UTF8_STRING)))
+;;          (gui-backend-set-selection 'PRIMARY "")
+;;          (insert selection))))
+;;     (when (and (eq major-mode 'org-mode)
+;;                (emacs-everywhere-markdown-p)
+;;                (executable-find "pandoc"))
+;;       (apply #'call-process-region
+;;              (point-min)
+;;              (point-max)
+;;              "pandoc"
+;;              t
+;;              t
+;;              t
+;;              emacs-everywhere-pandoc-md-args)
+;;       (deactivate-mark)
+;;       (goto-char (point-max)))
+;;     (cond
+;;      ((bound-and-true-p evil-local-mode)
+;;       (evil-insert-state)))))
+#+end_src
+
+#+RESULTS:
+: emacs-everywhere-insert-selection
+

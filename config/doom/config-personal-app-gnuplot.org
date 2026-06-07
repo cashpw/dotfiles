@@ -1,0 +1,27 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Gnuplot
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+
+#+begin_quote
+This package adds =XOAuth2= authentication capabilities to =auth-source=.
+
+/[[github:ccrusius/auth-source-xoauth2][ccrusius/auth-source-xoauth2]]/
+#+end_quote
+
+* Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! gnuplot)
+#+end_src
+
+* Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! gnuplot)
+#+end_src
+

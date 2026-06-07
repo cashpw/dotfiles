@@ -1,0 +1,40 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Image viewer
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* =feh=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/feh-gallery (image-paths)
+  "Open a feh gallery of IMAGE-PATHS."
+  (apply #'start-process "feh-gallery" nil "feh" "--fullscreen" image-paths))
+
+(defun cashpw/org-get-link-image-paths-in-buffer ()
+  "Return list of image paths from links in current buffer."
+  (org-element-map
+      (org-element-parse-buffer) 'link
+    (lambda (link)
+      (cond
+       ((string= (org-element-property :type link) "file")
+        (concat
+         (cashpw/maybe-add-trailing-forward-slash default-directory)
+         (org-element-property :path link)))
+       ((string= (org-element-property :type link) "attachment")
+        (concat
+         (cashpw/maybe-add-trailing-forward-slash
+          (save-excursion
+            (goto-char (org-element-property :begin link))
+            (org-agenda-with-point-at-orig-entry nil
+              (org-attach-dir))))
+         (org-element-property :path link)))))))
+
+(defun cashpw/feh-gallery-of-linked-images-in-buffer ()
+  "Open a feh gallery of all images in the current buffer."
+  (interactive)
+  (cashpw/feh-gallery (cashpw/org-get-link-image-paths-in-buffer)))
+#+end_src
+

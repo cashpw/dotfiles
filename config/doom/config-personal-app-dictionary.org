@@ -1,0 +1,12 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Dictionary
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ +lookup-open-url-fn #'eww)
+#+end_src

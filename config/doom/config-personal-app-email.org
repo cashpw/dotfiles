@@ -1,0 +1,661 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:28]
+:END:
+#+title: Personal Emacs config: Email
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Packages
+** =gnus-alias=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! gnus-alias)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! gnus-alias
+  :config
+  (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
+  (gnus-alias-init))
+#+end_src
+
+**** Personal
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! gnus-alias
+  (setq
+   gnus-alias-identity-alist '(("cashbweaver@gmail"
+                                ;; Refers to
+                                nil
+                                "Cash Prokop-Weaver <cashbweaver@gmail.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil
+                                "~/.config/email-signature-personal")
+                               ("cash@cashpw"
+                                ;; Refers to
+                                nil
+                                "Cash Prokop-Weaver <cash@cashpw.com>"
+                                ;; Organization
+                                nil
+                                ;; Extra headers
+                                nil
+                                ;; Body
+                                nil
+                                "~/.config/email-signature-personal"))
+   gnus-alias-default-identity "cashbweaver@gmail"))
+#+end_src
+
+** =org-mime=
+
+#+begin_quote
+This program sends HTML email using Org-mode HTML export.
+
+This approximates a WYSiWYG HTML mail editor from within Emacs, and can be useful for sending tables, fontified source code, and inline images in email.
+
+/[[github:org-mime/org-mime][org-mime/org-mime]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-mime)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-mime
+  :custom
+  org-mime-export-options '(:with-latex dvipng
+                            :section-numbers nil
+                            :with-author nil
+                            :with-toc nil))
+#+end_src
+
+** =notmuch=
+*** Package
+
+Doom emacs provides =notmuch= through =init.el=.
+
+*** Helper functions
+
+**** Toggle thread open/closed
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch--toggle-all-open ()
+  "Toggle `cashpw/notmuch-all-open' between nil and t."
+  (condition-case nil
+      (setq-local
+       cashpw/notmuch-all-open (not cashpw/notmuch-all-open))
+    (error
+     (setq-local
+      cashpw/notmuch-all-open t)
+     nil)))
+
+(defun cashpw/notmuch-show-open-or-close-all ()
+  "Toggle between showing and hiding all messages in the thread."
+  (interactive)
+  (cashpw/notmuch--toggle-all-open)
+  (if cashpw/notmuch-all-open
+      (progn
+        (universal-argument)
+        (notmuch-show-open-or-close-all))
+    (notmuch-show-open-or-close-all)))
+#+end_src
+
+**** Tags
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch--search-thread-has-tag-p (match-tag)
+  "Return non-nil if the current thread has MATCH-TAG."
+  (interactive)
+  (let ((thread-tags (notmuch-search-get-tags)))
+    (member match-tag thread-tags)))
+
+(defun cashpw/notmuch-search-toggle-tag (tag)
+  "Toggle the provided tag."
+  (interactive)
+  (if (member tag (notmuch-search-get-tags))
+      (notmuch-search-tag (list (concat "-" tag)))
+    (notmuch-search-tag (list (concat "+" tag)))))
+
+(defun cashpw/notmuch--search-thread-toggle-tag (key)
+  "Toggle the tag(s) associated with KEY."
+  (interactive "k")
+  (let ((tags (assoc key cashpw/notmuch-tag-alist)))
+    (apply 'notmuch-search-tag (cdr tags))))
+
+(defun cashpw/notmuch--tag-search (key name tags)
+  "Return a notmuch search query named NAME, assigned to KEY, which queries the provided TAGS.
+
+TAGS which start with \"-\" are excluded."
+  (let ((query (string-join
+                (mapcar
+                 (lambda (tag)
+                   (if (s-starts-with-p "-"
+                                        tag)
+                       (let ((tag (string-trim-left tag
+                                                    "-")))
+                         (s-lex-format "-tag:${tag}"))
+                     (s-lex-format "tag:${tag}")))
+                 tags)
+                " AND ")))
+    `(:key ,key
+      :name ,name
+      :query ,query)))
+#+end_src
+
+**** Archive
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch-search-super-archive (&optional beg end)
+  "Super archive the selected thread between BEG and END; based on `notmuch-search-archive-thread'."
+  (interactive (notmuch-interactive-region))
+  (notmuch-search-tag
+   cashpw/notmuch-super-archive-tags
+   beg
+   end)
+  (when (eq beg
+            end)
+    (notmuch-search-next-thread)))
+#+end_src
+
+**** Todo
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/notmuch-search-todo ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "teE")
+  (message "Captured TODO for %s." cashpw/email--subject))
+
+(defun cashpw/notmuch-search-follow-up ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "teF")
+  (message "Captured TODO for %s." cashpw/email--subject))
+
+(defun cashpw/notmuch-search-todo-today ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tee")
+  (message "Captured TODO for %s." cashpw/email--subject))
+
+(defun cashpw/notmuch-search-follow-up-tomorrow ()
+  "Capture the email at point in search for a todo."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef")
+  (message "Captured TODO for %s." cashpw/email--subject))
+#+end_src
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! notmuch
+  (setq
+   notmuch-wash-wrap-lines-length 100
+   notmuch-saved-searches `(,(cashpw/notmuch--tag-search "a"
+                                                         "Attention"
+                                                         '("attn"
+                                                           "-drive"
+                                                           "-calendar"
+                                                           "-drafts"
+                                                           "-waiting"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "A"
+                                                         "Abridged"
+                                                         '("abridged"
+                                                           "inbox"
+                                                           "-trash"))
+                            (:key "c"
+                             :name "Calendar"
+                             :query "tag:calendar AND -tag:trash AND (tag:inbox OR tag:attn)")
+                            (:key "d"
+                             :name "Drive"
+                             :query "tag:drive AND -tag:trash AND (tag:inbox OR tag:attn)")
+                            ,(cashpw/notmuch--tag-search "D"
+                                                         "Drafts"
+                                                         '("draft"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "i"
+                                                         "Inbox"
+                                                         '("inbox"
+                                                           "-critique"
+                                                           "-bug"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "I"
+                                                         "Archive"
+                                                         '("-inbox"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "m"
+                                                         "To Me"
+                                                         '("inbox"
+                                                           "to-me"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "M"
+                                                         "CC Me"
+                                                         '("inbox"
+                                                           "cc-me"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "r"
+                                                         "To Read"
+                                                         '("to-read"
+                                                           "-systems"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "R"
+                                                         "reporting chain"
+                                                         '("inbox"
+                                                           "management-chain"
+                                                           "-trash"))
+                            (:key "s"
+                             :name "Sent (30 days)"
+                             :query "tag:sent AND -tag:trash AND date:last_month..today")
+                            ,(cashpw/notmuch--tag-search "S"
+                                                         "Sent (all)"
+                                                         '("sent"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "t"
+                                                         "Team"
+                                                         '("team"
+                                                           "inbox"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "w"
+                                                         "Waiting"
+                                                         '("waiting"
+                                                           "-trash"))
+                            ,(cashpw/notmuch--tag-search "y"
+                                                         "Systems"
+                                                         '("inbox"
+                                                           "systems")))
+   +notmuch-home-function (lambda ()
+                            (notmuch-search "tag:inbox"))
+   notmuch-archive-tags '("-inbox"
+                          "-unread")
+   notmuch-search-line-faces '(("attn" . '(:foreground "red3"))
+                               ("waiting" . '(:foreground "orange3"))
+                               ("calendar" . '(:foreground "DeepSkyBlue3"))
+                               ("to-read" . '(:foreground "magenta3")))
+   ;; Superset of `notmuch-archive-tags' for super archiving.
+   cashpw/notmuch-super-archive-tags (append
+                                      notmuch-archive-tags
+                                      '("-attn"
+                                        "-waiting"
+                                        "-to-read")))
+
+  ;; Prevent wrapping at 70 characters in email composition.
+  (add-hook! 'message-mode-hook #'turn-off-auto-fill)
+  (add-hook! 'message-mode-hook #'visual-line-mode))
+#+end_src
+
+** =org-msg=
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-msg)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! org-msg
+;;   :config
+;;   (setq
+;;    org-msg-options "html-postamble:nil H:6 num:nil ^:{[ toc:nil author:nil email:nil \\n:t]}"
+;;    org-msg-startup "hidestars indent inlineimages"
+;;    org-msg-greeting-fmt "\nHi%s,\n\n"
+;;    ;; org-msg-recipient-names
+;;    org-msg-default-alternatives '((new . (text html))
+;;                                   (reply-to-html . (text html))
+;;                                   (reply-to-text . (text)))
+;;    org-msg-convert-citation t
+;;    ;; org-msg-signature is redundant -- use `gnus-alias-identity-alist'
+;;    )
+;;   (org-msg-mode))
+#+end_src
+
+* Composing email
+
+** Get message attributes
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/email--message-id nil
+  "Holds an email id. Used to pass data across indirect function calls.")
+(defvar cashpw/email--to nil
+  "Holds an email to. Used to pass data across indirect function calls.")
+(defvar cashpw/email--subject nil
+  "Holds an email subject. Used to pass data across indirect function calls.")
+(defvar cashpw/email--from nil
+  "Holds an email from. Used to pass data across indirect function calls.")
+
+(defun cashpw/notmuch-search-get-properties ()
+  "Return properties object for thread at point in search."
+  (with-current-buffer (notmuch-show (notmuch-search-find-thread-id t))
+    (save-excursion
+      (goto-char (point-max))
+      (prog1
+          (cond
+           ((eq major-mode 'notmuch-show-mode)
+	    (notmuch-show-get-message-properties))
+	   ((eq major-mode 'notmuch-tree-mode)
+	    (notmuch-tree-get-message-properties))
+	   (t nil))
+        (kill-buffer)))))
+
+(defun cashpw/email-get-to ()
+  "Return To value for message buffer, or message at point."
+  (or
+   cashpw/email--to
+   (notmuch-show-get-to)
+   (message-field-value "To")))
+
+(defun cashpw/email-get-message-id ()
+  "Return To value for message buffer, or message at point."
+  (or
+   cashpw/email--message-id
+   (notmuch-show-get-message-id)))
+
+(defun cashpw/email-get-from ()
+  "Return From value for message buffer, or message at point."
+  (or
+   cashpw/email--from
+   (notmuch-show-get-from)
+   (message-field-value "From")))
+
+(defun cashpw/email-get-subject ()
+  "Return From value for message buffer, or message at point."
+  (or
+   cashpw/email--subject
+   (notmuch-show-get-subject)
+   (message-field-value "Subject")))
+
+(defun cashpw/email--invalidate-vars ()
+  "Invalidate email context variables."
+  (setq
+   cashpw/email--message-id nil
+   cashpw/email--to nil
+   cashpw/email--from nil
+   cashpw/email--subject nil))
+
+(defun cashpw/email-set-vars-from-search ()
+  "Set email context variables."
+  (cashpw/email--invalidate-vars)
+  (when-let ((thread-id (notmuch-search-find-thread-id)))
+    (with-current-buffer
+        (notmuch-show
+         thread-id
+         nil
+         (current-buffer))
+      (save-excursion
+        (goto-char (point-max))
+        (setq
+         cashpw/email--message-id (cashpw/email-get-message-id)
+         cashpw/email--to (cashpw/email-get-to)
+         cashpw/email--from (cashpw/email-get-from)
+         cashpw/email--subject (cashpw/email-get-subject)))
+      (notmuch-bury-or-kill-this-buffer))))
+#+end_src
+
+
+** In =org-mode=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/compose-mail-org ()
+  "Compose a new mail message in `org-mode'."
+  (interactive)
+  (compose-mail)
+  (message-goto-body)
+  (setq *compose-html-org* t)
+  (org-mode))
+
+;; Deprecated in favor of org-mime `org-mime-edit-mail-in-org-mode'
+(defun cashpw/mail-toggle-org-message-mode ()
+  "Toggle between `message-mode' and `org-mode' for the current email buffer."
+  (interactive)
+  (if (derived-mode-p 'message-mode)
+      (progn
+        (setq *compose-html-org* t)
+        (org-mode)
+        (message "enabled org-mode"))
+    (progn
+      (setq *compose-html-org* nil)
+      (notmuch-message-mode)
+      (message "enabled notmuch-message-mode"))))
+
+(defun cashpw/email--address-properties (address)
+  "Return plist of ADDRESS contents."
+  (when (string-match "\\([^<]*\\) <\\([^@]*\\)@\\([^>]*\\)>" address)
+    (list
+     :name (match-string 1 address)
+     :email (format "%s@%s" (match-string 2 address) (match-string 3 address))
+     :username (match-string 2 address)
+     :domain (match-string 3 address))))
+
+(defun cashpw/mail-get-short-address (address)
+  "Returns \"foo@\" for an ADDRESS of \"Foo <foo@bar.com>\"."
+  (cond
+   ((not (string-match "<" address))
+    address)
+   (t
+    (replace-regexp-in-string ".*<\\(.*\\)@.*>" "\\1@" address))))
+
+(defun cashpw/mail-create-follow-up-todo ()
+  "Create a follow-up TODO for the current email."
+  (interactive)
+  (cashpw/email-set-vars-from-search)
+  (org-capture
+   ;; goto
+   nil
+   ;; keys
+   "tef")
+  (message "Captured follow-up TODO for %s." cashpw/email--subject))
+
+(defun cashpw/email--close-mail-buffer ()
+  "TODO"
+  (message "killing sent email buffers")
+  (let ((buffers-to-kill (-filter (lambda (buffer)
+                                         (string-match-p "sent mail" (buffer-name buffer)))
+                                       (buffer-list))))
+    (dolist (buffer-to-kill buffers-to-kill)
+      (kill-buffer buffer-to-kill))))
+
+(defun cashpw/email--close-mail-buffer-and-clean-up-hook ()
+  "TODO"
+  (message "and-clean-up-hook")
+  (cashpw/email--close-mail-buffer)
+  (remove-hook! 'org-capture-after-finalize-hook
+    'cashpw/email--close-mail-buffer-and-clean-up-hook))
+
+(defun cashpw/mail--close-mail-buffer-after-capture ()
+  "TODO"
+  (add-hook! 'org-capture-after-finalize-hook
+             #'cashpw/email--close-mail-buffer-and-clean-up-hook))
+
+(defun cashpw/mail--maybe-create-follow-up-todo ()
+  "Conditionally create follow-up todo based on user choice."
+  (when (y-or-n-p "Create follow-up TODO?")
+    (cashpw/mail--close-mail-buffer-after-capture)
+    (cashpw/mail-create-follow-up-todo)))
+
+(defun cashpw/log-send-and-exit ()
+  "Send the current email, optionally create a follow-up TODO, and exit."
+  (interactive)
+  (org-mime-htmlize)
+  (notmuch-mua-send)
+  (cashpw/mail--maybe-create-follow-up-todo)
+  (kill-buffer (current-buffer)))
+#+end_src
+
+* Sending email
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ sendmail-program "gmi"
+ ;; Don't save outgoing mail locally as it's already stored by GMail
+ notmuch-fcc-dirs nil
+ cashpw/email-address--personal "cashbweaver@gmail.com"
+ cashpw/email-address--professional "cash@cashpw.com")
+
+(defcustom cashpw/email-addresses--personal
+  `(,cashpw/email-address--professional ,cashpw/email-address--personal)
+  "Personal email addresses.")
+
+(defun cashpw/configure-sendmail ()
+  "Set appropriate sendmail arguments."
+  (let ((from
+         (replace-regexp-in-string
+          "[^<]*<\\(.*\\)>" "\\1" (message-fetch-field "from" t))))
+    (cashpw/log "configuring mail for %s" from)
+    (cond
+     ((string= from cashpw/email-address--personal)
+      (cashpw/configure-sendmail--gmail))
+     ((string= from cashpw/email-address--professional)
+      (cashpw/configure-sendmail--personal)))))
+
+(defun cashpw/configure-sendmail--gmail ()
+  "Configure sendmail for my personal Gmail account."
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cashbweaver.gmail")))
+
+(defun cashpw/configure-sendmail--personal ()
+  "Configure sendmail for my personal email account."
+  (setq
+   sendmail-program "gmi"
+   message-sendmail-extra-arguments '("send" "--quiet" "-t" "-C" "~/mail/cash.cashpw")))
+
+(add-hook 'message-send-hook #'cashpw/configure-sendmail)
+#+end_src
+
+** Custom =send-mail-function=
+
+I need to use a different =send-mail-function= when sending email at work. I override =cashpw/send-mail-function=, etc, in my work config.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/send-mail-function (&rest args)
+  "Call `send-mail-function' with ARGS for easy overriding in work environment."
+  ;;(apply #'sendmail-query-once args)
+  (apply #'message-send-mail-with-sendmail args))
+
+(defun cashpw/log-send-mail-function (&rest args)
+  "Call `message-send-mail-function' with ARGS for easy overriding in work environment."
+  ;; (apply #'message--default-send-mail-function args)
+  (apply #'message-send-mail-with-sendmail args))
+
+(setq
+ send-mail-function #'cashpw/send-mail-function
+ message-send-mail-function #'cashpw/log-send-mail-function)
+#+end_src
+* Keybindings
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(map! :map message-mode-map "C-c C-c" #'cashpw/log-send-and-exit)
+
+(map!
+ :map message-mode-map
+ :localleader
+ "e"
+ #'org-mime-edit-mail-in-org-mode
+ "h t"
+ #'cashpw/email-set-to
+ "h T"
+ #'cashpw/email-append-to
+ "h c"
+ #'cashpw/email-set-cc
+ "h C"
+ #'cashpw/email-append-cc
+ "@"
+ #'gnus-alias-select-identity)
+
+(after!
+  notmuch
+  ;; Keep in alphabetical order.
+  (map! :map notmuch-message-mode-map "C-c C-c" #'cashpw/log-send-and-exit)
+
+  (map!
+   :map notmuch-message-mode-map
+   :localleader
+   "e"
+   #'org-mime-edit-mail-in-org-mode)
+
+  (map!
+   :map notmuch-show-mode-map "M-RET" #'cashpw/notmuch-show-open-or-close-all)
+
+  ;; Reply-all should be the default.
+  (evil-define-key
+    'normal notmuch-show-mode-map "r"
+    (cmd! (notmuch-show-reply))) ;;(gnus-alias-select-identity)))
+  (evil-define-key 'normal notmuch-show-mode-map "R" #'notmuch-show-reply-sender)
+  (evil-define-key
+    'normal notmuch-search-mode-map "r" #'notmuch-search-reply-to-thread)
+  (evil-define-key
+    'normal notmuch-search-mode-map "R" #'notmuch-search-reply-to-thread-sender)
+
+  ;; Easy archive for my most-used tags.
+  (evil-define-key
+    'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key
+    'normal notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+  (evil-define-key
+    'visual notmuch-search-mode-map "a" 'cashpw/notmuch-search-super-archive)
+
+  ;; Create todos
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  ;; Note this unbinds `notmuch-search-filter-by-tag'.
+  (evil-define-key
+    'normal notmuch-search-mode-map "tt" 'cashpw/notmuch-search-todo-today)
+  (evil-define-key
+    'normal notmuch-search-mode-map "tT" 'cashpw/notmuch-search-todo)
+  (evil-define-key
+    'normal notmuch-search-mode-map "tF" 'cashpw/notmuch-search-follow-up)
+  (evil-define-key
+    'normal notmuch-search-mode-map "tf" 'cashpw/notmuch-search-follow-up-tomorrow)
+
+  ;; Helpers for toggling often-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "T" nil)
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "T0"
+  ;;  '(lambda ()
+  ;;     "Toggle p0"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "p0")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tr"
+  ;;  '(lambda ()
+  ;;     "Toggle Read!"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "Read!")))
+  ;; (cashpw/evil-lambda-key
+  ;;  'normal notmuch-search-mode-map "Tw"
+  ;;  '(lambda ()
+  ;;     "Toggle waiting"
+  ;;     (interactive)
+  ;;     (cashpw/notmuch-search-toggle-tag "waiting")))
+  )
+#+end_src

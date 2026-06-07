@@ -1,0 +1,17 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:26]
+:END:
+#+title: Personal Emacs config: TOML
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! toml
+  :recipe (:host github
+           :repo "gongo/emacs-toml"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! toml)
+#+end_src

@@ -1,0 +1,28 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Typing
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* =emacs-monkeytype=
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! speed-type)
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! speed-type
+  :config
+  (defun cashpw/speed-type-mode-hook ()
+    "Hooks for monkeytype-mode."
+    (centered-cursor-mode)
+    (evil-escape-mode -1)
+    (evil-insert -1))
+  (add-hook 'speed-type-mode-hook #'cashpw/speed-type-mode-hook))
+#+end_src
+

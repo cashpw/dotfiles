@@ -1,0 +1,1228 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-06-05 Fri 21:25]
+:END:
+#+title: Personal Emacs config: Org
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(unpin! org)
+(unpin! org-contrib)
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(add-to-list 'auto-mode-alist '("\\.org_archive$" . org-mode))
+#+end_src
+
+* Modules
+:PROPERTIES:
+:ID:       91380f2e-823f-4ad0-9e14-617a021d86a3
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ org-modules '(ol-doi
+               ol-w3m
+               ol-bibtex
+               ol-eww
+               ol-notmuch))
+#+end_src
+
+* Packages
+** =org-crypt=
+
+*** Package
+
+=org-crypt= is built in.
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-crypt
+  (advice-add
+   'org-encrypt-entries
+   :override #'ignore))
+#+end_src
+
+** =org-extras=
+
+#+begin_quote
+org-mode utility functions
+
+/[[github:cashpw/org-extras][cashpw/org-extras]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-extras
+  :recipe (:host github
+           :repo "cashpw/org-extras"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-extras
+  :after org)
+#+end_src
+
+** =orgaggregate=
+
+#+begin_quote
+Aggregating a table is creating a new table by computing sums, averages, and so on, out of material from the first table.
+
+/[[github:abo-abo/org-download]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! orgtbl-aggregate)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! orgtbl-aggregate)
+#+end_src
+
+** =org-download=
+#+begin_quote
+This extension facilitates moving images from point A to point B.
+
+Point A (the source) can be:
+
+1. An image inside your browser that you can drag to Emacs.
+2. An image on your file system that you can drag to Emacs.
+3. A local or remote image address in kill-ring. Use the org-download-yank command for this. Remember that you can use "0 w" in dired to get an address.
+4. A screenshot taken using gnome-screenshot, scrot, gm, xclip (on Linux), screencapture (on OS X) or , imagemagick/convert (on Windows). Use the org-download-screenshot command for this. Customize the backend with org-download-screenshot-method.
+
+Point B (the target) is an Emacs org-mode buffer where the inline link will be inserted. Several customization options will determine where exactly on the file system the file will be stored.
+
+/[[github:abo-abo/org-download]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-download)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-download
+  :after org
+  :custom
+  (org-download-method 'attach)
+  (org-download-heading-lvl nil))
+#+end_src
+
+*** TODO Debug "Too early load" error
+
+** =org-fancy-priorities=
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (remove-hook! 'org-mode-hook #'org-fancy-priorities-mode)
+#+end_src
+
+** =org-gallery=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-gallery
+  :recipe (:host github
+           :repo "cashpw/org-gallery"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-gallery
+  :after (:all org org-download)
+  :config
+  (defun cashpw/org-download-image--no-insert (image-url)
+    (cl-letf (((symbol-function 'org-download-insert-link) #'ignore))
+      (org-download-image image-url))))
+
+(cl-defun
+    cashpw/gallery--add-image
+    (link &key source-url description tags gallery-heading-marker)
+  "Add LINK to gallery at GALLERY-HEADING-MARKER with optional SOURCE-URL, DESCRIPTION, and TAGS."
+  (let ((gallery-heading-marker
+         (or gallery-heading-marker (cashpw/gallery--select-gallery))))
+    (message "marker: %s" gallery-heading-marker)
+    (with-current-buffer (marker-buffer gallery-heading-marker)
+      (save-excursion
+        (goto-char gallery-heading-marker)
+        (message "point: %s; buffer: " (point) (buffer-name))
+        (org-insert-heading-respect-content)
+        (org-do-demote)
+        (insert link)
+        (when tags
+          (insert (format " %s" (org-make-tag-string tags))))
+        (when description
+          (insert "\n")
+          (insert description))
+        (org-extras-set-created)
+        (when source-url
+          (org-set-property (org-gallery--image-prop-source) source-url))))))
+
+(defun cashpw/gallery--select-gallery ()
+  "Return marker for selected gallery."
+  (let ((options-alist
+         (--map
+          (let ((file-path
+                 (replace-regexp-in-string "\\.org:[0-9].*" ".org" it))
+                (line-number
+                 (string-to-number
+                  (replace-regexp-in-string ".*:\\([0-9]+\\).*" "\\1" it))))
+            (cons
+             it
+             `(lambda ()
+                "Return marker at gallery heading."
+                (with-current-buffer (find-file-noselect ,file-path)
+                  (goto-line ,line-number)
+                  (point-marker)))))
+          (cashpw/rgrep
+           (format "--line-number :gallery: %s/*.org"
+                   cashpw/path--notes-dir)))))
+    (funcall
+     (alist-get
+      (completing-read "Select gallery: " options-alist nil t) options-alist
+      nil nil #'string=))))
+
+(defun cashpw/foo ()
+  "TODO."
+  (interactive)
+  (universal-argument)
+  (message "url %s" (url-encode-url (shr-url-at-point current-prefix-arg))))
+
+(defun cashpw/eww-download-image-add-to-gallery ()
+  "Download image at point and add to selected gallery."
+  (interactive)
+  (let ((title (read-string "Title: "))
+        (description (read-string "Description: "))
+        (gallery-heading-marker (cashpw/gallery--select-gallery))
+        (image-url (url-encode-url (shr-url-at-point nil))))
+    (with-current-buffer (marker-buffer gallery-heading-marker)
+      (save-excursion
+      (goto-char gallery-heading-marker)
+    (cashpw/org-download-image--no-insert image-url)
+    (cashpw/gallery--add-image
+     (if (and (>= (string-to-number org-version) 9.3)
+              (eq org-download-method 'attach))
+         (format "[[attachment:%s]%s]"
+                 (org-link-escape
+                  (file-relative-name org-download-path-last-file
+                                      (org-attach-dir t)))
+                 (if (string-empty-p title)
+                     ""
+                   (format "[%s]" title)))
+       (format "[[file:%s]%s]"
+               (org-link-escape
+                (funcall org-download-abbreviate-filename-function
+                         org-download-path-last-file))
+               (if (string-empty-p title)
+                   ""
+                 (format "[%s]" title))))
+     :gallery-heading-marker gallery-heading-marker
+     :description (if (string-empty-p description)
+                      nil
+                    description)
+     :source-url image-url)))))
+#+end_src
+
+** =repeat-todo=
+
+#+begin_quote
+Set special repeaters for =org-mode= TODOs
+
+/[[github:cashpw/repeat-todo][cashpw/repeat-todo]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! repeat-todo
+  :recipe (:host github
+           :repo "cashpw/repeat-todo"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! repeat-todo
+  :after org
+  :config
+  ;; Enable the mode without calling `repeat-todo-mode-enable' because I have extra todo done state management customizations.
+  (setq repeat-todo-mode t))
+#+end_src
+
+** =org-noter=
+:PROPERTIES:
+:ID:       b0d1f1ab-86a8-48e9-83be-a3b14a6fd327
+:END:
+
+#+begin_quote
+Org-noter’s purpose is to let you create notes that are kept in sync when you scroll through the document, but that are external to it - the notes themselves live in an Org-mode file. As such, this leverages the power of Org-mode (the notes may have outlines, latex fragments, babel, etc…) while acting like notes that are made inside the document. Also, taking notes is very simple: just press i and annotate away!
+
+/[[github:weirdNox/org-noter][weirdNox/org-noter]]/
+#+end_quote
+
+*** Package
+
+I've customized org-noter to [[github:cashpw/org-noter/commit/e18a4314308d5dd211759682b1aeb083a822673d][wrap quoted text with =begin_quote=/=end_quote=]].
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-noter
+  :recipe (:host github
+           :repo "cashpw/org-noter"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-noter)
+#+end_src
+
+** =run-on-todo-state-change=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! run-on-todo-state-change
+  :recipe (:host github
+           :repo "cashpw/run-on-todo-state-change"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! run-on-todo-state-change
+  :after org)
+#+end_src
+** =org-recipes=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-recipes
+  :recipe (:host github
+           :repo "cashpw/org-recipes"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-recipes
+  :after org)
+#+end_src
+
+** =org-roam-bibtex= :disabled:
+
+I've disabled the package because it's in alpha and has not updated in 11 months or had a meaningful release in three years as of [2026-01-10 Sat].
+
+#+begin_quote
+Org Roam BibTeX (ORB) is an Org Roam extension that integrates [Org Roam](https://github.com/jethrokuan/org-roam) with bibliography/citation management software: [Org Ref](https://github.com/jkitchin/org-ref), [Helm and Ivy BibTeX](https://github.com/tmalsburg/helm-bibtex) and [Citar](https://github.com/bdarcus/citar).
+
+It allows users to manage their bibliographical notes using Org Roam and access the notes in `org-roam-directory` via `helm-bibtex`, `ivy-bibtex`, `citar-open-notes` or by activation Org-ref `cite:` links and Org-cite citations.
+Org-roam is a plain-text knowledge management system. It brings some of Roam's more powerful features into the Org-mode ecosystem.
+
+[[github:org-roam/org-roam-bibtex][org-roam/org-roam-bibtex]]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! org-roam-bibtex)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! org-roam-bibtex)
+#+end_src
+
+** =org-defblock= (=org-special-block-extras=)
+
+#+begin_quote
+A unified interface for Emacs' Org-mode block & link types
+
+[cite:@al-hassyUnifiedInterfaceEmacsOrgmodeBlockLinkTypes2023]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-defblock
+  :recipe (:host github :repo "cashpw/org-defblock"))
+#+end_src
+
+Disabled because it slows down in org files.
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-defblock
+  :after org)
+#+end_src
+
+#+RESULTS:
+: org-block/quotethree
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-defblock
+  :after org
+  :hook (org-mode . org-defblock-mode)
+  :config
+  (defun cashpw/org-defblock--quote-format ()
+    "TODO."
+    ;; (message "contents: %s, depth: %d, backend: %s, raw-contents: %s"
+    ;;          contents
+    ;;          depth
+    ;;          backend
+    ;;          raw-contents)
+    (pcase backend
+      (`hugo
+       (s-join
+        "\n"
+        (--map
+         (format "> %s" it)
+         (cl-delete
+          "#+begin_export hugo "
+          (cl-delete
+           "#+end_export"
+           (s-split "\n" raw-contents t)
+           :test #'string=)
+          :test #'string=))))
+      (`markdown
+       (s-join
+        "\n"
+        (--map
+         (format "> %s" it)
+         (cl-delete
+          "#+begin_export markdown "
+          (cl-delete
+           "#+end_export"
+           (s-split "\n" raw-contents t)
+           :test #'string=)
+          :test #'string=))))
+      (`md
+       (s-join
+        "\n"
+        (--map
+         (format "> %s" it)
+         (cl-delete
+          "#+begin_export md "
+          (cl-delete
+           "#+end_export"
+           (s-split "\n" raw-contents t)
+           :test #'string=)
+          :test #'string=))))
+      (_ raw-contents)))
+  (org-defblock quote2 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote3 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote4 nil (cashpw/org-defblock--quote-format))
+  (org-defblock quote5 nil (cashpw/org-defblock--quote-format)))
+#+end_src
+
+** =org-superstar=
+
+#+begin_quote
+Prettify headings and plain lists in Org mode. This package is a direct descendant of ‘org-bullets’, with most of the code base completely rewritten. Currently, this package supports:
+
+https://github.com/integral-dw/org-superstar-mode
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-superstar
+  :disable t)
+#+end_src
+
+Disabled because it slows down org files.
+
+** =org-tempo=
+Provide support for multi-character =org-mode= structure template shortcuts (e.g. =<sp= for python code; see [[id:ce915eb8-d352-4aa2-9dca-5ada71fd18e1][Blocks]])
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; org-tempo is provided by org-mode
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-tempo
+  :after org)
+#+end_src
+
+** =org-tree-slide=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-tree-slide)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-tree-slide)
+#+end_src
+
+** =quickroam=
+:PROPERTIES:
+:ID:       e4497d7e-b015-4cb7-90af-69ad0e89a8fc
+:END:
+
+Replaced with [[id:075ad0c5-9390-40c8-8158-e5cf02198adf][=org-node=]].
+
+* Helper functions
+** Insert progress cookie
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-insert-progress-cookie ()
+  "Insert a progress cookie [/] at the end of the heading title and update it."
+  (interactive)
+  (save-excursion
+    (when (org-back-to-heading t)
+      (let ((progress-cookie-regexp
+             ;; Thanks, org-modern!
+             " \\(\\[\\(?:\\([0-9]+\\)%\\|\\([0-9]+\\)/\\([0-9]+\\)\\)]\\)"))
+        (unless (s-matches-p progress-cookie-regexp (org-get-heading))
+          (end-of-line)
+          (when (re-search-backward ":[[:alnum:]_@#%:]+:[ \t]*$"
+                                    (line-beginning-position)
+                                    t)
+            (skip-chars-backward " \t"))
+          (insert " [/]")
+          (org-ctrl-c-ctrl-c))))))
+#+end_src
+** =cashpw/org--archive-buffer-p=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org--archive-buffer-p (buffer)
+  "Return non-nil if BUFFER is an org-mode archive."
+  (string-match-p
+   "org_archive$"
+   (or
+    (buffer-file-name buffer)
+    "")))
+#+end_src
+
+** Set =LAST_MODIFIED=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-set-last-modified ()
+  "Update the LAST_MODIFIED property on the file."
+  (interactive)
+  (when (and (not (cashpw/org--archive-buffer-p (current-buffer)))
+             (derived-mode-p 'org-mode))
+    (save-excursion
+      (goto-char (point-min))
+      (org-set-property
+       "LAST_MODIFIED" (format-time-string "[%Y-%m-%d %a %H:%M]")))))
+
+(add-hook
+ 'org-mode-hook
+ (lambda ()
+   (add-hook! 'before-save-hook :local #'cashpw/org-set-last-modified)))
+#+end_src
+
+** Cache reset
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-element-cache-reset-all ()
+  "Helper method to interactively reset all."
+  (interactive)
+  (org-element-cache-reset 'all))
+#+end_src
+
+** Operate within quotes
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/narrow-between-text (start-text end-text)
+  "Narrow between START-TEXT and END-TEXT around point."
+  (let ((start (save-excursion (search-backward start-text)))
+        (end (save-excursion (search-forward end-text))))
+    (narrow-to-region start end)))
+
+(defmacro cashpw/org-with-narrow-between-text (start-text end-text &rest body)
+  "Execute BODY with current buffer narrowed between START-TEXT and END-TEXT around point."
+  `(save-restriction
+    (cashpw/narrow-between-text ,start-text ,end-text)
+    ,@body))
+#+end_src
+
+** Join quote lines
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-join-lines-in-quote ()
+  "Join lines in current quote block which are not separated by an empty line."
+  (interactive)
+  (cashpw/org-with-narrow-between-text
+   "#+begin_quote"
+   "#+end_quote"
+   (save-excursion
+     ;; Go to #+begin_quote
+     (goto-char (point-min))
+     ;; Go to first line of quote
+     (evil-next-line)
+     ;; Go to second line of quote
+     (evil-next-line)
+     ;; Join each empty-line-delineated paragraph
+     (while (not
+             (string-equal-ignore-case
+              (org-current-line-string) "#+end_quote"))
+       ;; 2. While 'next line isn't empty': (evil-join)
+       (while (and (not
+                    (string-equal-ignore-case
+                     (org-current-line-string) "#+end_quote"))
+                   (not (string-empty-p (org-current-line-string))))
+         (join-line)
+         (evil-next-line))
+       (ignore-errors
+         (evil-next-line)
+         (evil-next-line)))
+
+     ;; Join line-break-hyphenated words (for example: "back- ground")
+     (goto-char (point-min))
+     (replace-regexp "\\([A-Za-z]\\)[-‐] \\([A-Za-z]\\)" "\\1\\2"))))
+#+end_src
+
+** Remove square brackets
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-remove-square-brackets-in-quote ()
+  "Join lines in current quote block which are not separated by an empty line."
+  (interactive)
+  (cashpw/org-with-narrow-between-text
+   "#+begin_quote"
+   "#+end_quote"
+   (cashpw/replace-regexp-in-buffer "\\( \\)?\\[[^]]*\\]\\(,\\)?" "")))
+#+end_src
+
+** Tangle
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-tangle-with-includes (orig-fun &rest args)
+  "Expand #+INCLUDE directives and tangle the current buffer.
+This is designed to be used as `:around` advice for `org-babel-tangle`."
+  (let ((case-fold-search t))
+    (if (save-excursion
+          (goto-char (point-min))
+          (re-search-forward "^[ \t]*#\\+INCLUDE:" nil t))
+        (progn
+          (when (buffer-modified-p)
+            (save-buffer))
+          (let ((file (buffer-file-name))
+                (text (buffer-string)))
+            (unless file
+              (error "This buffer is not visiting a file"))
+            (require 'ox)
+            (with-temp-buffer
+              (insert text)
+              (setq buffer-file-name (format "%s.tmp" file))
+              (setq default-directory (file-name-directory file))
+              (org-mode)
+              (org-export-expand-include-keyword)
+              (set-buffer-modified-p nil)
+              (apply orig-fun args))))
+      (apply orig-fun args))))
+
+(advice-add 'org-babel-tangle :around #'cashpw/org-tangle-with-includes)
+#+end_src
+
+* General
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ org-image-max-width 'window
+ org-id-locations-file-relative nil
+ ;; org-return-follows-link t
+ org-default-properties (append org-default-properties org-recipes--properties)
+ org-agenda-bulk-custom-functions
+ '((?L org-extras-reschedule-overdue-todo-agenda)
+   (?> cashpw/org-agenda-reschedule-to-next-occurrence-or-kill)
+   (?y cashpw/org-agenda-done-yesterday)
+   (?. cashpw/org-agenda-reschedule-to-today)
+   (?W cashpw/org-agenda-bulk-assign-to-week cashpw/org-agenda-bulk-assign-to-week-arg)))
+(after! (:and org openwith)
+  (add-to-list
+   'org-file-apps
+   (cons
+    (openwith-make-extension-regexp
+     '("mpg" "mpeg" "mp3" "mp4" "avi" "wmv" "wav" "mov" "flv" "ogm" "ogg" "mkv"))
+    "vlc --play-and-exit --qt-minimal-view --no-video-title-show --key-quit \"q\" %s"))
+  (add-to-list
+   'org-file-apps
+   (cons
+    (openwith-make-extension-regexp
+     '("doc" "xls" "ppt" "odt" "ods" "odg" "odp"))
+    "libreoffice %s")))
+#+end_src
+
+** Categories
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/flatten-categories (nested-list)
+  "Flatten a NESTED-LIST of categories into a single list of strings.
+
+The hierarchy is represented by '>'. For example, the input
+'((\"A\" (\"B\")) (\"C\")) is flattened to '(\"A\" \"A>B\" \"C\")."
+  (let (result)
+    (cl-labels
+        ((process-node
+           (node prefix)
+           (when (and (listp node) (stringp (car node)))
+             (let* ((category-name (car node))
+                    (full-path
+                     (if (string-empty-p prefix)
+                         category-name
+                       (concat prefix ">" category-name))))
+               (push full-path result)
+               (dolist (child (cdr node))
+                 (process-node child full-path))))))
+      (dolist (top-level-node nested-list)
+        (process-node top-level-node "")))
+    (nreverse result)))
+
+(defvar cashpw/org-categories
+  (cashpw/flatten-categories
+   '(("Personal"
+      ("Health"
+       ("Fitness"
+        ("Cardio")
+        ("Mobility")
+        ("Strength"))
+       ("Hygiene")
+       ("Medical")
+       ("Mental")
+       ("Sleep"))
+      ("Hobby"
+       ("Pottery")
+       ("Photography")
+       ("Emacs"))
+      ("Rest"
+       ("Meaningful")
+       ("NonMeaningful"))
+      ("Learn")
+      ("Journal")
+      ("Eat")
+      ("Housework"))
+     ("Family"
+      ;; Cayla
+      ("Parents"
+       ;; Dave
+       ;; Cindy
+       ;; Denise
+       ;; Chip
+       )
+      ("Children"
+       ;; Charles
+       )
+      ("Pets"
+       ;; Finn
+       ;; Myth
+       ;; Jynx
+       ))
+     ("Transit")
+     ("Friend")
+     ("Finance")
+     ("Work"
+      ("Transit")
+      ("Focused")
+      ("Social"))
+     ("Vacation")
+     ("Uncategorized")))
+  "Hierarchical categories.")
+
+(defun cashpw/org-property-values (old-fn key)
+  "Return custom categories if KEY is \"CATEGORY\"; otherwise call OLD-FN with KEY."
+  (cond
+   ((string= key "CATEGORY")
+    cashpw/org-categories)
+   (t
+    (funcall old-fn key))))
+
+(advice-add 'org-property-values :around #'cashpw/org-property-values)
+
+(defun cashpw/org-categorized-p ()
+  "Return non-nil when the heading at point is categorized."
+  (let ((category (org-get-category)))
+    (message "Testing category: %s" category)
+    (and
+     (--any-p
+      (s-starts-with-p it category)
+      cashpw/org-categories)
+     (not (string= "Uncategorized" category)))))
+#+end_src
+
+* Appearance
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  ;; Allow in-word emphasis (e.g. c*a**t with bold 'a')
+  ;; Reference: https://stackoverflow.com/a/24540651
+  ;; (setcar org-emphasis-regexp-components " \t('\"{[:alpha:]")
+  ;; (setcar (nthcdr 1 org-emphasis-regexp-components) "[:alpha:]- \t.,:!?;'\")}\\")
+  ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
+
+  (setq
+   org-auto-align-tags nil
+   org-pretty-entities t
+   org-ellipsis "…"
+   org-hide-leading-stars t))
+#+end_src
+
+** =org-modern=
+
+A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]]. See [[github:doomemacs/doomemacs/issues/6434][Replace most of org +pretty feature with org-modern]] and [[github:doomemacs/themes/issues/709][Support org-modern]].
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-modern)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-modern
+  :after org
+  :custom (org-modern-horizontal-rule "──────────")
+  (org-modern-star 'fold)
+  (org-modern-hide-stars nil)
+  (org-modern-table (display-graphic-p))
+  (org-modern-list
+   '((?+ . "•")
+     (?- . "•")
+     (?* . "•")))
+  (org-modern-todo-faces
+   '(("PROJ" .
+      (:weight
+       semi-bold
+       :foreground "dark gray"
+       :background "black"
+       :inverse-video t))
+     ("INPROGRESS" .
+      (:weight
+       semi-bold
+       :foreground "orange"
+       :background "black"
+       :inverse-video t))))
+  (org-modern-priority-faces
+   '((?0
+      .
+      (:weight
+       semi-bold
+       :foreground "firebrick"
+       :background "white"
+       :inverse-video t))
+     (?1
+      .
+      (:weight
+       semi-bold
+       :foreground "gray100"
+       :background "black"
+       :inverse-video t))
+     (?2
+      .
+      (:weight
+       semi-bold
+       :foreground "gray80"
+       :background "black"
+       :inverse-video t))
+     (?3
+      .
+      (:weight
+       semi-bold
+       :foreground "gray65"
+       :background "black"
+       :inverse-video t))
+     (?4
+      .
+      (:weight
+       semi-bold
+       :foreground "gray60"
+       :background "black"
+       :inverse-video t))))
+  :config
+  ;; (set-face-attribute 'org-modern-horizontal-rule nil :strike-through "gray70")
+  (global-org-modern-mode))
+#+end_src
+
+#+INCLUDE: config-personal-org-roam.org
+#+INCLUDE: config-personal-org-export.org
+* Notes
+** Annotate PDFs
+
+*** TODO Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-noter-insert-selected-text-inside-note-content ()
+  "Insert selected text in org-noter note.
+
+Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-700346146"
+  (interactive)
+  (let ((current-buffer-name (buffer-name))
+        (inhibit-read-only t))
+    (org-noter-insert-precise-note)
+    (set-buffer current-buffer-name)
+    (org-noter-insert-note)))
+#+end_src
+
+#+INCLUDE: config-personal-org-agenda.org
+#+INCLUDE: config-personal-org-capture.org
+#+INCLUDE: config-personal-org-links.org
+
+* Mail
+
+See [[*Mail][Mail]].
+
+* Keybindings
+** =org=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  org
+  ;; Keep in alphabetical order.
+  (map!
+   :map org-mode-map
+   ;; Mosh converts S-<up>, etc, into M-[
+   "M-[ a"
+   #'org-shiftup
+   "M-[ b"
+   #'org-shiftdown
+   "M-[ c"
+   #'org-shiftright
+   "M-[ d"
+   #'org-shiftleft)
+
+  (map!
+  :map eww-mode-map
+  :n "yy" #'evil-yank
+
+  (:prefix
+   ("d" . "Download")
+   :n "d" #'eww-download
+   :n "i" #'cashpw/eww-download-image-add-to-gallery)
+
+  (:localleader
+   :n "@" #'cashpw/zotra-add-entry-from-eww
+   :desc "jump to hedaing" "." #'+eww/jump-to-heading-on-page))
+
+  (map!
+  :map org-mode-map
+  :localleader
+  :nv
+  "@"
+  nil
+  (:prefix
+   ("@" . "Citation")
+   :n "a" #'zotra-add-entry
+   :n "b" #'cashpw/google-books-select-isbn-and-add-citation
+   :n "@" #'org-cite-insert)
+  (:prefix ("b") :n "RET" #'org-table-copy-down)
+  (:prefix
+   ("c")
+   :n "E" #'org-clock-modify-effort-estimate
+   :n "e" #'org-set-effort
+   :n "a" #'cashpw/org-clock-add-entry
+   :desc "Clock out at time"
+   :n "O" (cmd! (org-clock-out nil nil (org-read-date nil 'to-time)))
+   :n "p" #'omc-make-new-parallel-clock
+   :n "s" #'omc-set-active-clock
+   (:prefix
+    ("R" . "Report")
+    :n "c" #'clocktable-by-category-report
+    :n "C" #'org-clock-report
+    :n "t" #'clocktable-by-tag-report))
+  (:prefix
+   ("d")
+   (:prefix
+    ("h" . "insert heading")
+    :n "t"
+    (cmd!
+     (org-extras-insert-heading-for-today
+      ;; top
+      nil
+      ;; time-in-heading
+      nil
+      ;; include-all-tags
+      nil))
+    :n "T" (cmd! (org-extras-insert-heading-for-today nil t t)))
+   (:prefix
+    ("S")
+    (:prefix
+     ("h" . "hour")
+     (:prefix
+      ("0" . "0?:??")
+      :desc "00:00"
+      :n
+      "0"
+      (cmd! (cashpw/org-schedule-today-from-to "00:00" "00:50"))
+      :desc "01:00"
+      :n
+      "1"
+      (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:50"))
+      :desc "02:00"
+      :n
+      "2"
+      (cmd! (cashpw/org-schedule-today-from-to "02:00" "02:50"))
+      :desc "03:00"
+      :n
+      "3"
+      (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:50"))
+      :desc "04:00"
+      :n
+      "4"
+      (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:50"))
+      :desc "05:00"
+      :n
+      "5"
+      (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:50"))
+      :desc "06:00"
+      :n
+      "6"
+      (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:50"))
+      :desc "07:00"
+      :n
+      "7"
+      (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:50"))
+      :desc "08:00"
+      :n
+      "8"
+      (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:50"))
+      :desc "09:00"
+      :n
+      "9"
+      (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:50")))
+     (:prefix
+      ("1" . "1?:??")
+      :desc "01:00"
+      :n
+      "RET"
+      (cmd! (cashpw/org-schedule-today-from-to "01:00" "01:50"))
+      :desc "10:00"
+      :n
+      "0"
+      (cmd! (cashpw/org-schedule-today-from-to "10:00" "10:50"))
+      :desc "11:00"
+      :n
+      "1"
+      (cmd! (cashpw/org-schedule-today-from-to "11:00" "11:50"))
+      :desc "12:00"
+      :n
+      "2"
+      (cmd! (cashpw/org-schedule-today-from-to "12:00" "12:50"))
+      :desc "13:00"
+      :n
+      "3"
+      (cmd! (cashpw/org-schedule-today-from-to "13:00" "13:50"))
+      :desc "14:00"
+      :n
+      "4"
+      (cmd! (cashpw/org-schedule-today-from-to "14:00" "14:50"))
+      :desc "15:00"
+      :n
+      "5"
+      (cmd! (cashpw/org-schedule-today-from-to "15:00" "15:50"))
+      :desc "16:00"
+      :n
+      "6"
+      (cmd! (cashpw/org-schedule-today-from-to "16:00" "16:50"))
+      :desc "17:00"
+      :n
+      "7"
+      (cmd! (cashpw/org-schedule-today-from-to "17:00" "17:50"))
+      :desc "18:00"
+      :n
+      "8"
+      (cmd! (cashpw/org-schedule-today-from-to "18:00" "18:50"))
+      :desc "19:00"
+      :n
+      "9"
+      (cmd! (cashpw/org-schedule-today-from-to "19:00" "19:50")))
+     (:prefix
+      ("2" . "2?:??")
+      :desc "20:00"
+      :n
+      "0"
+      (cmd! (cashpw/org-schedule-today-from-to "20:00" "20:50"))
+      :desc "21:00"
+      :n
+      "3"
+      (cmd! (cashpw/org-schedule-today-from-to "21:00" "21:50"))
+      :desc "22:00"
+      :n
+      "2"
+      (cmd! (cashpw/org-schedule-today-from-to "22:00" "22:50"))
+      :desc "23:00"
+      :n
+      "3"
+      (cmd! (cashpw/org-schedule-today-from-to "23:00" "23:50")))
+     :desc "03:00"
+     :n "3" (cmd! (cashpw/org-schedule-today-from-to "03:00" "03:50"))
+     :desc "04:00"
+     :n "4" (cmd! (cashpw/org-schedule-today-from-to "04:00" "04:50"))
+     :desc "05:00"
+     :n "5" (cmd! (cashpw/org-schedule-today-from-to "05:00" "05:50"))
+     :desc "06:00"
+     :n "6" (cmd! (cashpw/org-schedule-today-from-to "06:00" "06:50"))
+     :desc "07:00"
+     :n "7" (cmd! (cashpw/org-schedule-today-from-to "07:00" "07:50"))
+     :desc "08:00"
+     :n "8" (cmd! (cashpw/org-schedule-today-from-to "08:00" "08:50"))
+     :desc "09:00"
+     :n "9" (cmd! (cashpw/org-schedule-today-from-to "09:00" "09:50")))))
+
+  (:prefix
+   ("D" . "Download")
+   :n "R" #'org-download-rename-last-file
+   :n "c" #'org-download-clipboard
+   :n "d" #'org-download-delete
+   :n "e" #'org-download-edit
+   :n "i" #'org-download-image
+   :n "r" #'org-download-rename-at-point
+   :n "s" #'org-download-screenshot
+   :n "y" #'org-download-yank)
+
+  (:prefix
+   ("E" . "Emphasis")
+   :n "*" (cmd! (org-emphasize ?*))
+   :n "/" (cmd! (org-emphasize ?/))
+   :n "+" (cmd! (org-emphasize ?+))
+   :n "~" (cmd! (org-emphasize ?~))
+   :n "_" (cmd! (org-emphasize ?_))
+   :n "=" (cmd! (org-emphasize ?=)))
+
+  (:prefix
+   ("l")
+   :n "p" #'cashpw/org-notes-private-link-mode
+   (:prefix
+    ("T" . "transclusion")
+    :n
+    "a"
+    #'org-transclusion-add
+    :n
+    "A"
+    #'org-transclusion-add-all
+    :n
+    "l"
+    #'org-transclusion-make-from-link
+    :n
+    "e"
+    #'org-transclusion-live-sync-start
+    :n
+    "r"
+    #'org-transclusion-refresh
+    :desc "org-transclusion-open-source"
+    :n
+    "o"
+    (cmd! (org-transclusion-open-source '(4)))
+    :n
+    "d"
+    #'org-transclusion-remove
+    :n
+    "D"
+    #'org-transclusion-remove-all))
+
+  (:prefix
+   ("L" . "Latex")
+   :desc "toggle preview"
+   :n
+   "t"
+   #'cashpw/latex-toggle-preview)
+
+  (:prefix
+   ("m" . "org-roam")
+   :desc "Open ref"
+   :n "O" #'cashpw/org-roam-open-ref
+   (:prefix
+    ("o")
+    :n "r" #'citar-org-roam-ref-add
+    ;; #'cashpw/org-roam-add-citation-as-ref
+    )
+   (:prefix ("l" . "link") :n "q" #'cashpw/org-roam-insert-tag-link)
+   :desc "Publish all"
+   :n "p" #'cashpw/org-hugo-export-all)
+  (:prefix
+   ("q" . "tag")
+   (:prefix
+    ("w" . "week")
+    :desc "This week"
+    :n "."
+    (cmd!
+     (save-excursion
+       (org-back-to-heading t)
+       (org-set-tags
+        (append
+         (org-get-tags (point) 'local)
+         (list (cashpw-time-current-week-tag (current-time)))))))
+    :desc "Next week"
+    :n "n"
+    (cmd!
+     (save-excursion
+       (org-back-to-heading t)
+       (org-set-tags
+        (append
+         (org-get-tags (point) 'local) (list (cashpw-time-next-week-tag)))))))
+   :n "q" #'org-set-tags-command)
+  :n
+  "p"
+  #'org-priority
+  (:prefix ("S" . "Structure") :n "i" #'org-insert-structure-template)))
+#+end_src
+
+** =org-noter=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-noter
+  (map!
+   :map pdf-view-mode-map
+   :localleader
+
+   :n "n" #'org-noter-insert-note
+   :n "N" #'org-noter-insert-precise-note
+   :desc "Quote (precise)" :n "Q" #'cashpw/org-noter-insert-selected-text-inside-note-content))
+#+end_src
+
+* Snippets
+** Email
+*** Recruiter: No
+
+#+begin_src text :tangle snippets/org-mode/recruiter-no
+# -*- mode: snippet -*-
+# name: Recruiter: No
+# key: recruiter-no
+# uuid: recruiter-no
+# --
+Hi ${1:name},
+
+Thank you for reaching out. I'm not looking for new opportunities at this time. I'll keep your email archived and available so I can find it when my situation changes.
+#+end_src
+** Process
+*** With next steps
+
+#+begin_src text :tangle snippets/org-mode/with-next-steps
+# -*- mode: snippet -*-
+# name: Update with next steps
+# key: with-next-steps
+# uuid: with-next-steps
+# --
+${1:Text}
+
+,*Next steps*
+
+1. ${2: Step}
+#+end_src

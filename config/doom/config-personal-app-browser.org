@@ -1,0 +1,216 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Browser
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/url-patterns-to-open-in-external-browser
+  '(
+    ;; Reddit
+    ;; Why? Reddit blocks the EWW browser.
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?reddit\\.com"
+
+    ;; Google documents (Sheets, Slides, Docs, Forms)
+    ;; Why? Not usable in text browsers.
+    "^https?:\\/\\/docs\\.google\\.com"
+
+    ;; YouTube
+    ;; Why? Not usable in text browsers.
+    "^https?:\\/\\/\\(www.\\)?youtube\\.com"
+
+    "^https?:\\/\\/\\([^\\.]+\\.\\)?amazon\\.com" "accounts.google.com")
+  "All URLs which don't match one of these patterns will be opened in a text browser (EWW).")
+
+(setq
+ browse-url-handlers
+ (--map
+  `(,it . browse-url-firefox) cashpw/url-patterns-to-open-in-external-browser)
+ browse-url-browser-function 'eww-browse-url)
+#+end_src
+
+#+begin_src emacs-lisp
+(setq
+ browse-url-browser-function 'browse-url-firefox)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/browse-select-url ()
+  "Return selected url based on history and search engines."
+  (interactive)
+  (message "foo foo")
+  (let* ((url-history-options
+          (-map
+           (lambda (url)
+             (cons
+              url
+              `(lambda ()
+                 (cashpw/browser-url-history-put-url ,url)
+                 (funcall browse-url-browser-function ,url))))
+           (mapcar #'symbol-name (plru-entry-keys-most-to-least-recent cashpw/browser-url-history))))
+         (search-engine-options
+          (let ((search-engines-key-to-engine
+                 (-flatten-n
+                  1
+                  (-map
+                   #'-list
+                   (-map
+                    (lambda (engine)
+                      (-map
+                       (lambda (key) (cons key engine)) (oref engine keys)))
+                    cashpw/browser-search-engines)))))
+            (--map
+             (let ((key (car it))
+                   (engine (cdr it)))
+               (cons key `(lambda () (search-engine-browse-url ,engine))))
+             search-engines-key-to-engine)))
+         (options
+          ;; List of the form (selector . handler-fn)
+          ;;
+          ;; handler-fn is invoked when selector is selected
+          (append url-history-options search-engine-options))
+         (selection (completing-read "URL/Search: " options)))
+    (message "selection: %s" selection)
+    (message "assoc selection: %s" (assoc selection options))
+    (if (assoc selection options)
+        (funcall (cdr (assoc selection options)))
+      ;; Allow literal URLs
+      (funcall browse-url-browser-function selection))))
+#+end_src
+
+* =search-engines=
+
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! search-engine
+  :recipe (:host github
+           :repo "cashpw/search-engine.el"))
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    search-engine
+  :custom
+  (search-engine-cache-name-fn
+   (defun cashpw/search-engine-cache-name (search-engine)
+     "Return a unique name for the search engine cache."
+     (format "%s-%s-query-cache"
+             (symbol-name (oref search-engine id))
+             (format "%s-%s" emacs-version
+                     plru-internal-version-constant))))
+  :config
+  (let ((plru-debug t))
+    (setq cashpw/browser-search-engines
+          `(
+            ;; Google is excluded because it requires Javascript; it doesn't work with EWW.
+            ,(search-engine
+              :name "DuckDuckGo"
+              :id 'duckduckgo
+              :keys '("@ddg" "@duckduckgo")
+              :url "https://html.duckduckgo.com/html/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+             :name "ISBNSearch"
+             :id 'isbn
+             :keys '("@isbn")
+             :url "https://isbnsearch.org/search?s=%s"
+             :cache-size 200
+             :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "IMDb"
+              :id 'imdb
+              :keys '("@imdb")
+              :url "https://www.imdb.com/find/?q=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)
+            ,(search-engine
+              :name "Wikipedia"
+              :id 'wikipedia
+              :keys '("@wikipedia")
+              :url "https://en.wikipedia.org/w/index.php?search=%s"
+              :cache-size 200
+              :cache-directory cashpw/path--browser-history-dir)))))
+#+end_src
+
+* EmacsWebWowser (eww)
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! shr
+  (set-face-attribute 'shr-h1 nil :height 2.0 :weight 'bold)
+  (set-face-attribute 'shr-h2 nil :height 1.8 :weight 'bold)
+  (set-face-attribute 'shr-h3 nil :height 1.6 :weight 'bold)
+  (set-face-attribute 'shr-h4 nil :height 1.4 :weight 'bold)
+  (set-face-attribute 'shr-h5 nil :height 1.2 :weight 'bold)
+  (set-face-attribute 'shr-h6 nil :height 1.0 :weight 'bold)
+
+  (setq
+   ;; https://emacs.stackexchange.com/a/3523/37010
+   shr-color-visible-luminance-min 70))
+#+end_src
+
+** History
+*** URLs
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(let ((plru-directory cashpw/path--browser-history-dir)
+      (plru-debug t))
+  (setq cashpw/browser-url-history
+        (make-instance 'plru-repository
+                       (format "browser-url-history-%s-%s"
+                               emacs-version
+                               plru-internal-version-constant)
+                       :max-size 200 :save-delay 5)))
+
+(defcustom cashpw/browser-url-history-exclude-patterns '("isbnsearch\\.org")
+  "Patterns to exclude from URL history.")
+
+(after! search-engine
+  (let ((search-engine-urls
+         (--map
+          (string-replace "%s" "" (oref it url))
+          cashpw/browser-search-engines)))
+    (dolist (url search-engine-urls)
+      (add-to-list 'cashpw/browser-url-history-exclude-patterns (regexp-quote url)))))
+
+(defun cashpw/browser-url-history-put-url (url)
+  "Put URL into history."
+  (unless (--any
+           (string-match it url) cashpw/browser-url-history-exclude-patterns)
+    (plru-put cashpw/browser-url-history (intern url) t)))
+
+(defun cashpw/browser-url-history-put-eww-url ()
+  "Add current buffer's url to history."
+  (cashpw/browser-url-history-put-url
+   (plist-get eww-data :url)))
+
+(add-hook 'eww-after-render-hook #'cashpw/browser-url-history-put-eww-url)
+#+end_src
+
+#+begin_src emacs-lisp
+(clrhash *plru-repositories*)
+;; (let ((plru-directory cashpw/path--browser-history-dir))
+;;   (setq cashpw/browser-url-history
+;;     (plru-repository "browser-url-history" :max-size 200 :save-delay 5)))
+#+end_src
+
+#+begin_src emacs-lisp
+(plru-clear cashpw/browser-url-history)
+#+end_src
+
+* WWW を見る (w3m) :disabled:
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! w3m)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! w3m
+;;   :config
+;;   (w3m-display-mode 'tabbed-dedicated-frames))
+#+end_src

@@ -1,0 +1,30 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Calculator (calc)
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Packages
+** =causal=
+
+#+begin_quote
+An opinionated [[https://github.com/magit/transient][Transient]]-based porcelain to support the casual usage of Emacs [[https://www.gnu.org/software/emacs/manual/html_mono/calc.html][Calc]].
+
+[[https://github.com/kickingvegas/Casual/tree/a22cf128c3baa3e11f6aaff7dc44ef91cf0fe9ce][kickingvegas/Casual]]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! casual)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! casual
+  :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+#+end_src
+

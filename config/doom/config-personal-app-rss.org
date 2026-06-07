@@ -1,0 +1,320 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: RSS
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+
+* =elfeed=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  elfeed (elfeed-set-timeout 90)
+  (setq
+   elfeed-use-curl t
+   elfeed-curl-extra-arguments '("--insecure")
+   elfeed-sort-order 'ascending
+   ;; elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date
+   elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title
+   elfeed-db-directory (format "%s/elfeed" cashpw/path--notes-dir))
+
+  (defun cashpw/elfeed-update ()
+    (when (= elfeed-curl-queue-active 0)
+      (cashpw/log "Updating elfeed")
+      (elfeed-update)))
+
+  ;; (setq cashpw/elfeed-update--timer
+  ;; (run-with-timer 300 300 #'cashpw/elfeed-update))
+
+  (evil-define-key
+    'normal
+    elfeed-search-mode-map
+    "+"
+    #'cashpw/elfeed-search-set-tag
+    "a"
+    #'elfeed-search-untag-all-unread
+    "u"
+    #'elfeed-update
+    "f"
+    (cmd! (if (elfeed-tagged-p 'star (elfeed-search-selected :ignore-region))
+              (elfeed-search-untag-all 'star)
+            (elfeed-search-tag-all 'star)))
+    (kbd "M-RET")
+    #'elfeed-search-browse-url
+    (kbd "o A")
+    (cmd! (setq elfeed-sort-order 'ascending) (elfeed-search-update--force))
+    (kbd "o D")
+    (cmd! (setq elfeed-sort-order 'descending) (elfeed-search-update--force))
+    (kbd "o t")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-title)
+     (elfeed-search-update--force))
+    (kbd "o d")
+    (cmd!
+     (setq elfeed-search-sort-function 'cashpw/elfeed-search-compare-by-date)
+     (elfeed-search-update--force))
+    (kbd "J f")
+    (cmd! (cashpw/elfeed-search-for-feed nil 'unread-only))
+    (kbd "J t")
+    (cmd! (cashpw/elfeed-search-for-tags nil 'unread-only))))
+
+(defun cashpw/elfeed-search-compare-by-date (a b)
+  "Return non-nil if A is newer than B."
+  (let ((date-a (elfeed-entry-date a))
+        (date-b (elfeed-entry-date b)))
+    (if (= date-a date-b)
+        (string< (prin1-to-string b) (prin1-to-string a))
+      (> date-a date-b))))
+
+(defun cashpw/elfeed-search-compare-by-title (a b)
+  "Return non-nil if A is newer than B."
+  (string> (elfeed-entry-title a) (elfeed-entry-title b)))
+
+(setq
+ cashpw/reading-list-tags
+ (string-split
+  (shell-command-to-string
+   (format
+    "rg \" :[a-zA-Z0-9_:]*:$\" %s | sed 's/.*\\(:[a-zA-Z0-9_:]*:\\)/\\1/' | uniq | tr '\\n' ':' | sed 's/:::/:/g' | sed 's/:/\\n/g' | uniq | tr '\\n' ':'"
+    cashpw/path--reading-list))
+  ":" 'omit-nulls))
+
+(defun cashpw/elfeed-search-set-tag (tags)
+  "Set TAGS on Elfeed entries in search view."
+  (interactive (list
+                (completing-read-multiple
+                 "Tag(s): "
+                 (append (elfeed-db-get-all-tags) cashpw/reading-list-tags))))
+  (let ((elfeed-search-remain-on-entry t))
+    (dolist (tag tags)
+      (elfeed-search-tag-all (intern tag)))))
+
+(defun cashpw/elfeed-search-for-tags (&optional tags unread-only)
+  "Search for Elfeed entries tagged with TAGS.
+If UNREAD-ONLY is non-nil, only show unread entries."
+  (interactive)
+  (let* ((tags
+          (or tags
+              (completing-read-multiple "Tags: " (elfeed-db-get-all-tags))))
+         (search-filter
+          (string-join (append
+                        (when unread-only
+                          '("+unread"))
+                        (mapcar (lambda (tag) (concat "+" tag)) tags))
+                       " ")))
+    (elfeed-search-set-filter search-filter)
+    (elfeed-search-update)))
+
+(defun cashpw/elfeed-search-for-feed (&optional feed unread-only)
+  "Search for Elfeed entries from FEED.
+If UNREAD-ONLY is non-nil, only show unread entries."
+  (interactive)
+  (let* ((feed
+          (or feed
+              (completing-read
+               "Feed: "
+               (let (feed-titles)
+                 (maphash
+                  (lambda (_ value)
+                    (push (elfeed-feed-title value) feed-titles)
+                    value)
+                  elfeed-db-feeds)
+                 (reverse (delete nil feed-titles)))))))
+    (elfeed-search-set-filter
+     (format "=%s%s"
+             (replace-regexp-in-string "[^a-zA-Z0-9]" "." feed)
+             (if unread-only
+                 " +unread"
+               "")))
+    (elfeed-search-update)))
+
+(defun cashpw/elfeed-unread-count-by-tag ()
+  "Count all elfeed entries by tag and display the results."
+  (interactive)
+  (let ((count-hash (make-hash-table :test 'equal)))
+    (maphash
+     (lambda (_ entry)
+       (when (member 'unread (elfeed-entry-tags entry))
+         (dolist (tag (elfeed-entry-tags entry))
+           (puthash tag (1+ (gethash tag count-hash 0)) count-hash))))
+     (plist-get elfeed-db :entries))
+    (with-current-buffer (get-buffer-create "*elfeed-counts*")
+      (let* ((tag-counts (let (ret)
+                           (maphash
+                            (lambda (tag count)
+                              (unless (equal tag 'unread)
+                              (push (cons tag count) ret)))
+                            count-hash)
+                           ret))
+             (sorted-tag-counts
+              (--sort
+               (> (cdr it) (cdr other))
+               tag-counts)))
+        (erase-buffer)
+        (--each sorted-tag-counts
+          (insert (format "%-20s %d\n" (car it) (cdr it))))
+        (goto-char (point-min))
+        (display-buffer (current-buffer))))))
+
+(defun cashpw/elfeed-unread-count-by-feed ()
+  "Count all elfeed entries by tag and display the results."
+  (interactive)
+  (let ((count-hash (make-hash-table :test 'equal)))
+    (maphash
+     (lambda (_ entry)
+       (when (member 'unread (elfeed-entry-tags entry))
+         (let ((feed-title (elfeed-feed-title (elfeed-entry-feed entry))))
+           (puthash feed-title (1+ (gethash feed-title count-hash 0)) count-hash))))
+     (plist-get elfeed-db :entries))
+    (with-current-buffer (get-buffer-create "*elfeed-counts*")
+      (let* ((feed-counts (let (ret)
+                            (maphash
+                             (lambda (feed count)
+                               (push (cons feed count) ret))
+                             count-hash)
+                            ret))
+             (sorted-feed-counts
+              (--sort
+               (> (cdr it) (cdr other))
+               feed-counts)))
+        (erase-buffer)
+        (--each sorted-feed-counts
+          (insert (format "%-50s %d\n" (string-limit (car it) 49) (cdr it))))
+        (goto-char (point-min))
+        (display-buffer (current-buffer))))))
+#+end_src
+
+#+begin_src emacs-lisp
+;; Alphapapa's solution to speed up elfeed-update
+;;
+;; Source: https://github.com/skeeto/elfeed/issues/293#issuecomment-425627688
+
+(after!
+  elfeed
+  (defvar ap/elfeed-update-complete-hook nil
+    "Functions called with no arguments when `elfeed-update' is finished.")
+
+  (defvar ap/elfeed-updates-in-progress 0
+    "Number of feed updates in-progress.")
+
+  (defvar ap/elfeed-search-update-filter nil
+    "The filter when `elfeed-update' is called.")
+
+  (defun ap/elfeed-update-complete-hook (&rest ignore)
+    "When update queue is empty, run `ap/elfeed-update-complete-hook' functions."
+    (when (= 0 ap/elfeed-updates-in-progress)
+      (run-hooks 'ap/elfeed-update-complete-hook)))
+
+  (add-hook 'elfeed-update-hooks #'ap/elfeed-update-complete-hook)
+
+  (defun ap/elfeed-update-message-completed (&rest _ignore)
+    (message "Feeds updated"))
+
+  (add-hook 'ap/elfeed-update-complete-hook #'ap/elfeed-update-message-completed)
+
+  (defun ap/elfeed-search-update-restore-filter (&rest ignore)
+    "Restore filter after feeds update."
+    (when ap/elfeed-search-update-filter
+      (elfeed-search-set-filter ap/elfeed-search-update-filter)
+      (setq ap/elfeed-search-update-filter nil)))
+
+  (add-hook
+   'ap/elfeed-update-complete-hook #'ap/elfeed-search-update-restore-filter)
+
+  (defun ap/elfeed-search-update-save-filter (&rest ignore)
+    "Save and change the filter while updating."
+    (setq ap/elfeed-search-update-filter elfeed-search-filter)
+    (setq elfeed-search-filter "#0"))
+
+  ;; NOTE: It would be better if this hook were run before starting the feed updates, but in
+  ;; `elfeed-update', it happens afterward.
+  (add-hook 'elfeed-update-init-hooks #'ap/elfeed-search-update-save-filter)
+
+  (defun ap/elfeed-update-counter-inc (&rest ignore)
+    (cl-incf ap/elfeed-updates-in-progress))
+
+  (advice-add #'elfeed-update-feed :before #'ap/elfeed-update-counter-inc)
+
+  (defun ap/elfeed-update-counter-dec (&rest ignore)
+    (cl-decf ap/elfeed-updates-in-progress)
+    (when (< ap/elfeed-updates-in-progress 0)
+      ;; Just in case
+      (setq ap/elfeed-updates-in-progress 0)))
+
+  (add-hook 'elfeed-update-hooks #'ap/elfeed-update-counter-dec))
+#+end_src
+
+#+begin_src emacs-lisp
+(setq my/elfeed-update-times nil)
+(defun cashpw/elfeed--foo (feed)
+  "Log the duration of the update for FEED."
+  (elfeed-log 'info (format "feed: %s: %f"
+                        feed
+                        (- (float-time)
+                           (cdr (assoc feed my/elfeed-update-times))))))
+
+(remove-hook 'elfeed-update-hooks 'cashpw/elfeed--foo)
+
+
+(cl-loop with elfeed--inhibit-update-init-hooks = t
+         for feed in (elfeed-feed-list)
+         for time = (float-time)
+         do
+         (push (cons feed time) my/elfeed-update-times)
+         (elfeed-update-feed feed))
+#+end_src
+
+#+RESULTS:
+
+* =elfeed-protocol=
+
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el :results none
+(package! elfeed-protocol)
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! elfeed-protocol
+  :after elfeed
+  :custom
+  (elfeed-log-level 'debug)
+  (elfeed-protocol-fever-update-unread-only nil)
+  (elfeed-protocol-fever-maxsize 50)
+  (elfeed-protocol-fever-fetch-category-as-tag t)
+  (elfeed-protocol-enabled-protocols '(fever newsblur owncloud ttrss))
+  (elfeed-protocol-feeds `(("fever+http://fever@rss.cashpw.com"
+                            :api-url "http://rss.cashpw.com/fever/"
+                            :password ,(secret-get "rss.cashpw.com" nil (cashpw/machine-p 'personal-phone)))))
+  :config
+  (elfeed-protocol-enable))
+#+end_src
+
+* =elfeed-export=
+
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el :results none
+(package! elfeed-export
+  :recipe (:host codeberg :repo "bram85/elfeed-export"))
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! elfeed-export
+  :after elfeed)
+#+end_src
+
+* =elfeed-org=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (after! elfeed-org
+;;   (setq
+;;    rmh-elfeed-org-files `(,(concat cashpw/path--notes-dir "/elfeed.org"))))
+#+end_src
+

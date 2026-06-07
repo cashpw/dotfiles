@@ -1,0 +1,1051 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 11:55]
+:END:
+#+title: Personal Emacs config: Org - Links
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Links
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  (setq
+   ;; Prefer IDs to filenames+headers when creating links.
+   ;; Headers can change, filenames can change, the IDs won't change
+   ;; and can move to follow the relevant content.
+   org-id-link-to-org-use-id 'use-existing))
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! deflink
+  :recipe (:host github
+           :repo "cashpw/deflink"))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! deflink)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-link--decompose (link-string)
+  "Return plist with link and description of LINK-STRING."
+  (string-match "\\[\\[\\(.*\\)\\]\\[\\(.*\\)\\]\\]" link-string)
+  `(:link ,(match-string 1 link-string)
+    :description ,(match-string 2 link-string)))
+
+(defun cashpw/org-link--get-link (link-string)
+  "Extract link from LINK-STRING."
+  (plist-get (cashpw/org-link--decompose link-string) :link))
+
+(defun cashpw/org-link--get-description (link-string)
+  "Extract description from LINK-STRING."
+  (plist-get (cashpw/org-link--decompose link-string) :description))
+#+end_src
+
+** Types
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-link-alias (new-type old-type)
+  "Define NEW-TYPE as a functional alias for OLD-TYPE."
+  (let ((params (cdr (assoc old-type org-link-parameters))))
+    (unless params
+      (user-error "Link type '%s' is not defined" old-type))
+    (apply #'org-link-set-parameters new-type params)))
+#+end_src
+
+*** Amazon
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "amazon"
+         "https://amazon.com/dp/%s")
+#+end_src
+
+*** Digital Object Identifier (DOI)
+
+Priovded through [[id:91380f2e-823f-4ad0-9e14-617a021d86a3][=org-modules=]].
+
+*** Google Documents
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "google-doc"
+         "https://docs.google.com/document/d/%s")
+#+end_src
+
+*** Google Sheets
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; Prefer singular
+(deflink "google-sheet"
+         "https://docs.google.com/spreadsheets/d/%s")
+#+end_src
+
+*** Google Slides
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "google-slide"
+         "https://docs.google.com/presentation/d/%s")
+#+end_src
+
+*** ID
+
+Auto-complete =id:= with known =org-roam= IDs.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-id-complete (&optional initial-input filter-fn sort-fn require-match prompt)
+  "Read an `org-roam-node' and return its ID.
+
+Pass INITIAL-INPUT, FILTER-FN, SORT-FN, REQUIRE-MATCH, and PROMPT to `org-roam-node-read'."
+  (concat
+   "id:"
+   (org-roam-node-id
+    (org-roam-node-read
+     initial-input filter-fn sort-fn require-match prompt))))
+
+(org-link-set-parameters "id"
+                         :complete #'cashpw/org-roam-id-complete)
+
+#+end_src
+
+*** Instagram
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink
+ "instagram"
+ "https://instagram.com/%s"
+ (lambda (link _) (concat "@" link)))
+#+end_src
+
+*** ISBN
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "isbn"
+         "https://books.google.com/books?vid=ISBN/%s")
+#+end_src
+
+*** Reddit
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "reddit"
+         "https://reddit.com/%s")
+#+end_src
+
+*** Stackoverflow
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "stackoverflow"
+         "https://stackoverflow.com/%s")
+#+end_src
+
+*** Twitter
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "twitter"
+         "https://twitter.com")
+#+end_src
+
+*** Stock
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(deflink "stock"
+         "https://www.google.com/finance/quote/%s"
+         (lambda (link _) (concat "$" (upcase link))))
+#+end_src
+
+* Images
+
+** Limit image size to window width and height
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org--create-inline-image-to-fit-window-width
+    (original-function &rest args)
+  "Invoke ORIGINAL-FUNCTION with ARGS with a width such that the image fits in the window."
+  (if-let ((original-width (nth 1 args)))
+      ;; Pass through to create the image with a non-nil width
+      (apply original-function args)
+    ;; Clamp the width based on window and image size such that the image fits in the window
+    (let* ((file (nth 0 args))
+           (image (create-image file))
+           (image-size (image-size image t))
+           (image-width (car image-size))
+           (image-height (cdr image-size))
+
+           ;; Leave a small margin for the fringe and mode line.
+           (window-width (- (window-pixel-width) 4))
+           (window-height (- (window-pixel-height) 4))
+
+           (width-scale (/ (float window-width) image-width))
+           (height-scale (/ (float window-height) image-height))
+           (scale-factor (min 1.0 width-scale height-scale))
+
+           (width
+            (if (< scale-factor 1.0)
+                (floor (* image-width scale-factor))
+              nil)))
+      (funcall original-function file width))))
+
+(advice-add
+ 'org--create-inline-image
+ :around #'cashpw/org--create-inline-image-to-fit-window-width)
+#+end_src
+
+
+* Latex
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ org-format-latex-header "\\documentclass{article}
+\\usepackage[usenames]{color}
+\[DEFAULT-PACKAGES]
+\[PACKAGES]
+\\pagestyle{empty}             % do not remove
+% The settings below are copied from fullpage.sty
+\\setlength{\\textwidth}{\\paperwidth}
+\\addtolength{\\textwidth}{-3cm}
+\\setlength{\\oddsidemargin}{1.5cm}
+\\addtolength{\\oddsidemargin}{-2.54cm}
+\\setlength{\\evensidemargin}{\\oddsidemargin}
+\\setlength{\\textheight}{\\paperheight}
+\\addtolength{\\textheight}{-\\headheight}
+\\addtolength{\\textheight}{-\\headsep}
+\\addtolength{\\textheight}{-\\footskip}
+\\addtolength{\\textheight}{-3cm}
+\\setlength{\\topmargin}{1.5cm}
+\\addtolength{\\topmargin}{-2.54cm}
+\\newcommand{\\bigo}[1]{O(#1)}
+\\newcommand{\\littleo}[1]{o(#1)}
+\\newcommand{\\bigomega}[1]{\\Omega(#1)}
+\\newcommand{\\bigtheta}[1]{\\Theta(#1)}
+\\newcommand{\\determinant}[1]{\\operatorname{det}(#1)}"
+ org-latex-default-packages-alist '(("" "amsmath" t
+                                     ("lualatex" "xetex"))
+                                    ("" "fontspec" t
+                                     ("lualatex" "xetex"))
+                                    ("AUTO" "inputenc" t
+                                     ("pdflatex"))
+                                    ("T1" "fontenc" t
+                                     ("pdflatex"))
+                                    ("" "graphicx" t)
+                                    ("" "longtable" nil)
+                                    ("" "wrapfig" nil)
+                                    ("" "rotating" t)
+                                    ("" "multirow" t)
+                                    ("normalem" "ulem" t)
+                                    ("" "amsmath" t
+                                     ("pdflatex"))
+                                    ("" "amssymb" t
+                                     ("pdflatex"))
+                                    ("" "capt-of" nil)
+                                    ("" "hyperref" nil)))
+
+
+
+(defcustom cashpw/latex-toggle-preview--buffers-with-preview-displayed-p
+  '("a")
+  "List of buffers with latex previews showing.")
+
+(defun cashpw/latex-toggle-preview--current-buffer-has-preview-displayed-p ()
+  "Return non-nil if the current buffer has LaTeX previews displayed."
+  (member
+   (buffer-name (current-buffer))
+   cashpw/latex-toggle-preview--buffers-with-preview-displayed-p))
+
+(defun cashpw/latex-toggle-preview--show ()
+  "Show LaTeX previews in the current buffer."
+  (interactive)
+  (cl-pushnew (buffer-name (current-buffer))
+           cashpw/latex-toggle-preview--buffers-with-preview-displayed-p)
+  (org-latex-preview '(16)))
+
+(defun cashpw/latex-toggle-preview--hide ()
+  "Hide LaTeX previews in the current buffer."
+  (interactive)
+  (setq cashpw/latex-toggle-preview--buffers-with-preview-displayed-p
+        (delete (buffer-name (current-buffer))
+                cashpw/latex-toggle-preview--buffers-with-preview-displayed-p))
+  (org-latex-preview '(64)))
+
+(defun cashpw/latex-toggle-preview ()
+  "Toggle LaTeX previews in the current buffer."
+  (interactive)
+  (if (cashpw/latex-toggle-preview--current-buffer-has-preview-displayed-p)
+      (cashpw/latex-toggle-preview--hide)
+    (cashpw/latex-toggle-preview--show)))
+#+end_src
+
+* TODO Export and publish
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  org
+  :config
+  (setq
+   org-export-with-tags nil
+   org-export-with-priority nil
+   org-export-with-todo-keywords nil))
+#+end_src
+
+** TODO Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ org-html-checkbox-type 'html)
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun org-pandoc-pan-to-pub (o)
+  "Return a keyword for the provided symbol O used in pandoc publication."
+  (intern
+   (format ":org-pandoc-%s" o)))
+
+(use-package! ox-pandoc
+  :after (:all org)
+  :config
+  (setq
+   org-pandoc-format-extensions '(pipe_tables+raw_html)
+   org-pandoc-menu-entry
+   '((?D "to docx and open." org-pandoc-export-to-docx-and-open)
+     (?d "to docx." org-pandoc-export-to-docx)
+     (?m "to markdown." org-pandoc-export-to-markdown)
+     (?M "to markdown and open." org-pandoc-export-to-markdown-and-open)))
+  (defconst org-pandoc-publish-options
+    (mapcar
+     'org-pandoc-pan-to-pub
+     (append
+      org-pandoc-valid-options
+      org-pandoc-colon-separated-options
+      org-pandoc-file-options)))
+  (when (cashpw/machine-p 'work)
+    (setq
+     org-pandoc-options-for-docx
+     '((lua-filter . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocFilter.lua")
+       (reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/CashWeaverGenericDocTemplate.docx")
+       ;;(reference-doc . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/GenericDocTemplate.docx")
+       (highlight-style . "/usr/local/google/home/cashweaver/third_party/google_docs_pandoc/pandoc/Kodify.theme")))
+    (add-hook! 'org-pandoc-after-processing-markdown-hook
+               #'cashpw/remove-yaml-header)
+    ))
+
+(defun cashpw/remove-yaml-header ()
+  "Remove the 'front matter'/YAML header content from the current buffer."
+  (let ((inhibit-read-only t))
+    (goto-char (point-min))
+    (replace-regexp
+     "---\\(.\\|\n\\)*?---"
+     "")
+    (goto-char (point-min))
+    (delete-blank-lines)
+    (delete-blank-lines)))
+
+(defun cashpw/remove-toml-header ()
+  "Remove the 'front matter'/TOML header content from the current buffer."
+  (goto-char (point-min))
+  (replace-regexp
+   "\\+\\+\\+\\(.\\|\n\\)*?\\+\\+\\+"
+   "")
+  (goto-char (point-min))
+  (delete-blank-lines)
+  (delete-blank-lines))
+
+(defun cashpw/get-toml-header ()
+  "Return the 'front matter'/TOML header content from the current buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward-regexp
+     "\\+\\+\\+\n\\(\\(.\\|\n\\)*?\\)\n\\+\\+\\+")
+    (match-string 1)))
+
+(defun cashpw/remove-yaml-front-matter-current-buffer ()
+  "Remove YAML front matter from the current buffer."
+  (interactive)
+  (cashpw/remove-yaml-header))
+
+(defun cashpw/remove-toml-front-matter-current-buffer ()
+  "Remove TOML front matter from the current buffer."
+  (interactive)
+  (cashpw/remove-toml-header))
+
+
+(defun cashpw/get-title-toml-front-matter ()
+  "Return the title from TOML front matter."
+  (interactive)
+  (let* ((toml-string
+          (cashpw/get-toml-header))
+         (toml-lines
+          (split-string
+           toml-string
+           "\n"))
+         (title
+          (replace-regexp-in-string
+           "title = \"\\(.*\\)\""
+           "\\1"
+           (nth 0 (seq-filter
+                   (lambda (line)
+                     (s-starts-with?
+                      "title"
+                      line))
+                   toml-lines)))))
+    title))
+
+(defun cashpw/replace-toml-front-matter-with-md-heading ()
+  "Replace TOML front matter with a Markdown level 1 heading."
+  (interactive)
+  (let ((title (cashpw/get-title-toml-front-matter)))
+    (cashpw/remove-toml-header)
+    (save-excursion
+      (goto-char (point-min))
+      (insert (format
+               "# %s\n\n"
+               title)))))
+
+(defun org-pandoc-publish-to (format plist filename pub-dir &optional remove-yaml-header)
+  "Publish using Pandoc FORMAT from PLIST to FILENAME in PUB-DIR.
+If REMOVE-YAML-HEADER is non-nil, remove the YAML header from the output.
+Reference: https://github.com/kawabata/ox-pandoc/issues/18#issuecomment-262979338"
+  (setq
+   org-pandoc-format format
+   org-pandoc-option-table (make-hash-table))
+  (let ((tempfile
+         (org-publish-org-to
+          'pandoc filename (concat (make-temp-name ".tmp") ".org") plist pub-dir))
+        (outfile (format "%s.%s"
+                         (concat
+                          pub-dir
+                          (file-name-sans-extension (file-name-nondirectory filename)))
+                         (assoc-default format org-pandoc-extensions))))
+    (org-pandoc-put-options (org-pandoc-plist-to-alist plist))
+    (let ((process
+           (org-pandoc-run tempfile outfile format 'org-pandoc-sentinel
+                           org-pandoc-option-table))
+          (local-hook-symbol
+           (intern (format "org-pandoc-after-processing-%s-hook" format))))
+      (process-put process 'files (list tempfile))
+      (process-put process 'output-file outfile)
+      (process-put process 'local-hook-symbol local-hook-symbol))))
+
+(defun org-pandoc-pub-to-pan (o)
+  "Return a symbol for the provided publication keyword O."
+  (intern
+   (substring (symbol-name o) 12)))
+
+(defun org-pandoc-plist-to-alist (plist)
+  "Convert the provided property list PLIST to an association list for pandoc."
+  (let ((alist '()))
+    (while plist
+      (let ((p (car plist))
+            (v (cadr plist)))
+        (when (member p org-pandoc-publish-options)
+          (add-to-list 'alist (cons (org-pandoc-pub-to-pan p) v))))
+      (setq plist (cddr plist)))
+    alist))
+
+(defun org-pandoc-publish-to-md (plist filename pub-dir)
+  "Publish to markdown using Pandoc with PLIST, FILENAME, and PUB-DIR."
+  (org-pandoc-publish-to 'markdown plist filename pub-dir t))
+
+(defun org-pandoc-publish-to-plain (plist filename pub-dir)
+  "Publish to plain text using Pandoc with PLIST, FILENAME, and PUB-DIR."
+  (org-pandoc-publish-to 'plain plist filename pub-dir))
+#+end_src
+
+** TODO Hugo
+
+*** Sidenotes
+:PROPERTIES:
+:ID:       17012046-9e32-465e-aecc-6221d41a4c9b
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-rewrite-footnotes-to-shortcodes ()
+  "Rewrite standard Org footnotes to Hugo 'sidenote' shortcodes.
+
+  1. Extracts content from the '* Footnotes' section.
+  2. Replaces inline references (e.g. [fn:1]) with {{< sidenote >}}...{{< /sidenote >}}.
+  3. Deletes the '* Footnotes' heading and its subtree."
+  (interactive)
+  (save-excursion
+    (let* ((ast (org-element-parse-buffer))
+           (definitions (make-hash-table :test 'equal))
+           (references nil))
+      (org-element-map
+          ast 'footnote-definition
+        (lambda (fn-def)
+          (let* ((label (org-element-property :label fn-def))
+                 (beg (org-element-property :contents-begin fn-def))
+                 (end (org-element-property :contents-end fn-def))
+                 ;; Get text and strip surrounding whitespace
+                 (content
+                  (when (and beg end)
+                    (string-trim (buffer-substring-no-properties beg end)))))
+            (when (and label content)
+              (puthash label content definitions)))))
+      (org-element-map
+          ast 'footnote-reference #'(lambda (fn-ref) (push fn-ref references)))
+      (setq references
+            (sort references
+                  #'(lambda (a b)
+                      (> (org-element-property :begin a)
+                         (org-element-property :begin b)))))
+      (dolist (ref references)
+        (let* ((label (org-element-property :label ref))
+               (content (gethash label definitions))
+               (beg (org-element-property :begin ref))
+               (end (org-element-property :end ref)))
+          (when content
+            (goto-char beg)
+            (delete-region beg end)
+            (insert
+             (format "@@hugo:{{< sidenote >}}@@%s@@hugo:{{< /sidenote >}}@@"
+                     content)))))
+      (goto-char (point-min))
+      (let ((case-fold-search t)) ;; Case insensitive
+        (when (re-search-forward "^\\*+ Footnotes" nil t)
+          (org-back-to-heading)
+          (org-cut-subtree))))))
+#+end_src
+
+*** Don't export private files
+
+Files are private by default. Files are only exported if they're tagged with =:public:=.
+
+*** Don't export private links
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-hugo-link-except-private-links (oldfun link desc info)
+  "Run OLDFUN with LINK, DESC, and INFO when LINK is public; otherwise return DESC."
+  (if (and (string= (org-element-property :type link) "id")
+           (not
+            (member
+             "public"
+             (cashpw/org-get-filetags
+              (org-id-find-id-file (org-element-property :path link))))))
+      desc
+    (funcall oldfun link desc info)))
+
+(advice-add 'org-hugo-link :around #'cashpw/org-hugo-link-except-private-links)
+#+end_src
+
+#+RESULTS:
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/kill-all-markdown-buffers ()
+  "Kill all other org-roam buffers except current."
+  (let ((buffers-to-kill
+         (--filter (s-ends-with-p ".md" (buffer-name it)) (buffer-list))))
+    (mapc 'kill-buffer buffers-to-kill)))
+;; (cashpw/kill-all-markdown-buffers)
+;; (buffer-list)
+
+(defun file-notify-rm-all-watches ()
+  "Remove all existing file notification watches from Emacs."
+  (interactive)
+  (maphash
+   (lambda (key _value) (file-notify-rm-watch key)) file-notify-descriptors))
+
+(defun cashpw/org-hugo--remove-missing-relrefs (directory)
+  "Remove missing relref links from hugo DIRECTORY."
+  (let ((post-paths
+         (directory-files (format "%s/content/posts" directory) t "\\.md$"))
+        (missing-relrefs
+         (mapcar
+          (lambda (result)
+            (replace-regexp-in-string
+             ".*REF_NOT_FOUND: Ref \"\\([^\"]*\\).*" "\\1" result))
+          (split-string (shell-command-to-string
+                         (format "cd %s; hugo | grep REF_NOT_FOUND" directory))
+                        "\n" t))))
+    (dolist (post-path post-paths)
+      (message "removing missing relrefs from %s" post-path)
+      (with-current-buffer (find-file-noselect post-path)
+        (dolist (missing-relref missing-relrefs)
+          (cashpw/replace-regexp-in-buffer
+           (format "relref \"%s\"" missing-relref) "REPLACED"))
+        (save-buffer)))))
+
+;; (defun cashpw/org-hugo-export-directory
+;;     (directory &optional files-to-ignore)
+;;   "Export all hugo files in DIRECTORY.
+
+;; Optionally skip FILES-TO-IGNORE.
+
+;; Note that only files tagged \"public\" will be exported."
+;;   (interactive)
+;;   (let* ((org-roam-directory directory)
+;;          (files-to-export
+;;           (seq-difference
+;;            (cashpw/org-files-with-tag
+;;             "public" org-roam-directory)
+;;            files-to-ignore))
+;;          (org-id-extra-files (org-node-list-files))
+;;          (file-index 0)
+;;          (log-file-path "/tmp/hugo-export.log")
+;;          (count-files-to-export (length files-to-export))
+;;          ;; Last updated: 2023-12-05
+;;          (recent-run-file-count 1467)
+;;          ;; Last updated: 2023-12-05
+;;          (recent-run-seconds 7791)
+;;          (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
+;;     (cl-flet
+;;         ((remaining-minutes
+;;            (file-number)
+;;            (let ((files-left (- count-files-to-export file-number)))
+;;              (/ (* seconds-per-file files-left) 60))))
+;;       (let*
+;;           ((run-time-estimate
+;;             (org-duration-from-minutes (remaining-minutes 0)))
+;;            (should-run
+;;             (y-or-n-p
+;;              (s-lex-format
+;;               "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
+;;         (when should-run
+;;           (let* ((progress-reporter
+;;                   (make-progress-reporter "Exporting roam notes"
+;;                                           0 count-files-to-export))
+;;                  (start-time (current-time)))
+;;             ;; (org-roam-db-sync)
+;;             ;; Speed up the export
+;;             ;; (cashpw/eglot-pause)
+;;             (memoize 'citeproc-hash-itemgetter-from-any)
+;;             (advice-add 'org-id-find :override 'cashpw/org-mem-id-find)
+;;             ;; (memoize 'org-roam-id-find)
+;;             ;; (memoize 'org-roam-node-id)
+;;             ;; (memoize 'org-roam-node-file)
+;;             ;; (global-flycheck-mode -1)
+
+;;             (unwind-protect
+;;                 (progn
+;;                   (-each
+;;                       files-to-export
+;;                     (lambda (file-path)
+;;                       (let ((file-export-start-time (current-time))
+;;                             (roam-file-buffer (find-file-noselect file-path))
+;;                             (start-time (current-time)))
+;;                         (quiet!
+;;                           (when (= 0 (% file-index 10))
+;;                             ;; (message "[cashpw] fix cannot redirect stderr too many open files")
+;;                             ;; Prevent `Error: (file-error "Cannot redirect stderr" "Too many open files" "/dev/null")'
+;;                             (cashpw/kill-all-markdown-buffers)
+;;                             (file-notify-rm-all-watches))
+;;                           ;; (message "cashpw/org-hugo-export-all (%d/%d) exporting [%s]"
+;;                           ;;          (1+ file-index)
+;;                           ;;          count-files-to-export
+;;                           ;;          file-path)
+;;                           (with-current-buffer roam-file-buffer
+;;                             (remove-hook 'before-save-hook 'org-encrypt-entries t)
+;;                             (org-hugo-export-to-md))
+;;                           (kill-buffer roam-file-buffer)
+;;                           ;; (message "cashpw/org-hugo-export-all (%d/%d) exported [%s] %.06f"
+;;                           ;;          (1+ file-index)
+;;                           ;;          count-files-to-export
+;;                           ;;          file-path
+;;                           ;;          (float-time
+;;                           ;;           (time-since
+;;                           ;;            file-export-start-time)))
+;;                           (let* ((file-number (1+ file-index))
+;;                                  (time-string (format-time-string "%F %H:%M:%S"))
+;;                                  (export-duration-in-seconds (time-since start-time)))
+;;                             (append-to-file
+;;                              (s-lex-format
+;;                               "${time-string}: ${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration-in-seconds})\n")
+;;                              nil log-file-path))))
+;;                       (progress-reporter-update progress-reporter
+;;                                                 file-index
+;;                                                 (concat
+;;                                                  "Remaining time (estimate): "
+;;                                                  (org-duration-from-minutes
+;;                                                   (remaining-minutes file-index))))
+;;                       (setq file-index (1+ file-index)))))
+;;               (progress-reporter-done progress-reporter)
+
+;;               ;; Remove speed-up changes
+;;               ;; (cashpw/eglot-unpause)
+;;               (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
+;;               ;; (memoize-restore 'org-roam-id-find)
+;;               ;; (memoize-restore 'org-roam-node-id)
+;;               ;; (memoize-restore 'org-roam-node-file)
+;;               (memoize-restore 'citeproc-hash-itemgetter-from-any)
+
+;;               (message "cashpw/org-hugo-export-all %.06f"
+;;                        (float-time (time-since start-time))))))))))
+
+(defun cashpw/org-hugo--tag-processing-fn-roam-tags (tag-list info)
+  "Add tags from filetags to TAG-LIST based on INFO for org-roam to ox-hugo compatibility.
+
+Reference: https://sidhartharya.me/exporting-org-roam-notes-to-hugo/#goal
+
+See `org-hugo-tag-processing-functions'."
+  (if (org-roam-file-p)
+      (--remove
+       (or
+        (string= it "public")
+        (string= it "concept")
+        (string= it "hastodo"))
+       (-uniq
+        (append
+         tag-list
+         (-map #'downcase (org-extras-get-inbuffer-option "filetags")))))
+    tag-list))
+
+(after!
+  ox-hugo
+  (setq
+   org-hugo-citations-plist '(:bibliography-section-heading "")
+   org-hugo-auto-set-lastmod t
+   org-hugo-allow-spaces-in-tags nil)
+  (add-to-list
+   'org-hugo-tag-processing-functions
+   'cashpw/org-hugo--tag-processing-fn-roam-tags)
+
+  ;; Override to allow for empty `bibliography-section-heading'.
+  (defun org-hugo--org-cite-export-bibliography (orig-fun &rest args)
+    "Insert a heading before the exported bibliography.
+
+ORIG-FUN is the original function `org-cite-export-bibliography'
+that this function is designed to advice using `:around'.  ARGS
+are the arguments of the ORIG-FUN."
+    (let ((bib (apply orig-fun args)))
+      (when (org-string-nw-p bib)
+        ;; Auto-inject Bibliography heading.
+        (let ((info (nth 2 args)) ;(org-cite-export-bibliography KEYWORD _ INFO)
+              (bib-heading
+               (org-string-nw-p
+                (plist-get
+                 org-hugo-citations-plist
+                 :bibliography-section-heading))))
+          (if bib-heading
+              (let* ((bib-heading
+                      (org-blackfriday--translate nil info bib-heading))
+                     (loffset
+                      (string-to-number
+                       (or (org-entry-get
+                            nil "EXPORT_HUGO_LEVEL_OFFSET"
+                            :inherit)
+                           (plist-get info :hugo-level-offset))))
+                     (level-mark (make-string (+ loffset 1) ?#)))
+                (format "%s %s\n\n%s" level-mark bib-heading bib))
+            (format "%s" bib))))))
+
+
+  ;; Speed up exporting files
+  ;; (advice-add 'org-id-find :override 'org-roam-id-find)
+  ;; (memoize 'org-roam-node-id)
+  ;; (memoize 'org-roam-node-file)
+  )
+#+end_src
+
+** Publish
+
+Prefer =cashpw/org-roam-export-all= to publish notes because =org-publish= gets hung up with errors (=org-back-to-heading: Before first headline at position ... in buffer ...=).
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (defun cashpw/org-hugo-export-to-md--maybe
+;;     (&optional async subtreep visible-only)
+;;   "Conditional export."
+;;   (when (seq-contains (org-extras-filetags-in-buffer (current-buffer)) "public")
+;;     (org-hugo-export-to-md async subtreep visible-only)))
+
+;; (after!
+;;   org
+;;   (setq org-publish-project-alist
+;;         '(("notes.cashpw.com"
+;;            :base-directory "~/proj/notes"
+;;            :base-extension "org"
+;;            :publishing-directory "~/proj/notes.cashpw.com/content/posts/"
+;;            :publishing-function cashpw/org-hugo-export-to-md--maybe
+;;            ;; :section-numbers t
+;;            :with-toc nil))))
+#+end_src
+
+** Helper Functions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom
+  cashpw/smart-to-ascii
+  '(("\x201C" . "\"")
+    ("\x201D" . "\"")
+    ("\x2018" . "'")
+    ("\x2019" . "'"))
+  "Mapping from known 'smart' quotes/etc to their ascii equivalent.")
+
+(defun cashpw/replace-smart-quotes (beg end)
+  "Replace 'smart quotes' between BEG and END with ascii quotes.
+
+Reference: https://superuser.com/a/604264"
+  (interactive "r")
+  (format-replace-strings
+   cashpw/smart-to-ascii
+   nil
+   beg
+   end))
+
+(defun cashpw/replace-smart-quotes-in-buffer ()
+  "Replace 'smart quotes' in current buffer."
+  (interactive)
+  (cashpw/replace-smart-quotes
+   (point-min)
+   (point-max)))
+#+end_src
+
+** Blog
+
+My personal blog: https://cashpw.com.
+
+*** Export
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mem-id-find (oldfun id &optional markerp)
+  "Find the location of ID using `org-mem`, or call OLDFUN if not found.
+Return a marker if MARKERP is non-nil, or a cons of (file . pos) otherwise."
+  (if-let ((entry (org-mem-entry-by-id id)))
+      (if markerp
+          (set-marker (make-marker) (org-mem-entry-pos entry)
+                      (find-file-noselect (org-mem-entry-file entry)))
+        (cons (org-mem-entry-file entry) (org-mem-entry-pos entry)))
+    (funcall oldfun id markerp)))
+
+(defun cashpw/org-hugo-export-directory (directory &optional files-to-ignore)
+  "Export all hugo files in DIRECTORY.
+
+Optionally skip FILES-TO-IGNORE.
+
+Note that only files tagged \"public\" will be exported."
+  (interactive)
+  (let* ((files-to-export
+          (seq-difference
+           (cashpw/org-files-with-tag
+            "public" cashpw/path--notes-dir)
+           files-to-ignore))
+         (org-id-extra-files (org-mem-all-files))
+         (file-index 0)
+         (log-buffer (get-buffer-create "*hugo-export*"))
+         (count-files-to-export (length files-to-export))
+         ;; Last updated: 2023-12-05
+         (recent-run-file-count 1467)
+         ;; Last updated: 2023-12-05
+         (recent-run-seconds 7791)
+         (seconds-per-file (/ recent-run-seconds recent-run-file-count)))
+    (cl-flet
+        ((remaining-minutes
+           (file-number)
+           (let ((files-left (- count-files-to-export file-number)))
+             (/ (* seconds-per-file files-left) 60))))
+      (let*
+          ((run-time-estimate
+            (org-duration-from-minutes (remaining-minutes 0)))
+           (should-run
+            (y-or-n-p
+             (s-lex-format
+              "Found ${count-files-to-export} public notes in ${directory}. Export estimate: ${run-time-estimate}."))))
+        (when should-run
+          (with-current-buffer log-buffer
+            (erase-buffer))
+          (let* ((progress-reporter
+                  (make-progress-reporter "Exporting notes"
+                                          0 count-files-to-export))
+                 (start-time (current-time)))
+            ;; Speed up the export
+            (advice-add 'org-id-find :around #'cashpw/org-mem-id-find)
+            (memoize 'citeproc-hash-itemgetter-from-any)
+            (memoize 'cashpw/org-mem-id-find)
+            (memoize 'org-roam-id-find)
+
+            (unwind-protect
+                (-each
+                    files-to-export
+                  (lambda (file-path)
+                    (let ((file-export-start-time (current-time))
+                          (note-buffer (find-file-noselect file-path)))
+                      (quiet!
+                        (unwind-protect
+                            (with-current-buffer note-buffer
+                              (org-transclusion-remove-all)
+                              (org-transclusion-add-all)
+                              (ignore-errors
+                                (atomic-change-group
+                                  (cashpw/org-rewrite-footnotes-to-shortcodes)
+                                  (org-hugo-export-to-md)
+                                  (error "Restore the buffer after rewriting."))))
+                          nil))
+                      (let* ((file-number (1+ file-index))
+                             (export-duration
+                              (format-seconds
+                               "%.2h:%.2m:%.2s"
+                               (time-since file-export-start-time))))
+                        (cashpw/log-to-buffer
+                         log-buffer
+                         (s-lex-format
+                          "${file-number}/${count-files-to-export} ${file-path} (duration: ${export-duration})"))))
+                    (progress-reporter-update progress-reporter
+                                              file-index
+                                              (concat
+                                               "Remaining time (estimate): "
+                                               (org-duration-from-minutes
+                                                (remaining-minutes file-index))))
+                    (setq file-index (1+ file-index))))
+              (progress-reporter-done progress-reporter)
+
+              ;; Remove speed-up changes
+              (advice-remove 'org-id-find 'cashpw/org-mem-id-find)
+              (memoize-restore 'org-roam-id-find)
+              (memoize-restore 'cashpw/org-mem-id-find)
+              (memoize-restore 'citeproc-hash-itemgetter-from-any)
+
+              (message "cashpw/org-hugo-export-all %.06f"
+                       (float-time (time-since start-time))))))))))
+
+(defun cashpw/org-hugo-export-all ()
+  "Export all hugo notes files."
+  (interactive)
+  (mapc
+   #'delete-file
+   (directory-files (format "%s/cashpw.com/content/posts" cashpw/path--proj-dir)
+                    t "\\.md$"))
+  (cashpw/org-hugo-export-directory cashpw/path--notes-dir))
+#+end_src
+
+*** Epigraphs
+:PROPERTIES:
+:ID:       8ddef015-b20c-4555-a310-52f833677bc2
+:END:
+
+Epigraphs are fancy blockquotes:
+
+#+begin_epigraph :author "Princess Irulan" :cite Dune :detail p.1
+A beginning is the time for taking the most delicate care that the balances are correct.
+#+end_epigraph
+
+I created a custom block to specify epigraphs in =org-mode=:
+
+#+begin_src org
+#+begin_epigraph :author "Princess Irulan" :cite Dune :detail p.1
+A beginning is the time for taking the most delicate care that the balances are correct.
+#+end_epigraph
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; https://github.com/cashpw/org-defblock
+;; (require 'org-defblock)
+
+(org-defblock
+ epigraph (author nil cite nil detail nil)
+ (let* ((params
+         (cl-loop
+          for (key . val) in
+          `(("author" . ,author)
+            ("cite" . ,cite)
+            ("detail" . ,detail))
+          when val collect (format "%s=\"%s\"" key val)))
+        (attrs
+         (if params
+             (concat " " (mapconcat #'identity params " "))
+           ""))
+        (split-content
+         (--filter
+          (not
+           (or (s-starts-with-p "#+begin_export" it)
+               (s-starts-with-p "#+end_export" it)))
+          (s-split "\n" contents))))
+   (cashpw/log "author: %s, cite: %s, detail: %s" author cite detail)
+   (pcase backend
+     (`hugo
+      (format "{{< epigraph%s >}}%s{{</ epigraph >}}"
+              attrs
+              (s-trim (s-join "\n" split-content))))
+     (`md (s-join "\n" (--map (format "> %s" it) split-content)))
+     (`markdown (s-join "\n" (--map (format "> %s" it) split-content)))
+     (_ (s-join "\n" split-content)))))
+#+end_src
+
+* Links Packages
+
+
+** =org-link-beautify= :disabled:
+
+Disabled because (1) it slowed down agenda view and (2) it wasn't that useful.
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! org-link-beautify
+;;   :recipe (:host nil
+;;            :repo "https://repo.or.cz/org-link-beautify.git"
+;;            :branch "v1.2.3"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! org-link-beautify
+;;   :after org
+;;   ;; :custom
+;;   ;; (org-link-beautify-async-preview t)
+;;   :config
+;;   (set-face-attribute 'org-link-beautify-link-icon-face nil :weight 'normal)
+;;   (org-link-beautify-mode 1))
+#+end_src
+
+** =org-notmuch=
+
+#+begin_quote
+One of the more popular Notmuch [[[https://notmuchmail.org/][Notmuch]]] message reading clients is notmuch.el, or notmuch-mode, an Emacs major mode for interacting with Notmuch. It is included in the Notmuch package (as elpa-notmuch within the notmuch package in current Debian or as notmuch-emacs in Debian 10 or prior). The screenshots give a good overview of the mode.
+
+[cite:@Notmuchemacs]
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! ol-notmuch)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! ol-notmuch
+  :after org)
+#+end_src
+* Link Helpers
+
+** =cashpw/org-set-link-description=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-set-link-description (description)
+  "Set the description of the org-mode link at point with DESCRIPTION.
+If the provided DESCRIPTION is an empty string, the link will be converted
+to a bare link (e.g., [[path]])."
+  (interactive "sNew description: ")
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an Org-mode buffer"))
+  (let ((context (org-element-context)))
+    (unless (eq (org-element-type context) 'link)
+      (user-error "Point is not on a link"))
+    (let ((target (org-element-property :raw-link context))
+          (beg (org-element-property :begin context))
+          (end (org-element-property :end context)))
+      (delete-region beg end)
+      (insert (org-link-make-string target description)))))
+#+end_src
+
+** =cashpw/org-replace-link-description-with-title=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-replace-link-description-with-title ()
+  "Replace link at point's description with its HTML title asynchronously."
+  (interactive)
+  (let ((context (org-element-context)))
+    (unless (eq (org-element-type context) 'link)
+      (user-error "Point is not on a link"))
+    (let ((url (org-element-property :raw-link context))
+          (buffer (current-buffer))
+          (pos (point)))
+      (cashpw/url-get-title
+       url
+       (lambda (title)
+         (with-current-buffer buffer
+           (save-excursion
+             (goto-char pos)
+             (cashpw/org-set-link-description title))))))))
+#+end_src
+

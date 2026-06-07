@@ -1,0 +1,27 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Games
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Go
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! go
+;;   :recipe (:host github
+;;            :repo "cashpw/el-go"
+;;            :branch "feat/missing-backends"))
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package go
+;;   :custom
+;;   ;; Note that the black piece here is the unicode white piece. However, with a dark background, white looks black and black looks white.
+;;   (go-board-black-piece "○")
+;;   (go-board-white-piece "●"))
+#+end_src

@@ -1,0 +1,20 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: Jujutsu (jj)
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! majutsu :recipe (:host github :repo "0WD0/majutsu"))
+#+end_src
+
+* Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! gnuplot)
+#+end_src
+

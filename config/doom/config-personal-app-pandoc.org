@@ -1,0 +1,62 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: pandoc
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+
+#+begin_quote
+If you need to convert files from one markup format into another, pandoc is your swiss-army knife.
+
+https://pandoc.org/
+#+end_quote
+
+* Helper functions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/pandoc-convert-markdown-to-org (beg end)
+  "Convert the region between BEG and END from Markdown to Org-mode using Pandoc."
+  (interactive (if (use-region-p)
+                   (list (region-beginning) (region-end))
+                 (list (point-min) (point-max))))
+  (let ((pandoc (executable-find "pandoc")))
+    (if (not pandoc)
+        (error "Pandoc not found. Please install it to use this command")
+      (shell-command-on-region beg end
+                               (concat
+                                "pandoc -f markdown -t org --wrap=preserve "
+                                ;; Remove :PROPERTIES: drawers beneath headings
+                                "| sed -E '/^[[:space:]]*:/d'")
+                               nil t)
+      ;; If we converted the whole buffer, switch the major mode to Org
+      (unless (use-region-p)
+        (org-mode)))))
+
+(defun cashpw/pandoc-cli (command)
+  "Run pandoc with COMMAND and return the output as a string."
+  (let ((pandoc-command (format "pandoc %s" command)))
+    (shell-command-to-string pandoc-command)))
+
+(defun cashpw/pandoc-convert (text source-format target-format)
+  "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
+  (cashpw/pandoc-cli
+   (s-lex-format "-f ${source-format} -t ${target-format} <<< \"${text}\"")))
+
+(defun cashpw/pandoc-convert-via-file (text source-format target-format)
+  "Convert TEXT from SOURCE-FORMAT to TARGET-FORMAT."
+  (let ((tmp-input-file-path
+         (format "/tmp/pandoc-tmp-input-%s" (format-time-string "%s")))
+        (tmp-output-file-path
+         (format "/tmp/pandoc-tmp-output-%s" (format-time-string "%s"))))
+    (with-temp-buffer text
+      (let ((coding-system-for-write 'utf-8))
+        (write-file tmp-input-file-path)))
+    (cashpw/pandoc-cli
+     (s-lex-format
+      "${tmp-input-file-path} -f ${source-format} -t ${target-format} -o ${tmp-output-file-path}"))
+    (with-current-buffer (find-file-noselect tmp-output-file-path)
+      (buffer-substring-no-properties (point-min) (point-max)))))
+#+end_src
+

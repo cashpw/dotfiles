@@ -1,0 +1,67 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:END:
+#+title: Personal Emacs config: E-reader (epub)
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* =nov.el=
+
+#+begin_quote
+Major mode for reading EPUBs in Emacs
+
+https://depp.brause.cc/nov.el/
+#+end_quote
+
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! nov)
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! nov
+  :config
+  (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode)))
+#+end_src
+
+* =org-remark= :disabled:
+
+Disabled in favor of [[id:b0d1f1ab-86a8-48e9-83be-a3b14a6fd327][=org-noter=]]. Why? The method quoting (highlighting) isn't what I'm looking for:
+
+1. Highlights are stored in a new org-file "database" whereas I want them stored in-line in my org note file for the book/etc
+2. Highlights are stored as headings rather than as text
+
+#+begin_quote
+Org-remark lets you highlight and annotate text files, websites, EPUB books and Info documentation with using Org mode.
+
+[[github:nobiot/org-remark][nobiot/org-remark]]
+#+end_quote
+
+** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+;; (package! org-remark)
+#+end_src
+
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; (use-package! org-remark-global-tracking
+;;   ;; It is recommended that `org-remark-global-tracking-mode' be
+;;   ;; enabled when Emacs initializes. You can set it in
+;;   ;; `after-init-hook'.
+;;   :hook after-init
+;;   :config
+;;   ;; Selectively keep or comment out the following if you want to use
+;;   ;; extensions for Info-mode, EWW, and NOV.el (EPUB) respectively.
+;;   ;(use-package! org-remark-info :after info :config (org-remark-info-mode +1))
+;;   ;(use-package! org-remark-eww  :after eww  :config (org-remark-eww-mode +1))
+;;   (use-package! org-remark-nov  :after nov  :config (org-remark-nov-mode +1))
+;;   )
+;; (use-package! org-remark)
+#+end_src
+

@@ -1,0 +1,637 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-06-05 Fri 13:49]
+:END:
+#+title: Personal Emacs config: Org - Export & Publishing
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Export & Publishing
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  (setq
+   org-export-with-smart-quotes nil
+   org-export-with-toc nil
+   org-export-with-sub-superscripts '{}
+   org-export-headline-levels 6))
+
+(defvar cashpw/org-roam--file-path-exceptions-to-export-after-save '()
+  "List of org-roam file paths which should NOT be exported after they are saved. This list is populated within the particular .dir-local.el files.")
+
+(defvar cashpw/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter '()
+  "List of org-roam file paths which should NOT have references mirrored to front matter. This list is populated within the particular .dir-local.el files.")
+
+(defun cashpw/org-roam-rewrite-smart-to-ascii ()
+  "Rewrite smart quotes to ASCII if the current buffer is an org-roam file."
+  (when (org-roam-file-p)
+    (cashpw/replace-smart-quotes-in-buffer)))
+
+(defun cashpw/org-roam-open-ref ()
+  "Open the ROAM_REF."
+  (interactive)
+  (let ((roam-refs (org-entry-get (point) "ROAM_REFS")))
+    (if (s-starts-with-p "http" roam-refs)
+        (browse-url roam-refs)
+      (message "Not an http(s) ref (%s)" roam-refs))))
+
+(defun cashewaver-org-roam--append-to-custom-front-matter (key value)
+  "Append the provided KEY and VALUE to hugo_custom_front_matter."
+  (when (org-roam-file-p)
+    (let ((keyword "HUGO_CUSTOM_FRONT_MATTER")
+          (current-value (org-collect-keywords keyword)))
+      (org-roam-set-keyword (downcase keyword) (format "%s %s" key value)))))
+
+(defun cashpw/org-roam--mirror-roam-aliases-to-hugo-aliases ()
+  "Copy the list of ROAM_ALIASES into HUGO_ALIASES."
+  (interactive)
+  (when (org-roam-file-p)
+    (save-excursion
+      (goto-char (point-min))
+      (when-let* ((raw-val (org-entry-get (point) "ROAM_ALIASES"))
+                  (raw-roam-aliases (read (format "(%s)" raw-val)))
+                  (roam-aliases
+                   (mapcar
+                    (lambda (alias)
+                      (downcase (replace-regexp-in-string " " "_" alias)))
+                    raw-roam-aliases)))
+        (org-roam-set-keyword "hugo_aliases" (string-join roam-aliases " "))))))
+
+(defun cashpw/org-hugo--build-custom-front-matter-from-properties (properties)
+  "Return a string of custom Hugo front matter built from PROPERTIES."
+  (string-join (mapcar
+                (lambda (property)
+                  (goto-char (point-min))
+                  (let ((key (downcase property))
+                        (value (org-entry-get (point) property)))
+                    (s-lex-format ":${key} ${value}")))
+                properties)
+               " "))
+
+(defun cashpw/org-roam-mirror-roam-refs-to-front-matter ()
+  "Copy the list of ROAM_REFS into hugo_custom_front_matter."
+  (interactive)
+  (when
+      (and
+       (org-roam-file-p)
+       (not
+        (member
+         (buffer-file-name)
+         cashpw/org-roam--file-path-exceptions-to-mirror-refs-to-front-matter)))
+    (when-let* ((keyword "HUGO_CUSTOM_FRONT_MATTER")
+                (raw-roam-refs
+                 (org-export-get-node-property
+                  :ROAM_REFS (org-element-parse-buffer)))
+                (refs (split-string raw-roam-refs " +"))
+                (valid-refs
+                 (-filter
+                  (lambda (ref) (not (string-match-p "^\\[cite" ref))) refs))
+                (roam-refs
+                 (format "roam_refs '(%s)"
+                         (string-join (mapcar
+                                       (lambda (ref)
+                                         (format "\"%s\"" ref))
+                                       valid-refs)
+                                      " ")))
+                (current-roam-refs (or (org-roam-get-keyword keyword) "")))
+      (if (not (string= roam-refs current-roam-refs))
+          (org-roam-set-keyword (downcase keyword) roam-refs)))))
+
+(defun cashpw/bibliography-present-in-buffer-p ()
+  "Return non-nil if there is a bibliography in the current buffer; nil otherwise."
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward-regexp "^\\* Bibliography" nil t)))
+
+(defun cashpw/citation-present-in-buffer-p ()
+  "Return non-nil if a citation is present in the current buffer, nil otherwise."
+  (let ((citation-prefix "[cite"))
+    (save-excursion
+      (goto-char (point-min))
+      (search-forward citation-prefix nil t))))
+
+(defun cashpw/org-roam-manage-bibliography ()
+  "Add bibliography if it's needed, or remove it if it's not needed."
+  (interactive)
+  (when (org-roam-file-p)
+    (cond
+     ((and (not (cashpw/bibliography-present-in-buffer-p))
+           (cashpw/citation-present-in-buffer-p))
+      (save-excursion
+        (goto-char (point-max))
+        (org-insert-heading nil t t)
+        (insert "Bibliography")
+        (newline)
+        (insert "#+print_bibliography:")))
+     ((and (cashpw/bibliography-present-in-buffer-p)
+           (not (cashpw/citation-present-in-buffer-p)))
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "^\\* Bibliography$" nil t)
+          (org-cut-subtree)))))))
+
+(defun cashpw/org-roam-add-bibliography (&optional skip-if-present)
+  "Add bibliography to the current buffer.
+
+If SKIP-IF-PRESENT is non-nil, skip if it is already present."
+  (interactive)
+  (when (and (org-roam-file-p)
+             (not (cashpw/bibliography-present-in-buffer-p))
+             (cashpw/citation-present-in-buffer-p))
+    (save-excursion
+      (goto-char (point-max))
+      (org-insert-heading nil t t)
+      (insert "Bibliography")
+      (newline)
+      (insert "#+print_bibliography:"))))
+
+(defcustom cashpw/org-roam--file-path-exceptions-to-add-flashcards '()
+  "File paths which won't hold flashcards.")
+
+(defun cashpw/org--insert-heading-if-missing
+    (heading-text &optional todo priority tags)
+  "Insert heading with HEADING-TEXT if no such heading exists in current buffer.
+
+Optional:
+
+- Set TODO state
+- Set PRIORITY
+- Set TAGS"
+  (let ((heading-regexp
+         (rx
+          "* "
+          ;; todo state
+          (zero-or-more alpha)
+          (zero-or-one " ")
+          ;; priority
+          (zero-or-one "\[#" (= 1 alphanumeric) "\]")
+          (zero-or-one " ")
+          (literal heading-text))))
+    (unless (cashpw/buffer-contains-regexp-p heading-regexp)
+      (save-excursion
+        (goto-char (point-max))
+        (org-insert-heading nil t t)
+        (insert heading-text)
+        (when tags
+          (org-set-tags tags))
+        (when priority
+          (org-priority priority))
+        (when todo
+          (org-todo todo))))))
+
+(defun cashpw/org-roam--current-buffer-archive-p ()
+  "TODO."
+  (cashpw/org--archive-buffer-p (current-buffer)))
+
+(defun cashpw/org-roam--current-file-path-no-flashcard-p ()
+  "TODO."
+  (member
+   (buffer-file-name) cashpw/org-roam--file-path-exceptions-to-add-flashcards))
+
+(defcustom cashpw/org-roam--skip-add-flashcard-fns
+  '((lambda () (not (org-roam-file-p)))
+    cashpw/org-roam--current-buffer-archive-p
+    cashpw/org-roam--current-file-path-no-flashcard-p)
+  "Skip adding flashcard heading if any of these functions return non-nil."
+  :type 'hook)
+
+(defun cashpw/org-roam-add-flashcards (&optional todo priority tags)
+  "Add flashcard heading with TODO, PRIORITY, and TAGS to the current buffer."
+  (interactive)
+  (unless (--any-p (funcall it) cashpw/org-roam--skip-add-flashcard-fns)
+    (cashpw/org--insert-heading-if-missing "Flashcards" todo priority tags)))
+
+(defun cashpw/org-roam-insert-tag-link ()
+  "Insert a link to the selected tag"
+  (interactive)
+  (let ((tag (completing-read "Select tag: " (cashpw/org-roam--get-filetags))))
+    (insert
+     (format "[[/tags/%s][%s]]"
+             (downcase
+              (nth
+               0
+               (org-hugo--tag-processing-fn-replace-with-hyphens-maybe
+                `(,tag)
+                `(:hugo-prefer-hyphen-in-tags
+                  ,org-hugo-prefer-hyphen-in-tags))))
+             tag))))
+
+(defun cashpw/org-roam-before-save ()
+  "Perform cleanup and update tasks before saving an org-roam buffer."
+  (when (vulpea-buffer-p)
+    (org-footnote-normalize)
+    (cashpw/org-roam-rewrite-smart-to-ascii)
+    ;; (cashpw/org-roam-mirror-roam-refs-to-front-matter)
+    (cashpw/org-roam-manage-bibliography)
+    (cashpw/org-roam-add-flashcards "TODO" 2 ":noexport:")
+    (cashpw/org-roam-update-hastodo-tag)
+    (cashpw/org-roam-update-has-gallery-tag)
+    ;; (cashpw/org-hugo-export-wim-to-md)
+    ))
+
+(defun cashpw/org-hugo-linkify-mathjax (mathjax-post-map)
+  "Replace MathJax targets in MATHJAX-POST-MAP with links to their corresponding Hugo posts."
+  (cl-loop
+   for (target . post-id) in mathjax-post-map do
+   (save-excursion
+     (goto-char (point-min))
+     (replace-regexp
+      target (s-lex-format "\\\\href{/posts/${post-id}}{\\1}")))))
+
+(setq cashpw/org-hugo--mathjax-post-map
+      '(("\\(C\\\\_{n}\\)" . "centering_matrix")
+        ("\\(I\\\\_{n}\\)" . "identity_matrix")
+        ("\\(I\\\\_{[0-9]+}\\)" . "identity_matrix")
+        ("\\(J\\\\_{[0-9]+}\\)" . "matrix_of_ones")
+        ("\\(J\\\\_{[0-9]+,[0-9]+}\\)" . "matrix_of_ones")
+        ("\\(J\\\\_{[0-9]+ \\\\times [0-9]+}\\)" . "matrix_of_ones")
+        ("\\(\\\\cos\\)" . "cosine")
+        ("\\(\\\\sin\\)" . "sine")
+        ("\\(\\\\vert . \\\\vert\\)" . "cardinality")
+        ("\\(\\\\tan\\)" . "tangent")))
+
+(defun org-hugo--after-1-export-function (info outfile)
+  "Function to be run after exporting one post.
+
+The post could be exported using the subtree-based or file-based
+method.
+
+This function is called in the end of `org-hugo-export-to-md',
+and `org-hugo-export-as-md'.
+
+INFO is a plist used as a communication channel.
+
+OUTFILE is the Org exported file name.
+
+This is an internal function."
+  (advice-remove
+   'org-cite-export-bibliography #'org-hugo--org-cite-export-bibliography)
+  (advice-remove 'org-info-export #'org-hugo--org-info-export)
+  (advice-remove
+   'org-babel--string-to-number #'org-hugo--org-babel--string-to-number)
+  (advice-remove 'org-babel-exp-code #'org-hugo--org-babel-exp-code)
+  (when (and outfile (org-hugo--pandoc-citations-enabled-p info))
+    (require 'ox-hugo-pandoc-cite)
+    (plist-put info :outfile outfile)
+    (plist-put info :front-matter org-hugo--fm)
+    (org-hugo-pandoc-cite--parse-citations-maybe info))
+  (setq org-hugo--fm nil)
+  (setq org-hugo--fm-yaml nil)
+  (when outfile
+    (with-current-buffer (find-file-noselect outfile)
+      (cashpw/org-hugo-linkify-mathjax cashpw/org-hugo--mathjax-post-map)
+      (save-buffer))))
+
+(defun cashpw/org-hugo--get-custom-front-matter ()
+  "Return custom front-matter as a string."
+  (string-join (mapcar
+                (lambda (item)
+                  (cl-destructuring-bind
+                      (label . value)
+                      item
+                    (s-lex-format ":${label} \"${value}\"")))
+                (cl-remove-if
+                 #'(lambda (item) (not (cdr item)))
+                 `(("prep_time" .
+                    ,(org-recipes-get-prep-duration (point-min)))
+                   ("cook_time" . ,(org-recipes-get-cook-duration (point-min)))
+                   ("total_time"
+                    .
+                    ,(org-recipes-get-total-duration (point-min)))
+                   ("servings" . ,(org-recipes-get-servings (point-min)))
+                   ("yield" . ,(org-recipes-get-yield (point-min)))
+                   ("slug" .
+                    ,(save-excursion (org-entry-get (point-min) "ID"))))))
+               " "))
+
+(defun cashpw/org-hugo-set-custom-front-matter ()
+  "Set custom hugo front-matter."
+  (interactive)
+  (when (vulpea-buffer-p)
+    (org-roam-set-keyword
+     "hugo_custom_front_matter" (cashpw/org-hugo--get-custom-front-matter))))
+(add-hook
+ 'org-mode-hook
+ (lambda ()
+   (add-hook!
+    'before-save-hook
+    :local #'cashpw/org-hugo-set-custom-front-matter)))
+
+(defun cashpw/get-property (property)
+  "Return the value of buffer-level PROPERTY."
+  (save-excursion
+    (goto-char (point-min))
+    (org-entry-get (point) property)))
+
+(defun cashpw/split-aliases-to-string (roam-aliases)
+  "Return a list of normalized alias strings from ROAM-ALIASES."
+  (mapcar
+   (lambda (roam-alias)
+     (downcase
+      (replace-regexp-in-string
+       "\"" "" (replace-regexp-in-string " " "-" roam-alias))))
+   (split-string roam-aliases "\" \"" nil)))
+
+(defun cashpw/get-aliases ()
+  "Return a space-separated string of formatted post URLs from the ROAM_ALIASES property."
+  (interactive)
+  (let* ((roam-aliases (cashpw/get-property "ROAM_ALIASES"))
+         (aliases
+          (if roam-aliases
+              (cashpw/split-aliases-to-string roam-aliases)
+            '())))
+    (string-join (mapcar
+                  (lambda (roam-alias)
+                    (s-lex-format "/posts/${roam-alias}"))
+                  aliases)
+                 " ")))
+#+end_src
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-roam
+  (defun org-hugo-export-wim-to-md-after-save ()
+    (cashpw/org-hugo-export-wim-to-md))
+  (setq
+   cashpw/org-hugo-replace-front-matter-with-title nil))
+#+end_src
+*** Export
+**** Backlinks
+:PROPERTIES:
+:ID:       a888bc99-bf31-4827-80cd-577e1c669853
+:END:
+
+The following adds the "Backlinks" heading and populates it with (public) notes which link to the current note.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam-get-backlinks-for-current-node ()
+  "Return unique list of `org-roam-node's which link back to current node."
+  (when (org-roam-file-p)
+    (let ((-compare-fn
+           ;; For -uniq
+           (lambda (a b)
+             (string=
+              (org-roam-node-id (org-roam-backlink-source-node a))
+              (org-roam-node-id (org-roam-backlink-source-node b))))))
+      (-uniq
+       (--filter
+        (let ((source-node (org-roam-backlink-source-node it)))
+          ;; Remove flashcards
+          (not (assoc "FC_ALGO" (org-roam-node-properties source-node))))
+        (org-mem-roamy-mk-backlinks (org-roam-node-at-point)))))))
+
+(defun cashpw/org-roam-get-public-backlinks-for-current-node ()
+  "Return unique list of `org-roam-node's which link back to current node."
+  (when (org-roam-file-p)
+    (let ((-compare-fn
+           ;; For -uniq
+           (lambda (a b)
+             (string=
+              (org-roam-node-id (org-roam-backlink-source-node a))
+              (org-roam-node-id (org-roam-backlink-source-node b))))))
+      (-uniq
+       (--filter
+        (let ((source-node (org-roam-backlink-source-node it)))
+          (and
+           ;; Remove flashcards
+           (not (assoc "FC_ALGO" (org-roam-node-properties source-node)))
+           ;; Remove non-public nodes
+           (member "public" (org-roam-node-tags source-node))))
+        (org-mem-roamy-mk-backlinks (org-roam-node-at-point)))))))
+
+(defun cashpw/org-roam--export-backlinks (backend)
+  "Add backlinks to roam buffer for export BACKEND; see `org-export-before-processing-hook'."
+  (pcase backend
+    ('hugo
+     (when (org-roam-file-p)
+       (let*
+           ((backlinks
+             (--sort
+              ;; Alpha sort, descending
+              (string<
+               (org-roam-node-title (org-roam-backlink-source-node it))
+               (org-roam-node-title (org-roam-backlink-source-node other)))
+              (cashpw/org-roam-get-public-backlinks-for-current-node)))
+            (backlinks-as-string
+             (--reduce-from
+              (let* ((source-node (org-roam-backlink-source-node it))
+                     (id (org-roam-node-id source-node))
+                     (file (org-roam-node-file source-node))
+                     (title (org-roam-node-title source-node)))
+                (concat acc (s-lex-format "- [[id:${id}][${title}]]\n")))
+              "" backlinks)))
+         (unless (string-empty-p backlinks-as-string)
+           (save-excursion
+             (goto-char (point-max))
+             (insert (concat "\n* Backlinks\n" backlinks-as-string)))))))
+    (_ nil)))
+
+(add-hook!
+ 'org-export-before-processing-hook #'cashpw/org-roam--export-backlinks)
+#+end_src
+
+**** Citations
+:PROPERTIES:
+:ID:       1488894d-b724-4539-a6d1-d6153b7eb343
+:END:
+
+I have dedicated notes for some citations and prefer to replace the usual bibliography citation with links to those notes.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-roam--replace-citations-with-id-links (backend)
+  "Replace [cite:@key] with [[id:ID][Title]] in current buffer if they're public for export BACKEND."
+  (pcase backend
+    ('hugo
+     (save-excursion
+       (goto-char (point-min))
+       ;; Search for the pattern [cite:@foo] and capturing "foo".
+       (while (re-search-forward "\\[cite:@\\([^]]+\\)\\]" nil t)
+         (when-let ((entry
+                     (org-mem-entry-by-roam-ref (concat "@" (match-string 1)))))
+           (when (member "public" (org-mem-entry-tags entry))
+             (let ((id (org-mem-entry-id entry)))
+               (unless (save-match-data (string= (org-roam-id-at-point) id))
+                 (replace-match (org-link-make-string
+                                 (format "id:%s" id) (org-mem-entry-title entry))
+                                'fixedcase 'literal))))))))
+    (_ nil)))
+
+(add-hook!
+ 'org-export-before-processing-hook
+ #'cashpw/org-roam--replace-citations-with-id-links)
+#+end_src
+
+
+* Export Citations
+
+
+** =oc= (Org Citations)
+
+Emacs provides =oc= .
+
+** =org-cite=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! (:and oc
+              memoize))
+  ;; Speed up exports
+  ;; (memoize 'citeproc-hash-itemgetter-from-any))
+#+end_src
+
+** =org-vcard=
+
+#+begin_quote
+=org-vcard= is a package for exporting and importing [[https://en.wikipedia.org/wiki/Vcard][vCards]] from within [[https://www.gnu.org/software/emacs/][GNU Emacs]]' [[http://orgmode.org/][Org mode]].
+
+https://github.com/flexibeast/org-vcard#table-of-contents
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-vcard)
+#+end_src
+
+** =org-vcard=
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-vcard)
+#+end_src
+
+** =ox-hugo=
+#+begin_quote
+ox-hugo is an Org exporter backend that exports Org to Hugo-compatible Markdown (Blackfriday) and also generates the front-matter (in TOML or YAML format).
+
+/[[github:kaushalmodi/ox-hugo]]/
+#+end_quote
+
+*** Package
+
+My corporate profile loads [[github:cashpw/ox-hugo-corp][cashpw/ox-hugo-corp]] -- a corporate-safe version of ox-hugo.
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(when (not (cashpw/machine-p 'work-cloudtop))
+  (package! ox-hugo))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(when (not (cashpw/machine-p 'work-cloudtop))
+  (use-package!
+      ox-hugo
+    :after ox
+    :custom
+    (org-hugo-base-dir "~/proj/cashpw.com")
+    (org-hugo-section "posts")
+    :config
+    (add-hook 'cashpw/org-mode-done-cut-hook #'org-roam-file-p)
+
+    ;; Override to set lastmod based on :LAST_MODIFIED:
+    (defun org-hugo--format-date (date-key info)
+  "Return a date string formatted in Hugo-compatible format.
+
+DATE-KEY is the key in INFO from which the date is to be
+retrieved.  INFO is a plist used as a communication channel.
+
+Possible values of DATE-KEY are `:date', `:hugo-lastmod',
+`:hugo-publishdate', and `:hugo-expirydate'.
+
+Return nil if the retrieved date from INFO is nil or if the date
+cannot be formatted in Hugo-compatible format."
+  (let* ((date-fmt (plist-get info :hugo-date-format))
+         (date-raw (cond
+                    ((equal date-key :date)
+                     ;; (message "[ox-hugo date DBG] 1 %s" (plist-get info date-key))
+                     ;; (message "[ox-hugo date DBG] 2 %s" (org-export-data (plist-get info date-key) info))
+                     (org-hugo--get-date info date-fmt))
+                    ((equal date-key :hugo-lastmod)
+                     (or (plist-get info :logbook-lastmod) ;lastmod derived from LOGBOOK gets higher precedence
+                         (org-string-nw-p (plist-get info date-key))))
+                    ((and (equal date-key :hugo-publishdate)
+                          (org-entry-get (point) "SCHEDULED"))
+                     ;; Get the date from the "SCHEDULED" property.
+                     (org-entry-get (point) "SCHEDULED"))
+                    (t            ;:hugo-publishdate, :hugo-expirydate
+                     (org-string-nw-p (plist-get info date-key)))))
+         (dt-rfc3339 (cond
+                      ;; If the date set for the DATE-KEY parameter is
+                      ;; already in Hugo-compatible format, use it.
+                      ((and (stringp date-raw)
+                            (string-match-p org-hugo--date-time-regexp date-raw))
+                       date-raw)
+                      ;; Else if it's any other string (like
+                      ;; "<2018-01-23 Tue>"), try to parse that date.
+                      ((stringp date-raw)
+                       (condition-case err
+                           (org-hugo--org-date-time-to-rfc3339 date-raw info)
+                         (error
+                          ;; Set dt-rfc3339 to nil if error happens.
+                          ;; An example: If #+date is set to 2012-2017
+                          ;; to set the copyright years, just set the
+                          ;; date to nil instead of throwing an error
+                          ;; like: org-parse-time-string: Not a
+                          ;; standard Org time string: 2012-2017
+                          (message
+                           (format "[ox-hugo] Date will not be set in the front-matter: %s"
+                                   (nth 1 err)))
+                          nil)))
+                      ;; Else (if nil) and user want to auto-set the
+                      ;; lastmod field. If the lastmod value is
+                      ;; derived from LOGBOOK, disable the
+                      ;; auto-setting of lastmod.
+                      ((and (equal date-key :hugo-lastmod)
+                            (null (plist-get info :logbook-lastmod))
+                            (org-hugo--plist-get-true-p info :hugo-auto-set-lastmod))
+                       (let* ((curr-time
+                               (encode-time
+                                (org-parse-time-string
+                                 (org-extras-get-property (point-min) "LAST_MODIFIED"))))
+                              (lastmod-str (org-hugo--org-date-time-to-rfc3339 curr-time info)))
+                         ;; (message "[ox-hugo suppress-lastmod] current-time = %S (decoded = %S)"
+                         ;;          curr-time (decode-time curr-time))
+                         ;; (message "[ox-hugo suppress-lastmod] lastmod-str = %S"
+                         ;;          lastmod-str )
+                         (if (= 0.0 org-hugo-suppress-lastmod-period)
+                             (progn
+                               ;; (message "[ox-hugo suppress-lastmod] not suppressed")
+                               lastmod-str)
+                           (let ((date-str (org-string-nw-p (org-hugo--get-date info date-fmt))))
+                             ;; (message "[ox-hugo suppress-lastmod] date-str = %S"
+                             ;;          date-str)
+                             (when date-str
+                               (let* ((date-time (apply #'encode-time
+                                                        (mapcar (lambda (el) (or el 0))
+                                                                (parse-time-string date-str))))
+                                      ;; It's safe to assume that
+                                      ;; `current-time' will always
+                                      ;; be >= the post date.
+                                      (delta (float-time
+                                              (time-subtract curr-time date-time)))
+                                      (suppress-period (if (< 0.0 org-hugo-suppress-lastmod-period)
+                                                           org-hugo-suppress-lastmod-period
+                                                         (- org-hugo-suppress-lastmod-period))))
+                                 ;; (message "[ox-hugo suppress-lastmod] date-time = %S (decoded = %S)"
+                                 ;;          date-time (decode-time date-time))
+                                 ;; (message "[ox-hugo suppress-lastmod] delta = %S" delta)
+                                 ;; (message "[ox-hugo suppress-lastmod] suppress-period = %S"
+                                 ;;          suppress-period)
+                                 (when (>= delta suppress-period)
+                                   lastmod-str)))))))
+                      ;; Else.. do nothing.
+                      (t
+                       nil))))
+    dt-rfc3339))
+    ))
+#+end_src
+
+** =ox-pandoc=
+#+begin_quote
+ox-pandoc is an exporter for Org mode which converts Org-mode files to a wide variety of other formats using the pandoc tool. Pandoc can produce PDFs, HTML, presentations, markdown files, office documents and e-pub publications as well as a number of other more specialised formats.
+
+/[[github:emacsorphanage/ox-pandoc][emacsorphanage/ox-pandoc]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! ox-pandoc)
+#+end_src

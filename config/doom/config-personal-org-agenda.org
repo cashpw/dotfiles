@@ -1,0 +1,3951 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-06-01 Mon 12:25]
+:END:
+#+title: Personal Emacs config: Org - Agenda
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Agenda
+** Agenda files
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-files--notes-all ()
+  "Return list of all notes files.
+
+Don't call directly. Use `cashpw/org-agenda-files'."
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory)))
+    (org-roam-list-files)))
+
+(defun cashpw/org-agenda-files--journal-this-year ()
+  "Return list of journal agenda files.
+
+Don't call directly. Use `cashpw/org-agenda-files'."
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory))
+         (yyyy (format-time-string "%Y" (current-time))))
+    (--filter
+     (string-match-p yyyy it)
+     (cashpw/notes-files-with-tag "journal"))))
+
+(defun cashpw/org-agenda-files--journal-this-year-with-todo ()
+  "Return list of journal agenda files.
+
+Don't call directly. Use `cashpw/org-agenda-files'."
+  (let* ((org-roam-directory cashpw/path--notes-dir)
+         (org-roam-db-location (expand-file-name "org-roam.db"
+                                                 org-roam-directory))
+         (yyyy (format-time-string "%Y" (current-time))))
+    (--filter
+     (string-match-p yyyy it)
+     (cashpw/notes-files-with-tags "journal" "hastodo"))))
+
+(defun cashpw/org-agenda-files (context &optional include-archive)
+  "Return list of agenda files for CONTEXT. Include archived files when INCLUDE-ARCHIVE."
+  (let ((files
+         (cond
+          ((equal context 'notes-with-todo)
+           (cashpw/notes-files-with-tag "hastodo"))
+          ((equal context 'notes-all)
+           (cashpw/org-agenda-files--notes-all))
+          ((equal context 'personal)
+           (append
+            `(,(cashpw/path-todos)
+              ,cashpw/path--personal-asana
+              ,(cashpw/path-calendar))))
+          ((equal context 'projects-with-todo)
+           (cashpw/notes-files-with-tags "hastodo" "project"))
+          ((equal context 'pets-with-todo)
+           (cashpw/notes-files-with-tags "hastodo" "pet"))
+          ((equal context 'calendar)
+           '())
+          ((equal context 'journal-this-year)
+           (cashpw/org-agenda-files--journal-this-year))
+          ((equal context 'journal-this-year-with-todo)
+           (cashpw/org-agenda-files--journal-this-year-with-todo))
+          ((equal context 'people-private-with-todo)
+           (cashpw/notes-files-with-tags "person" "private" "hastodo"))
+          ((equal context 'people-private)
+           (cashpw/notes-files-with-tags "person" "private")))))
+    (if include-archive
+        (append
+         files
+         (org-extras-files-archive-files files))
+      files)))
+
+(defun cashpw/org-agenda-files--update ()
+  "Update `org-agenda-files'."
+  (setq
+   org-agenda-files
+   (seq-uniq
+    (append
+     (cashpw/org-agenda-files 'personal)
+     (cashpw/org-agenda-files 'calendar)
+     (cashpw/org-agenda-files 'projects-with-todo)
+     (cashpw/org-agenda-files 'pets-with-todo)
+     (cashpw/org-agenda-files 'journal-this-year-with-todo)
+     (cashpw/org-agenda-files 'people-private-with-todo)))))
+
+(cashpw/org-agenda-files--update)
+#+end_src
+
+** Method
+
+I continue to iterate on this TODO management method which is a combination of [[wikipedia:Getting_Things_Done][Getting Things Done]] and what I've found that works for me.
+
+TODOs come from (1) captures and (2) my calendar via =org-gcal=. TODOs are in the Inbox unless they meet one of the following criteria:
+
+1. Tagged with =someday=
+
+   Example: Read a book a friend recommended to me.
+
+2. Tagged with =reminder=
+
+   Example: Someone's birthday.
+
+3. They are 'specified'; they have the following properties:
+
+   - An =Effort= of less than four hours
+   - An explicit =CATEGORY=
+   - A start date/time in =SCHEDULED=
+   - (optional) An end date/time in =DEADLINE=
+** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-agenda)
+(use-package! evil-org-agenda)
+(use-package! org-super-agenda
+  :demand t
+
+  :after (:all org-agenda
+               evil
+               evil-org-agenda)
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+
+  :custom
+  (org-agenda-prefix-format
+   '((agenda . " %i %-30(cashpw/org-agenda-category 30)%?-12t%-6e% s")
+     (todo . " %i %-30(cashpw/org-agenda-category 30) %-6e %-40(cashpw/org-agenda-buganizer-title)")
+     (tags . " %i %-12c")
+     (search . " %i %-12c")))
+  (org-agenda-log-mode-items
+   '(state
+     closed
+     clock))
+  (org-super-agenda-header-map
+   evil-org-agenda-mode-map)
+  ;; https://emacs.stackexchange.com/a/17128
+  (org-agenda-sorting-strategy
+   '((agenda time-up priority-down category-keep)
+     (todo priority-down category-keep)
+     (tags priority-down category-keep)
+     (search category-keep)))
+
+  :config
+  (setq org-super-agenda-header-map evil-org-agenda-mode-map)
+  (cl-defun org-super-agenda--group-dispatch-take (items (n group))
+    ;;(cl-defun org-super-agenda--group-dispatch-take (items n-and-group)
+    "Take N ITEMS that match selectors in GROUP.
+If N is positive, take the first N ITEMS, otherwise take the last N ITEMS.
+Note: the ordering of entries is not guaranteed to be preserved, so this may
+not always show the expected results."
+    (-let* (((name non-matching matching) (org-super-agenda--group-dispatch items group))
+            (take-fn (if (cl-minusp n) #'-take-last #'-take))
+            (placement (if (cl-minusp n) "Last" "First"))
+            (name (format "%s %d %s" placement (abs n) name)))
+      (list name non-matching (funcall take-fn (abs n) matching)))))
+
+(defun cashpw/org-super-agenda--get-priority (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker)))
+               (default-priority "?")
+               (priority (or (org-extras-get-priority marker)
+                             default-priority)))
+    (s-lex-format "p${priority}")))
+
+(defun cashpw/org-super-agenda--get-bug-id (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker)))
+               (bug-id (or (org-extras-get-property marker "buganizer_id")
+                             "?")))
+    (s-lex-format "http://b/${bug-id}")))
+
+(defun cashpw/org-super-agenda--get-heading (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker))))
+     (org-entry-get marker "ITEM")))
+
+(defun cashpw/org-super-agenda--get-category (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker))))
+    (org-get-category marker)))
+
+(defun cashpw/org-super-agenda--get-first-n-from-roam-tag (n tag)
+  "Return plist to group the first N headings tagged TAG.
+
+Intended for use with `org-super-agenda-groups'."
+  `(:name ,(s-lex-format "${tag} (${n})")
+    :transformer (replace-regexp-in-string "TODO " ""
+                                           (replace-regexp-in-string "\\[#[0-9]\\] " "" it))
+    :take (,n (:tag ,tag))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (setq
+   calendar-week-start-day 1
+   org-agenda-entry-text-maxlines 30
+   org-agenda-entry-text-leaders "  "
+   org-agenda-time-grid '((daily
+                           today
+                           require-timed
+                           ;; remove-match
+                           )
+                          (500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000)
+                          ;; (800 1000 1200 1400 1600 1800 2000)
+                          "......" "----------------")
+   ))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-mode-buffer-property-get (property-name)
+  "Return the value of buffer-level Org-mode property PROPERTY-NAME."
+  (org-with-point-at 1
+    (when (re-search-forward
+           (concat "^#\\+" property-name ": \\(.*\\)")
+           (point-max) t)
+      (buffer-substring-no-properties
+       (match-beginning 1)
+       (match-end 1)))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-agenda
+  (setq
+   org-duration-units `(("m" . 1)
+                        ("min" . 1)
+                        ("mins" . 1)
+                        ("h" . 60)
+                        ("d" . ,(* 60 24))
+                        ("w" . ,(* 60 24 7))
+                        ("mo" . ,(* 60 24 30))
+                        ("mos" . ,(* 60 24 30))
+                        ("M" . ,(* 60 24 30))
+                        ("y" . ,(* 60 24 365.25)))
+   org-agenda-skip-scheduled-if-deadline-is-shown t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-scheduled-if-done t
+   org-agenda-skip-deadline-if-done t
+   org-agenda-include-deadlines t
+   org-agenda-block-separator nil
+   org-agenda-compact-blocks t
+   org-agenda-start-day nil ;; i.e. today
+   org-agenda-span 3
+   org-agenda-include-diary t
+   org-agenda-start-on-weekday nil))
+#+end_src
+** Helper functions
+*** Set views
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-custom-commands--update ()
+  "Update `org-agenda-custom-commands'."
+  (setq
+   org-agenda-custom-commands `((".inbox" "Inbox" ,(cashpw/org-agenda-view--inbox))
+                                (".overdue" "Overdue" ,(cashpw/org-agenda-view--overdue))
+                                (".gallery" "Gallery" ,(cashpw/org-agenda-view--gallery))
+                                (".gallery-all" "Gallery (all)" ,(cashpw/org-agenda-view--gallery-all))
+                                (".gallery-photos" "Gallery (photos)" ,(cashpw/org-agenda-view--gallery-photos))
+                                (".gallery-current-buffer" "Gallery (current buffer)" ,(cashpw/org-agenda-view--gallery-current-buffer))
+                                (".plan-week" "Week" ,(cashpw/org-agenda-view--plan--week))
+                                (".review-clockcheck" "Clock check" ,(cashpw/org-agenda-view--review--clockcheck))
+                                (".review-clockreport" "Clock report" ,(cashpw/org-agenda-view--review--clockreport))
+                                (".review-logged" "Logged" ,(cashpw/org-agenda-view--review-logged))
+                                (".review-logged-today" "Logged" ,(cashpw/org-agenda-view--review-logged-today))
+                                (".roam-roam" "Roam" ,(cashpw/org-agenda-view--roam--roam))
+                                (".roam-readinglist" "Reading list" ,(cashpw/org-agenda-view--roam--readinglist))
+                                (".today" "Today" ,(cashpw/org-agenda-view--today)
+                                 ((org-agenda-compact-blocks nil)
+                                  (org-agenda-block-separator "")))
+                                (".habits" "Habits" ,(cashpw/org-agenda-view--habits))
+                                (".without-effort" "Without effort" ,(cashpw/org-agenda-view--no-effort))
+                                (".without-priority" "Priority" ,(cashpw/org-agenda-view--no-priority))
+                                (".without-scheduled" "Not scheduled" ,(cashpw/org-agenda-view--not-scheduled)))))
+
+(defun cashpw/org-agenda-custom-commands--maybe-update ()
+  "Update when all functions are defined."
+  (when cashpw/personal-config-loaded-p
+    (cashpw/org-agenda-custom-commands--update)))
+
+(defvar cashpw-org-agenda-next-week-tag nil
+  "Dynamic variable to cache next week's tag during agenda generation.")
+
+(defun cashpw/org-agenda-custom-commands-wrap (orig-fn &rest args)
+  "Update custom commands and bind next-week tag dynamically."
+  (cashpw/org-agenda-custom-commands--update)
+  (let ((cashpw-org-agenda-next-week-tag (cashpw-time-next-week-tag)))
+    (apply orig-fn args)))
+
+(advice-add 'org-agenda :around #'cashpw/org-agenda-custom-commands-wrap)
+#+end_src
+*** Transform
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda--simplify-line (line)
+  "Return LINE without frills."
+  (-->
+   line
+   (cashpw/org-agenda--remove-priorities it)
+   (cashpw/org-agenda--remove-todo it)))
+
+(defun cashpw/org-agenda--remove-priorities (line)
+  "Return LINE without priorities."
+  (--> line (replace-regexp-in-string "\\[#[0-9]\\] " "" it)))
+
+(defun cashpw/org-agenda--remove-todo (line)
+  "Return LINE without todo."
+  (--> line (replace-regexp-in-string "TODO " "" it)))
+
+(defun cashpw/org-super-agenda--simplify-map (group)
+  "Return GROUP after simplifying each line.
+
+GROUP is a plist of the form `(:name ... :items ...)'.
+
+Intended for use with `org-super-agenda' `:transformer'. "
+  (plist-put
+   group
+   :items
+   (--map (cashpw/org-agenda--simplify-line it) (plist-get group :items))))
+
+(defun cashpw/org-super-agenda--remove-todo-map (group)
+  "Return GROUP after simplifying each line.
+
+GROUP is a plist of the form `(:name ... :items ...)'.
+
+Intended for use with `org-super-agenda' `:transformer'. "
+  (plist-put
+   group
+   :items (--map (cashpw/org-agenda--remove-todo it) (plist-get group :items))))
+
+(defun cashpw/org-agenda--dim-line (line)
+  "Dim color/brightness of LINE."
+  (propertize line 'face 'shadow))
+
+(setq cashpw/org-agenda--dim-headline-regexps
+  '(
+    ;; "Stretch"
+    "Slack"
+    "Huel"
+    "Meditate"
+    "Stretch"
+    "Train Finn"
+    ;; "Shower"
+    ;; "Shave"
+    ;; "Walk"
+    "Lunch"
+    "Dinner"
+    ;; "Journal.*Journal"
+    ;; "Journal.*Retrospective"
+    ;; "Journal.*Gratitude"
+    ;; "Debrief"
+    ;; "Tidy: "
+    "Diet: "
+    "forsale mailing lists"
+    ;; <= 5 minutes effort
+    ;; " [12345]m "
+    ;; No duration, no effort; brittle
+    " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  "))
+  ;; "List of headlines to dim in the org agenda view."
+  ;; :type '(repeat string))
+
+(defun cashpw/time-hh-mm-to-minutes (hh-mm)
+  "Return number of minutes since midnight for HH-MM."
+  (let ((decoded-time (parse-time-string hh-mm)))
+    (+ (* 60 (decoded-time-hour decoded-time))
+       (decoded-time-minute decoded-time))))
+
+(defun cashpw/time-minutes-between-time-range (start-hh-mm end-hh-mm)
+  "Return length of time between START-HH-MM and END-HH-MM."
+  (let ((start-minutes (cashpw/time-hh-mm-to-minutes start-hh-mm))
+        (end-minutes (cashpw/time-hh-mm-to-minutes end-hh-mm)))
+    (- end-minutes start-minutes)))
+
+(defconst cashpw/time-re-hh-mm-hh-mm
+  (rx (group num num ":" num num) "-" (group num num ":" num num))
+  "Matches HH:MM-HH:MM.")
+
+(defun cashpw/org-agenda--maybe-dim-headline (line)
+  "Dim LINE if it's on the list."
+  (if (or
+       ;; (when (string-match cashpw/time-re-hh-mm-hh-mm line)
+       ;;   (< (cashpw/time-minutes-between-time-range
+       ;;       (match-string 1 line) (match-string 2 line))
+       ;;      5))
+       (--any (string-match-p it line) cashpw/org-agenda--dim-headline-regexps))
+      (cashpw/org-agenda--dim-line line)
+    line))
+#+end_src
+
+*** Category
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-get-title (&optional buffer-or-file)
+  "Wrapper for `org-get-title' that is safe to call in non-org buffers."
+  (let ((buf (cond ((bufferp buffer-or-file) buffer-or-file)
+                   ((stringp buffer-or-file) (find-file-noselect buffer-or-file))
+                   (t (current-buffer)))))
+    (with-current-buffer buf
+      (if (derived-mode-p 'org-mode)
+          (org-get-title)
+        (or (bound-and-true-p category)
+            "")))))
+
+(defun cashpw/org-agenda-category (max-length)
+  "Return formatted category per MAX-LENGTH."
+  (s-truncate
+   max-length
+   (let ((category
+          (if (derived-mode-p 'org-mode)
+              (or (org-entry-get (point) "CATEGORY" t)
+                  (org-get-title) "")
+            (bound-and-true-p category))))
+     (if (and category (s-contains-p ">" category))
+         (car (last (s-split ">" category 'omit-nulls)))
+       (or category "")))))
+#+end_src
+
+*** Icon
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-icon ()
+  "Return an icon string for the Org agenda entry at point."
+  (if (not (derived-mode-p 'org-mode))
+      "  "
+    (let ((properties (org-entry-properties (point))))
+      (concat
+       (cond
+        ((when-let ((scheduled (alist-get "SCHEDULED" properties nil nil 'string=)))
+           (org-get-repeat scheduled))
+         "⟳")
+        ((when-let* ((file-path (alist-get "FILE" properties nil nil 'string=))
+                     (file-name (f-filename file-path)))
+           (string= file-name "calendar-personal.org"))
+         "C")
+        (t
+         " "))
+       " "))))
+#+end_src
+
+*** Priority
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-priority-offset ()
+  "Return a priority offset string for the Org agenda entry at point."
+  (if (and (derived-mode-p 'org-mode)
+           (org-extras-get-priority nil))
+      ""
+    "    "))
+#+end_src
+
+*** Week tag predicates
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defconst cashpw-org-agenda-week-tag-regexp "^[0-9]\\{4\\}w[0-9]\\{2\\}$"
+  "Regular expression matching standard zero-padded week tags YYYYwWW.")
+
+(defun cashpw/org-agenda-week-tag-p (tag)
+  "Return t if TAG matches the YYYYwWW week format."
+  (string-match-p cashpw-org-agenda-week-tag-regexp tag))
+
+(defun cashpw/org-agenda-item-tags (item)
+  "Return tags for ITEM (a string representing an agenda line carrying text properties like 'tags or 'org-marker), checking text properties and falling back to marker."
+  (or (get-text-property 0 'tags item)
+      (org-super-agenda--get-tags item)
+      (let ((marker (or (get-text-property 0 'org-marker item)
+                        (get-text-property 0 'org-hd-marker item))))
+        (when marker
+          (org-super-agenda--when-with-marker-buffer marker
+            (org-get-tags))))))
+
+(defun cashpw/org-agenda-item-has-week-tag-p (item)
+  "Return t if ITEM has any tag matching YYYYwWW format."
+  (let ((tags (cashpw/org-agenda-item-tags item)))
+    (--any (cashpw/org-agenda-week-tag-p it) tags)))
+
+(defun cashpw/org-agenda-item-future-week-p (item)
+  "Return t if ITEM has a week tag strictly greater than next week's tag.
+Comparing tags chronologically using `string-greaterp` works only because
+the week tags are strictly zero-padded (e.g. \"2026w09\" < \"2026w10\")."
+  (let ((next-week (or cashpw-org-agenda-next-week-tag
+                       (cashpw-time-next-week-tag)))
+        (tags (cashpw/org-agenda-item-tags item)))
+    (--any (and (cashpw/org-agenda-week-tag-p it)
+                (string-greaterp it next-week))
+           tags)))
+
+(defun cashpw/org-agenda-current-line-tags ()
+  "Return tags for the current agenda line, checking text properties and falling back to marker."
+  (or (cashpw/org-agenda-get-property-on-line 'tags)
+      (let ((marker (or (cashpw/org-agenda-get-property-on-line 'org-marker)
+                        (cashpw/org-agenda-get-property-on-line 'org-hd-marker))))
+        (when marker
+          (org-super-agenda--when-with-marker-buffer marker
+            (org-get-tags))))))
+#+end_src
+
+*** Effort scanner
+
+These helpers scan and calculate capacity metrics directly from the agenda buffer's text properties, enabling zero-I/O capacity scanning and calculations without opening underlying Org files.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-get-property-on-line (property)
+  "Get the value of text PROPERTY anywhere on the current line.
+PROPERTY is typically a symbol representing a text property (e.g. 'effort-minutes).
+Return the property value if found, or nil otherwise."
+  (save-excursion
+    (let* ((beg (line-beginning-position))
+           (end (line-end-position))
+           (p beg)
+           (val nil))
+      (while (and (< p end) (not val))
+        (setq val (get-text-property p property))
+        (unless val
+          ;; Efficiently jump to the next position where the property might change.
+          (setq p (next-single-property-change p property nil end))))
+      val)))
+
+(defun cashpw/org-agenda-calculate-total-effort (&optional predicate)
+  "Calculate the total effort (in minutes) by summing the `effort-minutes` property in the current agenda buffer.
+If PREDICATE is non-nil, only sum effort for lines where PREDICATE returns true.
+PREDICATE is called with no arguments at the beginning of each line."
+  (save-excursion
+    (goto-char (point-min))
+    (let ((total 0))
+      (while (not (eobp))
+        (let ((effort (cashpw/org-agenda-get-property-on-line 'effort-minutes)))
+          (when (and (numberp effort)
+                     (or (null predicate)
+                         (save-excursion (funcall predicate))))
+            (setq total (+ total effort))))
+        (forward-line 1))
+      total)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle tests.el
+(ert-deftest cashpw/org-agenda-get-property-on-line-test ()
+  "Test retrieving text properties anywhere on a line."
+  (with-temp-buffer
+    (insert "  Category:  Some Headline Text")
+    (let ((beg (line-beginning-position))
+          (end (line-end-position)))
+      ;; Apply property to a sub-span
+      (put-text-property (+ beg 5) (+ beg 15) 'effort-minutes 45)
+      (put-text-property (+ beg 10) (+ beg 20) 'custom-prop "val")
+      
+      (goto-char beg)
+      (should (equal (cashpw/org-agenda-get-property-on-line 'effort-minutes) 45))
+      (should (equal (cashpw/org-agenda-get-property-on-line 'custom-prop) "val"))
+      (should (null (cashpw/org-agenda-get-property-on-line 'non-existent)))
+      
+      ;; Move point to various positions on the line and ensure it still works
+      (goto-char (+ beg 10))
+      (should (equal (cashpw/org-agenda-get-property-on-line 'effort-minutes) 45))
+      (goto-char (- end 1))
+      (should (equal (cashpw/org-agenda-get-property-on-line 'effort-minutes) 45)))))
+
+(ert-deftest cashpw/org-agenda-calculate-total-effort-test ()
+  "Test summing effort-minutes in agenda buffer."
+  (with-temp-buffer
+    (insert "Line 1: Task A\n")
+    (insert "Line 2: Task B\n")
+    (insert "Line 3: Task C\n")
+    
+    ;; Apply effort-minutes and custom type properties
+    (goto-char (point-min))
+    ;; Line 1
+    (let ((beg (line-beginning-position))
+          (end (line-end-position)))
+      (put-text-property (+ beg 2) (+ beg 10) 'effort-minutes 30)
+      (put-text-property (+ beg 2) (+ beg 10) 'task-type "work"))
+    
+    (forward-line 1)
+    ;; Line 2
+    (let ((beg (line-beginning-position))
+          (end (line-end-position)))
+      (put-text-property (+ beg 2) (+ beg 10) 'effort-minutes 60)
+      (put-text-property (+ beg 2) (+ beg 10) 'task-type "personal"))
+    
+    (forward-line 1)
+    ;; Line 3
+    (let ((beg (line-beginning-position))
+          (end (line-end-position)))
+      (put-text-property (+ beg 2) (+ beg 10) 'effort-minutes 15)
+      (put-text-property (+ beg 2) (+ beg 10) 'task-type "work"))
+    
+    ;; Test total effort without predicate
+    (should (equal (cashpw/org-agenda-calculate-total-effort) 105))
+    
+    ;; Test total effort with predicate (only "work" tasks)
+    (should (equal (cashpw/org-agenda-calculate-total-effort
+                    (lambda ()
+                      (equal (cashpw/org-agenda-get-property-on-line 'task-type) "work")))
+                   45))
+    
+    ;; Test total effort with predicate (only "personal" tasks)
+    (should (equal (cashpw/org-agenda-calculate-total-effort
+                    (lambda ()
+                      (equal (cashpw/org-agenda-get-property-on-line 'task-type) "personal")))
+                   60))
+
+    ;; Test edge case 1: Predicate that moves point (Point Safety)
+    (should (equal (cashpw/org-agenda-calculate-total-effort
+                    (lambda ()
+                      (goto-char (point-min))
+                      t))
+                   105))
+
+    ;; Test edge case 2: Non-numeric / malformed effort values
+    (with-temp-buffer
+      (insert "Line 1: Bad Task\n")
+      (insert "Line 2: Good Task\n")
+      (goto-char (point-min))
+      ;; Line 1: non-numeric effort property
+      (let ((beg (line-beginning-position)))
+        (put-text-property (+ beg 2) (+ beg 10) 'effort-minutes "invalid-string"))
+      
+      (forward-line 1)
+      ;; Line 2: numeric effort property
+      (let ((beg (line-beginning-position)))
+        (put-text-property (+ beg 2) (+ beg 10) 'effort-minutes 30))
+      
+      ;; Should ignore the non-numeric effort and only sum the numeric one (30)
+      (should (equal (cashpw/org-agenda-calculate-total-effort) 30)))))
+
+(ert-deftest cashpw/org-agenda-display-planned-capacity-header-test ()
+  "Test the capacity header injection, teardown, and safety logic."
+  (let ((org-keys ".today")
+        (cashpw-org-agenda-daily-capacity-hours 6.0))
+    ;; 1. Happy Path
+    (with-temp-buffer
+      (insert "Today's Schedule\n")
+      (insert "  Task 1 (scheduled today)\n")
+      (insert "  Task 2 (not scheduled, weekly priority backlog)\n")
+      
+      ;; Apply properties to Task 1
+      (goto-char (point-min))
+      (forward-line 1)
+      (let ((beg (line-beginning-position))
+            (end (line-end-position)))
+        (put-text-property beg end 'date "2026-05-26")
+        (put-text-property beg end 'effort-minutes 120)) ; 2.0h
+      
+      ;; Apply properties to Task 2 (no date, but has effort)
+      (forward-line 1)
+      (let ((beg (line-beginning-position))
+            (end (line-end-position)))
+        (put-text-property beg end 'effort-minutes 180)) ; 3.0h (should be ignored)
+      
+      ;; Run injection
+      (cashpw/org-agenda-display-planned-capacity-header)
+      
+      ;; Verify injection
+      (goto-char (point-min))
+      (should (re-search-forward "^Planned Today: 2\\.0h / 6\\.0h Capacity (33%)\n\n" nil t))
+      ;; Verify the header carries the custom 'cashpw-header text property on the first char
+      (should (get-text-property (point-min) 'cashpw-header))
+      
+      ;; 2. Idempotency / Teardown
+      ;; Call it again. If teardown works, the header shouldn't be duplicated.
+      (cashpw/org-agenda-display-planned-capacity-header)
+      (goto-char (point-min))
+      ;; Count matches of the header
+      (let ((matches 0))
+        (while (re-search-forward "^Planned Today: 2\\.0h / 6\\.0h Capacity (33%)\n\n" nil t)
+          (setq matches (1+ matches)))
+        (should (equal matches 1))))
+    
+    ;; 3. No-Op Buffer (when org-keys is different)
+    (let ((org-keys ".other-view"))
+      (with-temp-buffer
+        (insert "Today's Schedule\n")
+        (insert "  Task 1\n")
+        (goto-char (point-min))
+        (forward-line 1)
+        (let ((beg (line-beginning-position))
+              (end (line-end-position)))
+          (put-text-property beg end 'date "2026-05-26")
+          (put-text-property beg end 'effort-minutes 120))
+        
+        (cashpw/org-agenda-display-planned-capacity-header)
+        ;; Verify NO header is injected
+        (goto-char (point-min))
+        (should-not (re-search-forward "^Planned Today:" nil t))))))
+
+(ert-deftest cashpw/org-agenda-item-tags-marker-fallback-test ()
+  "Verify marker-based fallback path when 'tags property is absent."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* Task :work:personal:\n")
+    (let* ((marker (copy-marker (point-min)))
+           (item (propertize "Task" 'org-marker marker)))
+      (should (equal (cashpw/org-agenda-item-tags item) '("work" "personal"))))))
+
+(ert-deftest cashpw/org-agenda-item-has-week-tag-p-test ()
+  "Verify cashpw/org-agenda-item-has-week-tag-p detects YYYYwWW tags."
+  (let ((item-with-week-tag (propertize "Task 1" 'tags '("work" "2026w22")))
+        (item-without-week-tag (propertize "Task 2" 'tags '("work" "personal")))
+        (item-with-malformed-tag (propertize "Task 3" 'tags '("2026w2" "2026w222"))))
+    (should (cashpw/org-agenda-item-has-week-tag-p item-with-week-tag))
+    (should-not (cashpw/org-agenda-item-has-week-tag-p item-without-week-tag))
+    (should-not (cashpw/org-agenda-item-has-week-tag-p item-with-malformed-tag))))
+
+(ert-deftest cashpw/org-agenda-item-future-week-p-test ()
+  "Verify cashpw/org-agenda-item-future-week-p compares tags lexicographically."
+  (cl-letf (((symbol-function 'cashpw-time-next-week-tag)
+             (lambda () "2026w23")))
+    (let ((item-past (propertize "Past" 'tags '("2026w22")))
+          (item-current (propertize "Current" 'tags '("2026w23")))
+          (item-future (propertize "Future" 'tags '("2026w24")))
+          (item-no-tag (propertize "No Tag" 'tags '("work"))))
+      (should-not (cashpw/org-agenda-item-future-week-p item-past))
+      (should-not (cashpw/org-agenda-item-future-week-p item-current))
+      (should (cashpw/org-agenda-item-future-week-p item-future))
+      (should-not (cashpw/org-agenda-item-future-week-p item-no-tag)))))
+
+(ert-deftest cashpw/org-agenda-current-line-tags-marker-fallback-test ()
+  "Verify cashpw/org-agenda-current-line-tags marker-based fallback path."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* Task :work:personal:\n")
+    (let ((marker (copy-marker (point-min))))
+      (with-temp-buffer
+        (insert "  Task\n")
+        (put-text-property (point-min) (line-end-position) 'org-marker marker)
+        (goto-char (point-min))
+        (should (equal (cashpw/org-agenda-current-line-tags) '("work" "personal")))))))
+
+(ert-deftest cashpw/org-agenda-view--plan--week-test ()
+  "Verify the structural correctness of the custom Week Planner view."
+  (cl-letf (((symbol-function 'cashpw-time-current-week-tag)
+             (lambda () "2026w22"))
+            ((symbol-function 'cashpw-time-next-week-tag)
+             (lambda () "2026w23")))
+    (let* ((view (cashpw/org-agenda-view--plan--week))
+           (block (car view))
+           (type (car block))
+           (opts (caddr block))
+           (groups-raw (cadr (assoc 'org-super-agenda-groups opts)))
+           (groups (if (eq (car groups-raw) '\`) (cadr groups-raw) groups-raw))
+           (eval-val (lambda (val)
+                       (if (and (listp val) (eq (car val) '\,))
+                           (eval (cadr val))
+                         val))))
+      ;; 1. Outer structure is a list of length 1 containing alltodo command
+      (should (equal (length view) 1))
+      (should (equal type 'alltodo))
+      ;; 2. Header is correct
+      (should (equal (cadr (assoc 'org-agenda-overriding-header opts)) "Week Planner & Backlog Board"))
+      ;; 3. Groups structure matches spec (indices shifted by 1 due to prepended PROJ discard group)
+      (should (plist-get (nth 0 groups) :discard))
+      (should (equal (plist-get (nth 1 groups) :name) "This Week"))
+      (should (equal (funcall eval-val (plist-get (nth 1 groups) :tag)) "2026w22"))
+      
+      (should (equal (plist-get (nth 2 groups) :name) "Next Week"))
+      (should (equal (funcall eval-val (plist-get (nth 2 groups) :tag)) "2026w23"))
+      
+      (should (equal (plist-get (nth 3 groups) :name) "Future Weeks"))
+      (should (equal (plist-get (nth 3 groups) :pred) 'cashpw/org-agenda-item-future-week-p))
+      
+      (should (equal (plist-get (nth 4 groups) :name) "Unassigned Backlog"))
+      (should (equal (plist-get (nth 4 groups) :and)
+                      '(:todo t
+                        :not (:scheduled t)
+                        :not (:deadline t)
+                        :not (:tag "unscheduled")
+                        :not (:pred cashpw/org-agenda-item-has-week-tag-p))))
+      
+      (should (plist-get (nth 5 groups) :discard)))))
+
+(ert-deftest cashpw/org-agenda-display-planned-capacity-header-weekly-test ()
+  "Test the weekly capacity header injection, filtering, and safety logic."
+  (cl-letf (((symbol-function 'cashpw-time-current-week-tag)
+             (lambda () "2026w22"))
+            ((symbol-function 'cashpw-time-next-week-tag)
+             (lambda () "2026w23")))
+    (let ((org-keys ".plan-week")
+          (cashpw-org-agenda-weekly-capacity-hours 30.0))
+      (with-temp-buffer
+        (insert "Week Planner & Backlog Board\n")
+        (insert "  Task 1 (this week)\n")
+        (insert "  Task 2 (next week)\n")
+
+        ;; Apply properties and current week tag to Task 1
+        (goto-char (point-min))
+        (forward-line 1)
+        (let ((beg (line-beginning-position))
+              (end (line-end-position)))
+          (put-text-property beg end 'effort-minutes 300)
+          (put-text-property beg end 'tags '("2026w22"))) ; 5.0h
+
+        ;; Apply properties and next week tag to Task 2
+        (forward-line 1)
+        (let ((beg (line-beginning-position))
+              (end (line-end-position)))
+          (put-text-property beg end 'effort-minutes 600)
+          (put-text-property beg end 'tags '("2026w23"))) ; 10.0h
+
+        ;; Run injection
+        (cashpw/org-agenda-display-planned-capacity-header)
+
+        ;; Verify injection (should only sum Task 1)
+        (goto-char (point-min))
+        (should (re-search-forward "^Planned This Week: 5\\.0h / 30\\.0h Capacity (17% of Weekly Limit)\n\n" nil t))
+        (should (get-text-property (point-min) 'cashpw-header))
+
+        ;; Verify idempotency
+        (cashpw/org-agenda-display-planned-capacity-header)
+        (goto-char (point-min))
+        (let ((matches 0))
+          (while (re-search-forward "^Planned This Week: 5\\.0h" nil t)
+            (setq matches (1+ matches)))
+          (should (equal matches 1)))))))
+
+(ert-deftest cashpw/org-agenda-display-planned-capacity-header-weekly-zero-capacity-test ()
+  "Verify that a weekly capacity of 0.0 is handled safely without division by zero."
+  (cl-letf (((symbol-function 'cashpw-time-current-week-tag)
+             (lambda () "2026w22"))
+            ((symbol-function 'cashpw-time-next-week-tag)
+             (lambda () "2026w23")))
+    (let ((org-keys ".plan-week")
+          (cashpw-org-agenda-weekly-capacity-hours 0.0))
+      (with-temp-buffer
+        (insert "Week Planner & Backlog Board\n")
+        (insert "  Task 1 (this week)\n")
+        (goto-char (point-min))
+        (forward-line 1)
+        (let ((beg (line-beginning-position))
+              (end (line-end-position)))
+          (put-text-property beg end 'effort-minutes 300)
+          (put-text-property beg end 'tags '("2026w22"))) ; 5.0h
+        
+        (cashpw/org-agenda-display-planned-capacity-header)
+        
+        (goto-char (point-min))
+        (should (re-search-forward "^Planned This Week: 5\\.0h / 0\\.0h Capacity (0% of Weekly Limit)\n\n" nil t))))))
+
+(ert-deftest cashpw/org-agenda-display-planned-capacity-header-weekly-isolation-test ()
+  "Verify that no capacity header is injected when org-keys is set to an unrelated view."
+  (let ((org-keys ".other-view")
+        (cashpw-org-agenda-weekly-capacity-hours 30.0))
+    (with-temp-buffer
+      (insert "Some Other Board\n")
+      (insert "  Task 1\n")
+      
+      (cashpw/org-agenda-display-planned-capacity-header)
+      
+      (goto-char (point-min))
+      (should-not (re-search-forward "^Planned" nil t)))))
+#+end_src
+
+*** Capacity Header
+
+The Capacity Header feature dynamically calculates and injects daily planned
+capacity metrics at the top of the custom Day Planner view buffer.
+
+It works in a zero-I/O fashion by scanning the finalized agenda buffer lines to
+extract the cached `effort-minutes` text properties, rather than reading files
+or querying org markers. To prevent cumulative double-renders when rebuilding or
+refreshing the agenda view, it utilizes a robust teardown mechanism that locates
+and removes any existing capacity header blocks by looking for a custom text
+property (`'cashpw-header t`).
+
+To prevent unhandled runtime exceptions from crashing the Org Agenda interface,
+the hook is registered using a safe wrapper function bounded by `condition-case`.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw-org-agenda-daily-capacity-hours 6.0
+  "Default daily planned capacity limit in hours (e.g. 6.0 hours is 80% of an 8-hour workday)."
+  :type 'float
+  :group 'cashpw)
+
+(defcustom cashpw-org-agenda-weekly-capacity-hours 30.0
+  "Default weekly planned capacity limit in hours."
+  :type 'float
+  :group 'cashpw)
+
+(defun cashpw/org-agenda--insert-capacity-header (label total-minutes capacity-hours &optional detail-suffix)
+  "Format and insert planned capacity metrics at the top of the buffer."
+  (let* ((total-hours (/ total-minutes 60.0))
+         (percentage (if (> capacity-hours 0.0)
+                         (* 100 (/ total-hours capacity-hours))
+                       0.0))
+         (header-text (format "Planned %s: %.1fh / %.1fh Capacity (%.0f%%%s)\n\n"
+                              label total-hours capacity-hours percentage (or detail-suffix ""))))
+    (goto-char (point-min))
+    (insert (propertize header-text
+                        'face 'org-agenda-structure
+                        'read-only t
+                        'rear-nonsticky t
+                        'cashpw-header t))))
+
+(defun cashpw/org-agenda-display-planned-capacity-header ()
+  "Insert planned capacity metrics at the top of planner buffers.
+Clears any previous headers to prevent text duplication on buffer refreshes."
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      ;; 1. Teardown: Clear only our dynamically injected capacity headers
+      (while (re-search-forward "^Planned \\(Today\\|This Week\\):.*\n\n" nil t)
+        (when (get-text-property (match-beginning 0) 'cashpw-header)
+          (replace-match "")))
+      
+      ;; 2. Calculation & Injection
+      (goto-char (point-min))
+      (cond
+       ;; Case A: Day Planner
+       ((equal org-keys ".today")
+        (let ((today-only-pred (lambda () (cashpw/org-agenda-get-property-on-line 'date))))
+          (cashpw/org-agenda--insert-capacity-header
+           "Today"
+           (cashpw/org-agenda-calculate-total-effort today-only-pred)
+           cashpw-org-agenda-daily-capacity-hours)))
+       
+       ;; Case B: Week Planner
+       ((equal org-keys ".plan-week")
+        (let ((week-only-pred (lambda ()
+                                (member (cashpw-time-current-week-tag)
+                                        (cashpw/org-agenda-current-line-tags)))))
+          (cashpw/org-agenda--insert-capacity-header
+           "This Week"
+           (cashpw/org-agenda-calculate-total-effort week-only-pred)
+           cashpw-org-agenda-weekly-capacity-hours
+           " of Weekly Limit")))))))
+
+(defun cashpw/org-agenda-display-planned-capacity-header-safe ()
+  "Safely execute capacity header injection, preventing hook errors from breaking agenda."
+  (condition-case err
+      (cashpw/org-agenda-display-planned-capacity-header)
+    (error
+     (message "Error displaying planned capacity header: %s" (error-message-string err)))))
+
+(after! org-agenda
+  (add-hook 'org-agenda-finalize-hook #'cashpw/org-agenda-display-planned-capacity-header-safe))
+#+end_src
+
+** Custom functions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-reschedule-to-next-occurrence-or-kill ()
+  "Reschedule to next occurrence if item at point repeats; else kill."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil
+    (if (org-get-repeat)
+        (org-extras-reschedule-overdue-todo)
+      (org-mark-subtree)
+      (kill-region))))
+
+(defun cashpw/org-agenda-done-yesterday ()
+  "Mark as done yesterday."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil
+    (org-todo-yesterday 'done)))
+#+end_src
+
+*** Backlog triage
+Helper functions and keybindings to quickly assign tasks in the agenda to specific weeks.
+
+- `w .` :: Assign entry at point to the current week (`cashpw/org-agenda-assign-to-this-week`)
+- `w n` :: Assign entry at point to the next week (`cashpw/org-agenda-assign-to-next-week`)
+- `w w` :: Assign entry at point to a custom week (`cashpw/org-agenda-assign-to-week`)
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-update-week-tags (current-tags week-tag)
+  "Return CURRENT-TAGS with old week tags removed and WEEK-TAG added if non-nil/non-empty.
+WEEK-TAG must match YYYYwWW format if provided."
+  (when (and week-tag (not (string-empty-p week-tag))
+             (not (string-match-p "^[0-9]\\{4\\}w[0-9]\\{2\\}$" week-tag)))
+    (user-error "Invalid week tag format: %s. Expected YYYYwWW" week-tag))
+  ;; Remove any existing week tags matching YYYYwWW format (e.g., 2026w21)
+  (let ((clean-tags (--remove (string-match-p "^[0-9]\\{4\\}w[0-9]\\{2\\}$" it) current-tags)))
+    (if (and week-tag (not (string-empty-p week-tag)))
+        (append clean-tags (list week-tag))
+      clean-tags)))
+
+(defun cashpw/org-agenda-assign-to-week (week-tag)
+  "Assign the entry at point to the specified WEEK-TAG, cleaning out old week tags."
+  (interactive (list (read-string "Week (YYYYwWW): " (cashpw-time-current-week-tag))))
+  (let* ((marker (or (get-text-property (point) 'org-marker)
+                     (user-error "No entry at point")))
+         (buffer (marker-buffer marker))
+         (pos (marker-position marker)))
+    (unless (and buffer (buffer-live-p buffer))
+      (user-error "Marker points to an invalid or killed buffer"))
+    (with-current-buffer buffer
+      (save-excursion
+        (goto-char pos)
+        (org-set-tags (cashpw/org-agenda-update-week-tags (org-get-tags nil 'local) week-tag))
+        (org-todo-trigger-tag-changes nil)))
+    (org-agenda-redo)))
+
+(defun cashpw/org-agenda-assign-to-this-week ()
+  "Assign entry at point to this week."
+  (interactive)
+  (cashpw/org-agenda-assign-to-week (cashpw-time-current-week-tag)))
+
+(defun cashpw/org-agenda-assign-to-next-week ()
+  "Assign entry at point to next week."
+  (interactive)
+  (cashpw/org-agenda-assign-to-week (cashpw-time-next-week-tag)))
+
+(after! evil-org-agenda
+  (map! :map evil-org-agenda-mode-map
+        :m "w" nil ;; Unbind word motion in agenda
+        (:prefix ("w" . "Assign to week")
+         :m "." #'cashpw/org-agenda-assign-to-this-week
+         :m "n" #'cashpw/org-agenda-assign-to-next-week
+         :m "w" #'cashpw/org-agenda-assign-to-week)))
+
+(defun cashpw/org-agenda-bulk-assign-to-week (week-tag)
+  "Bulk assign marked entries to WEEK-TAG."
+  (org-agenda-with-point-at-orig-entry nil
+    (org-set-tags (cashpw/org-agenda-update-week-tags (org-get-tags nil 'local) week-tag))
+    (org-todo-trigger-tag-changes nil)))
+
+(defun cashpw/org-agenda-bulk-assign-to-week-arg ()
+  "Prompt for week assignment arguments during bulk action."
+  (let* ((key (read-char-choice "Assign marked to week: [.] This week, [n] Next week, [w] Custom week" '(?\. ?n ?w)))
+         (week-tag (cond
+                    ((= key ?\.) (cashpw-time-current-week-tag))
+                    ((= key ?n) (cashpw-time-next-week-tag))
+                    ((= key ?w) (read-string "Week (YYYYwWW): " (cashpw-time-current-week-tag))))))
+    (list week-tag)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle tests.el
+(ert-deftest cashpw/org-agenda-update-week-tags-test ()
+  "Test tag updates using cashpw/org-agenda-update-week-tags."
+  ;; 1. Add a new week tag (replaces existing week tag)
+  (should (equal (cashpw/org-agenda-update-week-tags '("work" "2026w21") "2026w22")
+                 '("work" "2026w22")))
+  ;; 2. Empty week tag removes existing week tag
+  (should (equal (cashpw/org-agenda-update-week-tags '("work" "2026w21") "")
+                 '("work")))
+  ;; 3. Nil week tag removes existing week tag
+  (should (equal (cashpw/org-agenda-update-week-tags '("work" "2026w21") nil)
+                 '("work")))
+  ;; 4. Invalid week tag signals a user-error
+  (should-error (cashpw/org-agenda-update-week-tags '("work") "invalid-week")
+                :type 'user-error))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-replaces-existing-week-tag ()
+  "Test that assigning a new week tag replaces the existing week tag on the entry at point."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Task 1 :work:2026w21:\n")
+    (let ((marker (copy-marker (point-min))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-week "2026w22")
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              (should (equal (org-get-tags) '("work" "2026w22"))))))))))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-removes-tag-when-empty ()
+  "Test that assigning an empty string removes any existing week tag."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Task 1 :work:2026w21:\n")
+    (let ((marker (copy-marker (point-min))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-week "")
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              (should (equal (org-get-tags) '("work"))))))))))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-removes-tag-when-nil ()
+  "Test that assigning nil removes any existing week tag."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Task 1 :work:2026w21:\n")
+    (let ((marker (copy-marker (point-min))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-week nil)
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              (should (equal (org-get-tags) '("work"))))))))))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-preserves-inherited-tags ()
+  "Test that assigning a week tag does NOT convert inherited tags into local tags."
+  (with-temp-buffer
+    (org-mode)
+    ;; Parent heading with :noexport: tag
+    (insert "* Parent :noexport:\n")
+    ;; Child heading (Task 1) with local :work: tag
+    (insert "** TODO Task 1 :work:2026w21:\n")
+    (let ((marker (copy-marker (line-beginning-position 0))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-week "2026w22")
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              ;; Local tags should only be "work" and "2026w22". "noexport" should NOT be here locally!
+              (should (equal (org-get-tags nil 'local) '("work" "2026w22")))
+              ;; But it should still be inherited globally
+              (should (member "noexport" (org-get-tags))))))))))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-no-marker-test ()
+  "Test that cashpw/org-agenda-assign-to-week fails gracefully with a user-error if no marker is present."
+  (with-temp-buffer
+    (insert "  Task without marker\n")
+    (goto-char (point-min))
+    (should-error (cashpw/org-agenda-assign-to-week "2026w22") :type 'user-error)))
+
+(ert-deftest cashpw/org-agenda-assign-to-week-invalid-marker-test ()
+  "Test that cashpw/org-agenda-assign-to-week fails gracefully with a user-error if marker points to a dead buffer."
+  (let ((marker (make-marker)))
+    (with-temp-buffer
+      (insert "  Task with dead marker\n")
+      (put-text-property (point-min) (line-end-position) 'org-marker marker)
+      (goto-char (point-min))
+      (should-error (cashpw/org-agenda-assign-to-week "2026w22") :type 'user-error))))
+
+(ert-deftest cashpw/org-agenda-assign-to-this-week-test ()
+  "Test that cashpw/org-agenda-assign-to-this-week assigns the current week tag."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Task 1 :work:\n")
+    (let ((marker (copy-marker (point-min))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore)
+                ((symbol-function 'cashpw-time-current-week-tag) (lambda () "2026w22")))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-this-week)
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              (should (equal (org-get-tags) '("work" "2026w22"))))))))))
+
+(ert-deftest cashpw/org-agenda-assign-to-next-week-test ()
+  "Test that cashpw/org-agenda-assign-to-next-week assigns the next week tag."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Task 1 :work:\n")
+    (let ((marker (copy-marker (point-min))))
+      (cl-letf (((symbol-function 'org-agenda-redo) #'ignore)
+                ((symbol-function 'cashpw-time-next-week-tag) (lambda () "2026w23")))
+        (with-temp-buffer
+          (insert "  Task 1\n")
+          (put-text-property (point-min) (line-end-position) 'org-marker marker)
+          (goto-char (point-min))
+          (cashpw/org-agenda-assign-to-next-week)
+          (with-current-buffer (marker-buffer marker)
+            (org-with-point-at marker
+              (should (equal (org-get-tags) '("work" "2026w23"))))))))))
+
+(ert-deftest cashpw/work-buganizer-check-on-state-change-bypass-test ()
+  "Test that declining the Buganizer prompt tags the entry with 'needs_bug'."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Test Task\n")
+    (goto-char (point-min))
+    (let ((org-state "INPROGRESS")
+          (noninteractive nil)
+          (called-add-bug nil))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) nil))
+                ((symbol-function 'org-buganizer-add-bug-to-entry) (lambda () (interactive) (setq called-add-bug t))))
+        (cashpw/work-buganizer-check-on-state-change)
+        (should-not called-add-bug)
+        (should (member "needs_bug" (org-get-tags)))))))
+
+(ert-deftest cashpw/work-buganizer-check-on-state-change-link-test ()
+  "Test that accepting the Buganizer prompt calls `org-buganizer-add-bug-to-entry'."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Test Task\n")
+    (goto-char (point-min))
+    (let ((org-state "INPROGRESS")
+          (noninteractive nil)
+          (called-add-bug nil))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t))
+                ((symbol-function 'org-buganizer-add-bug-to-entry) (lambda () (interactive) (setq called-add-bug t))))
+        (cashpw/work-buganizer-check-on-state-change)
+        (should called-add-bug)
+        (should-not (member "needs_bug" (org-get-tags)))))))
+
+(ert-deftest cashpw/work-buganizer-check-on-state-change-noop-test ()
+  "Test that when buganizer_id is already present, no prompts are shown and no tags are added."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Test Task\n  :PROPERTIES:\n  :buganizer_id: 12345\n  :END:\n")
+    (goto-char (point-min))
+    (let ((org-state "INPROGRESS")
+          (called-y-or-n nil)
+          (called-add-bug nil))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) (setq called-y-or-n t) nil))
+                ((symbol-function 'org-buganizer-add-bug-to-entry) (lambda () (interactive) (setq called-add-bug t))))
+        (cashpw/work-buganizer-check-on-state-change)
+        (should-not called-y-or-n)
+        (should-not called-add-bug)
+        (should-not (member "needs_bug" (org-get-tags)))))))
+
+(ert-deftest cashpw/work-buganizer-check-on-state-change-wrong-state-test ()
+  "Test that transitioning to a state other than 'INPROGRESS' does nothing."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* TODO Test Task\n")
+    (goto-char (point-min))
+    (let ((org-state "WAITING")
+          (called-y-or-n nil)
+          (called-add-bug nil))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) (setq called-y-or-n t) nil))
+                ((symbol-function 'org-buganizer-add-bug-to-entry) (lambda () (interactive) (setq called-add-bug t))))
+        (cashpw/work-buganizer-check-on-state-change)
+        (should-not called-y-or-n)
+        (should-not called-add-bug)
+        (should-not (member "needs_bug" (org-get-tags)))))))
+#+end_src
+
+#+RESULTS:
+: cashpw/work-buganizer-check-on-state-change-wrong-state-test
+
+*** =cashpw/org-reschedule-to-today-at-point=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-reschedule-to-today-at-point ()
+  "Reschedule heading at point to today. Keep time, duration, and repeater."
+  (interactive)
+  (when-let ((scheduled-time-string (org-entry-get (point) "SCHEDULED")))
+    (let ((new-time-string
+           (replace-regexp-in-string
+            "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\(?: [A-Za-z]+\\)?"
+            (format-time-string "%Y-%m-%d %a")
+            scheduled-time-string)))
+      (org-schedule nil new-time-string))))
+
+(defun cashpw/org-agenda-reschedule-to-today ()
+  "Reschedule event at point to today."
+  (interactive)
+  (org-agenda-with-point-at-orig-entry
+      nil (cashpw/org-reschedule-to-today-at-point)))
+#+end_src
+
+#+begin_src emacs-lisp
+(ert-deftest cashpw/org-reschedule-to-today-at-point-test ()
+  "Test rescheduling an Org heading to today while preserving extra time properties."
+  (let ((today-str (format-time-string "%Y-%m-%d %a")))
+    
+    ;; Case 1: Standard date with day name
+    (with-temp-buffer
+      (org-mode)
+      (insert "* TODO Task 1\nSCHEDULED: <2020-01-01 Wed>\n")
+      (goto-char (point-min))
+      (cashpw/org-reschedule-to-today-at-point)
+      (should (string-match-p (regexp-quote (format "<%s>" today-str))
+                              (buffer-string))))
+
+    ;; Case 2: Date, time, duration, and repeater
+    (with-temp-buffer
+      (org-mode)
+      (insert "* TODO Task 2\nSCHEDULED: <2020-01-01 Wed 10:00-12:00 +1w>\n")
+      (goto-char (point-min))
+      (cashpw/org-reschedule-to-today-at-point)
+      (should (string-match-p (regexp-quote (format "<%s 10:00-12:00 +1w>" today-str))
+                              (buffer-string))))
+
+    ;; Case 3: Missing day name in the original timestamp
+    (with-temp-buffer
+      (org-mode)
+      (insert "* TODO Task 3\nSCHEDULED: <2020-01-01>\n")
+      (goto-char (point-min))
+      (cashpw/org-reschedule-to-today-at-point)
+      (should (string-match-p (regexp-quote (format "<%s>" today-str))
+                              (buffer-string))))
+
+    ;; Case 4: No SCHEDULED property present (graceful exit)
+    (with-temp-buffer
+      (org-mode)
+      (insert "* TODO Task 4\n")
+      (goto-char (point-min))
+      (cashpw/org-reschedule-to-today-at-point)
+      (should (string= "* TODO Task 4\n" (buffer-string))))))
+#+end_src
+** Views
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  (setq
+   org-agenda-use-tag-inheritance '(todo search agenda alltodo)
+   org-agenda-show-inherited-tags nil))
+#+end_src
+*** Indenting
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view-collapse ()
+  "Collapse org-agenda view sections."
+  (interactive)
+  (set-selective-display 1))
+
+(defun cashpw/org-agenda-view-expand ()
+  "Expand org-agenda view sections."
+  (interactive)
+  (set-selective-display nil))
+
+(defun cashpw/org-agenda-view-toggle-collapse ()
+  "Toggle collapse/expand in org-agenda view."
+  (interactive)
+  (if selective-display
+      (cashpw/org-agenda-view-expand)
+    (cashpw/org-agenda-view-collapse)))
+#+end_src
+
+*** Today
+:PROPERTIES:
+:ID:       943d31e9-de97-43a1-bb88-8a5492e3ae21
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--today--files ()
+  "Return a list of files containing tasks for today's agenda."
+  (seq-uniq
+   (append
+    (cashpw/rgrep
+     (format
+      "-l :everyday: %s/*.org"
+      cashpw/path--notes-dir))
+    (cashpw/rgrep
+     (format
+      "-l \"(SCHEDULED|DEADLINE): <%s\" %s/*.org"
+      (format-time-string "%F" (current-time))
+      cashpw/path--notes-dir)))))
+
+;; Deprecased because it's 2x slower
+;; (defun cashpw/org-agenda-view--today--files-mem ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time)))
+;;         (org-not-done-keywords (with-temp-buffer
+;;                                  (org-mode)
+;;                                  org-not-done-keywords)))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      unless (s-ends-with-p "archive" file)
+;;      when (seq-find (lambda (entry)
+;;                       (or
+;;                        (member "everyday" (org-mem-entry-tags entry))
+;;                        (or
+;;                         (and
+;;                          (org-mem-entry-scheduled entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-scheduled entry)))
+;;                         (and
+;;                          (org-mem-entry-deadline entry)
+;;                          (string-match today-yyyy-mm-dd (org-mem-entry-deadline entry))))))
+;;                     (org-mem-entries-in file))
+;;      collect file)))
+
+(defun cashpw/org-agenda-view--today ()
+  "Return custom agenda command."
+  (let ((week-tag (cashpw-time-current-week-tag)))
+    `((agenda
+               ""
+               ((org-agenda-overriding-header "")
+      (org-agenda-dim-blocked-tasks t)
+      (org-agenda-use-tag-inheritance t)
+      (org-use-property-inheritance t)
+      (org-agenda-span 1)
+      (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
+      (org-agenda-files (cashpw/org-agenda-view--today--files))
+      (org-agenda-prefix-format '((agenda . " %i %-21(cashpw/org-agenda-category 20)%-12t%-2(cashpw/org-agenda-icon)%-5e")))
+      (org-agenda-cmp-user-defined
+       (lambda (a b)
+         (when-let* ((a-marker (get-text-property 0 'org-marker a))
+                     (b-marker (get-text-property 0 'org-marker b)))
+           (if (or
+                (when-let ((a-scheduled-time (org-get-scheduled-time a-marker)))
+                  (cl-destructuring-bind (_ minute hour _ _ _ _ _ _) (decode-time a-scheduled-time)
+                    (or (not (= 0 minute))
+                        (not (= 0 hour)))))
+                (when-let ((b-scheduled-time (org-get-scheduled-time b-marker)))
+                  (cl-destructuring-bind (_ minute hour _ _ _ _ _ _) (decode-time b-scheduled-time)
+                    (or (not (= 0 minute))
+                        (not (= 0 hour))))))
+               ;; Fall back to other sorts
+               nil
+             ;; Otherwise, sort alphabetically by heading
+             (if (string>
+                  (org-entry-get a-marker "ITEM")
+                  (org-entry-get b-marker "ITEM"))
+                 1
+               -1)))))
+      (org-agenda-sorting-strategy '((agenda . (user-defined-up time-up priority-down category-keep))))
+      (org-super-agenda-groups
+       '((:discard
+          (:deadline past
+           :deadline future
+           :scheduled future
+           :scheduled past))
+         (:name "Holiday(s)"
+          :tag "holiday")
+         (:name "Schedule"
+          :time-grid t
+          :order 0
+          :transformer (--> it
+                            (cashpw/org-agenda--simplify-line it)
+                            (cashpw/org-agenda--maybe-dim-headline it)))
+         (:discard
+          (:and (:file-path ,(cashpw/path-calendar)
+                 :scheduled past)))
+         (:name "In Progress"
+          :todo "INPROGRESS")
+         (:auto-map cashpw/org-super-agenda--get-priority
+          :transformer cashpw/org-super-agenda--simplify-map)
+         (;; Toss all other todos
+          :discard
+          (:anything))))))
+      (tags-todo
+       ,week-tag
+       ((org-agenda-overriding-header ,(format "This Week's Priorities (%s)" week-tag))
+        (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+        (org-super-agenda-groups
+         '((:discard
+            (:deadline past
+             :deadline future
+             :scheduled future
+             :scheduled past))
+           (:auto-map cashpw/org-super-agenda--get-priority
+            :transformer cashpw/org-super-agenda--simplify-map)
+           (:discard (:anything)))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Habits
+**** All
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ org-habit-preceding-days 7
+ org-habit-following-days 0)
+
+(defun cashpw/org-agenda-view--habits ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 1)
+      (org-agenda-prefix-format '((agenda . "%-20(cashpw/org-agenda-category 30)")))
+      (org-agenda-sorting-strategy '((agenda . (alpha-up time-up))))
+      (org-agenda-hide-tags-regexp ".*")
+      (org-agenda-format-date "")
+      (org-habit-show-all-today t)
+      ;; (org-habit-show-habits-only-for-today nil)
+      (org-super-agenda-groups
+       '(
+         (:name ""
+          :auto-map cashpw/org-super-agenda--get-category
+          :transformer cashpw/org-super-agenda--simplify-map)
+         (;; Toss everything else
+          :discard
+          (:todo t
+           :todo nil))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+**** Specific
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--habit (files habit-heading-regexp preceding-days)
+  "Return a custom agenda command using FILES, HABIT-HEADING-REGEXP, and PRECEDING-DAYS."
+  (let ((groups
+         `((:name "Habits" :and (:heading-regexp ,habit-heading-regexp :habit))
+           ( ;; Toss everything else
+            :discard
+            (:todo t :todo nil)))))
+    `((agenda
+       ""
+       ((org-agenda-overriding-header "")
+        (org-agenda-span 1)
+        (org-agenda-files ',files)
+        (org-agenda-prefix-format
+         '((agenda . "%-20(cashpw/org-agenda-category 30)")))
+        (org-agenda-sorting-strategy '((agenda . (alpha-up time-up))))
+        (org-agenda-hide-tags-regexp ".*")
+        (org-agenda-format-date "")
+        (org-habit-show-all-today t)
+        ;; (org-habit-show-habits-only-for-today nil)
+        (org-super-agenda-groups ',groups))))))
+#+end_src
+
+*** Plan
+**** Week
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--plan--week ()
+  "Return the non-daily Week Planner view configuration."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "Week Planner & Backlog Board")
+      (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-super-agenda-groups
+       `((:name "This Week"
+          :tag ,(cashpw-time-current-week-tag))
+         (:name "Next Week"
+          :tag ,(cashpw-time-next-week-tag))
+         (:name "Future Weeks"
+          :pred cashpw/org-agenda-item-future-week-p)
+         (:discard
+          (:pred cashpw/org-agenda-item-has-week-tag-p
+           :scheduled t
+           :deadline t
+           :tag "everyday"
+           :tag "unscheduled"
+           :todo "PROJ"))
+         (:name "Backlog"
+          :auto-map cashpw/org-super-agenda--get-bug-id
+          :transformer cashpw/org-super-agenda--simplify-map)
+         (:discard (:anything))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+*** Review
+
+**** Logged
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--review-files (&optional time)
+  "Return list of files for review agenda views for TIME."
+  (let* ((yyyy-mm-dd (format-time-string "%F" (or time (current-time))))
+         (state-grep-string (format "\\- State.* \\[%s" yyyy-mm-dd))
+         (clock-grep-string (format "CLOCK: \\[%s" yyyy-mm-dd)))
+    (seq-uniq
+     (append
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org" state-grep-string cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org" clock-grep-string cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org_archive"
+               state-grep-string
+               cashpw/path--notes-dir))
+      (cashpw/rgrep
+       (format "-l \"%s\" %s/*.org_archive"
+               clock-grep-string
+               cashpw/path--notes-dir))))))
+
+;; Deprecased because it's ~2x slower
+;; (defun cashpw/org-agenda-view--review--today-files ()
+;;   (let ((today-yyyy-mm-dd (format-time-string "%F" (current-time))))
+;;     (cl-loop
+;;      for file in (org-mem-all-files)
+;;      when (seq-find
+;;            (lambda (entry)
+;;              (seq-find
+;;               (lambda (clock-list)
+;;                 (when (listp clock-list)
+;;                   (let ((start (car clock-list)))
+;;                     (cashpw-time-today-p (encode-time (parse-time-string start))))))
+;;               (org-mem-entry-clocks entry)))
+;;            (org-mem-entries-in file))
+;;      collect file)))
+
+(defun cashpw/org-agenda-view--review-logged ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 'day)
+      (org-agenda-start-day (org-read-date))
+      (org-agenda-files (cashpw/org-agenda-view--review-files (org-read-date nil t)))
+      (org-agenda-show-log t)
+      (org-agenda-start-with-log-mode '(state closed clock))
+      (org-agenda-hide-tags-regexp
+       (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
+      (org-clocktable-defaults '(:fileskip0 t))
+      (org-super-agenda-groups
+       '((:name "Logged" :log t)
+         ( ;; Toss all other todos
+          :discard
+          (:todo t))))))))
+
+(defun cashpw/org-agenda-view--review-logged-today ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 'day)
+      (org-agenda-files (cashpw/org-agenda-view--review-files))
+      (org-agenda-show-log t)
+      (org-agenda-start-with-log-mode '(state closed clock))
+      (org-agenda-hide-tags-regexp
+       (concat org-agenda-hide-tags-regexp "\\|ARCHIVE"))
+      (org-clocktable-defaults '(:fileskip0 t))
+      (org-super-agenda-groups
+       '((:name "Logged" :log t)
+         ( ;; Toss all other todos
+          :discard
+          (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+**** Clockcheck
+
+See =org-agenda-clock-consistency-checks=.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--review--clockcheck ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 'day)
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
+      (org-agenda-show-log 'clockcheck)
+      (org-agenda-start-with-log-mode 'clockcheck)
+      (org-clocktable-defaults '(:fileskip0 t))
+      (org-super-agenda-groups '((:name "Clockcheck"
+                                  :log t)
+                                 (;; Toss all other todos
+                                  :discard
+                                  (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+**** Clockreport
+
+See =org-agenda-clock-consistency-checks=.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun clocktable-by-category--get-clocktable (&rest props)
+  "Get a formatted clocktable with parameters according to PROPS.
+The table is created in a temporary buffer, fully formatted and
+fontified, and then returned."
+  ;; Set the defaults
+  (setq props (plist-put props :name "clocktable-by-category"))
+  (unless (plist-member props :maxlevel)
+    (setq props (plist-put props :maxlevel 2)))
+  (unless (plist-member props :scope)
+    (setq props (plist-put props :scope 'agenda)))
+  (setq props (plist-put props :files org-agenda-files))
+  (with-temp-buffer
+    (org-mode)
+    (org-create-dblock props)
+    (org-update-dblock)
+    (font-lock-ensure)
+    (forward-line 2)
+    (buffer-substring (point) (progn
+                                (re-search-forward "^[ \t]*#\\+END" nil t)
+                                (line-beginning-position)))))
+
+;; Use advice to replace `org-agenda-get-clocktable' with `clocktable-by-category--get-clocktable`
+(advice-add 'org-agenda-get-clocktable :override #'clocktable-by-category--get-clocktable)
+
+(defun cashpw/org-agenda-view--review--clockreport ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 'day)
+      (org-agenda-files (cashpw/org-agenda-view--review--today-files))
+      ;; (org-clock-get-clocktable #'clocktable-by-tag--get-clocktable)
+      (org-agenda-clockreport-mode t)
+      (org-clocktable-defaults '(:fileskip0 t))
+      (org-super-agenda-groups '(
+                                 ;; (:name "Logged"
+                                 ;; :log t)
+                                 ;; (:log closed)
+                                 ;; (:log clock)
+                                 (;; Toss all other todos
+                                  :discard
+                                  (:todo t))))
+      )
+     ;; "~/review-day.html"
+     )))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Roam
+**** TODOs
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-select-and-go-to-todo (files)
+  "Select a TODO item from FILES and navigate to it."
+  (let*
+      ((separator "¥")
+       (todos-with-file
+        ;; A list of <file><separator><line-number><separator><heading> entries
+        (-flatten
+         (-map
+          (lambda (file-sublist)
+            (let ((space-separated-list-of-files (s-join " " file-sublist)))
+              (cashpw/pcregrep
+               (s-lex-format
+                ;; Ignore headings with SCHEDULED or DEADLINE
+                "--multiline --line-number --with-filename '^\\*[\\*]* (TODO|INPROGRESS) ([^\\n]*)\\n(?!SCHEDULED:)(?!DEADLINE:)' ${space-separated-list-of-files} | sed 's/:\\([0-9]*\\):/${separator}\\1${separator}/' | grep -v :unscheduled:"))))
+          (-partition-all 50 files))))
+       (match-alist
+        (--map
+         (cl-destructuring-bind
+             (file line-number match) (s-split separator it 'omit-nulls)
+           (if (string-match org-complex-heading-regexp match)
+               (let* ((priority (or (match-string 3 match) "[#?]"))
+                      (priority-face
+                       (let ((face
+                              (or (cdr
+                                   (assq
+                                    (aref
+                                     (substring priority 2 3) 0)
+                                    org-modern-priority-faces))
+                                  t)))
+                         `(:inherit (,face org-modern-label))))
+                      (heading (match-string 4 match)))
+                 (cons
+                  (format "%s %s %s"
+                          (propertize (concat " #" (substring priority 2 3) " ")
+                                      'face priority-face)
+                          heading
+                          (propertize (format "(%s:%s)"
+                                              (file-relative-name
+                                               file
+                                               cashpw/path--notes-dir)
+                                              line-number)
+                                      'face 'shadow))
+                  `(:file
+                    ,file
+                    :heading ,heading
+                    :priority ,priority
+                    :line-number ,(string-to-number line-number))))
+             (cashpw/error "Error! %s (match: %s)" todo-with-file match)))
+         todos-with-file))
+       (selection
+        (let ((vertico-sort-override-function #'identity))
+          (alist-get (completing-read
+                      "Select TODO: "
+                      (-sort
+                       #'(lambda (a b)
+                           (let ((priority-a (substring (car a) 0 4))
+                                 (priority-b (substring (car b) 0 4)))
+                           (cond
+                            ((string= priority-a priority-b)
+                             (= 0 (random 2)))
+                            (t
+                             (string< (car a) (car b))))))
+                       match-alist))
+                     match-alist
+                     nil nil #'string=))))
+    (goto-line (plist-get selection :line-number)
+               (find-file (plist-get selection :file)))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--roam--roam ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-dim-blocked-tasks nil)
+      (org-agenda-inhibit-startup t)
+      (org-agenda-use-tag-inheritance nil)
+      (org-agenda-prefix-format '((agenda . "%-20(cashpw/org-get-title)")))
+      (org-agenda-ignore-properties '(effort appt category stats))
+      (org-agenda-files
+       )
+      (org-super-agenda-groups
+       `((:discard
+          (:scheduled t
+           :deadline t))
+         (:name "In Progress"
+          :todo "INPROGRESS")
+         (:auto-map cashpw/org-super-agenda--get-priority)
+         ))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+**** Unread
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--roam--readinglist ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-prefix-format '((todo . " %i ")))
+      (org-agenda-files (list cashpw/path--reading-list))
+      (org-agenda-dim-blocked-tasks nil)
+      (org-super-agenda-groups
+       (--map
+        (cashpw/org-super-agenda--get-first-n-from-roam-tag 10
+                                                            it)
+        (with-current-buffer (find-file-noselect cashpw/path--reading-list)
+          (org-extras-get-all-tags-in-file))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Inbox
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--inbox-get-scheduled-time-string ()
+  "Return scheduled string for inbox view."
+  (cond
+   ((org-entry-get
+     (point)
+     "SCHEDULED"
+     nil)
+    (progn
+      (search-forward "SCHEDULED: ")
+      (org-element-timestamp-parser)
+      (let* ((timestamp (org-element-timestamp-parser))
+             (start-time (org-timestamp-to-time timestamp))
+             (end-time (org-timestamp-to-time timestamp t)))
+        (if (and start-time
+                 end-time
+                 (not (time-equal-p start-time
+                                    end-time)))
+            "[X]"
+          ;; "📅⌛"
+          "[X]"
+          ;; "📅"
+          ))))
+   (t
+    "[ ]"
+    ;; "❌"
+    )))
+
+(defun cashpw/org-agenda-view--inbox-get-effort-string ()
+  "Return effort string for inbox view."
+  (let ((effort-minutes
+         (let ((effort (org-entry-get
+                        (point)
+                        "Effort")))
+           (when effort
+             (org-duration-to-minutes effort)))))
+    (cond
+     ((and effort-minutes
+           (> effort-minutes
+              (* 60 4)))
+      ">4h")
+     (effort-minutes
+      "[X]"
+      ;; "✅"
+      )
+     (t
+      "[ ]"
+      ;; "❌"
+      ))))
+
+(defun cashpw/org-agenda-view--inbox-get-category-string ()
+  "Return effort string for inbox view."
+  (let ((category (org-get-category)))
+    (cond
+     ((and category
+           (string= category "Inbox"))
+      "Inbox")
+     (category
+      "[X]"
+      ;; "✅"
+      )
+     (t
+      "[ ]"
+      ;; "❌"
+      ))))
+
+(defun cashpw/org-agenda-view--specified-p (item)
+  "Return non-nil if ITEM should be shown in the Inbox agenda view.
+
+Indended to be passed as a `:pred` in `org-super-agenda-groups'."
+  (let* ((marker
+          (or (get-text-property 0 'org-marker item)
+              (get-text-property 0 'org-hd-marker item)))
+         (category
+          (get-text-property 0 'org-category item))
+         (effort-minutes
+          (get-text-property 0 'effort-minutes item))
+         (scheduled
+          (org-super-agenda--when-with-marker-buffer marker
+            (org-narrow-to-element)
+            (when (org-entry-get marker "SCHEDULED" nil)
+
+              (search-forward "SCHEDULED: ")
+              ;; (buffer-substring-no-properties (point) (+ (point) 15))
+              (org-element-timestamp-parser)
+              (let* ((timestamp (org-element-timestamp-parser))
+                     (start-time (org-timestamp-to-time timestamp))
+                     (end-time (org-timestamp-to-time timestamp t)))
+                `(:start ,start-time
+                  :end ,end-time)))))
+         (duration-minutes
+          (when scheduled
+            (/ (time-subtract (plist-get scheduled :end)
+                              (plist-get scheduled :start))
+               60)))
+         (duration-or-effort-minutes
+          (or (if (and duration-minutes
+                       (= duration-minutes 0))
+                  nil
+                duration-minutes)
+              effort-minutes))
+         (explicit-category-p
+          ;; Must have an explicit category; default is "Inbox".
+          (and category
+               (not (string=
+                     category
+                     "Inbox")))))
+    ;; (message "[cashpw] %s
+    ;; explicit-category-p: %s
+    ;; duration-or-effort-minutes: %s
+    ;; scheduled: %s"
+    ;;              item
+    ;;              explicit-category-p
+    ;;              duration-or-effort-minutes
+    ;;              (prin1-to-string scheduled))
+    (and
+     explicit-category-p
+     scheduled
+     duration-or-effort-minutes
+     ;; Must have a time estimate of <4 hours
+     (< duration-or-effort-minutes
+        (1+ (* 60 4))))))
+
+(defun cashpw/org-agenda-view--inbox ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-use-tag-inheritance nil)
+      (org-use-property-inheritance nil)
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-prefix-format '((todo . "%-8(cashpw/org-agenda-view--inbox-get-category-string)   %-9(cashpw/org-agenda-view--inbox-get-scheduled-time-string)   %-6(cashpw/org-agenda-view--inbox-get-effort-string) %(cashpw/org-agenda-buganizer-title)")))
+      (org-super-agenda-groups
+       '((;; Automatically named "Log"
+          :log t)
+         (:discard
+          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"))
+         (:discard
+          (:tag ("someday"
+                 "reminder")))
+         (:name "Inbox
+
+To remove from Inbox:
+
+1. Tag with \"someday\"
+2. Tag with \"reminder\"
+3. Specify all of the following:
+   - SCHEDULE start time
+   - Set effort or SCHEDULE end time for <4 hours
+   - An explicit CATEGORY
+
+Category | Scheduled | Effort
+"
+          :not (:pred cashpw/org-agenda-view--specified-p))
+         (:discard
+          (:anything))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** No effort
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--no-effort ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-super-agenda-groups
+       '((;; Automatically named "Log"
+          :log t)
+         (:discard
+          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"))
+         (:discard
+          (:property "Effort"))
+         ;; (:name "Without effort"
+         ;;  :effort< "0:01")
+         (:auto-category t)
+         ))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** No priority
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--no-priority ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-super-agenda-groups
+       '((;; Automatically named "Log"
+          :log t)
+         (:discard
+          (;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"
+           :tag ("unscheduled" "everyday")
+           ;; Discard everything with a priority
+           :pred (lambda (item)
+                   (org-extras-get-priority (get-text-property 0 'org-hd-marker item)))))
+         (:auto-category t)))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Unscheduled
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--not-scheduled ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-sorting-strategy '((todo category-up alpha-up)))
+      ;; (org-agenda-cmp-user-defined
+      ;;  (lambda (a b)
+      ;;    (let* ((a-priority-or-nil
+      ;;            (org-extras-get-priority
+      ;;             (get-text-property 0 'org-hd-marker a)))
+      ;;           (a-priority
+      ;;            (string-to-number
+      ;;             (or a-priority-or-nil
+      ;;                 (number-to-string (1+ org-priority-lowest)))))
+      ;;           (b-priority-or-nil
+      ;;            (org-extras-get-priority
+      ;;             (get-text-property 0 'org-hd-marker b)))
+      ;;           (b-priority
+      ;;            (string-to-number
+      ;;             (or b-priority-or-nil
+      ;;                 (number-to-string (1+ org-priority-lowest))))))
+      ;;      (if (> a-priority b-priority)
+      ;;          1
+      ;;        -1))))
+                                        ;(org-agenda-sorting-strategy '((todo . (user-defined-up))))
+      (org-super-agenda-groups
+       '(( ;; Automatically named "Log"
+          :log
+          t)
+         (:discard
+          ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"
+           :tag ("unscheduled" "everyday")))
+         (:discard (:scheduled t))
+         ;; (:auto-category t)
+         (:auto-map cashpw/org-super-agenda--get-priority
+          :transformer cashpw/org-super-agenda--simplify-map)
+         ))))))
+
+(defun cashpw/org-agenda-view--not-scheduled-by-priority ()
+  "Return custom agenda command."
+  `((alltodo
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-agenda-files--update))
+      (org-agenda-cmp-user-defined
+       (lambda (a b)
+         (let* ((a-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker a)))
+                (a-priority
+                 (string-to-number
+                  (or a-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest)))))
+                (b-priority-or-nil
+                 (org-extras-get-priority
+                  (get-text-property 0 'org-hd-marker b)))
+                (b-priority
+                 (string-to-number
+                  (or b-priority-or-nil
+                      (number-to-string (1+ org-priority-lowest))))))
+           (if (> a-priority b-priority)
+               1
+             -1))))
+      (org-agenda-sorting-strategy '((todo . (user-defined-up))))
+      (org-super-agenda-groups
+       '(( ;; Automatically named "Log"
+          :log
+          t)
+         (:discard
+          ( ;; Don't bother listing PROJ items. They are used to group actionable TODOs.
+           :todo "PROJ"
+           :tag ("unscheduled" "everyday")))
+         (:discard (:scheduled t))
+         (:auto-map cashpw/org-super-agenda--get-priority
+          :transformer cashpw/org-super-agenda--simplify-map)))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Overdue
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-view--overdue--files ()
+  "Return a list of files containing overdue tasks."
+  (let ((org-not-done-keywords
+         (with-temp-buffer
+           (org-mode)
+           org-not-done-keywords)))
+    (cl-loop
+     for file in (org-mem-all-files) unless (s-ends-with-p "archive" file) when
+     (seq-find
+      (lambda (entry)
+        (and (member (org-mem-entry-todo-state entry) org-not-done-keywords)
+             (or (and (org-mem-entry-scheduled entry)
+                      (cashpw-time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-scheduled entry)))))
+                 (and (org-mem-entry-deadline entry)
+                      (cashpw-time-past-p
+                       (encode-time
+                        (parse-time-string (org-mem-entry-deadline entry))))))))
+      (org-mem-entries-in file))
+     collect file)))
+
+(defun cashpw/org-agenda-view--overdue ()
+  "Return custom agenda command."
+  `((agenda
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-span 1)
+      (org-agenda-files (cashpw/org-agenda-view--overdue--files))
+      (org-super-agenda-groups
+       '((:discard
+          (:scheduled
+           future
+           :deadline future
+           :scheduled today
+           :deadline today
+           :file-path ,(cashpw/path-calendar)))
+         (:auto-map
+          (lambda (item)
+            (-when-let* ((marker
+                          (or (get-text-property 0 'org-marker item)
+                              (get-text-property 0 'org-hd-marker)))
+                         (default-priority "?")
+                         (priority
+                          (or (org-extras-get-priority marker)
+                              default-priority)))
+              (cond
+               ((org-extras-scheduled-to-repeat-daily-p marker)
+                "1 Repeats daily")
+               ((org-extras-scheduled-to-repeat-weekly-p marker)
+                "2 Repeats weekly")
+               ((org-extras-scheduled-to-repeat-p marker)
+                "3 Repeats")
+               (t
+                "4 Doesn't repeat")))))
+         ( ;; Toss all other todos
+          :discard
+          (:todo t))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Gallery
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/cmp-random (a b)
+  "Return 1 or -1 randomly for sorting entries A and B."
+  (if (> 0.5 (random))
+      1
+    -1))
+
+(defun cashpw/org-agenda-view--gallery ()
+  "Return custom agenda command."
+  `((tags
+     ""
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(defun cashpw/org-agenda-view--gallery-all ()
+  "Return custom agenda command."
+  `((tags
+     "gallery"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(defun cashpw/org-agenda-view--gallery-photos ()
+  "Return custom agenda command."
+  `((tags
+     "photo"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (cashpw/org-files-with-tag "has_gallery" cashpw/path--notes-dir))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(defun cashpw/org-agenda-view--gallery-current-buffer ()
+  "Return custom agenda command."
+  `((tags
+     "gallery"
+     ((org-agenda-overriding-header "")
+      (org-agenda-files (list cashpw/gallery-file-name))
+      (org-super-agenda-groups
+       '((:name "Gallery"
+          :todo nil)
+         (:discard (:anything))))))))
+
+(cashpw/org-agenda-custom-commands--maybe-update)
+#+end_src
+
+*** Set
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(cashpw/org-agenda-custom-commands--update)
+#+end_src
+
+** Corporate
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-agenda-buganizer-title ()
+  "Overridden in my work config."
+  "")
+#+end_src
+
+** Keybindings
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-agenda
+  (define-key org-agenda-mode-map (kbd "@") #'cashpw/org-agenda-view-toggle-collapse)
+  ;; Override
+  (define-key org-agenda-mode-map (kbd ".") #'cashpw/org-agenda-reschedule-to-today)
+  (define-key org-agenda-mode-map (kbd ">") #'cashpw/org-agenda-reschedule-to-next-occurrence-or-kill))
+#+end_src
+* =org-clock=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-clock--agenda-with-archives ()
+  "Return list of agenda files to use with clocktable."
+  (append
+   `(,cashpw/path--sleep-calendar)
+   (cashpw/org-agenda-files 'personal t)
+   (cashpw/org-agenda-files 'calendar t)
+   (cashpw/org-agenda-files 'journal-this-year t)
+   (cashpw/org-agenda-files 'people-private t)))
+
+(defun cashpw/org-set-inprogress-to-todo ()
+  "Set the current heading's todo status to TODO if it's currently INPROGRESS."
+  (when (string= "INPROGRESS" (org-get-todo-state))
+    (org-todo "TODO")))
+
+(after! org
+  (setq
+   ;; Prevent org-clock from double-checking /every/ agenda file for dangling clock during `org-clock-in'.
+   ;; See https://github.com/doomemacs/doomemacs/issues/5317
+   org-clock-auto-clock-resolution nil)
+  (add-to-list 'org-clock-out-hook #'cashpw/org-set-inprogress-to-todo))
+#+end_src
+
+** Manual clock entry
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-clock-add-entry (clock-in-time clock-out-time)
+  "Add single clock entry.
+
+Clock in at CLOCK-IN-TIME and clock out at CLOCK-OUT-TIME."
+  (interactive
+   (list
+    (org-read-date t t nil "Clock in")
+    (org-read-date t t nil "Clock out")))
+  (org-clock-in nil clock-in-time)
+  (org-clock-out nil nil clock-out-time))
+#+end_src
+
+** Untracked time
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-clock-duration-in-minutes (&optional arg)
+  "Return total clocked minutes.
+
+Based on `org-clock-display'.
+
+By default, show the total time for the range defined in
+`org-clock-display-default-range'.  With `\\[universal-argument]' \
+ARG prefix, show
+the total time for today instead.
+
+With `\\[universal-argument] \\[universal-argument]' ARG prefix, \
+use a custom range, entered at prompt.
+
+With `\\[universal-argument] \ \\[universal-argument] \
+\\[universal-argument]' ARG prefix, display the total time in the
+echo area.
+
+Use `\\[org-clock-remove-overlays]' to remove the subtree times."
+  (interactive "P")
+  (org-clock-remove-overlays)
+  (let* ((todayp (equal arg '(4)))
+         (customp (member arg '((16) today yesterday
+                                thisweek lastweek thismonth
+                                lastmonth thisyear lastyear
+                                untilnow interactive)))
+         (prop (cond ((not arg) :org-clock-minutes-default)
+                     (todayp :org-clock-minutes-today)
+                     (customp :org-clock-minutes-custom)
+                     (t :org-clock-minutes))))
+    (cond ((not arg) (org-clock-sum-custom
+                      nil org-clock-display-default-range prop))
+          (todayp (org-clock-sum-today))
+          (customp (org-clock-sum-custom nil arg))
+          (t (org-clock-sum)))
+    (unless (equal arg '(64))
+      (save-excursion
+        (goto-char (point-min))
+        (let ((p nil))
+          (while (or (and (equal (setq p (point)) (point-min))
+                          (get-text-property p prop))
+                     (setq p (next-single-property-change (point) prop)))
+            (goto-char p)
+            (let ((time (get-text-property p prop)))
+              (when time (org-clock-put-overlay time)))))
+        ;; Arrange to remove the overlays upon next change.
+        (when org-remove-highlights-with-change
+          (add-hook 'before-change-functions #'org-clock-remove-overlays
+                    nil 'local))))
+    org-clock-file-total-minutes))
+
+(defun cashpw/org-clock-clocked-minutes (&optional key)
+  "Return the total clocked minutes for KEY.
+
+See `org-clock-special-range' for KEY."
+  (interactive)
+  (let ((key (or key
+                 'interactive))
+        (total-minutes
+         0)
+        (special-range (org-clock-special-range key))
+        (org-clock-display-default-range
+         'interactive))
+    ;; Avoid a prompt from `org-clock-special-range' for every file by hard-coding a response.
+    (cl-letf (((symbol-function 'org-clock-special-range)
+               (lambda (_key &optional _time _as-strings _wstart _mstart)
+                 special-range)))
+      (dolist (file (cashpw/org-clock--agenda-with-archives))
+        (with-current-buffer
+            (find-file-noselect
+             file)
+          (setq
+           total-minutes (+ total-minutes
+                            (or (cashpw/org-clock-duration-in-minutes)
+                                0)))))
+      total-minutes)))
+
+(defun cashpw/org-clock-clocked-minutes-for-time-range (start-time end-time)
+  "Return clocked minutes between START-TIME and END-TIME."
+  (let* ((org-read-date-counter -1))
+    (cl-letf (((symbol-function 'org-read-date)
+               (lambda (&optional
+                   _with-time
+                   _to-time
+                   _from-string
+                   _prompt
+                   _default-time
+                   _default-input
+                   _inactive)
+                 (cl-incf org-read-date-counter)
+                 (cond
+                  ((= org-read-date-counter
+                      0)
+                   start-time)
+                  ((= org-read-date-counter
+                      1)
+                   end-time)))))
+      (cashpw/org-clock-clocked-minutes 'interactive))))
+
+(defun cashpw/org-clock-non-clocked-minutes (&optional key)
+  "Return the total non-clocked minutes for a selected date range determined by KEY."
+  (interactive)
+  (let ((key
+         (or key
+             'interactive))
+        (minutes-in-day
+         (* 24
+            60)))
+    (- minutes-in-day
+       (cashpw/org-clock-clocked-minutes
+        key))))
+
+(defun cashpw/org-clock-clocked-minutes-today ()
+  "Return the number of minutes clocked today."
+  (interactive)
+  (cashpw/org-clock-clocked-minutes 'today))
+
+(defun cashpw/org-clock-non-clocked-minutes-today ()
+  "Return the number of minutes not clocked today."
+  (interactive)
+  (cashpw/org-clock-non-clocked-minutes 'today))
+#+end_src
+
+#+begin_src emacs-lisp
+(cashpw/org-clock-clocked-minutes-for-time-range
+ (date-to-time "2024-04-03")
+ (date-to-time "2024-04-04"))
+#+end_src
+
+#+RESULTS:
+: 568
+
+** Reports
+*** =clocktable=
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-clock--clocktable--properties (time)
+  "Return default clocktable properties for TIME."
+  `(:scope
+    cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d" time)
+    :narrow 200
+    :fileskip0 t
+    :filetitle t
+    :maxlevel 3))
+
+(defun cashpw/org-clock--clocktable-update-default-properties ()
+  "Return default clocktable properties"
+  (setq org-clock-clocktable-default-properties
+        (cashpw/org-clock--clocktable--properties (current-time))))
+
+(cashpw/org-clock--clocktable-update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers
+   #'cashpw/org-clock--clocktable-update-default-properties)
+  (run-at-time
+   "00:00"
+   seconds-in-day
+   #'cashpw/org-clock--clocktable-update-default-properties))
+
+(defun cashpw/org-clocktable-files-with-entries-at-yyyy-mm-dd (yyyy-mm-dd)
+  "Return list of files with clock entries at YYYY-MM-DD."
+  (cashpw/rgrep
+   (format "-l \"\\[%s\" %s/*.org*" yyyy-mm-dd cashpw/path--notes-dir)))
+
+(defun cashpw/org-clocktable-files-with-entries-at-yyyy-w (yyyy-w)
+  "Return list of files with clock entries at YYYY-W."
+  (if (string-match "\\([0-9]\\{4\\}\\)-W\\([0-9]\\{2\\}\\)" yyyy-w)
+      (let ((year (string-to-number (match-string 1 yyyy-w)))
+            (week (string-to-number (match-string 2 yyyy-w))))
+        (-uniq
+         (-reduce
+          #'append
+          (--map
+           (cashpw/rgrep
+            (format "-l \"\\[%s\" %s/*.org*"
+                    (format-time-string "%F" it)
+                    cashpw/path--notes-dir))
+           (cashpw-time--get-week-times
+            (cashpw-time-iso-week-to-time year week))))))
+    (message "Failed to parse YYYY-W format: %s" yyyy-w)
+    nil))
+#+end_src
+
+*** =clocktable-by-category=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/clocktable-by-categories--day-properties (time)
+  "Return clocktable-by-category properties for TIME."
+  `(:files-fn
+    (lambda ()
+      (cashpw/org-clocktable-files-with-entries-at-yyyy-mm-dd
+       ,(format-time-string "%F" time)))
+    :block ,(format-time-string "%F" time)
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-categories--week-properties (time)
+  "Return clocktable-by-category properties for TIME."
+  `(:files-fn
+    (lambda ()
+      (cashpw/org-clocktable-files-with-entries-at-yyyy-w
+       ,(format-time-string "%Y-W%V" time)))
+    :block ,(format-time-string "%Y-W%V" time)
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-category--update-default-properties ()
+  "Return default clocktable-by-category properties"
+  (setq clocktable-by-category--default-properties
+        (cashpw/clocktable-by-categories--day-properties (current-time))))
+
+(cashpw/clocktable-by-category--update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers
+   #'cashpw/clocktable-by-category--update-default-properties)
+  (run-at-time
+   "00:00"
+   seconds-in-day
+   #'cashpw/clocktable-by-category--update-default-properties))
+#+end_src
+
+*** =clocktable-by-tag=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/clocktable-by-tag--properties ()
+  "Return clocktable-by-tag properties."
+  `(:files-fn cashpw/org-clock--agenda-with-archives
+    :block ,(format-time-string "%Y-%m-%d")
+    :merge-duplicate-headlines t
+    ;; :narrow 200
+    ;; :fileskip0 t
+    ;; :filetitle t
+    ))
+
+(defun cashpw/clocktable-by-tag--update-default-properties ()
+  "Return default clocktable-by-tag properties"
+  (setq
+   clocktable-by-tag--default-properties (cashpw/clocktable-by-tag--properties)))
+
+(cashpw/clocktable-by-tag--update-default-properties)
+;; Update the properties once per day as they include `:block' with today's date.
+(let ((seconds-in-day (* 60 60 24)))
+  (cancel-function-timers #'cashpw/clocktable-by-tag--update-default-properties)
+  (run-at-time "00:00"
+               seconds-in-day
+               #'cashpw/clocktable-by-tag--update-default-properties))
+#+end_src
+
+** Feedback loop
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defvar cashpw/feedback-loop--timer nil)
+
+(defcustom cashpw/feedback-loop--duration-minutes 30
+  "Minutes before triggering feedback loop alert."
+  :type 'number)
+
+(defun cashpw/feedback-loop--should-alert-p ()
+  "Return non-nil if we should show the alert."
+  (not
+   (or
+    (member org-clock-heading '("Work"))
+    (org-with-point-at org-clock-hd-marker
+      (not (string= (f-filename buffer-file-name) "calendar-personal.org"))))))
+
+(defun cashpw/feedback-loop-alert ()
+  "Show feedback loop alert."
+  (when (cashpw/feedback-loop--should-alert-p)
+    (alert
+     org-clock-heading
+     :title (format "Feedback loop: %d minutes" cashpw/feedback-loop--duration-minutes)
+     :persistent t
+     :icon cashpw/icons-notifications)
+    (cashpw/feedback-loop--schedule-alert)))
+
+(defun cashpw/feedback-loop--schedule-alert ()
+  "Schedule feedback loop alert."
+  (setq cashpw/feedback-loop--timer
+        (run-at-time
+         (time-add
+          (current-time)
+          (* 60 cashpw/feedback-loop--duration-minutes))
+         nil
+         #'cashpw/feedback-loop-alert)))
+
+(defun cashpw/feedback-loop--unschedule-alert ()
+  "Schedule feedback loop alert."
+  (cancel-timer cashpw/feedback-loop--timer)
+  (setq cashpw/feedback-loop--timer nil))
+
+(add-hook 'org-clock-in-hook #'cashpw/feedback-loop--schedule-alert)
+(add-hook 'org-clock-out-hook #'cashpw/feedback-loop--unschedule-alert)
+#+end_src
+
+* Behavior
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  (setq ;; showeverything to make large files open faster
+        org-startup-folded 'showeverything
+        org-log-into-drawer t
+        org-log-repeat t))
+#+end_src
+
+** Refile
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after!
+  org
+  (defun cashpw/org-refile (oldfun &optional arg default-buffer rfloc msg)
+    "Refile advice with custom functionality."
+    (interactive "P")
+    (cond
+     ((org-extras-get-property (point) "ASANA_ID")
+      ;; Asana TODOs are special in that their source of truth is Asana. If I'm re-filing it, then I'm moving the source of truth into my notes. I want to (1) refile it and (2) remove it from asana.
+      (let ((org-refile-keep t)
+            (asana-id (org-extras-get-property (point) "ASANA_ID"))
+            (asana-url (org-extras-get-property (point) "ASANA_URL")))
+        ;; Remove Asana metadata from the TODO before we copy it
+        (org-delete-property "ASANA_ID")
+        (org-delete-property "ASANA_URL")
+        (org-delete-property "WORKSPACE")
+        (org-delete-property "ASSIGNEE")
+        (org-deadline '(4))
+
+        (funcall oldfun arg default-buffer rfloc msg)
+
+        ;; Restore Asana metadata so we can delete the TODO from Asana
+        (org-set-property "ASANA_ID" asana-id)
+        (org-set-property "ASANA_URL" asana-url)
+
+        ;; DONE is set up to remove the TODO in Asana
+        (org-todo "DONE")))
+     (t
+      (funcall oldfun arg default-buffer rfloc msg))))
+  (advice-add 'org-refile :around #'cashpw/org-refile)
+
+  (defun cashpw/org--set-refile-targets ()
+    "Refresh refile targets."
+    (setq
+     cashpw/org-refile-targets
+     (seq-uniq
+      (append
+       (cashpw/org-agenda-files 'personal)
+       (cashpw/notes-files-with-tags "project" "hastodo")
+       (cashpw/notes-files-with-tags "decision" "hastodo")
+       (cashpw/notes-files-with-tags "pet" "hastodo")
+       (cashpw/notes-files-with-tags "people" "private" "hastodo")))
+     org-refile-targets `((,cashpw/org-refile-targets :todo . "PROJ"))))
+  (cashpw/org--set-refile-targets)
+
+  (add-hook! 'org-after-refile-insert-hook
+             #'cashpw/org--prompt-for-priority-when-missing
+             #'cashpw/org--prompt-for-effort-when-missing
+             #'cashpw/org--prompt-for-category-when-missing
+             #'cashpw/org--prompt-for-schedule-when-missing
+             #'cashpw/org--prompt-for-deadline-when-missing))
+#+end_src
+
+** TODOs
+
+*** Priorities
+
+I use a numeric scale for priorities rather than the default alphabetic.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (setq
+   org-priority-highest 0
+   org-priority-default 2
+   org-priority-lowest 4))
+#+end_src
+
+*** Schedule and deadline
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-schedule-remove-unscheduled (arg _)
+  "Remove the \"unscheduled\" tag from scheduled headings unless ARG is (4), ignoring _."
+  ;; Do not message if the intent was to *remove* the schedule.
+  (unless (equal arg '(4))
+    (save-excursion
+      (org-back-to-heading t)
+      (when (org-get-scheduled-time (point))
+        (org-set-tags (seq-difference (org-get-tags nil 'local) '("unscheduled")))))))
+
+(advice-add 'org-schedule :after #'cashpw/org-schedule-remove-unscheduled)
+#+end_src
+
+
+*** Keywords
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (setq
+   org-todo-keywords '((sequence
+                        ;; A task that needs doing & is ready to do
+                        "TODO(t)"
+                        ;; A task that is in progress
+                        "INPROGRESS(i)"
+                        "INPROGRESS-AT(I)"
+                        "INPROGRESS-FROM-LAST(c)"
+                        ;; Something external is holding up this task
+                        "BLOCKED(b)"
+                        ;; A project, which usually contains other tasks
+                        "PROJ(p)"
+                        "|"
+                        ;; Task successfully completed
+                        "DONE(d)"
+                        ;; Calendar event is declined
+                        "DECLINED(`)"
+                        ;; Calendar event is cancelled
+                        "CANCELLED(~)"
+                        ;; Task was moved
+                        "MOVE(m)"
+                        ;; Task was rescheduled
+                        "RESCHEDULE(_)"
+                        ;; Task was cancelled, aborted, or is no longer applicable
+                        "KILL(k)")
+                       (sequence
+                        ;; A task that needs doing
+                        "[ ](T)"
+                        ;; Task is in progress
+                        "[-](S)"
+                        ;; Task is being held up or paused
+                        "[?](W)"
+                        "|"
+                        ;; Task was completed
+                        "[X](D)"))
+   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
+                            ("INPROGRESS" . +org-todo-active)
+                            ("[?]"  . +org-todo-onhold)
+                            ("BLOCKED" . +org-todo-onhold)
+                            ("HOLD" . +org-todo-onhold)
+                            ("PROJ" . +org-todo-project))))
+#+end_src
+
+*** When marking a heading as ...
+
+**** =INPROGRESS=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org--on-state-change-to-inprogress ()
+  "Things to do when I mark a headline as inprogress."
+  (when (not (cashpw/org-categorized-p))
+    (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))
+  ;; Commented out because this is handed by the specific run-on-todo-... functions
+  ;; (org-clock-in)
+  )
+(defun run-on-todo-state-change--INPROGRESS ()
+  "Handle inprogress behavior."
+  (cashpw/org--on-state-change-to-inprogress)
+  (org-clock-in))
+
+(defun run-on-todo-state-change--INPROGRESS-AT ()
+  "Handle \"INPROGRESS-AT\" behavior."
+  (search-backward "INPROGRESS-AT")
+  (replace-match "INPROGRESS")
+  (cashpw/org--on-state-change-to-inprogress)
+  (org-clock-in nil (org-read-date nil 'to-time)))
+
+(defun run-on-todo-state-change--INPROGRESS-FROM-LAST ()
+  "Handle \"INPROGRESS-FROM-LAST\" behavior."
+  (search-backward "INPROGRESS-FROM-LAST")
+  (replace-match "INPROGRESS")
+  (cashpw/org--on-state-change-to-inprogress)
+  (org-clock-in '(64)))
+#+end_src
+
+**** =BLOCKED=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun run-on-todo-state-change--BLOCKED ()
+  "Handle a todo being set to \"BLOCKED\"."
+  (org-clock-out-if-current)
+  (org-add-log-setup 'state "BLOCKED" (org-get-todo-state) 'note))
+#+end_src
+
+**** =PROJ=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun run-on-todo-state-change--PROJ ()
+  "Handle a todo being set to \"PROJ\"."
+  (cashpw/org-insert-progress-cookie))
+#+end_src
+
+**** =KILL=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun run-on-todo-state-change--KILL ()
+  "Handle a todo being set to \"KILL\"."
+  (org-cut-subtree))
+#+end_src
+
+**** =DONE=
+
+Record the current time when marking a heading as done.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (setq
+   org-log-done 'time))
+#+end_src
+
+There are three types of actions which can occur when I mark a =TODO= item as done. They have a precedence and I've listed them in that order.
+
+1. =noop=: The item remains (1) in the same file and (2) as a =TODO=.
+2. =keep=: The item remains in the same file and the =TODO= state changes to, e.g., =DONE=.
+3. =delete=: Delete the item.
+4. =archive= (default action): Archive the item.
+
+The return value of hooks determine the action we take. All =noop= hooks must return nil before we consider cutting the entry. Likewise, all =cut= hooks must return nil before we archive the entry.
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defgroup cashpw/org-mode-on-done nil
+  "Handle Org-mode DONE headlines."
+  :tag "Org-mode on done.")
+#+end_src
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun run-on-todo-state-change--DONE ()
+  "Archive entry when it is marked as done (as defined by `org-done-keywords')."
+  (org-clock-out-if-current)
+  (when-let (asana-id (org-entry-get nil "ASANA_ID"))
+    (asana-task-complete (string-trim-left asana-id ".+-")))
+  (repeat-todo--reschedule (point))
+  (cond
+   ((cashpw/org-mode-on-done--noop-p)
+    (cashpw/org-mode-on-done--noop))
+   ((cashpw/org-mode-on-done--keep-p)
+    (cashpw/org-mode-on-done--keep))
+   ((cashpw/org-mode-on-done--delete-p)
+    (cashpw/org-mode-on-done--delete))
+   (t
+    (org-archive-subtree-default))))
+#+end_src
+
+***** By property
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-mode-on-done--property-name "CASHPW_ON_DONE"
+  "Property name to indicate how to handle DONE event."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--noop "noop"
+  "No-op."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--keep "keep"
+  "Keep"
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defcustom cashpw/org-mode-on-done--property--delete "delete"
+  "Delete."
+  :group 'cashpw/org-mode-on-done
+  :type 'string)
+
+(defun cashpw/org-mode-on-done--property-value-equals-p (expected-value)
+  "Return non-nil if the heading's `cashpw/org-mode-on-done--property-name' is EXPECTED-VALUE."
+  (let ((actual-value (org-entry-get
+                       (point)
+                       cashpw/org-mode-on-done--property-name
+                       'inherit)))
+    (equal actual-value
+           expected-value)))
+#+end_src
+
+
+***** No-op
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-mode-on-done--noop-filetags
+  '("noop_on_done")
+  "Filetags for which we should noop on done."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--noop-filetag-p ()
+  "Return non-nil if current file has a no-op filetag."
+  (>
+   (length
+    (-intersection
+     cashpw/org-mode-on-done--noop-filetags
+     (org-extras-get-inbuffer-option "filetags")))
+   0))
+
+(defun cashpw/org-mode-on-done--noop-p ()
+  "Return non-nil if we should noop the current entry."
+  (or (org-get-repeat)
+      (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--noop)
+      (cashpw/org-mode-on-done--noop-filetag-p)))
+
+(defun cashpw/org-mode-on-done--noop ()
+  "Handle noop decision."
+  (org-todo "TODO"))
+#+end_src
+
+***** Keep
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-mode-on-done--keep-file-paths
+  (append
+   `(,(s-lex-format "${cashpw/path--notes-dir}/journal-2024.org")
+     ,(s-lex-format "${cashpw/path--notes-dir}/retrospective-2024.org")))
+  "TODOs in these files will be keep by default."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--keep-file-p ()
+  "Return non-nil if current file is a keep file."
+  (member buffer-file-name
+          cashpw/org-mode-on-done--keep-file-paths))
+
+(defcustom cashpw/org-mode-on-done--keep-filetags
+  '("keep_on_done"
+    "journal"
+    "person"
+    "pet"
+    "decision"
+    "project")
+  "Filetags for which we should keep on done."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--keep-filetag-p ()
+  "Return non-nil if current file has a keep filetag."
+  (> (length
+      (-intersection
+       cashpw/org-mode-on-done--keep-filetags
+       (org-extras-get-inbuffer-option "filetags")))
+     0))
+
+(defun cashpw/org-mode-on-done--keep-p ()
+  "Return non-nil if we should keep the current entry."
+  (or
+   (cashpw/org-mode-on-done--property-value-equals-p cashpw/org-mode-on-done--property--keep)
+   (cashpw/org-mode-on-done--keep-filetag-p)
+   (cashpw/org-mode-on-done--keep-file-p)))
+
+(defun cashpw/org-mode-on-done--keep ()
+  "Handle keep decision."
+  nil)
+#+end_src
+
+***** Delete
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-mode-on-done--delete-filetags
+  '("delete_on_done")
+  "Filetags for which we should delete on done."
+  :group 'cashpw/org-mode-on-done
+  :type '(repeat string))
+
+(defun cashpw/org-mode-on-done--delete-filetag-p ()
+  "Return non-nil if current file has a delete filetag."
+  (> (length
+      (-intersection
+       cashpw/org-mode-on-done--delete-filetags
+       (org-extras-get-inbuffer-option "filetags")))
+     0))
+
+(defun cashpw/org-mode-on-done--delete-p ()
+  "Return non-nil if we should delete the current entry."
+  (cashpw/org-mode-on-done--delete-filetag-p))
+
+(defun cashpw/org-mode-on-done--delete ()
+  "Handle delete decision."
+  (org-cut-subtree))
+#+end_src
+
+****** TODO Rename =.*-hook=
+
+They're not hooks. They're lists of functions which return non-nil to indicate membership.
+
+**** Install hooks
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (add-hook! 'org-after-todo-state-change-hook
+             ;; run-on-todo-state-change must be first
+             #'run-on-todo-state-change
+             ;; 'cashpw/org-mode-when-inprogress
+             ;; 'cashpw/org-mode-when-proj
+             ;; 'cashpw/org-mode-when-done
+             ))
+#+end_src
+
+** Blocks
+:PROPERTIES:
+:ID:       ce915eb8-d352-4aa2-9dca-5ada71fd18e1
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org
+  :config
+  (setq
+   org-structure-template-alist
+   '(("a" . "export ascii")
+     ("c" . "center")
+     ("C" . "comment")
+     ("e" . "example")
+     ("E" . "export")
+     ("Eh" . "export html")
+     ("El" . "export latex")
+     ;; ("i" . "ingredients")
+     ("q" . "quote")
+     ("s" . "src")
+     ("sd" . "src dot :file TODO.png :cmdline -Kdot -Tpng")
+     ("se" . "src emacs-lisp")
+     ("sc" . "src C++")
+     ("sp" . "src python :results output")
+     ("ss" . "src sh :results output")
+     ("v" . "verse"))))
+#+end_src
+
+* Agenda Packages
+
+
+** =org-clock-act-on-overtime=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-clock-act-on-overtime
+  :recipe (:host github
+           :repo "cashpw/org-clock-act-on-overtime"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package!
+    org-clock-act-on-overtime
+  :custom
+  (add-hook 'org-clock-act-on-overtime-hook #'cashpw/notify-overtime)
+  (add-hook 'org-clock-out-hook #'cashpw/notify-overtime--reset)
+  (org-clock-act-on-overtime-mode 'enable))
+
+(defvar cashpw/notify-overtime--have-notified nil
+  "Non-nil if we've already notified for the current overtime clock.")
+
+(defun cashpw/notify-overtime ()
+  "Notify that the current task is overtime."
+  (unless cashpw/notify-overtime--have-notified
+    (alert
+     org-clock-heading
+     :title "Over time!"
+     :persistent t
+     :icon cashpw/icons-hourglass-empty)
+    (setq cashpw/notify-overtime--have-notified t)))
+
+(defun cashpw/notify-overtime--reset ()
+  "Reset overtime notifier so we can notify again."
+  (setq cashpw/notify-overtime--have-notified nil))
+#+end_src
+
+** =clocktable-by-category=
+#+begin_quote
+Group clocktable entries by their CATEGORY property.
+
+/[[github:cashpw/clocktable-by-category][cashpw/clocktable-by-category]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! clocktable-by-category
+  :recipe (:host github
+           :repo "cashpw/clocktable-by-category"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! clocktable-by-category
+  :after org)
+#+end_src
+
+** =clocktable-by-tag=
+#+begin_quote
+Group clocktable entries by their first tag.
+
+/[[github:cashpw/clocktable-by-tag][cashpw/clocktable-by-tag]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! clocktable-by-tag
+  :recipe (:host github
+           :repo "cashpw/clocktable-by-tag"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! clocktable-by-tag
+  :after org)
+#+end_src
+
+** =org-habit-stats=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-habit-stats)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-habit-stats
+  :custom
+  (org-agenda-block-separator 9472))
+#+end_src
+
+** =org-gcal= (Calendar)
+
+#+begin_quote
+org-gcal offers
+
+- Fetch google calendar event
+- Post/edit org element
+- Sync between Org and Gcal
+
+/[[github:kidd/org-gcal.el][kidd/org-gcal.el]]/
+#+end_quote
+
+*** Package
+
+Doom emacs provides =org-gcal=.
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(unpin! org-gcal)
+#+end_src
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-gcal-extras
+  :recipe (:host github
+           :repo "cashpw/org-gcal-extras"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-gcal-extras)
+#+end_src
+
+**** Time
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--timestamp-from-event (event)
+  "Return an Org-mode timestamp from Google Calendar EVENT."
+  (let* ((start-time (plist-get (plist-get event :start)
+                                :dateTime))
+         (end-time (plist-get (plist-get event :end)
+                              :dateTime))
+         (start-day  (plist-get (plist-get event :start)
+                                :date))
+         (end-day  (plist-get (plist-get event :end)
+                              :date))
+         (start (if start-time
+                    (org-gcal--convert-time-to-local-timezone
+                     start-time
+                     org-gcal-local-timezone)
+                  start-day))
+         (end   (if end-time
+                    (org-gcal--convert-time-to-local-timezone
+                     end-time
+                     org-gcal-local-timezone)
+                  end-day))
+         (old-time-desc (org-gcal--get-time-and-desc))
+         (old-start (plist-get old-time-desc :start))
+         (old-end (plist-get old-time-desc :start))
+         (recurrence (plist-get event :recurrence)))
+    ;; Keep existing timestamps for parent recurring events.
+    (when (and recurrence old-start old-end)
+      (setq start old-start
+            end old-end))
+    (cashpw/org-gcal--timestamp start end)))
+
+(defun cashpw/org-gcal--timestamp (start end)
+  "Return an Org-mode timestamp from ISO START and END times."
+  (if (or (string= start end)
+          (org-gcal--alldayp start end))
+      (org-gcal--format-iso2org start)
+    (if (and (= (plist-get (org-gcal--parse-date start) :year)
+                (plist-get (org-gcal--parse-date end)   :year))
+             (= (plist-get (org-gcal--parse-date start) :mon)
+                (plist-get (org-gcal--parse-date end)   :mon))
+             (= (plist-get (org-gcal--parse-date start) :day)
+                (plist-get (org-gcal--parse-date end)   :day)))
+        (format "<%s-%s>"
+                (org-gcal--format-date start "%Y-%m-%d %a %H:%M")
+                (org-gcal--format-date end "%H:%M"))
+      (format "%s--%s"
+              (org-gcal--format-iso2org start)
+              (org-gcal--format-iso2org
+               (if (< 11 (length end))
+                   end
+                 (org-gcal--iso-previous-day end)))))))
+
+(defun cashpw/org-gcal--start (event)
+  "Return the scheduled start time for EVENT.
+
+Reference: `org-gcal--update-entry'."
+  (let* ((start (plist-get event :start))
+         (start-datetime (plist-get start :dateTime))
+         (start-date (plist-get start :date)))
+    (if start-datetime
+        (parse-iso8601-time-string start-datetime)
+      (date-to-time start-date))))
+
+(defun cashpw/org-gcal--end (event)
+  "Return the scheduled end time for EVENT.
+
+Reference: `org-gcal--update-entry'."
+  (let* ((end (plist-get event :end))
+         (end-datetime (plist-get end :dateTime))
+         (end-date (plist-get end :date)))
+    (if end-datetime
+        (parse-iso8601-time-string end-datetime)
+      (date-to-time end-date))))
+#+end_src
+
+**** Convert description
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--convert-description (_calendar-id _event _update-mode)
+  "Convert the 'org-gcal' drawer content to Org format using Pandoc."
+  (save-excursion
+    (org-up-heading-safe)
+    (let ((description (cashpw/org-get-drawer-contents "org-gcal")))
+      (if (string-empty-p (string-clean-whitespace description))
+          (cashpw/org-delete-drawer "org-gcal")
+        (let* ((from-language (cond
+                               ((or
+                                 (s-contains-p "## TODO" description)
+                                 (s-contains-p "- [ ] " description))
+                                "markdown")
+                               (t
+                                "html")))
+               (converted-description
+                (cashpw/pandoc-convert
+                 (format "%s" (cashpw/org-get-drawer-contents "org-gcal"))
+                 (format
+                  "%s-auto_identifiers"
+                  from-language)
+                 "org")))
+          (save-excursion
+            (org-up-heading-safe)
+            (save-restriction
+              (org-narrow-to-subtree)
+              (cashpw/org-delete-drawer "org-gcal")
+              (goto-char (point-max))
+              (insert converted-description))))))))
+#+end_src
+
+**** Exclusions
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-gcal--summaries-to-exclude
+  '()
+  "List of event summaries, as regexps, (titles) which should be excluded during sync/fetch."
+  :type '(repeat string)
+  :group 'org-gcal)
+
+(defun cashpw/org-gcal--filter-summaries (item)
+  "Return non-nil if ITEM should be included."
+  (let ((summary (plist-get item :summary)))
+    (if (--any (string-match it summary)
+               cashpw/org-gcal--summaries-to-exclude)
+        nil
+      t)))
+#+end_src
+
+**** Attendee
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--get-attendee-by-email (event email)
+  "Return attendee object from EVENT matched by EMAIL
+
+Return nil if no attendee exists with that EMAIL."
+  (--first (string= (plist-get it :email) email) (plist-get event :attendees)))
+
+(defun cashpw/org-gcal--attendees-include (attendees regexp)
+  "Return non-nil if at least one email in ATTENDEES matches REGEXP."
+  (let ((attendees (append attendees nil)))
+    (--any (let ((email (plist-get it :email)))
+             (string-match regexp email))
+           attendees)))
+
+(cl-assert (cashpw/org-gcal--attendees-include '[(:email "foo1@bar.com")
+                                                 (:email "foo2@bar.com")]
+                                               "foo1@bar.com")
+           "Should support vector of plists.")
+(cl-assert (cashpw/org-gcal--attendees-include '((:email "foo1@bar.com")
+                                                 (:email "foo2@bar.com"))
+                                               "foo1@bar.com"))
+(cl-assert (cashpw/org-gcal--attendees-include '((:email "foo1@bar.com")
+                                                 (:email "foo2@bar.com"))
+                                               "foo2@bar.com"))
+(cl-assert (cashpw/org-gcal--attendees-include '((:email "foo1@bar.com")
+                                                 (:email "foo2@bar.com")
+                                                 (:email "foo1@baz.com"))
+                                               "baz.com"))
+(cl-assert (not (cashpw/org-gcal--attendees-include '((:email "foo1@bar.com")
+                                                      (:email "foo2@bar.com"))
+                                                    "foo3@bar.com")))
+#+end_src
+
+***** 1-on-1, one-on-one
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--is-1-on-1 (event)
+  "Return non-nil if EVENT is a 1-on-1."
+  (let ((attendees (plist-get event :attendees))
+        (my-email "cashweaver@google.com")
+        (meeting-room-email-domain "resource.calendar.google.com"))
+    (cond
+     ((and (= (length attendees)
+              2)
+           (cashpw/org-gcal--attendees-include attendees
+                                               my-email))
+      t)
+     ((and (= (length attendees)
+              3)
+           (cashpw/org-gcal--attendees-include attendees
+                                               my-email)
+           (cashpw/org-gcal--attendees-include attendees
+                                               meeting-room-email-domain))
+      t)
+     ;; Other counts of attendees are not 1-on-1s
+     (t
+      nil))))
+
+(cl-assert (not (cashpw/org-gcal--is-1-on-1 '(:attendees ((:email "foo@bar.com")))))
+           t
+           "A 1-on-1 requires at least two attendees.")
+(cl-assert (not (cashpw/org-gcal--is-1-on-1 '(:attendees ((:email "foo1@bar.com")
+                                                          (:email "foo2@bar.com")))))
+           t
+           "A 1-on-1 must include my email.")
+(cl-assert (cashpw/org-gcal--is-1-on-1 '(:attendees ((:email "foo1@bar.com")
+                                                     (:email "cashweaver@google.com"))))
+           t
+           "Should be a valid 1-on-1.")
+(cl-assert (cashpw/org-gcal--is-1-on-1 '(:attendees ((:email "foo1@bar.com")
+                                                     (:email "cashweaver@google.com")
+                                                     (:email "baz@resource.calendar.google.com"))))
+           t
+           "Should be a valid 1-on-1 with a meeting room.")
+(cl-assert (not (cashpw/org-gcal--is-1-on-1 '(:attendees ((:email "foo1@bar.com")
+                                                          (:email "foo2@bar.com")
+                                                          (:email "foo3@bar.com")
+                                                          (:email "foo4@bar.com")))))
+           t
+           "A 1-on-1 requires at most three attendees.")
+#+end_src
+
+**** =SCHEDULED=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-get-drawer-contents (drawer-name)
+  "Return the contents of DRAWER-NAME for the current Org entry."
+  (if (not (org-at-heading-p))
+      (error "Cannot get drawer contents because point is not at an org heading")
+    (save-excursion
+      (save-restriction
+        (org-narrow-to-element)
+        (re-search-forward
+         (format "^[ \t]*:%s:[ \t]*$" drawer-name)
+         (point-max)
+         'noerror)
+        (let ((element (org-element-at-point)))
+          (when (string= (org-element-property :drawer-name (org-element-at-point)) drawer-name)
+            (buffer-substring-no-properties (org-element-property :contents-begin element)
+                                            (org-element-property :contents-end element))))))))
+
+(defun cashpw/delete-lines-on-and-between (start-point end-point)
+  "Delete lines between START-POINT and END-POINT."
+  (delete-region
+   (progn
+     (goto-char start-point)
+     (beginning-of-line)
+     (point))
+   (progn
+     (goto-char end-point)
+     (next-line)
+     (beginning-of-line)
+     (point))))
+
+(defun cashpw/org-delete-drawer (drawer-name)
+  "Delete the DRAWER-NAME drawer for the current Org entry."
+  (save-excursion
+    (save-restriction
+      (org-narrow-to-subtree)
+      (cashpw/delete-lines-on-and-between
+       (re-search-forward
+        (format "^[ \t]*:%s:[ \t]*$" drawer-name)
+        (point-max))
+       (re-search-forward
+        (format ":END:")
+        (point-max))))))
+
+(defun cashpw/org-gcal--get-schedule-string (pom)
+  "Return schedule string for heading (calendar event) at POM."
+  (save-excursion
+    (goto-char pom)
+    (org-end-of-meta-data)
+    (when-let* ((element (org-element-at-point))
+                (drawer-name (org-element-property :drawer-name element)))
+      (when (string= drawer-name
+                     "org-gcal")
+        (buffer-substring-no-properties (org-element-property :contents-begin element)
+                                        (org-element-property :contents-end element))))))
+
+(defun cashpw/org-gcal--get-schedule-time (pom)
+  "Return scheduled time for heading at POM."
+  (when-let (time-string (cashpw/org-gcal--get-schedule-string pom))
+    (org-read-date t t time-string nil)))
+#+end_src
+
+**** Prep meeting
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-gcal--no-prep-reminder-summaries '()
+  "List of event summaries (titles), as regexps, for which we shouldn't create 'Prepare: ...' todos."
+  :type '(repeat string)
+  :group 'org-gcal)
+
+(defcustom cashpw/org-gcal-prepare-tag "prepare"
+  "Tag for identifying \"Prepare\" events."
+  :type 'string
+  :group 'org-gcal)
+
+(defun cashpw/org-gcal--create-prep-meeting (summary time)
+  "Insert a preparation event for SUMMARY at TIME."
+  (cashpw/org-insert-todo
+   (s-lex-format "Prepare: ${summary} :${cashpw/org-gcal-prepare-tag}:")
+   :priority 1
+   :effort "5m"
+   :start-time time
+   :include-hh-mm nil))
+
+(defun cashpw/org-gcal--maybe-create-prep-meeting
+    (_calendar-id event _update-mode)
+  "Insert a prep TODO if there are more than one attendees to the meeting EVENT.
+_CALENDAR-ID and _UPDATE-MODE are ignored."
+  (when (and (not (org-gcal-extras--processed-p))
+             (sequencep event) (> (length (plist-get event :attendees)) 1)
+             (--none-p
+              (string-match-p it (plist-get event :summary))
+              cashpw/org-gcal--no-prep-reminder-summaries))
+    (let* ((event-start-time (cashpw/org-gcal--start event))
+           (prepare-time
+            (cashpw-time--zero-out-hh-mm-ss
+             (cond
+              ((day-of-week-monday-p event-start-time)
+               ;; Prepare for Monday events on the preceding Friday
+               (org-time-subtract event-start-time (days-to-time 3)))
+              (t
+               ;; Prepare for all other events on the day before
+               (org-time-subtract event-start-time (days-to-time 1)))))))
+      (unless (and
+               (cashpw-time-past-p prepare-time)
+               (not (cashpw-time-today-p prepare-time)))
+        (cashpw/org-gcal--create-prep-meeting
+         (plist-get event :summary) prepare-time)))))
+
+(defun cashpw/org-gcal-remove-tagged-entries (tag)
+  "Remove all events tagged with TAG in current buffer."
+  (org-map-entries
+   (lambda ()
+     (org-cut-subtree)
+     (setq org-map-continue-from
+           (save-excursion
+             (beginning-of-line)
+             (point))))
+   (format "+%s" tag)))
+#+end_src
+
+**** Extract TODOs
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-gcal--no-extract-todo-reminder-summaries
+  '("Walk" "Clean house")
+  "List of event summaries (titles), as regexps, for which we shouldn't create 'Extract todos: ...' todos."
+  :type '(repeat string)
+  :group 'org-gcal)
+
+(defcustom cashpw/org-gcal-extract-todos-tag "extract_todos"
+  "Tag for identifying \"Extract TODOs\" events."
+  :type 'string
+  :group 'org-gcal)
+
+
+(defun cashpw/org-gcal--create-todo-extract-reminder
+    (_calendar-id event _update-mode)
+  "Insert a reminder to extract TODOs following an EVENT.
+_CALENDAR-ID and _UPDATE-MODE are ignored."
+  (let* ((event-summary (plist-get event :summary))
+         (event-end-time (cashpw/org-gcal--end event)))
+    (cashpw/org-insert-todo
+     (s-lex-format "Extract TODOs: ${event-summary} :${cashpw/org-gcal-extract-todos-tag}:")
+     :priority 2
+     :effort "5m"
+     :start-time event-end-time
+     :include-hh-mm t)))
+
+(defun cashpw/org-gcal--maybe-create-todo-extract-reminder
+    (_calendar-id event _update-mode)
+  "Insert a 1-on-1 prep heading TODO if EVENT is for a 1-on-1 event.
+_CALENDAR-ID and _UPDATE-MODE are ignored."
+  (when (and (not (org-gcal-extras--processed-p))
+             (sequencep event) (>= (length (plist-get event :attendees)) 2)
+             (--none-p
+              (string-match-p it (plist-get event :summary))
+              cashpw/org-gcal--no-extract-todo-reminder-summaries))
+    (cashpw/org-gcal--create-todo-extract-reminder
+     _calendar-id event _update-mode)))
+#+end_src
+
+**** Extract TODOs
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal--maybe-handle-sleep (_calendar-id event _update-mode)
+  "Maybe handle a sleep EVENT.  _CALENDAR-ID and _UPDATE-MODE are ignored."
+  (if (member "processed" (org-get-tags))
+      (message "Skipping processed event.")
+    (when (and (sequencep event)
+               (string-match-p "^Sleep$" (plist-get event :summary)))
+      (let ((start-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :start) :dateTime)))
+            (end-time
+             (org-gcal--parse-calendar-time-string
+              (plist-get (plist-get event :end) :dateTime))))
+        (cashpw/org-clock-add-entry start-time end-time)))
+    ;; (let ((inhibit-message t)
+    ;;       (message-log-max nil)))
+    ))
+#+end_src
+
+**** Profiles
+
+***** Personal
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defcustom cashpw/org-gcal--profile-personal
+  (make-org-gcal-profile
+   :fetch-file-alist `(("cashbweaver@gmail.com" . ,(cashpw/path-calendar)))
+   :client-id "878906466019-lfm5pph17736noimc9n8rth7vne1u566.apps.googleusercontent.com"
+   :client-secret (secret-get "org-gcal--personal" nil (cashpw/machine-p 'personal-phone))
+   :after-update-entry-functions
+   '(org-gcal-extras--set-scheduled
+     org-gcal-extras--set-category
+     cashpw/org-gcal--maybe-create-todo-extract-reminder
+     cashpw/org-gcal--maybe-create-prep-meeting
+     ;; cashpw/org-gcal--convert-description
+     )
+   :fetch-event-filters '()
+   :summaries-to-skip
+   '("^Nap$"
+     "^Sleeping$"
+     "^Sleep$"
+     "^Slack$"
+     "^Flashcards$"
+     "^Drive "
+     "^Shower, etc$"
+     "^Chores$"
+     "^Work$"
+     "^End the day"
+     "^Fall asleep$")
+   :categories
+   (-flatten
+    (--map
+     (-flatten
+      (let ((category (car it))
+            (summaries (cdr it)))
+        (--map `(,it . ,category) summaries)))
+     '(("Personal>Health>Fitness>Cardio" .
+        ("Cardio"
+         "Run"
+         "Row"
+         "Walk"))
+       ("Personal>Health>Fitness>Strength" .
+        ("Shoulders"
+         "Back"
+         "Chest"
+         "Legs"
+         "Strength"))
+       ("Personal>Health>Fitness>Mobility" .
+        ("Stretch"
+         "Stretch: Hamstrings"
+         "Stretch: Hips"))
+       ("Finance" . ("Finances and net worth"))
+       ("Family>Pets" .
+        ("Empty cat boxes"
+         "Myth's inhaler"
+         "Feed cats"
+         "Train Finn"
+         "Clean pet water and food dishes"))
+       ("Family" . ("Call parents"
+                    "Call with Alian, Ethan, and Austin"))
+       ("Personal>Eat" . ("Lunch" "Dinner"))
+       ("Personal>Housework" .
+        ("Take out the trash"
+         "Tidy car"
+         "Get the mail"
+         "Clean house"
+         "Flip pillowcase"
+         "New bedsheets"
+         "New pillowcase"))
+       ("Personal>Health>Hygeine" . ("Shower" "Brush teeth" "Teeth" "Shave" "Acne"))
+       ("Personal>Hobby>Pottery" . ("Pottery" "Wheel Projects with Khaled"))
+       ("Personal>Learn" . ("Study" "Flashcards"))
+       ("Personal>Eat" . ("Huel shake"))
+       ("Personal>Sleep" . ("Sleep"))
+       ("Personal>Health>Mental". ("Therapy")))))
+   :on-activate
+   (lambda ()
+     (setq cashpw/org-gcal--no-prep-reminder-summaries
+           '("Walk" "Clean house" "Debrief"))))
+  "Personal profile for `org-gcal'."
+  :group 'cashpw
+  :type 'sexp)
+#+end_src
+
+***** Sleep
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+;; "amc7oe0cqlg989fda4akqjl2f8@group.calendar.google.com"
+(setq
+ cashpw/org-gcal--profile-sleep
+ (make-org-gcal-profile
+  :fetch-file-alist
+  `(("mu8kpccp2uqujvhkhh6iv8pla0@group.calendar.google.com"
+     .
+     ,cashpw/path--sleep-calendar))
+  :client-id "878906466019-a9891dnr9agpleamia0p46smrbsjghvc.apps.googleusercontent.com"
+  :client-secret (secret-get "org-gcal--personal" nil (cashpw/machine-p 'personal-phone))
+  :after-update-entry-functions '(cashpw/org-gcal--remove-gcal-timestamp
+                                  cashpw/org-gcal--maybe-handle-sleep)
+  :categories
+  (-flatten
+   (--map
+    (-flatten
+     (let ((category (car it))
+           (summaries (cdr it)))
+       (--map `(,it . ,category) summaries)))
+    '(("Personal>Sleep" . ("Sleep")))))
+  :on-activate (lambda () (setq cashpw/org-gcal--no-prep-reminder-summaries '())))
+ ;; "Personal sleep profile for `org-gcal'."
+ ;; :group 'cashpw
+ ;; :type 'sexp)
+ )
+
+(defun cashpw/org-gcal--remove-gcal-timestamp (_calendar-id _event _update-mode)
+  "Wrapper for `org-gcal-extras--remove-gcal-timestamp' using _CALENDAR-ID, _EVENT, and _UPDATE-MODE."
+  (org-gcal-extras--remove-gcal-timestamp))
+
+(defun cashpw/org-gcal-fetch-sleep (n-days)
+  "Fetch the last N-DAYS of sleep calendar."
+  (interactive "nDays to fetch: ")
+  (let* ((previous-profile org-gcal--current-profile)
+         (org-gcal-up-days n-days)
+         (org-gcal-down-days 1)
+         (calendar-path (cdr (car org-gcal-fetch-file-alist)))
+         (org-agenda-files
+          ;; Set limited agenda files to improve performance
+          `(,calendar-path)))
+    (unwind-protect
+        (progn
+          (org-gcal-sync-tokens-clear)
+          (org-gcal-activate-profile cashpw/org-gcal--profile-sleep)
+          (deferred:sync! (org-gcal-fetch)))
+      (when previous-profile
+        (org-gcal-activate-profile previous-profile)))))
+#+end_src
+
+**** Fetch
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org-gcal-fetch ()
+  "Clear calendar buffer and fetch events."
+  (interactive)
+
+  ;; Ignore these methods to improve performance. This is safe
+  ;; because I don't push any events to GCal
+  (cl-letf (((symbol-function 'org-generid-id-update-id-locations) #'ignore)
+            ((symbol-function 'org-gcal-sync-buffer) #'ignore))
+    (flyspell-mode 0)
+
+    (org-gcal-sync-tokens-clear)
+    (let* ((calendar-path (cdr (car org-gcal-fetch-file-alist)))
+           (org-agenda-files
+            ;; Set limited agenda files to improve performance
+            `(,calendar-path)))
+      (deferred:sync! (org-gcal-fetch)))
+
+    (flyspell-mode 1)))
+
+(defun cashpw/org-remove-past-scheduled-events ()
+  "Remove events scheduled in the past from current buffer."
+  (org-map-entries
+   (lambda ()
+     ;; (message "Testing calendar event: %s" (org-entry-get nil "ITEM"))
+     (when (cashpw-time-past-p (org-get-scheduled-time (point)))
+       (org-cut-subtree)
+       (setq org-map-continue-from
+             (save-excursion
+               (beginning-of-line)
+               (point)))))))
+
+(defun cashpw/org-gcal-clear-and-fetch ()
+  "Clear calendar buffer and fetch events."
+  (interactive)
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+  (let ((calendar-path (cdr (car org-gcal-fetch-file-alist))))
+    (with-current-buffer (find-file-noselect calendar-path)
+      (when (cashpw/buffer-contains-regexp-p ":LOGBOOK:")
+        (error
+         "Wait! Calendar contains un-archived LOGBOOK entries. Archive these, then try again."))
+      ;; Keep the buffer tidy
+      (cashpw/org-remove-past-scheduled-events)
+
+      ;; Delete extra TODOs. We'll re-create these in the fetch if they're still relevant.
+      (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-extract-todos-tag)
+      (cashpw/org-gcal-remove-tagged-entries cashpw/org-gcal-prepare-tag))
+    (cashpw/org-gcal-fetch)))
+#+end_src
+
+***** Fetch once a day
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(when (cashpw/machine-p 'personal)
+  (add-hook 'cashpw/run-once-a-day-hooks #'cashpw/org-gcal-clear-and-fetch))
+#+end_src
+
+*** =use-package=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-gcal-extras
+  (add-to-list 'plstore-encrypt-to (secret-get "gpg-key-id" nil (cashpw/machine-p 'personal-phone)))
+  (org-gcal-activate-profile cashpw/org-gcal--profile-personal)
+  (use-package! org-gcal
+    :custom
+    (plstore-cache-passphrase-for-symmetric-encryption t)
+    (org-gcal-up-days 1)
+    (org-gcal-down-days 8)
+    (org-gcal-remove-cancelled-events t)
+    (org-gcal-remove-events-with-cancelled-todo t)
+    ;; See https://github.com/kidd/org-gcal.el/issues/172
+    (org-gcal-auto-archive nil)
+    (org-gcal-recurring-events-mode 'top-level)
+
+    :config
+    (setq epg-pinentry-mode 'loopback)
+    ;; https://github.com/dengste/org-caldav/issues/117
+    (setenv "GPG_AGENT_INFO")
+    ;; this avoids problem with hanging in "Contacting host: oauth2.googleapis.com:443"
+    ;; (fset 'epg-wait-for-status 'ignore)
+    (org-gcal-reload-client-id-secret)))
+
+#+end_src
+
+** =org-habit=
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(after! org-habit
+  (setq
+    org-habit-show-done-always-green t))
+#+end_src
+
+** =org-multi-clock=
+
+#+begin_quote
+org-multi-clock is a small package that extends the functionality of org-mode clocking system.
+
+It does not change the default behavior, it adds two functions to have multiple org-clocks in parallel.
+
+https://gitlab.com/OlMon/org-multi-clock
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-multi-clock
+  :recipe (:host gitlab
+           :repo "OlMon/org-multi-clock"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-multi-clock)
+#+end_src
+
+** =org-ql=
+
+#+begin_quote
+/[[github:alphapapa/org-ql][alphapapa/org-ql]]/
+
+This package provides a query language for Org files. It offers two syntax styles: Lisp-like sexps and search engine-like keywords.
+#+end_quote
+
+I spent a few hours on [2024-05-26 Sun] experimenting with =org-ql= with the goal of speeding up my agendas. Unfortunately, I couldn't get feature parity (no support for time grid) and the queries were slower than =org-agenda=.
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-ql)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-ql)
+#+end_src
+
+** =org-super-agenda=
+
+#+begin_quote
+This package lets you "supercharge" your Org daily/weekly agenda. The idea is to group items into sections, rather than having them all in one big list.
+
+/[[github:alphapapa/org-super-agenda][alphapapa/org-super-agenda]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-super-agenda)
+#+end_src
+** =summarize-agenda-time= (efforts)
+
+#+begin_quote
+Group clocktable entries by their first tag.
+
+/[[github:cashpw/summarize-agenda-time][cashpw/summarize-agenda-time]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! summarize-agenda-time
+  :recipe (:host github
+           :repo "cashpw/summarize-agenda-time"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! summarize-agenda-time
+  :after org
+  :custom
+  (summarize-agenda-time--ignore-entry-fns
+   '((lambda (marker)
+       (member
+        (org-with-point-at marker
+          (org-entry-get
+           nil
+           "ITEM"))
+        '("Huel shake"
+          "Fall asleep")))))
+  (summarize-agenda-time--max-duration-minutes (+
+                                                ;; 05:00-10:00
+                                                (* 60 5)
+                                                ;; 10:00-17:00: Work
+                                                ;; 17:00-20:30
+                                                (* 60 3.5)
+                                                ;; 20:30-21:00: Fall asleep
+                                                ;; 21:00-05:00: Sleep
+                                                )))
+#+end_src
+
+* Agenda Helpers
+
+** Create TODO
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(cl-defun cashpw/org-insert-todo
+    (text &key point-or-marker priority effort category start-time end-time include-hh-mm)
+  "Insert TODO with TEXT at POINT-OR-MARKER.
+
+Optionally set the TODO's PRIORITY, EFFORT, CATEGORY, START-TIME, and END-TIME.  If INCLUDE-HH-MM is non-nil, include hours and minutes in the schedule timestamp."
+  (save-excursion
+    (when point-or-marker
+      (goto-char point-or-marker))
+    (org-insert-todo-heading-respect-content)
+    (insert text)
+    (quiet!
+      (when priority
+        (org-priority priority))
+      (when effort
+        (org-set-property "Effort" effort))
+      (when category
+        (org-set-property "CATEGORY" category))
+      (when (or start-time end-time)
+        (cond
+         ((and end-time (null start-time))
+          (error "Cannot schedule end-time without start-time."))
+         ((and start-time end-time)
+          (org-schedule
+           nil
+           (format "%s-%s"
+                   (format-time-string "%F %a %H:%M" start-time)
+                   (format-time-string "%H:%M" end-time))))
+         ((and start-time include-hh-mm)
+          (org-schedule nil (format-time-string "%F %a %H:%M" start-time)))
+         ((and start-time)
+          (org-schedule nil (format-time-string "%F %a" start-time))))))))
+#+end_src
+
+** Scheduling task for my calendar blocks
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(setq
+ cashpw/-schedule-block-day '(:start "07:00" :end "19:00")
+ cashpw/-schedule-block-one '(:start "07:00" :end "09:00")
+ cashpw/-schedule-block-two '(:start "09:00" :end "11:00")
+ cashpw/-schedule-block-three '(:start "14:00" :end "16:00")
+ cashpw/-schedule-block-four '(:start "16:00" :end "18:00"))
+
+(defun cashpw/org-schedule-for-block (block-time &optional date)
+  "Schedule the current Org entry for the time range in BLOCK-TIME on DATE."
+  (interactive)
+  (let ((start-time (plist-get block-time :start))
+        (end-time (plist-get block-time :end))
+        (date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+
+(defun cashpw/org-schedule-today-from-to (start-time end-time &optional date)
+  "Schedule the current Org entry from START-TIME to END-TIME on DATE."
+  (interactive)
+  (let ((date (or date "today")))
+    (org-schedule nil (format "%s %s-%s"
+                              date
+                              start-time
+                              end-time))))
+#+end_src
+
+
+

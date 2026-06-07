@@ -1,0 +1,591 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2026-05-25 Mon 11:55]
+:END:
+#+title: Personal Emacs config: Org - Capture Templates
+#+author: Cash Prokop-Weaver
+#+EMAIL: cashbweaver@gmail.com
+#+STARTUP: showeverything
+
+* Capture Templates
+:PROPERTIES:
+:ID:       79489d89-5e68-403c-b4cd-a9b8a8598714
+:END:
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/org--populate-missing-todo-props ()
+  "Prompot user for missing todo properties and apply them.."
+  (cl-destructuring-bind
+      (priority effort category scheduled deadline)
+      (let ((categories (mapcar #'list (org-property-values "CATEGORY"))))
+        (read-multi
+         `((:prompt
+            "Priority"
+            :default
+            ,(if (org-extras-get-priority (point))
+                 (org-priority-to-value (org-extras-get-priority (point)))
+               nil)
+            :read-fn
+            (lambda (_ default)
+              (string-to-number
+               (read-string (format "Priority %s-%s: "
+                                    (number-to-string org-priority-highest)
+                                    (number-to-string org-priority-lowest))
+                            (when default
+                              (number-to-string default)))))
+            :stringify-fn (lambda (response) (number-to-string response)))
+           (:prompt
+            "Effort"
+            :default ,(org-extras-get-property (point) "Effort")
+            :read-fn (lambda (_ default) (read-string "Effort: " default)))
+           (:prompt
+            "Category"
+            :default
+            ,(let ((category (org-get-category)))
+               (cond
+                ((or (string-equal "???" category)
+                     (string-equal "Uncategorized" category))
+                 nil)
+                ((string-equal (file-name-base) category)
+                 nil)
+                (t
+                 category)))
+            :read-fn
+            (lambda (_ default)
+              (completing-read "Category: " categories
+                               nil
+                               'require-match
+                               default)))
+           (:prompt
+            "Schedule"
+            :default ,(org-get-scheduled-time (point))
+            :read-fn
+            (lambda (_ default)
+              (with-temp-buffer
+                (org-mode)
+                (org-insert-heading)
+                (condition-case nil
+                    (quiet!
+                      (when default
+                        (org-schedule nil default))
+                      (org-schedule nil))
+                  (quit
+                   nil))
+                (org-get-scheduled-time (point))))
+            :stringify-fn (lambda (response) (format-time-string "%F %T%Z" response)))
+           (:prompt
+            "Deadline"
+            :default ,(org-get-deadline-time (point))
+            :read-fn
+            (lambda (_ default)
+              (with-temp-buffer
+                (org-mode)
+                (org-insert-heading)
+                (condition-case nil
+                    (quiet!
+                      (when default
+                        (org-deadline nil default))
+                      (org-deadline nil))
+                  (quit
+                   nil))
+                (org-get-deadline-time (point))))
+            :stringify-fn (lambda (response) (format-time-string "%F %T%Z" response))))))
+    (org-priority priority)
+    (org-set-effort nil effort)
+    (org-set-property "CATEGORY" category)
+    (if scheduled
+        (org-schedule nil scheduled)
+      (org-schedule '(4)))
+    (if deadline
+        (org-deadline nil deadline)
+      (org-deadline '(4)))))
+
+(defun cashpw/org--prompt-for-priority-when-missing ()
+  "Prompt for Effort if it's missing."
+  (unless (org-extras-get-priority (point))
+    (org-priority)))
+
+(defun cashpw/org--prompt-for-effort-when-missing ()
+  "Prompt user for an effort until they provide a non-empty value."
+  (while
+      (or
+       (not (org-entry-get (point) "Effort"))
+       ;; The default case (clicking <enter> without typing an effort) sets :EFFORT: to an empty string.
+       (string= (org-entry-get (point) "Effort") ""))
+    (org-set-effort)))
+
+(defun cashpw/org--prompt-for-deadline-when-missing ()
+  "Prompt user for an deadline if there isn't already one present."
+  (unless (org-get-deadline-time (point))
+    (condition-case nil
+        (org-deadline nil)
+      (quit))))
+
+(defun cashpw/org--prompt-for-schedule-when-missing ()
+  "Prompt user for an schedule if there isn't already one present."
+  (unless (org-get-scheduled-time (point))
+    (condition-case nil
+        (org-schedule nil)
+      (quit))))
+
+(defun cashpw/org--prompt-for-category-when-missing ()
+  "Prompt for category if it's missing."
+  (let ((file-category (org-get-category (point-min)))
+        (category (org-get-category (point))))
+    (when (or (not category)
+              (if (file-equal-p buffer-file-name cashpw/path--personal-todos)
+                  (string= category file-category)
+                ;; Allow default category in non-todo files.
+                nil))
+      (org-set-property "CATEGORY" (org-read-property-value "CATEGORY")))))
+
+(after!
+  org
+  (setq
+   cashpw/org-capture-templates--todo
+   `(:group
+     "Todo"
+     :children
+     (("Todo"
+       :keys "t"
+       :file (lambda () (cashpw/path-todos))
+       :children
+       (("Todo"
+         :keys "t"
+         :after-finalize
+         (lambda ()
+           (when (not org-note-abort)
+             (save-excursion
+               (with-current-buffer (marker-buffer
+                                     org-capture-last-stored-marker)
+                 (goto-char org-capture-last-stored-marker)
+                 (cashpw/org--populate-missing-todo-props)))))
+         :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+        ("Roam"
+         :keys "r"
+         :file (lambda () (concat cashpw/path--notes-dir "/todos-roam.org"))
+         :template ("* TODO %?" ":PROPERTIES:" ":Created: %U" ":END:"))
+        ("Email"
+         :keys "e"
+         :message-id (lambda () (cashpw/email-get-message-id))
+         :message-subject
+         (lambda ()
+           (s-trim (truncate-string-to-width (cashpw/email-get-subject) 50)))
+         :message-from-to
+         (lambda ()
+           (let* ((to
+                   (plist-get
+                    (cashpw/email--address-properties (cashpw/email-get-to))
+                    :email))
+                  (from
+                   (plist-get
+                    (cashpw/email--address-properties (cashpw/email-get-from))
+                    :email)))
+             (if (and (member to cashpw/email-addresses--personal)
+                      (member from cashpw/email-addresses--personal))
+                 ""
+               (format "%s → %s"
+                       (if (member from cashpw/email-addresses--personal)
+                           "me"
+                         from)
+                       (if (member to cashpw/email-addresses--personal)
+                           "me"
+                         to)))))
+         :children
+         (("Follow-up"
+           :keys "F"
+           :before-finalize (lambda () (org-schedule nil))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] Follow-up: [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Follow-up tomorrow"
+           :keys "f"
+           :before-finalize
+           (lambda ()
+             (let ((tomorrow (time-add (current-time) (days-to-time 1))))
+               (org-schedule nil tomorrow)))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] Follow-up: [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Todo today"
+           :keys "e"
+           :before-finalize (lambda () (org-schedule nil (current-time)))
+           :immediate-finish t
+           :template
+           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))
+          ("Todo (unscheduled)"
+           :keys "E"
+           :template
+           ("* TODO [#2] [[notmuch:%{message-id}][%{message-subject}]] (%{message-from-to}) :email:"
+            ":PROPERTIES:"
+            ":Created: %U"
+            ":END:"))))))))
+   cashpw/org-capture-templates--flashcards
+   `(:group
+     "Flashcards"
+     :file (lambda () (buffer-name))
+     :olp ("Flashcards")
+     :children
+     (("Flashcards"
+       :keys "f"
+       :children
+       (("Cloze"
+         :keys "c"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Source")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-cloze-init 'deletion)))
+        ("Photo"
+         :keys "p"
+         :template
+         ("* %^{Name of card} :photo:"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Back"
+          ""
+          "TODO")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-double-init)))
+        ("Double"
+         :keys "d"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Back"
+          ""
+          "TODO"
+          ""
+          "* TODO Source")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-double-init)))
+        ("Normal"
+         :keys "n"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Back"
+          ""
+          "TODO"
+          ""
+          "* TODO Source")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-normal-init)))
+        ("Vocab"
+         :keys "v"
+         :template
+         ("* %^{Term}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Source")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-vocab-init)))
+        ("Text input"
+         :keys "t"
+         :template
+         ("* %^{Name of card}"
+          ":PROPERTIES:"
+          ":CREATED: %U"
+          ":END:"
+          ""
+          "%?"
+          ""
+          "* TODO Back"
+          ""
+          "TODO"
+          ""
+          "* TODO Source")
+         :prepare-finalize
+         (lambda ()
+           (goto-char (point-min))
+           (org-fc-type-text-input-init)))))))
+   cashpw/org-capture-templates--journal
+   `(:group
+     "Journal"
+     :file
+     (lambda ()
+       (format "%s/%s.org"
+               cashpw/path--notes-dir
+               (format-time-string "%F" (current-time))))
+     :immediate-finish nil
+     :children
+     ("Journal"
+      :keys "j"
+      :children
+      (("Thought record"
+        :keys "t"
+        :olp ("Journal" "Me" "Thought records")
+        :record-situation (lambda () (read-string "Situation/Trigger: "))
+        :record-pre-reflection-emotions
+        (lambda ()
+          (read-string
+           "Pre-reflection emotions (e.g. Anxiety 40%, shame 80%): "))
+        :record-automatic-thought (lambda () (read-string "Automatic thought: "))
+        :record-alternative-thought (lambda () (read-string "Alternative thought: "))
+        :record-distortions
+        (lambda ()
+          (let* ((distortions
+                  '(("All-or-nothing thinking"
+                     .
+                     "id:161a1843-d228-4e46-afd0-f587356ef03a")
+                    ("Mind reading" . "id:85eee943-87dc-4728-a03e-63a096ff8df5")
+                    ("Fortune-telling"
+                     .
+                     "id:522e7027-ebac-4c06-8de5-ab338aec390a")
+                    ("Labeling" . "id:f67f2787-f097-466f-a5c9-21cd8d6286ba")
+                    ("Emotional reasoning"
+                     .
+                     "id:7b9b6518-05eb-4d48-9265-459847052d4d")
+                    ("Should/Must" . "id:2a3b0da0-7d1f-4f36-a161-c9fb17d64dfa")
+                    ("Personalization"
+                     .
+                     "id:582999ae-1911-4a97-8c46-0f2a811ecfa2")
+                    ("Blaming" . "id:40d20f7b-3fe1-453c-968a-04d6a19d2c60")
+                    ("Always being right"
+                     .
+                     "id:8865a566-0748-4c34-84b0-43d91b35ea3b")
+                    ("Magnification/Minimization"
+                     .
+                     "id:bde41a0c-7893-47b9-b059-1c4165ad3e94")
+                    ("Catastrophizing"
+                     .
+                     "id:f528e19d-6acd-44c8-b5fb-9eaaf6b16f6f")
+                    ("Overgeneralizing"
+                     .
+                     "id:be56163c-6d7e-4908-a842-d5672dbe27c0")
+                    ("Disqualifying the positive"
+                     .
+                     "id:7fb82fde-fdf7-4dd9-a717-0639d4de3524")
+                    ("Filtering" . "id:0b509a6f-0fc2-41a3-8770-4c1f9a881a04")))
+                 (selections
+                  (completing-read-multiple "Distortions: " distortions nil t))
+                 (link-list
+                  (string-join (--map
+                                (format "- %s
+"
+                                        (org-link-make-string
+                                         (format "id:%s"
+                                                 (alist-get it distortions
+                                                            nil nil #'string=))
+                                         it))
+                                selections)
+                               "")))
+            link-list))
+        :record-post-reflection-emotions
+        (lambda ()
+          (read-string
+           "Post-reflection emotions (e.g. Anxiety 30%, shame 50%): "))
+        :template
+        "** %U
+
+,*** Situation/Trigger
+
+%{record-situation}
+
+,*** Pre-reflection emotions
+
+%{record-pre-reflection-emotions}
+
+,*** Automatic thought
+
+%{record-automatic-thought}
+
+,*** Distortions
+
+%{record-distortions}
+,*** Alternative thought(s)
+
+%{record-alternative-thought}
+
+,*** Post-reflection emotions
+
+%{record-post-reflection-emotions}%?"))))
+   cashpw/org-capture-templates--gallery
+   `(:group
+     "Gallery"
+     :file (lambda () (buffer-name))
+     :children
+     (("Gallery"
+       :keys "g"
+       :children
+       (("Photo"
+         :keys "p"
+         :olp ("Photos")
+         :immediate-finish t
+         :template
+         (lambda ()
+           (let* ((image-url
+                   (read-string "Image URL: "
+                                (gui-get-selection 'CLIPBOARD 'STRING)))
+                  (title (read-string "Title: "))
+                  (description (read-string "Description: "))
+                  (description
+                   (if (string-empty-p description)
+                       description
+                     (concat "\n" description)))
+                  (artist-name
+                   (when (member "person" (cashpw/org-get-filetags))
+                     (org-get-title)))
+                  (artist-tag
+                   (when artist-name
+                     (-->
+                      (downcase artist-name)
+                      (replace-regexp-in-string " " "_" it)
+                      (replace-regexp-in-string "-" "_" it))))
+                  (tags (org-make-tag-string (list "photo" artist-tag)))
+                  (image-link
+                   (progn
+                     (cashpw/org-download-image--no-insert image-url)
+                     (if (and (>= (string-to-number org-version) 9.3)
+                              (eq org-download-method 'attach))
+                         (format "[[attachment:%s]%s]"
+                                 (org-link-escape
+                                  (file-relative-name org-download-path-last-file
+                                                      (org-attach-dir)))
+                                 (if (string-empty-p title)
+                                     ""
+                                   (format "[%s]" title)))
+                       (format "[[file:%s]%s]"
+                               (org-link-escape
+                                (funcall
+                                 org-download-abbreviate-filename-function
+                                 org-download-path-last-file))
+                               (if (string-empty-p title)
+                                   ""
+                                 (format "[%s]" title)))))))
+             (s-lex-format
+              "* ${image-link} ${tags}
+:PROPERTIES:
+:CREATED: %U
+:IMAGE_SOURCE: ${image-url}
+:END:
+${description}"))))))))
+   org-capture-templates
+   (doct
+    `(("Website"
+       :keys "w"
+       :file ""
+       :template "* %a :website:\n\n%U %?\n\n%:initial")
+      ,cashpw/org-capture-templates--todo
+      ,cashpw/org-capture-templates--flashcards
+      ,cashpw/org-capture-templates--journal
+      ,cashpw/org-capture-templates--gallery))))
+#+end_src
+
+
+* Capture Packages
+
+
+** =doct= ([[github:progfolio/doct][Declarative Org Capture Template]])
+
+#+begin_quote
+=doct= is a function that provides an alternative, declarative syntax for describing Org capture templates.
+
+/[[github:progfolio/doct][progfolio/doct]]/
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! doct)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! doct
+  :commands (doct))
+#+end_src
+
+I use =doct= to configure my [[id:79489d89-5e68-403c-b4cd-a9b8a8598714][capture templates]].
+
+** =org-protocol=
+
+#+begin_quote
+org-protocol intercepts calls from emacsclient to trigger custom actions without external dependencies.
+
+https://orgmode.org/worg/org-contrib/org-protocol.html
+#+end_quote
+
+Doom provides =org-protocol=
+
+** =org-protocol=
+
+*** Config
+
+Also see [[id:9197f81d-a33c-4944-a83e-d81b33b64fd0][=org-protocol-capture-html=]].
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-protocol
+  :config
+  (setq
+   org-protocol-default-template-key "w"))
+#+end_src
+
+** =org-protocol-capture-html=
+:PROPERTIES:
+:ID:       9197f81d-a33c-4944-a83e-d81b33b64fd0
+:END:
+
+#+begin_quote
+org-protocol is awesome, but browsers do a pretty poor job of turning a page’s HTML content into plain-text. However, Pandoc supports converting from HTML to org-mode, so we can use it to turn HTML into Org-mode content! It can even turn HTML tables into Org tables!
+
+https://github.com/alphapapa/org-protocol-capture-html
+#+end_quote
+
+*** Package
+
+#+begin_src emacs-lisp :tangle packages-personal.el
+(package! org-protocol-capture-html
+  :recipe (:host github
+           :repo "alphapapa/org-protocol-capture-html"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(use-package! org-protocol-capture-html
+  :after org-protocol)
+#+end_src
