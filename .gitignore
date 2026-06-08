@@ -11,8 +11,8 @@ config/doom/config-work.el*
 config/doom/config-work.org*
 config/doom/packages-work.el*
 config/doom/recent-who.txt
-config/lisp/org-buganizer*
-config/lisp/google-*
+config/doom/lisp/org-buganizer*
+config/doom/lisp/google-*
 config/systemd/user/default.target.wants/shpool.service
 config/systemd/user/cosmos-*
 config/systemd/user/default.target.wants/cosmos-*

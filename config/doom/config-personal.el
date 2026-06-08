@@ -11103,8 +11103,8 @@ Reference:https://stackoverflow.com/q/23622296"
  "M-j" #'pdf-view-scroll-up-or-next-column)
 
 ;; (use-package! org-window-habit
-;; :config
-;; (org-window-habit-mode +1))
+  ;; :config
+  ;; (org-window-habit-mode +1))
 
 (defun cashpw/org-today--select-marker-from-alist (label-to-marker-alist)
   "Prompt user to select from LABEL-TO-MARKER-ALIST and to to that marker."
@@ -11143,21 +11143,21 @@ Reference:https://stackoverflow.com/q/23622296"
   "Prompt user to select a todo, then go to it."
   (interactive)
   (let* ((vertico-sort-override-function #'identity)
-         (marker
-          (cashpw/org-today--select-marker-from-alist
-           (-sort
-            #'(lambda (a b) (string< (car a) (car b)))
-            (org-ql-query
-              :select (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
-              :from (cashpw/org-agenda-view--today--files)
-              :where
-              `(and (or (tags "everyday") (deadline 0) (scheduled 0))
-                    (and (not (todo "CANCELLED"))
-                         (not (todo "DECLINED"))
-                         (not (todo "DONE"))
-                         (not (todo "KILL"))
-                         (not (todo "MOVE"))
-                         (not (todo "RESCHEDULE")))))))))
+        (marker
+         (cashpw/org-today--select-marker-from-alist
+          (-sort
+           #'(lambda (a b) (string< (car a) (car b)))
+           (org-ql-query
+             :select (lambda () (cons (cashpw/org-today--format-heading) (point-marker)))
+             :from (cashpw/org-agenda-view--today--files)
+             :where
+             `(and (or (tags "everyday") (deadline 0) (scheduled 0))
+                   (and (not (todo "CANCELLED"))
+                        (not (todo "DECLINED"))
+                        (not (todo "DONE"))
+                        (not (todo "KILL"))
+                        (not (todo "MOVE"))
+                        (not (todo "RESCHEDULE")))))))))
     (switch-to-buffer (marker-buffer marker))
     (goto-char marker)))
 
@@ -11362,4 +11362,4 @@ Open clocks (active tasks without an end time) are ignored."
          (push (org-time-string-to-time key) qualifying-dates)))
      day-totals)
 
-    qualifyi
+    qualifying-dates))
