@@ -2,15 +2,22 @@
 *_brightness.txt
 config/doom/foo.md
 
+# Emacs
+config/doom/\*doom:scratch\*
+
 # Work files
-config/doom/init-work.el
-config/doom/config-work.el
-config/doom/config-work.org
-config/doom/packages-work.el
+config/doom/init-work.el*
+config/doom/config-work.el*
+config/doom/config-work.org*
+config/doom/packages-work.el*
+config/doom/recent-who.txt
 config/systemd/user/default.target.wants/shpool.service
 config/systemd/user/cosmos-*
 config/systemd/user/default.target.wants/cosmos-*
 config/systemd/user/timers.target.wants/cosmos-*
+config/systemd/user/jetski-*
+config/systemd/user/default.target.wants/jetski-*
+config/systemd/user/timers.target.wants/jetski-*
 
 # zsh
 *.zwc
