@@ -21,3 +21,7 @@ alias v='nvim'
 alias rgrep="rg"
 ## Zotra
 #alias zotra='node ~/.local/share/zotra-server/bin/index.js'
+
+# Emacs recovery
+alias emacs-unstuck="pkill -USR2 '^emacs(-nox)?$'"
+

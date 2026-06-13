@@ -5654,12 +5654,17 @@ because it's slow."
 TODO"
   (with-current-buffer (or (and (stringp file-path-or-buffer)
                                 (find-file-noselect file-path-or-buffer))
-                           (and (bufferp file-path-or-buffer) file-path-or-buffer)
+                           (and (bufferp file-path-or-buffer)
+                                file-path-or-buffer)
                            (current-buffer))
     (and (derived-mode-p 'org-mode)
          (buffer-file-name)
          (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
-         (member "public" (org-node--get-filetags)))))
+         (member
+          "public"
+          (save-excursion
+            (goto-char (point-min))
+            (org-node-get-tags-here))))))
 
 (defun cashpw/buffers-with-minor-mode (mode)
   "Return a list of buffers where minor mode MODE is active."
@@ -5674,15 +5679,19 @@ TODO"
   (if (and (derived-mode-p 'org-mode)
            (buffer-file-name)
            (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
-           (member "public" (org-node--get-filetags)))
+           (member
+            "public"
+            (save-excursion
+              (goto-char (point-min))
+              (org-node-get-tags-here))))
       (cashpw/notes-set-background-color--public)
     (cashpw/notes-set-background-color--private))
   (--each
       (cashpw/buffers-with-minor-mode 'cashpw/org-notes-private-link-mode)
     (with-current-buffer it
-      ;; Update highlighted links based on new public/private state.
-      (cashpw/org-notes-private-link-mode 'toggle)
-      (cashpw/org-notes-private-link-mode 'toggle))))
+     ;; Update highlighted links based on new public/private state.
+     (cashpw/org-notes-private-link-mode 'toggle)
+     (cashpw/org-notes-private-link-mode 'toggle))))
 
 (defun cashpw/notes-set-background-color--on-save ()
   "Helper to apply background color only if the saved buffer is in Org mode."

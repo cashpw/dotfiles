@@ -40,8 +40,6 @@ Startblock:
   all comments are resolved
 ```
 
-#AI
-
 R=startblock
 WANT_LGTM=ALL
 MARKDOWN=true
