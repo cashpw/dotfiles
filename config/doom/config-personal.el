@@ -4461,12 +4461,16 @@ Use the Org ID if it exists, otherwise fallback to the file path."
   (setq
   org-roam-dailies-directory cashpw/path--notes-dir
   org-roam-dailies-capture-templates
-  `(("d" "default" entry "* %?"
-     :target
-     (file+head
-      "%<%Y-%m-%d>.org"
-      ,(concat
-        ":PROPERTIES:
+  (doct-org-roam
+   `((:group
+      "Dailies"
+      :type entry
+      :template "* %?"
+      :file "%<%Y-%m-%d>.org"
+      :children
+      (("default"
+        :keys "d"
+        :head ":PROPERTIES:
 :ID: %(org-id-new)
 :END:
 #+title: %<%Y-%m-%d>
@@ -4499,7 +4503,11 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 2. TODO
 3. TODO
 
-* Retrospective
+* TODO [#2] Retrospective
+SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 86400 (org-capture-get :default-time)))>
+:PROPERTIES:
+:Effort:   2m
+:END:
 ** 1. Daily Clock Report Verification
 #+BEGIN: clocktable-by-category :files-fn org-agenda-files :block \"%<%Y-%m-%d>\" :merge-duplicate-headlines t
 #+END:
@@ -4508,13 +4516,13 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 ** 3. What were the bottlenecks, distractions, or mistakes?
 ** 4. Lessons learned & daily course corrections:
 
-* Flashcards :noexport:")))
-    (w
-     " " week " plain " %?
-     " :target
-(file+head %<%Y-W%V>.org"
-     ,(concat
-       "#+title: %<%Y-W%V>
+* Flashcards :noexport:")
+       ("week"
+        :keys "w"
+        :type plain
+        :template "%?"
+        :file "%<%Y-W%V>.org"
+        :head ",#+title: %<%Y-W%V>
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+category: Plan/Review
@@ -4529,7 +4537,7 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 #+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
 #+END:
 
-* Flashcards :noexport:")))))
+* Flashcards :noexport:")))))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."

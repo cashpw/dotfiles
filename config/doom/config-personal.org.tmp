@@ -5320,7 +5320,7 @@ Doom Emacs [[https://github.com/doomemacs/doomemacs/blob/98d753e1036f76551ccaa61
 ** Org
 
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-02 Tue 07:01]
+:LAST_MODIFIED: [2026-06-05 Fri 21:25]
 :END:
 #+title: Personal Emacs config: Org
 #+author: Cash Prokop-Weaver
@@ -6123,7 +6123,7 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
   :custom (org-modern-horizontal-rule "──────────")
   (org-modern-star 'fold)
   (org-modern-hide-stars nil)
-  (org-modern-table-vertical (if (display-graphic-p) 3 1))
+  (org-modern-table (display-graphic-p))
   (org-modern-list
    '((?+ . "•")
      (?- . "•")
@@ -6179,29 +6179,11 @@ A replacement for [[id:993ce95a-3771-4831-983a-d526b06fe00c][org's +pretty flag]
        :inverse-video t))))
   :config
   ;; (set-face-attribute 'org-modern-horizontal-rule nil :strike-through "gray70")
-  (global-org-modern-mode)
-
-  ;; Force org-modern table separators to use hl-line face (subtle background)
-  ;; instead of inheriting from org-table (which matches text color).
-  (defun my/org-modern-table-separator-hl-line (orig-fun &rest args)
-    "Intercept org-modern--table to replace separator face with hl-line."
-    (let ((beg (match-beginning 0))
-          (end (match-end 0)))
-      (apply orig-fun args)
-      (when (and beg end)
-        (save-excursion
-          (let ((pos beg))
-            (while (< pos end)
-              (let ((next (next-single-property-change pos 'face nil end))
-                    (face (get-text-property pos 'face)))
-                (when (equal face '(:inherit org-table :inverse-video t))
-                  (put-text-property pos (or next end) 'face 'hl-line))
-                (setq pos (or next end)))))))))
-  (advice-add 'org-modern--table :around #'my/org-modern-table-separator-hl-line))
+  (global-org-modern-mode))
 #+end_src
 
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-05 Fri 21:16]
+:LAST_MODIFIED: [2026-06-13 Sat 21:38]
 :END:
 #+title: Personal Emacs config: Org - Roam & Notes
 #+author: Cash Prokop-Weaver
@@ -6872,12 +6854,16 @@ Use the Org ID if it exists, otherwise fallback to the file path."
   (setq
   org-roam-dailies-directory cashpw/path--notes-dir
   org-roam-dailies-capture-templates
-  `(("d" "default" entry "* %?"
-     :target
-     (file+head
-      "%<%Y-%m-%d>.org"
-      ,(concat
-        ":PROPERTIES:
+  (doct-org-roam
+   `((:group
+      "Dailies"
+      :type entry
+      :template "* %?"
+      :file "%<%Y-%m-%d>.org"
+      :children
+      (("default"
+        :keys "d"
+        :head ":PROPERTIES:
 :ID: %(org-id-new)
 :END:
 ,#+title: %<%Y-%m-%d>
@@ -6910,7 +6896,11 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 2. TODO
 3. TODO
 
-,* Retrospective
+,* TODO [#2] Retrospective
+SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 86400 (org-capture-get :default-time)))>
+:PROPERTIES:
+:Effort:   2m
+:END:
 ,** 1. Daily Clock Report Verification
 ,#+BEGIN: clocktable-by-category :files-fn org-agenda-files :block \"%<%Y-%m-%d>\" :merge-duplicate-headlines t
 ,#+END:
@@ -6919,13 +6909,13 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 ,** 3. What were the bottlenecks, distractions, or mistakes?
 ,** 4. Lessons learned & daily course corrections:
 
-,* Flashcards :noexport:")))
-    (w
-     " " week " plain " %?
-     " :target
-(file+head %<%Y-W%V>.org"
-     ,(concat
-       "#+title: %<%Y-W%V>
+,* Flashcards :noexport:")
+       ("week"
+        :keys "w"
+        :type plain
+        :template "%?"
+        :file "%<%Y-W%V>.org"
+        :head ",#+title: %<%Y-W%V>
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+category: Plan/Review
@@ -6940,7 +6930,7 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 #+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
 #+END:
 
-,* Flashcards :noexport:")))))
+,* Flashcards :noexport:")))))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
@@ -8301,12 +8291,17 @@ because it's slow."
 TODO"
   (with-current-buffer (or (and (stringp file-path-or-buffer)
                                 (find-file-noselect file-path-or-buffer))
-                           (and (bufferp file-path-or-buffer) file-path-or-buffer)
+                           (and (bufferp file-path-or-buffer)
+                                file-path-or-buffer)
                            (current-buffer))
     (and (derived-mode-p 'org-mode)
          (buffer-file-name)
          (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
-         (member "public" (org-node--get-filetags)))))
+         (member
+          "public"
+          (save-excursion
+            (goto-char (point-min))
+            (org-node-get-tags-here))))))
 
 (defun cashpw/buffers-with-minor-mode (mode)
   "Return a list of buffers where minor mode MODE is active."
@@ -8321,15 +8316,19 @@ TODO"
   (if (and (derived-mode-p 'org-mode)
            (buffer-file-name)
            (f-child-of-p (buffer-file-name) cashpw/path--notes-dir)
-           (member "public" (org-node--get-filetags)))
+           (member
+            "public"
+            (save-excursion
+              (goto-char (point-min))
+              (org-node-get-tags-here))))
       (cashpw/notes-set-background-color--public)
     (cashpw/notes-set-background-color--private))
   (--each
       (cashpw/buffers-with-minor-mode 'cashpw/org-notes-private-link-mode)
     (with-current-buffer it
-      ;; Update highlighted links based on new public/private state.
-      (cashpw/org-notes-private-link-mode 'toggle)
-      (cashpw/org-notes-private-link-mode 'toggle))))
+     ;; Update highlighted links based on new public/private state.
+     (cashpw/org-notes-private-link-mode 'toggle)
+     (cashpw/org-notes-private-link-mode 'toggle))))
 
 (defun cashpw/notes-set-background-color--on-save ()
   "Helper to apply background color only if the saved buffer is in Org mode."
