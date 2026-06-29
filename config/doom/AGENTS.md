@@ -22,6 +22,14 @@ referenced via `#+INCLUDE:` directives. When editing or adding configuration,
 prefer modularity and move settings out of `config-personal.org` into a separate
 file if they form a logical, cohesive group.
 
+## Emacs source and packages
+
+- Emacs: ~/.config/emacs
+- All installed Emacs packages: ~/.config/emacs/.local/straight/repos/
+- Config files: Symlinked to ~/.config/doom
+
+Prefer reading Emacs and package source code locally rather than searching the web. However, you should still search the web for examples, usage, packages we don't have installed, etc.
+
 ## Crucial Rules for Modifying Configuration
 
 ### 1. Never Edit Elisp Files Manually

@@ -3827,6 +3827,7 @@ The hierarchy is represented by '>'. For example, the input
 (defun cashpw/org-categorized-p ()
   "Return non-nil when the heading at point is categorized."
   (let ((category (org-get-category)))
+    (message "Testing category: %s" category)
     (and
      (--any-p
       (s-starts-with-p it category)
@@ -4411,17 +4412,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
         org-roam-ui-open-on-start t))
 
 
-(defun cashpw/journal--remove-old-hastodo ()
-  "Remove hastodo tag from old journal entries matching PATTERN."
-  (interactive)
-  (let ((journal-files
-         (cashpw/org-files-with-tags
-          '("hastodo" "journal") org-roam-directory)))
-    (dolist (journal-file journal-files)
-      (with-current-buffer (find-file-noselect journal-file)
-        (set-buffer-modified-p t)
-        (save-buffer)))))
-
 (defun cashpw-org-id-from-file (path)
   "Get the Org ID from the file at PATH, if it exists."
   (when (file-exists-p path)
@@ -4460,16 +4450,12 @@ Use the Org ID if it exists, otherwise fallback to the file path."
   (setq
   org-roam-dailies-directory cashpw/path--notes-dir
   org-roam-dailies-capture-templates
-  (doct-org-roam
-   `((:group
-      "Dailies"
-      :type entry
-      :template "* %?"
-      :file "%<%Y-%m-%d>.org"
-      :children
-      (("default"
-        :keys "d"
-        :head ":PROPERTIES:
+  `(("d" "default" entry "* %?"
+     :target
+     (file+head
+      "%<%Y-%m-%d>.org"
+      ,(concat
+        ":PROPERTIES:
 :ID: %(org-id-new)
 :END:
 #+title: %<%Y-%m-%d>
@@ -4502,11 +4488,7 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 2. TODO
 3. TODO
 
-* TODO [#2] Retrospective
-SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 86400 (org-capture-get :default-time)))>
-:PROPERTIES:
-:Effort:   2m
-:END:
+* Retrospective
 ** 1. Daily Clock Report Verification
 #+BEGIN: clocktable-by-category :files-fn org-agenda-files :block \"%<%Y-%m-%d>\" :merge-duplicate-headlines t
 #+END:
@@ -4515,13 +4497,13 @@ SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 8
 ** 3. What were the bottlenecks, distractions, or mistakes?
 ** 4. Lessons learned & daily course corrections:
 
-* Flashcards :noexport:")
-       ("week"
-        :keys "w"
-        :type plain
-        :template "%?"
-        :file "%<%Y-W%V>.org"
-        :head ",#+title: %<%Y-W%V>
+* Flashcards :noexport:")))
+    (w
+     " " week " plain " %?
+     " :target
+(file+head %<%Y-W%V>.org"
+     ,(concat
+       "#+title: %<%Y-W%V>
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+category: Plan/Review
@@ -4536,7 +4518,7 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 #+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
 #+END:
 
-* Flashcards :noexport:")))))))
+* Flashcards :noexport:")))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
@@ -4564,20 +4546,6 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
   (cashpw/org-clocktable-by-category--week
    (time-subtract (current-time) (days-to-time 7))))
 
-(defun cashpw/journal-add-future-entries (n)
-  "Add N future journal entry files."
-  (interactive "nNumber of future (daily) entries: ")
-  (dotimes (i n)
-    (let* ((time (time-add (current-time) (days-to-time i))))
-      (org-roam-dailies--capture time 'goto "d")
-      (save-buffer)))
-  (cashpw/org-agenda-files--update)
-  (cashpw/journal--remove-old-hastodo))
-
-(defun cashpw/journal-add-seven-future-entries ()
-  "Add seven future (daily) journal entries."
-  (interactive)
-  (cashpw/journal-add-future-entries 7))
 
 (defun get-iso-week-dates (year week)
   "Return a list of YYYY-MM-DD date strings for ISO WEEK of YEAR.
@@ -4591,6 +4559,42 @@ The list starts with Monday and ends with Sunday."
                  (nth 0 gregorian) ; month
                  (nth 1 gregorian)))) ; day
      (number-sequence monday-absolute (+ monday-absolute 6)))))
+
+(defun cashpw/journal--remove-old-hastodo ()
+  "Remove hastodo tag from old journal entries matching PATTERN."
+  (interactive)
+  (let ((journal-files
+         (cashpw/org-files-with-tags
+          '("hastodo" "journal") org-roam-directory)))
+    (dolist (journal-file journal-files)
+      (with-current-buffer (find-file-noselect journal-file)
+        (set-buffer-modified-p t)
+        (save-buffer)))))
+
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto "d")
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-future-weekday-entries (n)
+  "Add N future weekday journal entry files."
+  (interactive "nNumber of future (weekday) entries: ")
+  (let ((weekday-times (cashpw-time-next-n-weekdays n)))
+    (dolist (time weekday-times)
+      (org-roam-dailies--capture time 'goto "d")
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
 
 (use-package!
     zotra
@@ -6500,6 +6504,26 @@ not always show the expected results."
                              default-priority)))
     (s-lex-format "p${priority}")))
 
+(defun cashpw/org-super-agenda--get-priority-category (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker)))
+               (default-priority "?")
+               (priority (or (org-extras-get-priority marker)
+                             default-priority))
+               (category (or (org-get-category marker) "?")))
+    (s-lex-format "p${priority} ${category}")))
+
+(defun cashpw/org-super-agenda--get-priority-title (item)
+  "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
+  (-when-let* ((marker (or (get-text-property 0 'org-marker item)
+                           (get-text-property 0 'org-hd-marker)))
+               (default-priority "?")
+               (priority (or (org-extras-get-priority marker)
+                             default-priority))
+               (title (or (org-entry-get marker "ITEM") "?")))
+    (s-lex-format "p${priority} ${title}")))
+
 (defun cashpw/org-super-agenda--get-bug-id (item)
   "'org-super-agenda' `:auto-map'-compatible for the given ITEM."
   (-when-let* ((marker (or (get-text-property 0 'org-marker item)
@@ -6632,7 +6656,11 @@ Intended for use with `org-super-agenda-groups'."
 
 (defun cashpw/org-agenda--remove-todo (line)
   "Return LINE without todo."
-  (--> line (replace-regexp-in-string "TODO " "" it)))
+  (let ((keywords ())))
+  (-->
+   line
+   (replace-regexp-in-string
+    (concat (regexp-opt (remove "INPROGRESS" org-todo-keywords-for-agenda)) " ") "" it)))
 
 (defun cashpw/org-super-agenda--simplify-map (group)
   "Return GROUP after simplifying each line.
@@ -6644,6 +6672,16 @@ Intended for use with `org-super-agenda' `:transformer'. "
    group
    :items
    (--map (cashpw/org-agenda--simplify-line it) (plist-get group :items))))
+
+(defun cashpw/org-super-agenda--simplify-keep-priority-map (group)
+  "Return GROUP after simplifying each line but keeping priority.
+
+GROUP is a plist of the form `(:name ... :items ...)'.
+
+Intended for use with `org-super-agenda' `:transformer'."
+  (plist-put
+   group
+   :items (--map (cashpw/org-agenda--remove-todo it) (plist-get group :items))))
 
 (defun cashpw/org-super-agenda--remove-todo-map (group)
   "Return GROUP after simplifying each line.
@@ -6660,31 +6698,25 @@ Intended for use with `org-super-agenda' `:transformer'. "
   (propertize line 'face 'shadow))
 
 (setq cashpw/org-agenda--dim-headline-regexps
-  '(
-    ;; "Stretch"
-    "Slack"
-    "Huel"
-    "Meditate"
-    "Stretch"
-    "Train Finn"
-    ;; "Shower"
-    ;; "Shave"
-    ;; "Walk"
-    "Lunch"
-    "Dinner"
-    ;; "Journal.*Journal"
-    ;; "Journal.*Retrospective"
-    ;; "Journal.*Gratitude"
-    ;; "Debrief"
-    ;; "Tidy: "
-    "Diet: "
-    "forsale mailing lists"
-    ;; <= 5 minutes effort
-    ;; " [12345]m "
-    ;; No duration, no effort; brittle
-    " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  "))
-  ;; "List of headlines to dim in the org agenda view."
-  ;; :type '(repeat string))
+      '(
+        ;; "Stretch"
+        "Slack" "Huel" "Meditate" "Stretch" "Train Finn"
+        ;; "Shower"
+        ;; "Shave"
+        ;; "Walk"
+        "Lunch" "Dinner"
+        ;; "Journal.*Journal"
+        ;; "Journal.*Retrospective"
+        ;; "Journal.*Gratitude"
+        ;; "Debrief"
+        ;; "Tidy: "
+        "Diet: " "forsale mailing lists"
+        ;; <= 5 minutes effort
+        ;; " [12345]m "
+        ;; No duration, no effort; brittle
+        " \\([0-9]\\)?[0-9]:[0-9][0-9]\\.\\.\\.\\.\\.\\. \\(. \\)  "))
+;; "List of headlines to dim in the org agenda view."
+;; :type '(repeat string))
 
 (defun cashpw/time-hh-mm-to-minutes (hh-mm)
   "Return number of minutes since midnight for HH-MM."
@@ -7070,6 +7102,7 @@ WEEK-TAG must match YYYYwWW format if provided."
       (org-agenda-scheduled-leaders '("" "Sched.%2dx: "))
       (org-agenda-files (cashpw/org-agenda-view--today--files))
       (org-agenda-prefix-format '((agenda . " %i %-21(cashpw/org-agenda-category 20)%-12t%-2(cashpw/org-agenda-icon)%-5e")))
+      (org-agenda-hide-tags-regexp ".*")
       (org-agenda-cmp-user-defined
        (lambda (a b)
          (when-let* ((a-marker (get-text-property 0 'org-marker a))
@@ -7187,6 +7220,7 @@ WEEK-TAG must match YYYYwWW format if provided."
      ""
      ((org-agenda-overriding-header "Week Planner & Backlog Board")
       (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-agenda-hide-tags-regexp ".*")
       (org-super-agenda-groups
        `((:name "This Week"
           :tag ,(cashpw-time-current-week-tag))
@@ -7301,6 +7335,8 @@ WEEK-TAG must match YYYYwWW format if provided."
 
 (cashpw/org-agenda-custom-commands--maybe-update)
 
+(defvar org-agenda-show-log-scoped)
+
 (defun clocktable-by-category--get-clocktable (&rest props)
   "Get a formatted clocktable with parameters according to PROPS.
 The table is created in a temporary buffer, fully formatted and
@@ -7322,7 +7358,7 @@ fontified, and then returned."
                                 (re-search-forward "^[ \t]*#\\+END" nil t)
                                 (line-beginning-position)))))
 
-;; Use advice to replace `org-agenda-get-clocktable' with `clocktable-by-category--get-clocktable`
+;; Use `clocktable-by-category--get-clocktable' instead of `org-agenda-get-clocktable'
 (advice-add 'org-agenda-get-clocktable :override #'clocktable-by-category--get-clocktable)
 
 (defun cashpw/org-agenda-view--review--clockreport ()
@@ -8048,21 +8084,20 @@ See `org-clock-special-range' for KEY."
 
 (defun cashpw/org-clocktable-files-with-entries-at-yyyy-w (yyyy-w)
   "Return list of files with clock entries at YYYY-W."
-  (if (string-match "\\([0-9]\\{4\\}\\)-W\\([0-9]\\{2\\}\\)" yyyy-w)
-      (let ((year (string-to-number (match-string 1 yyyy-w)))
-            (week (string-to-number (match-string 2 yyyy-w))))
-        (-uniq
-         (-reduce
-          #'append
-          (--map
-           (cashpw/rgrep
-            (format "-l \"\\[%s\" %s/*.org*"
-                    (format-time-string "%F" it)
-                    cashpw/path--notes-dir))
-           (cashpw-time--get-week-times
-            (cashpw-time-iso-week-to-time year week))))))
-    (message "Failed to parse YYYY-W format: %s" yyyy-w)
-    nil))
+  (-uniq
+   (-reduce
+    #'append
+    (--map
+     (cashpw/rgrep
+      (format "-l \"\\[%s\" %s/*.org*"
+              (format-time-string "%F" it)
+              cashpw/path--notes-dir))
+     (cashpw-time--get-week-times
+      (encode-time
+       (cl-destructuring-bind
+           (_ _ _ day month year _ _ _)
+           (parse-time-string yyyy-w)
+         `(0 0 0 ,day ,month ,year nil nil nil))))))))
 
 (defun cashpw/clocktable-by-categories--day-properties (time)
   "Return clocktable-by-category properties for TIME."
@@ -8082,8 +8117,8 @@ See `org-clock-special-range' for KEY."
   `(:files-fn
     (lambda ()
       (cashpw/org-clocktable-files-with-entries-at-yyyy-w
-       ,(format-time-string "%Y-W%V" time)))
-    :block ,(format-time-string "%Y-W%V" time)
+       ,(format-time-string "%Y-W%W" time)))
+    :block ,(format-time-string "%Y-W%W" time)
     :merge-duplicate-headlines t
     ;; :narrow 200
     ;; :fileskip0 t

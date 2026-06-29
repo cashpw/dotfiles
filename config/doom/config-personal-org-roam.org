@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-13 Sat 21:38]
+:LAST_MODIFIED: [2026-06-08 Mon 14:34]
 :END:
 #+title: Personal Emacs config: Org - Roam & Notes
 #+author: Cash Prokop-Weaver
@@ -613,18 +613,6 @@ reflection prompts and a dynamic `clocktable-by-category` report. This dynamic
 block uses `:files-fn org-agenda-files` to automatically scan and summarize clocked
 time across active agenda files for the captured day.
 
-#+begin_src emacs-lisp :tangle config-personal.el :results none
-(defun cashpw/journal--remove-old-hastodo ()
-  "Remove hastodo tag from old journal entries matching PATTERN."
-  (interactive)
-  (let ((journal-files
-         (cashpw/org-files-with-tags
-          '("hastodo" "journal") org-roam-directory)))
-    (dolist (journal-file journal-files)
-      (with-current-buffer (find-file-noselect journal-file)
-        (set-buffer-modified-p t)
-        (save-buffer)))))
-#+end_src
 
 *** Helpers
 
@@ -670,16 +658,12 @@ Use the Org ID if it exists, otherwise fallback to the file path."
   (setq
   org-roam-dailies-directory cashpw/path--notes-dir
   org-roam-dailies-capture-templates
-  (doct-org-roam
-   `((:group
-      "Dailies"
-      :type entry
-      :template "* %?"
-      :file "%<%Y-%m-%d>.org"
-      :children
-      (("default"
-        :keys "d"
-        :head ":PROPERTIES:
+  `(("d" "default" entry "* %?"
+     :target
+     (file+head
+      "%<%Y-%m-%d>.org"
+      ,(concat
+        ":PROPERTIES:
 :ID: %(org-id-new)
 :END:
 ,#+title: %<%Y-%m-%d>
@@ -712,11 +696,7 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 2. TODO
 3. TODO
 
-,* TODO [#2] Retrospective
-SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 86400 (org-capture-get :default-time)))>
-:PROPERTIES:
-:Effort:   2m
-:END:
+,* Retrospective
 ,** 1. Daily Clock Report Verification
 ,#+BEGIN: clocktable-by-category :files-fn org-agenda-files :block \"%<%Y-%m-%d>\" :merge-duplicate-headlines t
 ,#+END:
@@ -725,13 +705,13 @@ SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 8
 ,** 3. What were the bottlenecks, distractions, or mistakes?
 ,** 4. Lessons learned & daily course corrections:
 
-,* Flashcards :noexport:")
-       ("week"
-        :keys "w"
-        :type plain
-        :template "%?"
-        :file "%<%Y-W%V>.org"
-        :head ",#+title: %<%Y-W%V>
+,* Flashcards :noexport:")))
+    (w
+     " " week " plain " %?
+     " :target
+(file+head %<%Y-W%V>.org"
+     ,(concat
+       "#+title: %<%Y-W%V>
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+category: Plan/Review
@@ -743,10 +723,10 @@ SCHEDULED: <%(format-time-string (concat \"%Y-%m-%d %\" \"a 19:30\") (time-add 8
 ,* TODO [#1] Retrospective
 SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 
-#+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
-#+END:
+,#+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
+,#+END:
 
-,* Flashcards :noexport:")))))))
+,* Flashcards :noexport:")))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
@@ -774,20 +754,6 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
   (cashpw/org-clocktable-by-category--week
    (time-subtract (current-time) (days-to-time 7))))
 
-(defun cashpw/journal-add-future-entries (n)
-  "Add N future journal entry files."
-  (interactive "nNumber of future (daily) entries: ")
-  (dotimes (i n)
-    (let* ((time (time-add (current-time) (days-to-time i))))
-      (org-roam-dailies--capture time 'goto "d")
-      (save-buffer)))
-  (cashpw/org-agenda-files--update)
-  (cashpw/journal--remove-old-hastodo))
-
-(defun cashpw/journal-add-seven-future-entries ()
-  "Add seven future (daily) journal entries."
-  (interactive)
-  (cashpw/journal-add-future-entries 7))
 
 (defun get-iso-week-dates (year week)
   "Return a list of YYYY-MM-DD date strings for ISO WEEK of YEAR.
@@ -801,6 +767,47 @@ The list starts with Monday and ends with Sunday."
                  (nth 0 gregorian) ; month
                  (nth 1 gregorian)))) ; day
      (number-sequence monday-absolute (+ monday-absolute 6)))))
+#+end_src
+
+
+**** Journal
+
+#+begin_src emacs-lisp :tangle config-personal.el :results none
+(defun cashpw/journal--remove-old-hastodo ()
+  "Remove hastodo tag from old journal entries matching PATTERN."
+  (interactive)
+  (let ((journal-files
+         (cashpw/org-files-with-tags
+          '("hastodo" "journal") org-roam-directory)))
+    (dolist (journal-file journal-files)
+      (with-current-buffer (find-file-noselect journal-file)
+        (set-buffer-modified-p t)
+        (save-buffer)))))
+
+(defun cashpw/journal-add-future-entries (n)
+  "Add N future journal entry files."
+  (interactive "nNumber of future (daily) entries: ")
+  (dotimes (i n)
+    (let* ((time (time-add (current-time) (days-to-time i))))
+      (org-roam-dailies--capture time 'goto "d")
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-future-weekday-entries (n)
+  "Add N future weekday journal entry files."
+  (interactive "nNumber of future (weekday) entries: ")
+  (let ((weekday-times (cashpw-time-next-n-weekdays n)))
+    (dolist (time weekday-times)
+      (org-roam-dailies--capture time 'goto "d")
+      (save-buffer)))
+  (cashpw/org-agenda-files--update)
+  (cashpw/journal--remove-old-hastodo))
+
+(defun cashpw/journal-add-seven-future-entries ()
+  "Add seven future (daily) journal entries."
+  (interactive)
+  (cashpw/journal-add-future-entries 7))
 #+end_src
 
 
