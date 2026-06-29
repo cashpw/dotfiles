@@ -21,5 +21,9 @@
     - How it works under the hood:
         - These commands append `JJCOPY:` annotations to your commit description: `JJCOPY: //depot/google3/path/to/source -> //depot/google3/path/to/target`
         - Renames are represented as a `JJCOPY` annotation plus the deletion of the source file in the same commit.
+- **Verifying Rename/Copy History (CRITICAL NUANCE)**:
+    - **Exporter Stripping**: The `jj` exporter **strips** the `JJCOPY:` lines from the CL description in Critique/Piper upon successful upload. Their absence in the remote description is *expected* behavior.
+    - **CLI Limitations**: For pending (unsubmitted) CLs, CLI tools (e.g., `g4 describe`, `g4 opened`, `jj show`) will **always** list the target files as simple `add` and the source files as `delete`. They will *not* show them as `branch` or `integrate` in the CLI.
+    - **Critique UI is Source of Truth**: You **MUST** verify the rename/copy history by inspecting the CL in the **Critique Web UI**. If the UI shows the files as "Moved" or "Branched" (linking their history), the integration is successful. Do *not* rely on CLI tools to verify history for pending CLs, and instruct reviewers to check the Critique UI.
 
 </jj>

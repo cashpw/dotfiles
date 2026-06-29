@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-01 Mon 12:25]
+:LAST_MODIFIED: [2026-06-15 Mon 09:05]
 :END:
 #+title: Personal Emacs config: Org - Agenda
 #+author: Cash Prokop-Weaver
@@ -1505,18 +1505,45 @@ WEEK-TAG must match YYYYwWW format if provided."
 #+begin_src emacs-lisp :tangle config-personal.el :results none
 (defun cashpw/org-agenda-view--plan--week ()
   "Return the non-daily Week Planner view configuration."
-  `((alltodo
+  `(
+    (alltodo
+     ""
+     ((org-agenda-overriding-header "Last week")
+      (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-super-agenda-groups
+       `((:discard
+          (:not
+           (:tag ,(cashpw-time-last-week-tag))))))))
+    (alltodo
+     ""
+     ((org-agenda-overriding-header "This week")
+      (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-super-agenda-groups
+       `((:discard
+          (:not
+           (:tag ,(cashpw-time-current-week-tag))))))))
+    (alltodo
+     ""
+     ((org-agenda-overriding-header "Next week")
+      (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-super-agenda-groups
+       `((:discard
+          (:not
+           (:tag ,(cashpw-time-next-week-tag))))))))
+    (alltodo
+     ""
+     ((org-agenda-overriding-header "Future weeks")
+      (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
+      (org-super-agenda-groups
+       `((:discard
+          (:not
+           (:pred cashpw/org-agenda-item-future-week-p)))))))
+    (alltodo
      ""
      ((org-agenda-overriding-header "Week Planner & Backlog Board")
       (org-agenda-sorting-strategy '((todo . (priority-down category-keep))))
       (org-super-agenda-groups
-       `((:name "This Week"
-          :tag ,(cashpw-time-current-week-tag))
-         (:name "Next Week"
-          :tag ,(cashpw-time-next-week-tag))
-         (:name "Future Weeks"
-          :pred cashpw/org-agenda-item-future-week-p)
-         (:discard
+       `((:discard
           (:pred cashpw/org-agenda-item-has-week-tag-p
            :scheduled t
            :deadline t

@@ -10,3 +10,5 @@ default-command = "log"
 su = ["util", "exec", "--", "sh", "-c", "jj sync && jj upload && jj"]
 squash-cls = ["util", "exec", "--", "/usr/local/google/home/cashweaver/.config/jj/scripts/squash_cls.sh"]
 ut = ["upload", "tree"]
+clt = ["util", "exec", "--", "bash", "-c", "cd \"$JJ_WORKSPACE_ROOT/google3\" && ./devtools/c/clang_tidy/tool/jj-clang-tidy -fix"]
+mdformat = ["util", "exec", "--", "bash", "-c", "cd \"$JJ_WORKSPACE_ROOT/google3\" && jj diff --name-only | grep '\\.md$' | xargs -r -d '\\n' /google/bin/releases/corpeng-engdoc/tools/mdformat --in_place"]

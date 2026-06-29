@@ -305,4 +305,62 @@ TIME-STRING should be in a format accepted by `date-to-time', e.g., \"2026-05-25
     (should (equal (cashpw-time-upcoming-friday-string) "2026-05-29 Fri"))
     (should (equal (cashpw-time-upcoming-sunday-string) "2026-05-31 Sun"))))
 
+(ert-deftest cashpw-time-test-next-n-weekdays ()
+  "Test `cashpw-time-next-n-weekdays`."
+  ;; Case 1: Start on Monday (2026-05-25), ask for 3 weekdays.
+  ;; Expected: Mon 25, Tue 26, Wed 27.
+  (cashpw-time-test-with-mock-time "2026-05-25 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 3)))
+      (should (= (length res) 3))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-05-25"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 1 res)) "2026-05-26"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 2 res)) "2026-05-27"))))
+
+  ;; Case 2: Start on Friday (2026-05-29), ask for 3 weekdays.
+  ;; Expected: Fri 29, Mon 06-01, Tue 06-02.
+  (cashpw-time-test-with-mock-time "2026-05-29 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 3)))
+      (should (= (length res) 3))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-05-29"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 1 res)) "2026-06-01"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 2 res)) "2026-06-02"))))
+
+  ;; Case 3: Start on Saturday (2026-05-30), ask for 3 weekdays.
+  ;; Expected: Mon 06-01, Tue 06-02, Wed 06-03.
+  (cashpw-time-test-with-mock-time "2026-05-30 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 3)))
+      (should (= (length res) 3))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-06-01"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 1 res)) "2026-06-02"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 2 res)) "2026-06-03"))))
+
+  ;; Case 4: Start on Sunday (2026-05-31), ask for 3 weekdays.
+  ;; Expected: Mon 06-01, Tue 06-02, Wed 06-03.
+  (cashpw-time-test-with-mock-time "2026-05-31 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 3)))
+      (should (= (length res) 3))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-06-01"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 1 res)) "2026-06-02"))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 2 res)) "2026-06-03"))))
+
+  ;; Case 5: Ask for 0 weekdays.
+  ;; Expected: nil
+  (cashpw-time-test-with-mock-time "2026-05-25 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 0)))
+      (should (null res))))
+
+  ;; Case 6: Ask for 1 weekday on Friday.
+  ;; Expected: Fri 29.
+  (cashpw-time-test-with-mock-time "2026-05-29 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 1)))
+      (should (= (length res) 1))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-05-29"))))
+
+  ;; Case 7: Ask for 1 weekday on Saturday.
+  ;; Expected: Mon 06-01.
+  (cashpw-time-test-with-mock-time "2026-05-30 12:00:00"
+    (let ((res (cashpw-time-next-n-weekdays 1)))
+      (should (= (length res) 1))
+      (should (equal (format-time-string "%Y-%m-%d" (nth 0 res)) "2026-06-01")))))
+
 ;;; cashpw-time-test.el ends here

@@ -3827,7 +3827,6 @@ The hierarchy is represented by '>'. For example, the input
 (defun cashpw/org-categorized-p ()
   "Return non-nil when the heading at point is categorized."
   (let ((category (org-get-category)))
-    (message "Testing category: %s" category)
     (and
      (--any-p
       (s-starts-with-p it category)

@@ -14,3 +14,4 @@ You MUST read the language's file for languages you use:
 - ~/.config/ai/prompts/languages/cpp.md
 - ~/.config/ai/prompts/languages/go.md
 </languages>
+

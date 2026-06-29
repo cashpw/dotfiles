@@ -48,10 +48,10 @@
   "Convert ISO YEAR, WEEK, and DAY to an Emacs Lisp time value."
   (apply #'encode-time
          (append '(0 0 0)
-                  (-select-by-indices
-                   '(1 0 2)
-                   (calendar-gregorian-from-absolute (calendar-iso-to-absolute
-                                                      (list week day year)))))))
+                 (-select-by-indices
+                  '(1 0 2)
+                  (calendar-gregorian-from-absolute (calendar-iso-to-absolute
+                                                     (list week day year)))))))
 
 (defun cashpw-iso-beginning-of-week (year week)
   "Convert ISO YEAR and WEEK to elisp time for first day (Monday) of week."
@@ -239,6 +239,16 @@ If TIME is nil, use the current time."
   "Return the ISO-8601 week tag for TIME (default current time) in YYYYwWW format."
   (cashpw-time-week-tag time))
 
+(defun cashpw-time-last-week-tag (&optional time)
+  "Return the ISO-8601 week tag for one week before TIME in YYYYwWW format.
+If TIME is nil, use the current time."
+  (let* ((decoded (decode-time (or time (current-time))))
+         (day (decoded-time-day decoded)))
+    (setf (decoded-time-day decoded) (- day 7))
+    (setf (decoded-time-dst decoded) -1)
+    (setf (decoded-time-zone decoded) nil)
+    (cashpw-time-week-tag (encode-time decoded))))
+
 (defun cashpw-time-next-week-tag (&optional time)
   "Return the ISO-8601 week tag for one week after TIME in YYYYwWW format.
 If TIME is nil, use the current time."
@@ -341,6 +351,20 @@ Otherwise, return TARGET-WEEKDAY of the next week."
          (target-day (+ w1-mon-day (* 7 (1- week)))))
     (encode-time 0 0 0 target-day 1 year)))
 
+(defun cashpw-time-next-n-weekdays (n &optional time)
+  "Return a list of N time values representing the next N weekdays starting from TIME.
+If TIME is nil, use the current time.
+A weekday is defined as Monday through Friday.
+If TIME is a weekday, it is included as the first element."
+  (let ((current (or time (current-time)))
+        (result nil))
+    (while (< (length result) n)
+      (let* ((decoded (decode-time current))
+             (dow (decoded-time-weekday decoded)))
+        (when (member dow '(1 2 3 4 5))
+          (push current result))
+        (setq current (time-add current (days-to-time 1)))))
+    (nreverse result)))
+
 (provide 'cashpw-time)
 ;;; cashpw-time.el ends here
-
