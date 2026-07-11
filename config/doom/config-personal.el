@@ -3438,7 +3438,6 @@ TODO")))))
 (after! embark
   (define-key global-map (kbd "M-E") #'embark-act))
 
-
 (use-package! aggressive-indent
   :config
   (add-hook
@@ -4467,7 +4466,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
         org-roam-ui-update-on-save t
         org-roam-ui-open-on-start t))
 
-
 (defun cashpw-org-id-from-file (path)
   "Get the Org ID from the file at PATH, if it exists."
   (when (file-exists-p path)
@@ -4554,12 +4552,12 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 ** 4. Lessons learned & daily course corrections:
 
 * Flashcards :noexport:")))
-    (w
-     " " week " plain " %?
-     " :target
-(file+head %<%Y-W%V>.org"
-     ,(concat
-       "#+title: %<%Y-W%V>
+    ("w" "week" plain "%?"
+     :target
+     (file+head
+      "%<%Y-W%V>.org"
+      ,(concat
+        "#+title: %<%Y-W%V>
 #+author: Cash Prokop-Weaver
 #+date: [%<%Y-%m-%d %a %H:%M>]
 #+category: Plan/Review
@@ -4574,7 +4572,7 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 #+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
 #+END:
 
-* Flashcards :noexport:")))))
+* Flashcards :noexport:"))))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
@@ -5417,8 +5415,6 @@ TODO: move to org-mode section"
            do (cashpw/org-mode-insert-option
                option
                value)))
-
-
 
 (defun cashpw/org-mode-insert-properties (properties)
   "Insert an alist of org-mode PROPERTIES (:PROPERTY: VALUE)."
@@ -9190,7 +9186,6 @@ _CALENDAR-ID and _UPDATE-MODE are ignored."
     ;; (fset 'epg-wait-for-status 'ignore)
     (org-gcal-reload-client-id-secret)))
 
-
 (after! org-habit
   (setq
     org-habit-show-done-always-green t))
@@ -9847,7 +9842,6 @@ Pass INITIAL-INPUT, FILTER-FN, SORT-FN, REQUIRE-MATCH, and PROMPT to `org-roam-n
 
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
-
 
 (deflink
  "instagram"

@@ -706,12 +706,12 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 ,** 4. Lessons learned & daily course corrections:
 
 ,* Flashcards :noexport:")))
-    (w
-     " " week " plain " %?
-     " :target
-(file+head %<%Y-W%V>.org"
-     ,(concat
-       "#+title: %<%Y-W%V>
+    ("w" "week" plain "%?"
+     :target
+     (file+head
+      "%<%Y-W%V>.org"
+      ,(concat
+        "#+title: %<%Y-W%V>
 ,#+author: Cash Prokop-Weaver
 ,#+date: [%<%Y-%m-%d %a %H:%M>]
 ,#+category: Plan/Review
@@ -726,7 +726,7 @@ SCHEDULED: <%(cashpw-time-upcoming-friday-string) 15:45>
 ,#+BEGIN: clocktable-by-category :scope subtree :files-fn (lambda nil (cashpw/org-clocktable-files-with-entries-at-yyyy-w \"%<%Y-W%V>\")) :block \"%<%Y-W%V>\" :merge-duplicate-headlines t
 ,#+END:
 
-,* Flashcards :noexport:")))))
+,* Flashcards :noexport:"))))))
 
 (defun cashpw/org-clocktable-by-category-yesterday ()
   "Insert a retrospective clocktable for yesterday."
