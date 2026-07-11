@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-05-26 Tue 07:28]
+:LAST_MODIFIED: [2026-07-09 Thu 09:34]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Personal Emacs config
@@ -1236,6 +1236,7 @@ Doom Emacs provides =alert=.
    :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
   (:prefix
    ("j" . "jujutsu")
+   :desc "Open altered file" :n "f" #'cashpw/jj-open-altered-file
    :desc "majutsu" :n "j" #'majutsu)
   (:prefix
    ("l")

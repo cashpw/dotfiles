@@ -727,6 +727,7 @@ Invokes SUCCESS on success."
    :n "." (cmd! (cashpw/select-from-todays-todos-and-go-to)))
   (:prefix
    ("j" . "jujutsu")
+   :desc "Open altered file" :n "f" #'cashpw/jj-open-altered-file
    :desc "majutsu" :n "j" #'majutsu)
   (:prefix
    ("l")
@@ -3157,7 +3158,55 @@ If UNREAD-ONLY is non-nil, only show unread entries."
 
 (use-package! gnuplot)
 
-(use-package! gnuplot)
+(use-package! majutsu)
+
+(defun cashpw/jj-root ()
+  "Return the root directory of the current jj repository, or nil if not in a jj repo."
+  (let ((root (string-trim (shell-command-to-string "jj root 2>/dev/null"))))
+    (if (string-empty-p root)
+        nil
+      root)))
+
+(defun cashpw/jj-list-altered-files ()
+  "Return a list of full file paths for altered files in the current jj repo.
+Return an empty list if there are either no files, or if it's not a jj repo."
+  (let ((root (cashpw/jj-root)))
+    (if (not root)
+        nil
+      (split-string
+       (shell-command-to-string
+        (format "cd %s && jj --no-pager diff --name-only | xargs -I{} readlink -f \"%s/{}\" | sort | uniq"
+                (shell-quote-argument root)
+                root))))))
+
+(defun cashpw/jj-open-altered-file (&optional filepath)
+  "Open an altered file in the current jj repo.
+Prompts user for FILEPATH (relative to jj root) if called interactively.
+If not in a jj repo, if there are no altered files, or if FILEPATH does not exist,
+display an informative error message."
+  (interactive
+   (let ((root (cashpw/jj-root)))
+     (cond
+      ((not root)
+       (message "Not inside a jj repository")
+       (list nil))
+      ((not (cashpw/jj-list-altered-files))
+       (message "No altered files")
+       (list nil))
+      (t
+       (let* ((root-dir (file-name-as-directory root))
+              (files (cashpw/jj-list-altered-files))
+              (rel-files (mapcar (lambda (f) (file-relative-name f root-dir)) files)))
+         (list (expand-file-name (completing-read "File: " rel-files) root-dir)))))))
+  (if filepath
+      (if (file-exists-p filepath)
+          (find-file filepath)
+        (user-error "Altered file path not found: %s" filepath))
+    (unless (or (not (called-interactively-p 'any))
+                (cashpw/jj-list-altered-files))
+      (if (not (cashpw/jj-root))
+          (message "Not inside a jj repository")
+        (message "No altered files")))))
 
 ;; (setq
 ;;  ;; PERF
@@ -3381,7 +3430,6 @@ TODO")))))
 
 (after! embark
   (define-key global-map (kbd "M-E") #'embark-act))
-
 
 (use-package! aggressive-indent
   :config
@@ -4411,7 +4459,6 @@ See: https://jethrokuan.github.io/org-roam-guide"
         org-roam-ui-update-on-save t
         org-roam-ui-open-on-start t))
 
-
 (defun cashpw-org-id-from-file (path)
   "Get the Org ID from the file at PATH, if it exists."
   (when (file-exists-p path)
@@ -5361,8 +5408,6 @@ TODO: move to org-mode section"
            do (cashpw/org-mode-insert-option
                option
                value)))
-
-
 
 (defun cashpw/org-mode-insert-properties (properties)
   "Insert an alist of org-mode PROPERTIES (:PROPERTY: VALUE)."
@@ -9134,7 +9179,6 @@ _CALENDAR-ID and _UPDATE-MODE are ignored."
     ;; (fset 'epg-wait-for-status 'ignore)
     (org-gcal-reload-client-id-secret)))
 
-
 (after! org-habit
   (setq
     org-habit-show-done-always-green t))
@@ -9791,7 +9835,6 @@ Pass INITIAL-INPUT, FILTER-FN, SORT-FN, REQUIRE-MATCH, and PROMPT to `org-roam-n
 
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
-
 
 (deflink
  "instagram"

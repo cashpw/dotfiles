@@ -1,11 +1,10 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-05-25 Mon 09:41]
+:LAST_MODIFIED: [2026-07-09 Thu 09:23]
 :END:
 #+title: Personal Emacs config: Version control
 #+author: Cash Prokop-Weaver
 #+EMAIL: cashbweaver@gmail.com
 #+STARTUP: showeverything
-
 
 * =diff-hl=
 
@@ -103,4 +102,3 @@ TODO")))))
    (defun cashpw/vc-start-in-insert-state ()
      (evil-insert-state))))
 #+end_src
-
