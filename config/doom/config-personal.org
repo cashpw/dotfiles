@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-07-09 Thu 09:34]
+:LAST_MODIFIED: [2026-07-10 Fri 21:22]
 :CREATED:  [2021-11-04 Thu 00:00]
 :END:
 #+title: Personal Emacs config
@@ -1467,11 +1467,11 @@ https://akrl.sdf.org/#orgc15a10d
 ** Location
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(defconst cashpw/location-latitude 37.2
+(defconst cashpw/location-latitude 47.5
   "Current latitude.")
 (defconst cashpw/location-longitude -121.8
   "Current latitude.")
-(defconst cashpw/location-name "San Jose, CA"
+(defconst cashpw/location-name "North Bend, WA"
   "Human-readable name for current location.")
 #+end_src
 
@@ -1485,15 +1485,24 @@ https://akrl.sdf.org/#orgc15a10d
   :custom
   (cashpw-weather-google-api-key (secret-get "google-weather" nil (cashpw/machine-p 'personal-phone)))
   (cashpw-weather-todos-file cashpw/path--personal-todos)
+  (cashpw-weather-latitude cashpw/location-latitude)
+  (cashpw-weather-longitude cashpw/location-longitude)
   :config
+  (setq
+   cashpw-weather-close-window-threshold-temp 68
+   cashpw-weather-open-window-threshold-temp 74)
   (when (cashpw/machine-p 'personal)
     (add-hook
      'cashpw/run-once-a-day-hooks
-     (lambda () (cashpw-weather-insert-todays-open-close-window-todos 74 74)))))
+     (lambda () (cashpw-weather-insert-todays-open-close-window-todos
+                 cashpw-weather-open-window-threshold-temp
+                 cashpw-weather-close-window-threshold-temp)))))
 #+end_src
 
 #+begin_src emacs-lisp :results none
-(cashpw-weather-insert-todays-open-close-window-todos 74 74)
+(cashpw-weather-insert-todays-open-close-window-todos 
+ cashpw-weather-open-window-threshold-temp
+ cashpw-weather-close-window-threshold-temp)
 #+end_src
 
 *** Packages

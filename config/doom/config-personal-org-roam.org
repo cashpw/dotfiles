@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-08 Mon 14:34]
+:LAST_MODIFIED: [2026-07-10 Fri 21:23]
 :END:
 #+title: Personal Emacs config: Org - Roam & Notes
 #+author: Cash Prokop-Weaver
@@ -678,13 +678,13 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :Effort:   15m
 :END:
 
-,* Me
+,** Me
 
-,** Thought records
+,*** Thought records
 
-,* Cayla
+,** Cayla
 
-,* About the day
+,** About the day
 
 ,* TODO [#2] Gratitude
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>

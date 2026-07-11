@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-06-05 Fri 21:25]
+:LAST_MODIFIED: [2026-07-10 Fri 21:20]
 :END:
 #+title: Personal Emacs config: Org
 #+author: Cash Prokop-Weaver
@@ -884,6 +884,7 @@ Reference: https://github.com/weirdNox/org-noter/issues/88#issuecomment-70034614
 #+INCLUDE: config-personal-org-agenda.org
 #+INCLUDE: config-personal-org-capture.org
 #+INCLUDE: config-personal-org-links.org
+#+INCLUDE: config-personal-org-flashcards.org
 
 * Mail
 

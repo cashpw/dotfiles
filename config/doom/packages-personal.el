@@ -323,6 +323,14 @@
 
 (package! ol-notmuch)
 
+(package! org-fc
+  :recipe (:host github
+           :repo "l3kn/org-fc"
+           ;; :repo "cashpw/org-fc"
+           ;; :branch "feat/classes"
+           :files (:defaults "awk" "python")
+           ))
+
 (package! protobuf-mode)
 
 (package! toml
