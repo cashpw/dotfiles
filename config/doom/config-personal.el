@@ -3165,7 +3165,7 @@ If UNREAD-ONLY is non-nil, only show unread entries."
 
 (use-package! gnuplot)
 
-(use-package! majutsu)
+;; (use-package! majutsu)
 
 (defun cashpw/jj-root ()
   "Return the root directory of the current jj repository, or nil if not in a jj repo."

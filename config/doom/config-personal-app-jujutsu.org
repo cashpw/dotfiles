@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-07-09 Thu 09:24]
+:LAST_MODIFIED: [2026-07-10 Fri 21:59]
 :END:
 #+title: Personal Emacs config: Jujutsu (jj)
 #+author: Cash Prokop-Weaver
@@ -15,7 +15,7 @@
 * Config
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none
-(use-package! majutsu)
+;; (use-package! majutsu)
 #+end_src
 
 ** Altered files
