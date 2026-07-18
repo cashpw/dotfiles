@@ -451,3 +451,16 @@ exec kitty
 exec swaync
 exec autotiling-rs
 exec fcitx5 -d -r
+
+# ================================================
+# Voxtype Voice Dictation (One-Click Toggle)
+# Key: Right Meta key (above Page-Up on Kinesis)
+# Options: keysym, release keysym, and raw keycode 134
+# ================================================
+bindsym --release Super_R exec voxtype record toggle
+bindsym --release Meta_R exec voxtype record toggle
+bindcode --release 134 exec voxtype record toggle
+bindcode 134 exec voxtype record toggle
+
+
+
