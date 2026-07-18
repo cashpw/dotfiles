@@ -3,15 +3,23 @@ XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 STATE_FILE="$XDG_RUNTIME_DIR/voxtype/state"
 
 # Check systemd user service status
-SERVICE_STATE=$(systemctl --user show voxtype.service --property=ActiveState 2>/dev/null)
+if ! command -v systemctl &>/dev/null; then
+    echo '{"text": "🎙️ (no systemd)", "state": "Idle"}'
+    exit 0
+fi
 
-if [[ "$SERVICE_STATE" != "ActiveState=active" ]]; then
-    # Check if failed or just stopped
-    IS_FAILED=$(systemctl --user show voxtype.service --property=SubState 2>/dev/null)
-    if [[ "$IS_FAILED" == "SubState=failed" ]]; then
+while IFS='=' read -r key val; do
+    case "$key" in
+        ActiveState) SERVICE_ACTIVE="$val" ;;
+        SubState) SERVICE_SUBSTATE="$val" ;;
+    esac
+done < <(systemctl --user show voxtype.service --property=ActiveState,SubState 2>/dev/null)
+
+if [[ "$SERVICE_ACTIVE" != "active" ]]; then
+    if [[ "$SERVICE_SUBSTATE" == "failed" ]]; then
         echo '{"text": " ⚠️ VOX FAILED ", "state": "Critical"}'
     else
-        echo '{"text": " ⚠️ VOX DEAD ", "state": "Warning"}'
+        echo '{"text": " ⚠️ VOX OFF ", "state": "Warning"}'
     fi
     exit 0
 fi

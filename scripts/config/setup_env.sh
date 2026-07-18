@@ -14,17 +14,23 @@ if is_work_machine; then
   echo "Setting up for WORK environment..."
   
   # Sway Environment Config
-  ln -sf "$HOME/.config/sway/config.d/env-work.conf" "$HOME/.config/sway/config.d/env.conf"
+  ln -sf env-work.conf "$HOME/.config/sway/config.d/env.conf"
   
   # Kanshi Profile
-  ln -sf "$HOME/.config/kanshi/config-work" "$HOME/.config/kanshi/config"
+  ln -sf config-work "$HOME/.config/kanshi/config"
+
+  # Voxtype Config
+  ln -sf config-work.toml "$HOME/.config/voxtype/config.toml"
 
 else
   echo "Setting up for PERSONAL environment..."
   
   # Sway Environment Config
-  ln -sf "$HOME/.config/sway/config.d/env-personal.conf" "$HOME/.config/sway/config.d/env.conf"
+  ln -sf env-personal.conf "$HOME/.config/sway/config.d/env.conf"
   
   # Kanshi Profile
-  ln -sf "$HOME/.config/kanshi/config-personal" "$HOME/.config/kanshi/config"
+  ln -sf config-personal "$HOME/.config/kanshi/config"
+
+  # Voxtype Config
+  ln -sf config-personal.toml "$HOME/.config/voxtype/config.toml"
 fi
