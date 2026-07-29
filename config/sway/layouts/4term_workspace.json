@@ -1,0 +1,39 @@
+{
+    "layout": "splith",
+    "nodes": [
+        {
+            "border": "none",
+            "percent": 0.43333333333333335,
+            "swallow": {
+                "title": "^sway_term_1$"
+            }
+        },
+        {
+            "border": "none",
+            "percent": 0.43333333333333335,
+            "swallow": {
+                "title": "^sway_term_2$"
+            }
+        },
+        {
+            "layout": "splitv",
+            "percent": 0.13333333333333333,
+            "nodes": [
+                {
+                    "border": "none",
+                    "percent": 0.5,
+                    "swallow": {
+                        "title": "^sway_term_3$"
+                    }
+                },
+                {
+                    "border": "none",
+                    "percent": 0.5,
+                    "swallow": {
+                        "title": "^sway_term_4$"
+                    }
+                }
+            ]
+        }
+    ]
+}
