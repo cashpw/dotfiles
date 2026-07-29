@@ -190,7 +190,7 @@ bindsym $mod+Shift+0 move container to workspace 10
 bindsym $mod+slash exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -p "Workspace" | xargs -r -I {} swaymsg workspace "{}"
 
 # Create new workspace with two terminals connecting to cloudtop shpool sessions
-bindsym $mod+Shift+b exec rofi -dmenu -p "New workspace" | xargs -r -I {} swaymsg 'workspace "{}"; splith; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-1" "cd \$(jj jjd -f {})"; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-2" "emacsclient -a \"\" -t /tmp/{}.org"'
+bindsym $mod+Shift+b exec rofi -dmenu -p "New workspace" | xargs -r -I {} swaymsg 'workspace "{}"; splith; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-1" "cd \$(jj jjd -f {})"; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-2" "emacsclient --alternate-editor= -t /tmp/{}.org"'
 
 # Move your focus around
 bindsym $mod+$left focus left

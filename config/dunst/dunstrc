@@ -301,3 +301,9 @@
 #     foreground = "#F67245"
 #
 # vim: ft=cfgw
+[jetski_notifications]
+    appname = "kitty"
+    summary = "*Jetski*"
+    override_dbus_timeout = yes
+    timeout = 5
+    set_transient = yes

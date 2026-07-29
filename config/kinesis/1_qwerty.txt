@@ -1,6 +1,7 @@
 [caps]>[lctrl]
 [lctrl]>[lalt]
 [lalt]>[lwin]
-[rctrl]>[escape]
+[rctrl]>[esc]
 [up]>[down]
 [down]>[up]
+
