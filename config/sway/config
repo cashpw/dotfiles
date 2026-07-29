@@ -451,9 +451,31 @@ bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
 # Startup
 # ================================================
 
+# Systemd/DBus integration
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway
+exec systemctl --user start sway-session.target
+
 exec input-remapper-control --command autoload
 exec mako
 exec kitty
 exec swaync
-exec autotiling-rs
 exec fcitx5 -d -r
+
+# ================================================
+# Voxtype Voice Dictation (Unified Personal & Work Compositor Shortcuts)
+#
+# Why symbol names: Using readable keyboard symbol names (bindsym) avoids numeric code lookups
+# and directly maps personal and work trigger buttons across hardware setups.
+# Why release flag: Using release mode prevents recording loops when holding keys, but note that
+# releasing Right Control after multi-key application shortcuts will trigger a toggle.
+#
+# Target symbol definitions:
+# - Control_R: Right Control button (Personal system layout trigger)
+# - Alt_R: Right Alt button (Work internal laptop keyboard trigger)
+# - Super_R: Right Meta / Super button (Work external Kinesis keyboard trigger)
+# - Menu: Menu button (Compact keyboard layout fallback trigger)
+# ================================================
+bindsym --no-repeat --release Control_R exec --no-startup-id "~/.local/bin/voxtype record toggle"
+bindsym --no-repeat --release Alt_R exec --no-startup-id "~/.local/bin/voxtype record toggle"
+bindsym --no-repeat --release Super_R exec --no-startup-id "~/.local/bin/voxtype record toggle"
+bindsym --no-repeat --release Menu exec --no-startup-id "~/.local/bin/voxtype record toggle"

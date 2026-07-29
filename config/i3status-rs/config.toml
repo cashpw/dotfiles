@@ -131,8 +131,14 @@ format_alt = " $icon ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $spee
 
 [[block]]
 block = "battery"
+[[block]]
+block = "custom"
+command = "bash ~/.config/i3status-rs/voxtype_status.sh"
+interval = 1
+json = true
 
 [[block]]
 block = "time"
 interval = 1
 format = " 󰃭 $timestamp.datetime(f:'%m-%d %H:%M:%S') "
+

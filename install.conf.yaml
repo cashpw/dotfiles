@@ -57,3 +57,8 @@
     command: bash scripts/config/setup_env.sh
     description: Setting up environment-specific configurations.
     stdout: true
+  -
+    command: bash scripts/config/install_voxtype.sh
+    description: Installing Voxtype and models
+    stdout: true
+
