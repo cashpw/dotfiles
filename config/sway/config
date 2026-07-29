@@ -187,10 +187,10 @@ bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
 # Rofi workspace switcher
-bindsym $mod+slash exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -p "Workspace" | xargs -r -I {} swaymsg workspace "{}"
+bindsym $mod+slash exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -i -p "Workspace" | xargs -r -I {} swaymsg workspace "{}"
 
 # Create new workspace with two terminals connecting to cloudtop shpool sessions
-bindsym $mod+Shift+b exec rofi -dmenu -p "New workspace" | xargs -r -I {} swaymsg 'workspace "{}"; splith; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-1" "dir:{}"; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-2" "emacs:{}"'
+bindsym $mod+Shift+b exec rofi -dmenu -i -p "New workspace" | xargs -r -I {} swaymsg 'workspace "{}"; splith; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-1" "dir:{}"; exec $term $HOME/.scripts-work/shpool-cloudtop.sh "{}-2" "emacs:{}"'
 
 # Move your focus around
 bindsym $mod+$left focus left
