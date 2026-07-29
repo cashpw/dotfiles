@@ -5,14 +5,14 @@
             "border": "none",
             "percent": 0.43333333333333335,
             "swallow": {
-                "title": "^sway_term_1$"
+                "app_id": "^sway_term_1$"
             }
         },
         {
             "border": "none",
             "percent": 0.43333333333333335,
             "swallow": {
-                "title": "^sway_term_2$"
+                "app_id": "^sway_term_2$"
             }
         },
         {
@@ -23,14 +23,14 @@
                     "border": "none",
                     "percent": 0.5,
                     "swallow": {
-                        "title": "^sway_term_3$"
+                        "app_id": "^sway_term_3$"
                     }
                 },
                 {
                     "border": "none",
                     "percent": 0.5,
                     "swallow": {
-                        "title": "^sway_term_4$"
+                        "app_id": "^sway_term_4$"
                     }
                 }
             ]
