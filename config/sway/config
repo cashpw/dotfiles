@@ -186,6 +186,12 @@ bindsym $mod+Shift+8 move container to workspace 8
 bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
+# Rofi workspace switcher
+bindsym $mod+/ exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -p "Workspace" | xargs -r -I {} swaymsg workspace "{}"
+
+# Create new workspace with two terminals split side-by-side
+bindsym $mod+Shift+b exec rofi -dmenu -p "New workspace" | xargs -r -I {} swaymsg 'workspace "{}"; splith; exec $term; exec $term'
+
 # Move your focus around
 bindsym $mod+$left focus left
 bindsym $mod+$down focus down
