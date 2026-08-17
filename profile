@@ -54,3 +54,7 @@ else
 fi
 
 . "$HOME/.cargo/env"
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/cashpw/.local/bin:$PATH"

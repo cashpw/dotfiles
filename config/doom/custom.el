@@ -41,8 +41,11 @@
       org-hugo-auto-set-lastmod t)
      (eval toggle-truncate-lines 1)
      (eval and (fboundp 'toc-org-mode) (toc-org-mode 1)) (toc-org-max-depth . 4)))
+ '(warning-suppress-log-types
+   '((emacs) (defvaralias losing-value git-commit-mode-hook) (ox-pandoc)))
  '(warning-suppress-types
-   '((org-element org-element-parser) (defvaralias) (lexical-binding))))
+   '((org-element org-element-parser) (defvaralias) (lexical-binding)))
+ '(whisper-return-cursor nil nil nil "Customized with use-package whisper"))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

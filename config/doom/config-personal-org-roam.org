@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-07-10 Fri 21:23]
+:LAST_MODIFIED: [2026-08-16 Sun 21:30]
 :END:
 #+title: Personal Emacs config: Org - Roam & Notes
 #+author: Cash Prokop-Weaver
@@ -678,13 +678,7 @@ SCHEDULED: <%<%Y-%m-%d %a 19:30>>
 :Effort:   15m
 :END:
 
-,** Me
-
 ,*** Thought records
-
-,** Cayla
-
-,** About the day
 
 ,* TODO [#2] Gratitude
 SCHEDULED: <%<%Y-%m-%d %a 19:30>>
@@ -1308,7 +1302,8 @@ This is done using [[https://www.zotero.org/support/translators][ZOtero TRAnslat
 
   :config
   (add-hook
-   'zotra-after-get-bibtex-entry-hook #'cashpw/bibtex-clean-entry-override-key))
+   'zotra-after-get-bibtex-entry-hook #'cashpw/bibtex-clean-entry-override-key)
+  (setq-hook! 'bibtex-mode-hook apheleia-inhibit t))
 
 (defun cashpw/replace-tabs-with-two-spaces ()
   "Replace all tabs in buffer with two spaces."
@@ -1432,6 +1427,75 @@ The key is in the form: (authors|journal)_title_year."
       (zotra-add-entry (cashpw/isbn-select-from-buffer)))
      (t
       (cashpw/zotra-add-entry-from-url url)))))
+
+(after!
+  json
+  (defun cashpw/google-books--list (query key success)
+    "Return results of Google Books QUERY with api KEY.
+Invokes SUCCESS on success."
+    (request
+      "https://www.googleapis.com/books/v1/volumes"
+      :params
+      `(("key" . ,key)
+        ("q" . , query)
+        ("orderBy" . "relevance")
+        ("maxResults" . 40))
+      :parser 'json-read
+      :success success
+      :error
+      (cl-function
+       (lambda (&key error-thrown &allow-other-keys)
+         (message "Google Books error: %S" error-thrown))))))
+
+(defun cashpw/google-books-select-isbn-and-add-citation (query)
+  "Select ISBN from Google Books matching QUERY and add citation."
+  (interactive "MQuery: ")
+  (cashpw/google-books--list
+   query (secret-get "google-books" nil (cashpw/machine-p 'personal-phone))
+   (cl-function
+    (lambda (&key data &allow-other-keys)
+      (let ((options
+             (--filter
+              (cdr it)
+              (--map
+               (when-let ((volume-info (alist-get 'volumeInfo it)))
+                 (cons
+                  (let ((title
+                         (cashpw/string-normalize-length
+                          (or (alist-get 'title volume-info) "") 80))
+                        (authors
+                         (cashpw/string-normalize-length
+                          (string-join (alist-get 'authors volume-info) ",") 30))
+                        (description
+                         (cashpw/string-normalize-length
+                          (or (alist-get 'description volume-info) "") 30)))
+                    (s-lex-format "${title} ${authors} ${description}"))
+                  (let ((isbns
+                         (--map
+                          (cdr (car (cdr it)))
+                          (--filter
+                           (s-starts-with-p "ISBN_" (cdr (car it)))
+                           (append
+                            (alist-get
+                             'industryIdentifiers volume-info)
+                            nil)))))
+                    isbns)))
+               (alist-get 'items data)))))
+        (let* ((corfu-sort-function #'identity)
+               (vertico-sort-override-function #'identity)
+               (isbns
+                (alist-get (completing-read "Volume: " options
+                                            nil
+                                            'require-match)
+                           options
+                           nil nil #'string=)))
+          (cashpw/log-debug "Found %d ISBNs: %s" (length isbns) isbns)
+          (unless (-first
+                   (lambda (isbn)
+                     (cashpw/log-debug "Attempting to add ISBN %s" isbn)
+                     (zotra-add-entry isbn))
+                   isbns)
+            (message "Failed to add citation for ISBNs %s" isbns))))))))
 #+end_src
 
 ** =org-roam-contacts=
@@ -1618,7 +1682,13 @@ A cache of metadata about the structure of all your Org files – headings, link
   (org-mem-do-sync-with-org-id t)
   (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
   :config
-  (org-mem-updater-mode))
+  (org-mem-updater-mode)
+
+  (defun cashpw/org-mem--truenames-and-attrs-dedup (results)
+    "Deduplicate RESULTS of `org-mem--truenames-and-attrs' by file path."
+    (cl-delete-duplicates results :test #'string= :key #'car))
+
+  (advice-add 'org-mem--truenames-and-attrs :filter-return #'cashpw/org-mem--truenames-and-attrs-dedup))
 #+end_src
 
 ** =org-node=

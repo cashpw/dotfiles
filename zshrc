@@ -35,3 +35,7 @@ alias rwc='rw -r --gmosh -S --shpool_session "tty-$(basename $(tty))" cashweaver
 
 eval "$(starship init zsh)"
 
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/cashpw/.local/bin:$PATH"

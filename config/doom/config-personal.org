@@ -847,79 +847,7 @@ Suppose the point is on some number.  If you want to double it, invoke `operate-
     (let* ((isbn-10s (isbn-10-get-all-in-buffer))
            (isbn-13s (isbn-13-get-all-in-buffer)))
       (completing-read "ISBN: " (append isbn-10s isbn-13s) nil t))))
-(after!
-  json
-  (defun cashpw/google-books--list (query key success)
-    "Return results of Google Books QUERY with api KEY.
-Invokes SUCCESS on success."
-    (request
-      "https://www.googleapis.com/books/v1/volumes"
-      :params
-      `(("key" . ,key)
-        ("q" . , query)
-        ("orderBy" . "relevance")
-        ("maxResults" . 40))
-      :parser 'json-read
-      :success success
-      :error
-      (cl-function
-       (lambda (&key error-thrown &allow-other-keys)
-         (message "Google Books error: %S" error-thrown))))))
-
-(defun cashpw/google-books-select-isbn-and-add-citation (query)
-  "Select ISBN from Google Books matching QUERY and add citation."
-  (interactive "MQuery: ")
-  (cashpw/google-books--list
-   query (secret-get "google-books" nil (cashpw/machine-p 'personal-phone))
-   (cl-function
-    (lambda (&key data &allow-other-keys)
-      (let ((options
-             (--filter
-              (cdr it)
-              (--map
-               (when-let ((volume-info (alist-get 'volumeInfo it)))
-                 (cons
-                  (let ((title
-                         (cashpw/string-normalize-length
-                          (alist-get 'title volume-info) 80))
-                        (authors
-                         (cashpw/string-normalize-length
-                          (string-join (alist-get 'authors volume-info) ",") 30))
-                        (description
-                         (cashpw/string-normalize-length
-                          (alist-get 'description volume-info) 30)))
-                    (s-lex-format "${title} ${authors} ${description}"))
-                  (let ((isbns
-                         (--map
-                          (cdr (car (cdr it)))
-                          (--filter
-                           (s-starts-with-p "ISBN_" (cdr (car it)))
-                           (append
-                            (alist-get
-                             'industryIdentifiers volume-info)
-                            nil)))))
-                    isbns)))
-               (alist-get 'items data)))))
-        (let* ((corfu-sort-function #'identity)
-               (vertico-sort-override-function #'identity)
-               (isbns
-                (alist-get (completing-read "Volume: " options
-                                            nil
-                                            'require-match)
-                           options
-                           nil nil #'string=)))
-          (cashpw/log-debug "Found %d ISBNs: %s" (length isbns) isbns)
-          (unless (-first
-                   (lambda (isbn)
-                     (cashpw/log-debug "Attempting to add ISBN %s" isbn)
-                     (zotra-add-entry isbn))
-                   isbns)
-            (message "Failed to add citation for ISBNs %s" isbns))))))))
 #+end_src
-
-
-#+RESULTS:
-: cashpw/google-books-select-isbn-and-add-citation
 
 *** =read-multi=
 

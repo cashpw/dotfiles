@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-05-25 Mon 11:55]
+:LAST_MODIFIED: [2026-08-16 Sun 20:32]
 :END:
 #+title: Personal Emacs config: Org - Capture Templates
 #+author: Cash Prokop-Weaver
@@ -465,16 +465,23 @@
                    (if (string-empty-p description)
                        description
                      (concat "\n" description)))
-                  (artist-name
-                   (when (member "person" (cashpw/org-get-filetags))
-                     (org-get-title)))
+                  (artist-node
+                   (if (member "person" (cashpw/org-get-filetags))
+                       (save-excursion
+                         (goto-char (point-min))
+                         (org-node-at-point))
+                     (org-node-read)))
                   (artist-tag
-                   (when artist-name
+                   (when artist-node
                      (-->
-                      (downcase artist-name)
+                      (org-mem-entry-title artist-node)
+                      (downcase it)
                       (replace-regexp-in-string " " "_" it)
                       (replace-regexp-in-string "-" "_" it))))
                   (tags (org-make-tag-string (list "photo" artist-tag)))
+                  (artist-link
+                   (org-link-make-string (format "id:%s" (org-mem-entry-id artist-node))
+                                         (org-mem-entry-title artist-node)))
                   (image-link
                    (progn
                      (cashpw/org-download-image--no-insert image-url)
@@ -500,6 +507,7 @@
 :PROPERTIES:
 :CREATED: %U
 :IMAGE_SOURCE: ${image-url}
+:ARTIST: ${artist-link}
 :END:
 ${description}"))))))))
    org-capture-templates

@@ -1,5 +1,5 @@
 :PROPERTIES:
-:LAST_MODIFIED: [2026-05-25 Mon 11:55]
+:LAST_MODIFIED: [2026-07-21 Tue 08:15]
 :END:
 #+title: Personal Emacs config: Org - Flashcards
 #+author: Cash Prokop-Weaver
@@ -198,6 +198,8 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
    'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
   (add-to-list
    'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
+  (add-to-list
+   'org-fc-custom-contexts '(not-image . (:filter (not (or (tag "photo") (tag "asl") (tag "image"))))))
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
@@ -303,7 +305,6 @@ Org-fc is a spaced-repetition system for Emacs' org-mode.
 #+end_src
 
 *** Filters
-
 **** One card per file
 
 #+begin_src emacs-lisp :tangle config-personal.el :results none

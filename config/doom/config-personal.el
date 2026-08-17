@@ -453,74 +453,6 @@ Reference: https://emacs.stackexchange.com/a/24658/37010"
     (let* ((isbn-10s (isbn-10-get-all-in-buffer))
            (isbn-13s (isbn-13-get-all-in-buffer)))
       (completing-read "ISBN: " (append isbn-10s isbn-13s) nil t))))
-(after!
-  json
-  (defun cashpw/google-books--list (query key success)
-    "Return results of Google Books QUERY with api KEY.
-Invokes SUCCESS on success."
-    (request
-      "https://www.googleapis.com/books/v1/volumes"
-      :params
-      `(("key" . ,key)
-        ("q" . , query)
-        ("orderBy" . "relevance")
-        ("maxResults" . 40))
-      :parser 'json-read
-      :success success
-      :error
-      (cl-function
-       (lambda (&key error-thrown &allow-other-keys)
-         (message "Google Books error: %S" error-thrown))))))
-
-(defun cashpw/google-books-select-isbn-and-add-citation (query)
-  "Select ISBN from Google Books matching QUERY and add citation."
-  (interactive "MQuery: ")
-  (cashpw/google-books--list
-   query (secret-get "google-books" nil (cashpw/machine-p 'personal-phone))
-   (cl-function
-    (lambda (&key data &allow-other-keys)
-      (let ((options
-             (--filter
-              (cdr it)
-              (--map
-               (when-let ((volume-info (alist-get 'volumeInfo it)))
-                 (cons
-                  (let ((title
-                         (cashpw/string-normalize-length
-                          (alist-get 'title volume-info) 80))
-                        (authors
-                         (cashpw/string-normalize-length
-                          (string-join (alist-get 'authors volume-info) ",") 30))
-                        (description
-                         (cashpw/string-normalize-length
-                          (alist-get 'description volume-info) 30)))
-                    (s-lex-format "${title} ${authors} ${description}"))
-                  (let ((isbns
-                         (--map
-                          (cdr (car (cdr it)))
-                          (--filter
-                           (s-starts-with-p "ISBN_" (cdr (car it)))
-                           (append
-                            (alist-get
-                             'industryIdentifiers volume-info)
-                            nil)))))
-                    isbns)))
-               (alist-get 'items data)))))
-        (let* ((corfu-sort-function #'identity)
-               (vertico-sort-override-function #'identity)
-               (isbns
-                (alist-get (completing-read "Volume: " options
-                                            nil
-                                            'require-match)
-                           options
-                           nil nil #'string=)))
-          (cashpw/log-debug "Found %d ISBNs: %s" (length isbns) isbns)
-          (unless (-first
-                   (lambda (isbn)
-                     (cashpw/log-debug "Attempting to add ISBN %s" isbn)
-                     (zotra-add-entry isbn))
-                   isbns)
-            (message "Failed to add citation for ISBNs %s" isbns))))))))
 
 (use-package! read-multi
   :after org)
@@ -3438,6 +3370,7 @@ TODO")))))
 (after! embark
   (define-key global-map (kbd "M-E") #'embark-act))
 
+
 (use-package! aggressive-indent
   :config
   (add-hook
@@ -4466,6 +4399,7 @@ See: https://jethrokuan.github.io/org-roam-guide"
         org-roam-ui-update-on-save t
         org-roam-ui-open-on-start t))
 
+
 (defun cashpw-org-id-from-file (path)
   "Get the Org ID from the file at PATH, if it exists."
   (when (file-exists-p path)
@@ -5125,7 +5059,8 @@ The list starts with Monday and ends with Sunday."
 
   :config
   (add-hook
-   'zotra-after-get-bibtex-entry-hook #'cashpw/bibtex-clean-entry-override-key))
+   'zotra-after-get-bibtex-entry-hook #'cashpw/bibtex-clean-entry-override-key)
+  (setq-hook! 'bibtex-mode-hook apheleia-inhibit t))
 
 (defun cashpw/replace-tabs-with-two-spaces ()
   "Replace all tabs in buffer with two spaces."
@@ -5250,6 +5185,75 @@ The key is in the form: (authors|journal)_title_year."
      (t
       (cashpw/zotra-add-entry-from-url url)))))
 
+(after!
+  json
+  (defun cashpw/google-books--list (query key success)
+    "Return results of Google Books QUERY with api KEY.
+Invokes SUCCESS on success."
+    (request
+      "https://www.googleapis.com/books/v1/volumes"
+      :params
+      `(("key" . ,key)
+        ("q" . , query)
+        ("orderBy" . "relevance")
+        ("maxResults" . 40))
+      :parser 'json-read
+      :success success
+      :error
+      (cl-function
+       (lambda (&key error-thrown &allow-other-keys)
+         (message "Google Books error: %S" error-thrown))))))
+
+(defun cashpw/google-books-select-isbn-and-add-citation (query)
+  "Select ISBN from Google Books matching QUERY and add citation."
+  (interactive "MQuery: ")
+  (cashpw/google-books--list
+   query (secret-get "google-books" nil (cashpw/machine-p 'personal-phone))
+   (cl-function
+    (lambda (&key data &allow-other-keys)
+      (let ((options
+             (--filter
+              (cdr it)
+              (--map
+               (when-let ((volume-info (alist-get 'volumeInfo it)))
+                 (cons
+                  (let ((title
+                         (cashpw/string-normalize-length
+                          (or (alist-get 'title volume-info) "") 80))
+                        (authors
+                         (cashpw/string-normalize-length
+                          (string-join (alist-get 'authors volume-info) ",") 30))
+                        (description
+                         (cashpw/string-normalize-length
+                          (or (alist-get 'description volume-info) "") 30)))
+                    (s-lex-format "${title} ${authors} ${description}"))
+                  (let ((isbns
+                         (--map
+                          (cdr (car (cdr it)))
+                          (--filter
+                           (s-starts-with-p "ISBN_" (cdr (car it)))
+                           (append
+                            (alist-get
+                             'industryIdentifiers volume-info)
+                            nil)))))
+                    isbns)))
+               (alist-get 'items data)))))
+        (let* ((corfu-sort-function #'identity)
+               (vertico-sort-override-function #'identity)
+               (isbns
+                (alist-get (completing-read "Volume: " options
+                                            nil
+                                            'require-match)
+                           options
+                           nil nil #'string=)))
+          (cashpw/log-debug "Found %d ISBNs: %s" (length isbns) isbns)
+          (unless (-first
+                   (lambda (isbn)
+                     (cashpw/log-debug "Attempting to add ISBN %s" isbn)
+                     (zotra-add-entry isbn))
+                   isbns)
+            (message "Failed to add citation for ISBNs %s" isbns))))))))
+
 (use-package!
     org-roam-contacts
   :after org-roam
@@ -5346,7 +5350,13 @@ The key is in the form: (authors|journal)_title_year."
   (org-mem-do-sync-with-org-id t)
   (org-mem-seek-link-types '("http" "https" "id" "file" "attachment"))
   :config
-  (org-mem-updater-mode))
+  (org-mem-updater-mode)
+
+  (defun cashpw/org-mem--truenames-and-attrs-dedup (results)
+    "Deduplicate RESULTS of `org-mem--truenames-and-attrs' by file path."
+    (cl-delete-duplicates results :test #'string= :key #'car))
+
+  (advice-add 'org-mem--truenames-and-attrs :filter-return #'cashpw/org-mem--truenames-and-attrs-dedup))
 
 (use-package!
     org-node
@@ -5415,6 +5425,8 @@ TODO: move to org-mode section"
            do (cashpw/org-mode-insert-option
                option
                value)))
+
+
 
 (defun cashpw/org-mode-insert-properties (properties)
   "Insert an alist of org-mode PROPERTIES (:PROPERTY: VALUE)."
@@ -9186,6 +9198,7 @@ _CALENDAR-ID and _UPDATE-MODE are ignored."
     ;; (fset 'epg-wait-for-status 'ignore)
     (org-gcal-reload-client-id-secret)))
 
+
 (after! org-habit
   (setq
     org-habit-show-done-always-green t))
@@ -9842,6 +9855,7 @@ Pass INITIAL-INPUT, FILTER-FN, SORT-FN, REQUIRE-MATCH, and PROMPT to `org-roam-n
 
 (org-link-set-parameters "id"
                          :complete #'cashpw/org-roam-id-complete)
+
 
 (deflink
  "instagram"
@@ -10797,6 +10811,8 @@ to a bare link (e.g., [[path]])."
    'org-fc-custom-contexts '(reading-list . (:filter (tag "reading"))))
   (add-to-list
    'org-fc-custom-contexts '(not-reading-list . (:filter (not (tag "reading")))))
+  (add-to-list
+   'org-fc-custom-contexts '(not-image . (:filter (not (or (tag "photo") (tag "asl") (tag "image"))))))
 
   ;; Define twice so the keys show up in the hint
   ;; See https://www.leonrische.me/fc/use_with_evil-mode.html
