@@ -1,11 +1,13 @@
 state_file = "auto"
 
 [hotkey]
-enabled = true
-key = "RIGHTCTRL"
-modifiers = []
+# Disable internal hardware device monitoring to prevent input captures and execution conflicts.
+# All dictation shortcut triggers are governed globally by the desktop compositor.
+enabled = false
+# key = "RIGHTCTRL"
+# modifiers = []
 mode = "toggle"
-model_modifier = "LEFTSHIFT"
+# model_modifier = "LEFTSHIFT"
 
 [audio]
 device = "default"
