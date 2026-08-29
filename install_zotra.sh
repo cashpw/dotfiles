@@ -22,10 +22,24 @@ fi
 
 cd "${ZOTRA_LINK_DIR}"
 
+# Source NVM if present
+export NVM_DIR="$HOME/.config/nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # Sourcing nvm.sh may set non-zero return under set -e if nvm environment has warnings, so allow || true
+  \. "$NVM_DIR/nvm.sh" || true
+fi
+
+# Auto-install Node/NPM via NVM if nvm is available but no node version is active yet
+if ! command -v npm >/dev/null 2>&1 && command -v nvm >/dev/null 2>&1; then
+  echo "Installing Node.js LTS via NVM..."
+  nvm install --lts
+fi
+
 if command -v npm >/dev/null 2>&1; then
   echo "Installing Zotra npm dependencies..."
   npm install --production --quiet
   echo "Zotra Server setup complete."
 else
-  echo "WARNING: 'npm' is not installed. Run 'sudo dnf install npm nodejs' or 'sudo apt install npm' then rerun ./install."
+  echo "WARNING: 'npm' is not installed and NVM was not found in $NVM_DIR."
+  echo "Install NVM via ./install or run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash"
 fi

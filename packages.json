@@ -1421,32 +1421,25 @@
         "npm",
         "node"
       ],
-      "description": "`npm` (Node Package Manager) is required to build and run Zotra Server for Emacs Org-Roam.",
+      "description": "`npm` (Node Package Manager) is installed and managed via NVM (Node Version Manager).",
       "doc": [
-        "# npm",
+        "# npm / Node.js (NVM)",
         "",
-        "`npm` (Node Package Manager) is required to build and run Zotra Server for Emacs Org-Roam.",
+        "`npm` and `node` are managed per-user via Node Version Manager (NVM).",
         "",
         "## Installation",
         "",
-        "*   **Debian/Ubuntu/gLinux**:",
-        "    ```bash",
-        "    sudo apt install npm nodejs",
-        "    ```",
-        "*   **Fedora**:",
-        "    ```bash",
-        "    sudo dnf install npm nodejs",
-        "    ```",
-        "*   **Arch Linux**:",
-        "    ```bash",
-        "    sudo pacman -S npm nodejs",
-        "    ```"
+        "```bash",
+        "export NVM_DIR=\"$HOME/.config/nvm\"",
+        "[ -s \"$NVM_DIR/nvm.sh\" ] && \\. \"$NVM_DIR/nvm.sh\"",
+        "nvm install --lts",
+        "```"
       ],
-      "packages": {
-        "apt": "npm",
-        "dnf": "npm",
-        "pacman": "npm"
-      }
+      "packages": {},
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "export NVM_DIR=\"$HOME/.config/nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && \\. \"$NVM_DIR/nvm.sh\" && nvm install --lts"
     }
   ],
   "fonts": [
