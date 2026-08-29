@@ -1,6 +1,6 @@
 # swaync
 
-`swaync` (Sway Notification Center) is a customizable GTK-based notification daemon and control center for Wayland compositors.
+`swaync` (Sway Notification Center) is a GTK-based notification daemon and control center for Wayland compositors.
 
 ## Installation
 
@@ -10,5 +10,5 @@
     ```
 *   **Fedora (Personal)**:
     ```bash
-    sudo dnf install swaynotificationcenter
+    sudo dnf install SwayNotificationCenter
     ```

@@ -1,6 +1,6 @@
-# rofi / rofi-wayland
+# rofi
 
-`rofi` is an application launcher, window switcher, and dmenu replacement (with native Wayland support via `rofi-wayland` on Fedora/gLinux).
+`rofi` is an application launcher, window switcher, and dmenu replacement (with native Wayland support).
 
 ## Installation
 
@@ -10,5 +10,5 @@
     ```
 *   **Fedora (Personal)**:
     ```bash
-    sudo dnf install rofi-wayland
+    sudo dnf install rofi
     ```

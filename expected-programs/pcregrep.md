@@ -6,9 +6,9 @@
 
 *   **Debian / gLinux (Work)**:
     ```bash
-    sudo apt install pcregrep
+    sudo apt install pcre2-utils
     ```
 *   **Fedora (Personal)**:
     ```bash
-    sudo dnf install pcregrep
+    sudo dnf install pcre-tools
     ```

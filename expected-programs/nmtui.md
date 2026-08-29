@@ -6,7 +6,7 @@
 
 *   **Debian / gLinux (Work)**:
     ```bash
-    sudo apt install network-manager
+    sudo apt install network-manager-tui
     ```
 *   **Fedora (Personal)**:
     ```bash

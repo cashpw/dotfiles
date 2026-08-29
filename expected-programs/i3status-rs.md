@@ -1,18 +1,15 @@
 # i3status-rs / i3status-rust
 
-`i3status-rs` (`i3status-rust`) is a feature-rich and resource-friendly status bar generator written in Rust, used by Sway.
+`i3status-rs` (`i3status-rust`) is a feature-rich status bar generator written in Rust, used by Sway.
 
 ## Installation
 
-*   **Debian / gLinux (Work)**:
+*   **Cargo (Debian / gLinux / Universal)**:
     ```bash
-    sudo apt install i3status-rust
+    cargo install i3status-rs
     ```
 *   **Fedora (Personal)**:
     ```bash
-    sudo dnf install i3status-rs
-    ```
-*   **Cargo (Alternative)**:
-    ```bash
-    cargo install i3status-rs
+    sudo dnf copr enable atim/i3status-rust
+    sudo dnf install i3status-rust
     ```

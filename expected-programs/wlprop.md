@@ -1,13 +1,21 @@
 # wlprop
 
-`wlprop` is a tool for inspecting Wayland window properties (similar to `xprop` on X11).
+`wlprop` is a script for inspecting Wayland window properties on Sway/wlroots compositors (similar to `xprop` on X11).
+
+## Dependencies
+
+Requires the following packages:
+* `sway` (`swaymsg`)
+* `jq`
+* `slurp`
+* `gawk` / `awk`
 
 ## Installation
 
-*   **Build from source**:
-    Clone and build into `~/third_party/wlprop` or `~/.local/bin`:
-    ```bash
-    git clone https://github.com/dianatap/wlprop ~/third_party/wlprop
-    cd ~/third_party/wlprop
-    sudo cp wlprop /usr/local/bin/
-    ```
+Install from the local repository script at `~/third_party/wlprop/wlprop.sh`:
+
+```bash
+mkdir -p ~/.local/bin
+cp ~/third_party/wlprop/wlprop.sh ~/.local/bin/wlprop
+chmod +x ~/.local/bin/wlprop
+```

@@ -4,11 +4,12 @@
 
 ## Installation
 
-*   **Debian / gLinux (Work)**:
+*   **Cargo (Debian / gLinux / Universal)**:
     ```bash
     cargo install ncspot
     ```
 *   **Fedora (Personal)**:
     ```bash
+    sudo dnf copr enable jishnu/ncspot
     sudo dnf install ncspot
     ```

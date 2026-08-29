@@ -8,7 +8,3 @@
     ```bash
     cargo install bluetui
     ```
-*   **Fedora (Personal - if packaged)**:
-    ```bash
-    sudo dnf install bluetui
-    ```
