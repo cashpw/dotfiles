@@ -740,7 +740,7 @@
         "*   **Flathub (Preferred)**:",
         "    ```bash",
         "    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
-        "    flatpak install flathub com.github.hrkfdn.ncspot",
+        "    flatpak install flathub io.github.hrkfdn.ncspot",
         "    ```",
         "*   **Cargo (Alternative)**:",
         "    ```bash",
@@ -748,7 +748,7 @@
         "    ```"
       ],
       "packages": {
-        "flatpak": "flathub com.github.hrkfdn.ncspot",
+        "flatpak": "flathub io.github.hrkfdn.ncspot",
         "cargo": "ncspot",
         "dnf": "ncspot"
       },
