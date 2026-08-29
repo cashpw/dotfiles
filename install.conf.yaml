@@ -1,6 +1,8 @@
 - defaults:
     link:
       relink: true
+      create: true
+      force: true
 
 - clean: ['~']
 
@@ -9,6 +11,7 @@
   - ~/.config
   - ~/.gemini
   - ~/.local/bin
+  - ~/.var/app
   - ~/.local/share/zotra-server
   - ~/.local/share/icons/google-material
 
@@ -19,9 +22,9 @@
     ~/.gemini/:
       glob: true
       path: gemini/*
-    ~/.var/:
+    ~/.var/app/:
       glob: true
-      path: var/*
+      path: var/app/*
     ~/.scripts/:
       glob: true
       path: scripts/*

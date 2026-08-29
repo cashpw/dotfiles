@@ -56,7 +56,7 @@ git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
 git submodule update --init --recursive "${DOTBOT_DIR}"
 
 echo "[Phase 2] Symlinking configuration files via Dotbot..."
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}"
+"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" || echo "Warning: Dotbot reported some link warnings."
 
 echo ""
 echo "[Phase 3] Executing Post-Installation Setup..."
