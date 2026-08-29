@@ -21,29 +21,29 @@ if is_work_machine; then
   echo "Setting up configuration for WORK environment..."
   
   # Sway Environment Config
-  ln -sf "$HOME/.config/sway/config.d/env-work.conf" "$HOME/.config/sway/config.d/env.conf"
+  (cd "$HOME/.config/sway/config.d" && ln -sf env-work.conf env.conf)
   
   # Kanshi Profile
-  ln -sf "$HOME/.config/kanshi/config-work" "$HOME/.config/kanshi/config"
+  (cd "$HOME/.config/kanshi" && ln -sf config-work config)
 
   # Voxtype Config
-  ln -sf "$HOME/.config/voxtype/config-work.toml" "$HOME/.config/voxtype/config.toml"
+  (cd "$HOME/.config/voxtype" && ln -sf config-work.toml config.toml)
 
   # i3status-rs Config (includes cloudtop and notify-tunnel)
-  ln -sf "$HOME/.config/i3status-rs/config-work.toml" "$HOME/.config/i3status-rs/config.toml"
+  (cd "$HOME/.config/i3status-rs" && ln -sf config-work.toml config.toml)
 
 else
   echo "Setting up configuration for PERSONAL environment..."
   
   # Sway Environment Config
-  ln -sf "$HOME/.config/sway/config.d/env-personal.conf" "$HOME/.config/sway/config.d/env.conf"
+  (cd "$HOME/.config/sway/config.d" && ln -sf env-personal.conf env.conf)
   
   # Kanshi Profile
-  ln -sf "$HOME/.config/kanshi/config-personal" "$HOME/.config/kanshi/config"
+  (cd "$HOME/.config/kanshi" && ln -sf config-personal config)
 
   # Voxtype Config
-  ln -sf "$HOME/.config/voxtype/config-personal.toml" "$HOME/.config/voxtype/config.toml"
+  (cd "$HOME/.config/voxtype" && ln -sf config-personal.toml config.toml)
 
   # i3status-rs Config (omits cloudtop and notify-tunnel)
-  ln -sf "$HOME/.config/i3status-rs/config-personal.toml" "$HOME/.config/i3status-rs/config.toml"
+  (cd "$HOME/.config/i3status-rs" && ln -sf config-personal.toml config.toml)
 fi
