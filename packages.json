@@ -1375,6 +1375,45 @@
         "apt": "zsh",
         "dnf": "zsh"
       }
+    },
+    {
+      "id": "syncthing",
+      "binary": [
+        "syncthing"
+      ],
+      "description": "`syncthing` is a continuous file synchronization program used to sync local notes and folders across devices.",
+      "doc": [
+        "# syncthing",
+        "",
+        "`syncthing` is a continuous file synchronization program used to sync local notes and folders across devices.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install syncthing",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install syncthing",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S syncthing",
+        "    ```",
+        "",
+        "## Systemd User Service",
+        "",
+        "Enable and start Syncthing user service:",
+        "```bash",
+        "systemctl --user enable --now syncthing.service",
+        "```"
+      ],
+      "packages": {
+        "apt": "syncthing",
+        "dnf": "syncthing",
+        "pacman": "syncthing"
+      }
     }
   ],
   "fonts": [
