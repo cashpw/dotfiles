@@ -40,8 +40,12 @@ sudo dnf install -y \
 *** Build / Cargo & Custom Tools
 For TUI tools, node management, dictation, AI models, and custom components:
 #+begin_src sh
+# Flatpak binaries (ncspot)
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub com.github.hrkfdn.ncspot
+
 # Cargo binaries
-cargo install bluetui ncspot i3status-rs
+cargo install bluetui i3status-rs
 cargo install --git https://github.com/ammgws/autotiling-rs
 
 # Node Version Manager (NVM)
