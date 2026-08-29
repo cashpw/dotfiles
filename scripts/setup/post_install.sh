@@ -10,6 +10,8 @@ echo "================================================================"
 
 echo ""
 echo "[1/5] Updating Git Submodules..."
+git config --unset-all submodule.zotra-server.url 2>/dev/null || true
+git config --remove-section submodule.zotra-server 2>/dev/null || true
 git submodule sync --recursive || true
 git submodule update --init --recursive || true
 

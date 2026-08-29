@@ -1414,6 +1414,39 @@
         "dnf": "syncthing",
         "pacman": "syncthing"
       }
+    },
+    {
+      "id": "npm",
+      "binary": [
+        "npm",
+        "node"
+      ],
+      "description": "`npm` (Node Package Manager) is required to build and run Zotra Server for Emacs Org-Roam.",
+      "doc": [
+        "# npm",
+        "",
+        "`npm` (Node Package Manager) is required to build and run Zotra Server for Emacs Org-Roam.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install npm nodejs",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install npm nodejs",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S npm nodejs",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "npm",
+        "dnf": "npm",
+        "pacman": "npm"
+      }
     }
   ],
   "fonts": [
