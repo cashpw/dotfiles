@@ -8,8 +8,10 @@ Personal dotfiles and system configurations for Wayland/Sway desktop environment
 git clone git@github.com:cashpw/dotfiles.git ~/proj/dotfiles
 cd ~/proj/dotfiles
 git submodule update --init --recursive
-bash check_programs.sh
+./install
 #+end_src
+
+The ~./install~ script uses [[https://github.com/dotbot/dotbot][Dotbot]] to automatically symlink configurations (~.zshrc~, =~/.config/zsh/=, =~/.config/sway/=, etc.), run submodules setup, and verify expected programs.
 
 * Wayland / Sway Environment Setup
 
@@ -18,7 +20,7 @@ bash check_programs.sh
 *** Debian / gLinux (Work)
 #+begin_src sh
 sudo apt update && sudo apt install -y \
-  sway swaylock swayidle sway-notification-center mako-notifier kanshi \
+  zsh sway swaylock swayidle sway-notification-center mako-notifier kanshi \
   grim slurp wl-clipboard rofi brightnessctl playerctl \
   input-remapper wtype fzf unzip font-manager btop network-manager-tui \
   kitty fcitx5 dunst feh pandoc gnuplot notmuch lieer vlc libreoffice \
@@ -28,7 +30,7 @@ sudo apt update && sudo apt install -y \
 *** Fedora (Personal)
 #+begin_src sh
 sudo dnf install -y \
-  sway swaylock swayidle SwayNotificationCenter mako kanshi \
+  zsh sway swaylock swayidle SwayNotificationCenter mako kanshi \
   grim slurp wl-clipboard rofi brightnessctl playerctl \
   input-remapper wtype fzf unzip font-manager btop NetworkManager-tui \
   kitty fcitx5 dunst feh pandoc gnuplot notmuch vlc libreoffice \
@@ -59,7 +61,12 @@ mkdir -p ~/.local/bin
 ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
 #+end_src
 
-** 2. Environment Variables
+** 2. Shell & Environment Variables
+
+Set Zsh as your default login shell:
+#+begin_src sh
+chsh -s $(which zsh)
+#+end_src
 
 Ensure the following environment variables are set (e.g. in =~/.profile= or =~/.zshrc=):
 #+begin_src sh
