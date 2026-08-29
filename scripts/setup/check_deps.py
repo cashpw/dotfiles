@@ -79,6 +79,15 @@ def check_script(script_cmd):
     except Exception:
         return False
 
+def check_flatpak(app_id):
+    if not shutil.which("flatpak"):
+        return False
+    try:
+        res = subprocess.run(["flatpak", "info", app_id], capture_output=True, check=False)
+        return res.returncode == 0
+    except Exception:
+        return False
+
 def resolve_dependencies(manifest, os_ctx):
     pkg_mgr = os_ctx["pkg_mgr"]
 
@@ -94,6 +103,13 @@ def resolve_dependencies(manifest, os_ctx):
             is_installed = check_env_var(prog["env_var"])
         elif "binary" in prog and prog["binary"]:
             is_installed = check_binary(prog["binary"])
+
+        # Fallback: Check Flatpak installation if package specifies Flatpak
+        if not is_installed and "packages" in prog and "flatpak" in prog["packages"]:
+            fp_val = prog["packages"]["flatpak"]
+            app_id = fp_val.split()[-1]
+            if check_flatpak(app_id):
+                is_installed = True
 
         if is_installed:
             installed_progs.append(prog)

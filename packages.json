@@ -727,7 +727,8 @@
     {
       "id": "ncspot",
       "binary": [
-        "ncspot"
+        "ncspot",
+        "io.github.hrkfdn.ncspot"
       ],
       "description": "`ncspot` is an ncurses Spotify client written in Rust.",
       "doc": [
