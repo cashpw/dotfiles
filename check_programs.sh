@@ -7,6 +7,7 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 declare -A ALIASES=(
   ["i3status-rs"]="i3status-rs i3status-rust"
   ["rofi"]="rofi rofi-wayland"
+  ["nvm"]="nvm node"
 )
 
 is_installed() {

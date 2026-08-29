@@ -20,7 +20,8 @@ bash check_programs.sh
 sudo apt update && sudo apt install -y \
   sway swaylock swayidle sway-notification-center mako-notifier kanshi \
   grim slurp wl-clipboard rofi i3status-rust brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager btop network-manager
+  input-remapper wtype fzf unzip font-manager btop network-manager \
+  kitty fcitx5 dunst
 #+end_src
 
 *** Fedora (Personal)
@@ -28,14 +29,26 @@ sudo apt update && sudo apt install -y \
 sudo dnf install -y \
   sway swaylock swayidle swaynotificationcenter mako kanshi \
   grim slurp wl-clipboard rofi-wayland i3status-rs brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager btop NetworkManager-tui
+  input-remapper wtype fzf unzip font-manager btop NetworkManager-tui \
+  kitty fcitx5 dunst ncspot
 #+end_src
 
-*** Build / Cargo Tools
-For TUI tools and custom Wayland components (e.g. ~bluetui~, ~autotiling-rs~):
+*** Build / Cargo & Custom Tools
+For TUI tools, node management, dictation, and custom Wayland components:
 #+begin_src sh
-cargo install bluetui
+# Cargo binaries
+cargo install bluetui ncspot
 cargo install --git https://github.com/ammgws/autotiling-rs
+
+# Node Version Manager (NVM)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# Voice Dictation (Voxtype)
+bash scripts/config/install_voxtype.sh
+
+# Wayland Property Inspector (wlprop)
+git clone https://github.com/dianatap/wlprop ~/third_party/wlprop
+cd ~/third_party/wlprop && sudo cp wlprop /usr/local/bin/
 #+end_src
 
 ** 2. Environment Variables
