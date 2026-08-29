@@ -56,8 +56,7 @@ bash scripts/config/install_voxtype.sh
 
 # Wayland Property Inspector (wlprop)
 mkdir -p ~/.local/bin
-cp ~/third_party/wlprop/wlprop.sh ~/.local/bin/wlprop
-chmod +x ~/.local/bin/wlprop
+ln -sf ~/.config/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
 #+end_src
 
 ** 2. Environment Variables

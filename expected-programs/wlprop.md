@@ -12,10 +12,9 @@ Requires the following packages:
 
 ## Installation
 
-Install from the local repository script at `~/third_party/wlprop/wlprop.sh`:
+The script is tracked directly inside this repository under `scripts/utility/wlprop.sh`. To make it accessible in your `$PATH`:
 
 ```bash
 mkdir -p ~/.local/bin
-cp ~/third_party/wlprop/wlprop.sh ~/.local/bin/wlprop
-chmod +x ~/.local/bin/wlprop
+ln -sf ~/.config/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
 ```
