@@ -1,0 +1,124 @@
+icons_format = "{icon}"
+
+[theme]
+theme = "tomorrow-night"
+
+[theme.overrides]
+separator = ""
+
+[icons]
+icons = "material-nf"
+[icons.overrides]
+sync = "\U000f04e6"
+sync_disabled = "\U000f04e8"
+bell = "\U000f009a"
+bell_disabled = "\U000f009b"
+cpu = "CPU"
+
+[[block]]
+block = "disk_space"
+path = "/"
+info_type = "used"
+interval = 60
+warning = 80.0
+alert = 90.0
+format = " $path $percentage "
+format_alt = " $path $percentage $used.eng(w:0)/$total.eng(w:0) "
+
+[[block]]
+block = "cpu"
+info_cpu = 20
+warning_cpu = 50
+critical_cpu = 90
+
+[[block]]
+block = "memory"
+format = " RAM $mem_used_percents.eng(w:2) "
+
+[[block]]
+block = "temperature"
+format = " $average "
+format_alt = " $icon $min min, $max max, $average avg "
+interval = 10
+[block.theme_overrides]
+info_bg = "#373b41" # Idle
+info_fg = "#c5c8c6" # Idle
+
+[[block]]
+block = "music"
+format = "{ $icon $combo.str(max_w:40,rot_interval:0.5) $play |}"
+[block.theme_overrides]
+info_bg = "#373b41" # Idle
+info_fg = "#c5c8c6" # Idle
+
+[[block]]
+block = "sound"
+[[block.click]]
+button = "left"
+cmd = "pavucontrol"
+[block.theme_overrides]
+warning_fg = "#c5c8c6" # idle_fg
+warning_bg = "#373b41" # idle_bg
+idle_bg = "#81a2be" # Blue
+idle_fg = "#1d1f21" # Background
+
+[[block]]
+block = "net"
+format = " $icon{ $ssid|} "
+format_alt = " $icon ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $speed_up.eng(prefix:K) {$signal_strength $ssid|Wired connection} $ip $ipv6 "
+
+[[block]]
+block = "bluetooth"
+mac = "74:74:46:26:4C:6F"
+format = " $icon{ $percentage|} "
+disconnected_format = " $icon "
+[[block.click]]
+button = "left"
+cmd = "bluetoothctl connect 74:74:46:26:4C:6F"
+[[block.click]]
+button = "right"
+cmd = "bluetoothctl disconnect 74:74:46:26:4C:6F"
+
+[[block]]
+block = "bluetooth"
+mac = "C3:FD:60:D2:CE:74"
+format = " 󰍽{ $percentage|} "
+disconnected_format = " $icon "
+[[block.click]]
+button = "left"
+cmd = "bluetoothctl connect C3:FD:60:D2:CE:74"
+[[block.click]]
+button = "right"
+cmd = "bluetoothctl disconnect C3:FD:60:D2:CE:74"
+
+[[block]]
+block = "custom"
+command = "bash ~/.config/i3status-rs/syncthing_status.sh"
+interval = 10
+json = true
+[block.theme_overrides]
+idle_bg = "#373b41"       # Synced & Idle (Gray)
+idle_fg = "#c5c8c6"
+good_bg = "#b5bd68"       # Syncing (Green)
+good_fg = "#1d1f21"
+warning_bg = "#de935f"    # Running but no nodes connected (Orange)
+warning_fg = "#1d1f21"
+critical_bg = "#cc6666"   # Off (Red)
+critical_fg = "#1d1f21"
+[[block.click]]
+button = "left"
+cmd = "firefox --new-tab 'http://127.0.0.1:8384'"
+
+[[block]]
+block = "battery"
+
+[[block]]
+block = "custom"
+command = "bash ~/.config/i3status-rs/voxtype_status.sh"
+interval = 1
+json = true
+
+[[block]]
+block = "time"
+interval = 1
+format = " 󰃭 $timestamp.datetime(f:'%m-%d %H:%M:%S') "

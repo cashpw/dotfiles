@@ -15,18 +15,6 @@ bell = "\U000f009a"
 bell_disabled = "\U000f009b"
 cpu = "CPU"
 
-#[[block]]
-#block = "packages"
-#package_manager = ["dnf"]
-#interval = 1800
-#format = " $icon $dnf.eng(w:1) updates available "
-#format_singular = " $icon One update available "
-#format_up_to_date = ""
-#[[block.click]]
-## shows dmenu with cached available updates. Any dmenu alternative should also work.
-#button = "left"
-#cmd = "dnf list -q --upgrades | tail -n +2 | rofi -dmenu"
-
 [[block]]
 block = "disk_space"
 path = "/"
@@ -46,8 +34,7 @@ critical_cpu = 90
 [[block]]
 block = "memory"
 format = " RAM $mem_used_percents.eng(w:2) "
-#format_alt = " $icon_swap $swap_used_percents.eng(w:2) "
-#
+
 [[block]]
 block = "temperature"
 format = " $average "
@@ -75,14 +62,10 @@ block = "sound"
 button = "left"
 cmd = "pavucontrol"
 [block.theme_overrides]
-# Warning is used when muted
 warning_fg = "#c5c8c6" # idle_fg
 warning_bg = "#373b41" # idle_bg
-# Idle is used when unmuted
 idle_bg = "#81a2be" # Blue
 idle_fg = "#1d1f21" # Background
-#idle_bg = "#373b41" # Selection
-#idle_fg = "#c5c8c6" # Foreground
 
 [[block]]
 block = "net"
@@ -112,24 +95,6 @@ cmd = "bluetoothctl connect C3:FD:60:D2:CE:74"
 [[block.click]]
 button = "right"
 cmd = "bluetoothctl disconnect C3:FD:60:D2:CE:74"
-
-#[[block]]
-#block = "service_status"
-#service = "syncthing"
-#user = true
-#active_format = " ^icon_sync "
-#inactive_format = " ^icon_sync_disabled "
-#inactive_state = "Warning"
-#[block.theme_overrides]
-#warning_bg = "#cc6666" # Red
-#warning_fg = "#1d1f21" # Background
-## Idle is used when unmuted
-#idle_bg = "#373b41" # Idle
-#idle_fg = "#c5c8c6" # Idle
-
-#[[block.click]]
-#button = "left"
-#cmd = "firefox --new-tab 'http://127.0.0.1:8384'"
 
 [[block]]
 block = "custom"
@@ -178,4 +143,3 @@ json = true
 block = "time"
 interval = 1
 format = " 󰃭 $timestamp.datetime(f:'%m-%d %H:%M:%S') "
-

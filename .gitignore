@@ -29,3 +29,4 @@ __pycache__/
 /config/sway/config.d/autostart-env.conf
 /config/kanshi/config
 /config/voxtype/config.toml
+/config/i3status-rs/config.toml

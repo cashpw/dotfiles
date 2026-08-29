@@ -12,6 +12,7 @@ fi
 mkdir -p "$HOME/.config/sway/config.d"
 mkdir -p "$HOME/.config/kanshi"
 mkdir -p "$HOME/.config/voxtype"
+mkdir -p "$HOME/.config/i3status-rs"
 
 # Clean up old autostart symlink if it exists
 rm -f "$HOME/.config/sway/config.d/autostart-env.conf"
@@ -28,6 +29,9 @@ if is_work_machine; then
   # Voxtype Config
   ln -sf "$HOME/.config/voxtype/config-work.toml" "$HOME/.config/voxtype/config.toml"
 
+  # i3status-rs Config (includes cloudtop and notify-tunnel)
+  ln -sf "$HOME/.config/i3status-rs/config-work.toml" "$HOME/.config/i3status-rs/config.toml"
+
 else
   echo "Setting up configuration for PERSONAL environment..."
   
@@ -39,4 +43,7 @@ else
 
   # Voxtype Config
   ln -sf "$HOME/.config/voxtype/config-personal.toml" "$HOME/.config/voxtype/config.toml"
+
+  # i3status-rs Config (omits cloudtop and notify-tunnel)
+  ln -sf "$HOME/.config/i3status-rs/config-personal.toml" "$HOME/.config/i3status-rs/config.toml"
 fi
