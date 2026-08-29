@@ -16,5 +16,5 @@ The script is tracked directly inside this repository under `scripts/utility/wlp
 
 ```bash
 mkdir -p ~/.local/bin
-ln -sf ~/.config/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
+ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
 ```

@@ -5,8 +5,8 @@ Personal dotfiles and system configurations for Wayland/Sway desktop environment
 * Installation
 
 #+begin_src sh
-git clone git@github.com:cashpw/dotfiles.git ~/.config/dotfiles
-cd ~/.config/dotfiles
+git clone git@github.com:cashpw/dotfiles.git ~/proj/dotfiles
+cd ~/proj/dotfiles
 git submodule update --init --recursive
 bash check_programs.sh
 #+end_src
@@ -56,7 +56,7 @@ bash scripts/config/install_voxtype.sh
 
 # Wayland Property Inspector (wlprop)
 mkdir -p ~/.local/bin
-ln -sf ~/.config/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
+ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
 #+end_src
 
 ** 2. Environment Variables
