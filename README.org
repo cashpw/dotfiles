@@ -24,7 +24,7 @@ sudo apt update && sudo apt install -y \
   grim slurp wl-clipboard rofi brightnessctl playerctl \
   input-remapper wtype fzf unzip font-manager btop network-manager-tui \
   kitty fcitx5 dunst feh pandoc gnuplot notmuch lieer vlc libreoffice \
-  clisp pcre2-utils darktable digikam clinfo
+  clisp pcre2-utils darktable digikam clinfo flatpak
 #+end_src
 
 *** Fedora (Personal)
@@ -34,7 +34,7 @@ sudo dnf install -y \
   grim slurp wl-clipboard rofi brightnessctl playerctl \
   input-remapper wtype fzf unzip font-manager btop NetworkManager-tui \
   kitty fcitx5 dunst feh pandoc gnuplot notmuch vlc libreoffice \
-  clisp pcre-tools darktable digikam clinfo
+  clisp pcre-tools darktable digikam clinfo flatpak
 #+end_src
 
 *** Build / Cargo & Custom Tools
