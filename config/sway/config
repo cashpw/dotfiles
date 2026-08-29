@@ -188,6 +188,7 @@ bindsym $mod+Shift+0 move container to workspace 10
 
 # Rofi workspace switcher
 bindsym $mod+slash exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -i -p "Workspace" | xargs -r -I {} swaymsg workspace "{}"
+bindsym $mod+Shift+slash exec swaymsg -t get_workspaces | jq -r '.[].name' | rofi -dmenu -i -p "Move to workspace" | xargs -r -I {} swaymsg move container to workspace "{}"
 
 # Create new workspace with four terminals connecting to cloudtop shpool sessions
 bindsym $mod+Shift+b exec rofi -dmenu -i -p "New workspace" | xargs -r -I {} $HOME/.scripts-work/sway-4term-workspace.sh "{}"
@@ -445,7 +446,7 @@ bindsym $mod+Shift+Return exec $term $HOME/.scripts-work/shpool-cloudtop.sh
 # Tmux, which is much more than I want given I already work within a tiling window manager
 #bindsym $mod+Shift+Return exec $term -e tmx2 new-session -A -s work && ssh cashweaver.c.googlers.com
 
-bindsym $mod+e exec emacsclient --eval "(emacs-everywhere)"
+bindsym $mod+e exec $HOME/.scripts-work/sway-focus-emacs.sh
 
 # ================================================
 # Startup

@@ -1,0 +1,15 @@
+[Unit]
+Description=SSH Reverse Tunnel for Remote Notifications
+After=network-online.target notify-listener.service
+Wants=network-online.target notify-listener.service
+
+[Service]
+Type=simple
+TimeoutStartSec=infinity
+ExecStartPre=/bin/bash -c 'gcertstatus >/dev/null 2>&1'
+ExecStart=%h/.local/bin/notify-tunnel-runner.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

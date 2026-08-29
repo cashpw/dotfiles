@@ -1,0 +1,17 @@
+# Global Mako configuration
+# Disable automatic expiration by default (0 = infinite persistence)
+default-timeout=0
+
+# Rule for Jetski terminal bell notifications from Kitty
+# Ensure non-persistence by expiring after 5 seconds and ignoring D-Bus override requests
+[app-name=kitty]
+default-timeout=5000
+ignore-timeout=1
+
+[summary~=^Jetski.*]
+default-timeout=5000
+ignore-timeout=1
+
+[body~=^Jetski.*]
+default-timeout=5000
+ignore-timeout=1

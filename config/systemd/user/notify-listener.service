@@ -1,0 +1,14 @@
+[Unit]
+Description=SSH Notification Listener Daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/notify-over-ssh.sh
+Restart=always
+RestartSec=3
+Environment=DISPLAY=:0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
+
+[Install]
+WantedBy=default.target

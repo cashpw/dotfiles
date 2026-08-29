@@ -11,6 +11,8 @@ icons = "material-nf"
 [icons.overrides]
 sync = "\U000f04e6"
 sync_disabled = "\U000f04e8"
+bell = "\U000f009a"
+bell_disabled = "\U000f009b"
 cpu = "CPU"
 
 #[[block]]
@@ -111,6 +113,24 @@ cmd = "bluetoothctl connect C3:FD:60:D2:CE:74"
 button = "right"
 cmd = "bluetoothctl disconnect C3:FD:60:D2:CE:74"
 
+#[[block]]
+#block = "service_status"
+#service = "syncthing"
+#user = true
+#active_format = " ^icon_sync "
+#inactive_format = " ^icon_sync_disabled "
+#inactive_state = "Warning"
+#[block.theme_overrides]
+#warning_bg = "#cc6666" # Red
+#warning_fg = "#1d1f21" # Background
+## Idle is used when unmuted
+#idle_bg = "#373b41" # Idle
+#idle_fg = "#c5c8c6" # Idle
+
+#[[block.click]]
+#button = "left"
+#cmd = "firefox --new-tab 'http://127.0.0.1:8384'"
+
 [[block]]
 block = "custom"
 command = "bash ~/.config/i3status-rs/syncthing_status.sh"
@@ -128,6 +148,22 @@ critical_fg = "#1d1f21"
 [[block.click]]
 button = "left"
 cmd = "firefox --new-tab 'http://127.0.0.1:8384'"
+
+[[block]]
+block = "service_status"
+service = "notify-tunnel"
+user = true
+active_format = " ^icon_bell "
+inactive_format = " ^icon_bell_disabled "
+inactive_state = "Warning"
+[block.theme_overrides]
+warning_bg = "#cc6666" # Red
+warning_fg = "#1d1f21" # Background
+idle_bg = "#373b41" # Idle
+idle_fg = "#c5c8c6" # Idle
+[[block.click]]
+button = "left"
+cmd = "systemctl --user restart notify-tunnel.service"
 
 [[block]]
 block = "battery"
