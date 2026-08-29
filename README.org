@@ -2,77 +2,52 @@
 
 Personal dotfiles and system configurations for Wayland/Sway desktop environment, Doom Emacs, Zsh, and development tools.
 
-* Installation
+* Installation & Onboarding
 
 #+begin_src sh
 git clone git@github.com:cashpw/dotfiles.git ~/proj/dotfiles
 cd ~/proj/dotfiles
-git submodule update --init --recursive
 ./install
 #+end_src
 
-The ~./install~ script uses [[https://github.com/dotbot/dotbot][Dotbot]] to automatically symlink configurations (~.zshrc~, =~/.config/zsh/=, =~/.config/sway/=, etc.), run submodules setup, and verify expected programs.
+The ~./install~ bootstrapper executes a 3-phase onboarding pipeline:
+1. **Dependency Resolution**: Queries system programs and fonts against ~packages.json~. Automatically detects your OS (~Fedora~, ~Debian/gLinux~, etc.) and generates single, ready-to-run joint package manager commands (chaining custom repos like Fedora COPR when necessary).
+2. **Configuration Symlinking**: Executes [[https://github.com/dotbot/dotbot][Dotbot]] to cleanly symlink configuration files (~.zshrc~, =~/.config/sway/=, =~/.config/zsh/=, etc.).
+3. **Post-Installation Setup**: Automatically configures profile-specific settings (Work vs Personal), builds Zotra Server for Emacs Org-Roam, and sets up Voxtype models.
+
+* Dependency & Program Management
+
+System dependencies, fonts, binary aliases, and per-program preferred installation channels are defined in ~packages.json~.
+
+** Useful Commands
+
+- Check missing system dependencies without installing:
+  #+begin_src sh
+  ./install --check-only
+  #+end_src
+
+- Interactively execute missing package installations:
+  #+begin_src sh
+  ./install --install
+  #+end_src
+
+- View detailed documentation and notes for any program or font:
+  #+begin_src sh
+  ./install info i3status-rs
+  ./install info autotiling-rs
+  ./install info swaync
+  #+end_src
 
 * Wayland / Sway Environment Setup
 
-** 1. Install Required Packages
-
-*** Debian / gLinux (Work)
-#+begin_src sh
-sudo apt update && sudo apt install -y \
-  zsh sway swaylock swayidle sway-notification-center mako-notifier kanshi \
-  grim slurp wl-clipboard rofi brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager btop network-manager-tui \
-  kitty fcitx5 dunst feh pandoc gnuplot notmuch lieer vlc libreoffice \
-  clisp pcre2-utils darktable digikam clinfo flatpak
-#+end_src
-
-*** Fedora (Personal)
-#+begin_src sh
-sudo dnf install -y \
-  zsh sway swaylock swayidle SwayNotificationCenter mako kanshi \
-  grim slurp wl-clipboard rofi brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager btop NetworkManager-tui \
-  kitty fcitx5 dunst feh pandoc gnuplot notmuch vlc libreoffice \
-  clisp pcre-tools darktable digikam clinfo flatpak
-#+end_src
-
-*** Build / Cargo & Custom Tools
-For TUI tools, node management, dictation, AI models, and custom components:
-#+begin_src sh
-# Flatpak binaries (ncspot)
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install -y flathub com.github.hrkfdn.ncspot
-
-# Cargo binaries
-cargo install bluetui i3status-rs
-cargo install --git https://github.com/ammgws/autotiling-rs
-
-# Node Version Manager (NVM)
-export NVM_DIR="$HOME/.config/nvm" && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
-
-# Local LLM Runner (Ollama)
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Gmail Lieer / gmi (Fedora/Pip fallback)
-pip install lieer
-
-# Voice Dictation (Voxtype)
-bash scripts/config/install_voxtype.sh
-
-# Wayland Property Inspector (wlprop)
-mkdir -p ~/.local/bin
-ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop
-#+end_src
-
-** 2. Shell & Environment Variables
+** Shell & Environment Variables
 
 Set Zsh as your default login shell:
 #+begin_src sh
 chsh -s $(which zsh)
 #+end_src
 
-Ensure the following environment variables are set (e.g. in =~/.profile= or =~/.zshrc=):
+Ensure environment variables are set in =~/.profile= or =~/.zshrc=:
 #+begin_src sh
 export XDG_CURRENT_DESKTOP=sway
 export XDG_SESSION_TYPE=wayland
@@ -80,7 +55,7 @@ export MOZ_ENABLE_WAYLAND=1
 export QT_QPA_PLATFORM=wayland
 #+end_src
 
-** 3. Systemd User Services Setup
+** Systemd User Services Setup
 
 Enable user-level systemd target and notification services:
 #+begin_src sh
@@ -88,13 +63,6 @@ systemctl --user daemon-reload
 systemctl --user enable --now sway-session.target
 systemctl --user enable --now notify-listener.service
 systemctl --user enable --now notify-tunnel.service
-#+end_src
-
-** 4. Verification
-
-Verify all expected binaries are installed and accessible in your =$PATH=:
-#+begin_src sh
-bash check_programs.sh
 #+end_src
 
 * Email Setup (Lieer / Notmuch)

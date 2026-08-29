@@ -1,0 +1,1409 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "programs": [
+    {
+      "id": "autotiling-rs",
+      "binary": [
+        "autotiling-rs"
+      ],
+      "description": "`autotiling-rs` is an automatic layout switcher for Sway and i3 that toggles split orientation between horizontal and vertical based on container window dimensions, creating a Dwindle or Fibonacci spiral pattern.",
+      "doc": [
+        "# autotiling-rs",
+        "",
+        "`autotiling-rs` is an automatic layout switcher for Sway and i3 that toggles split orientation between horizontal and vertical based on container window dimensions, creating a Dwindle or Fibonacci spiral pattern.",
+        "",
+        "## Installation",
+        "",
+        "* **Debian / gLinux (Work)**:",
+        "  Install using Cargo to compile the binary directly into `~/.cargo/bin`:",
+        "  ```bash",
+        "  cargo install --git https://github.com/ammgws/autotiling-rs",
+        "  ```",
+        "* **Fedora (Personal)**:",
+        "  Install via Cargo using the Fedora Rust toolchain:",
+        "  ```bash",
+        "  sudo dnf install cargo",
+        "  cargo install --git https://github.com/ammgws/autotiling-rs",
+        "  ```",
+        "* **Python Alternative (`autotiling`)**:",
+        "  If building from source via Cargo is inconvenient, you can install the equivalent Python version via package managers:",
+        "  ```bash",
+        "  sudo apt install autotiling  # Debian / gLinux",
+        "  pip install autotiling       # Fedora / general",
+        "  ```"
+      ],
+      "packages": {
+        "cargo": "--git https://github.com/ammgws/autotiling-rs",
+        "apt": "autotiling",
+        "pip": "autotiling"
+      },
+      "preferred_sources": [
+        "cargo",
+        "apt",
+        "pip"
+      ]
+    },
+    {
+      "id": "bluetui",
+      "binary": [
+        "bluetui"
+      ],
+      "description": "`bluetui` is a TUI utility for managing Bluetooth devices and connections. Configuration is located at `~/.config/bluetui/config.toml`.",
+      "doc": [
+        "# bluetui",
+        "",
+        "`bluetui` is a TUI utility for managing Bluetooth devices and connections. Configuration is located at `~/.config/bluetui/config.toml`.",
+        "",
+        "## Installation",
+        "",
+        "*   **Cargo (Debian / gLinux / Fedora)**:",
+        "    ```bash",
+        "    cargo install bluetui",
+        "    ```"
+      ],
+      "packages": {
+        "cargo": "bluetui"
+      },
+      "preferred_sources": [
+        "cargo"
+      ]
+    },
+    {
+      "id": "brightnessctl",
+      "binary": [
+        "brightnessctl"
+      ],
+      "description": "`brightnessctl` is a utility for controlling device display brightness.",
+      "doc": [
+        "# brightnessctl",
+        "",
+        "`brightnessctl` is a utility for controlling device display brightness.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install brightnessctl",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install brightnessctl",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "brightnessctl",
+        "dnf": "brightnessctl"
+      }
+    },
+    {
+      "id": "btop",
+      "binary": [
+        "btop"
+      ],
+      "description": "`btop` is a terminal resource monitor showing usage and stats for processor, memory, disks, network, and processes.",
+      "doc": [
+        "# btop",
+        "",
+        "`btop` is a terminal resource monitor showing usage and stats for processor, memory, disks, network, and processes.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install btop",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install btop",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "btop",
+        "dnf": "btop"
+      }
+    },
+    {
+      "id": "clisp",
+      "binary": [
+        "clisp"
+      ],
+      "description": "`clisp` is an implementation of ANSI Common Lisp, used in Emacs helper functions for number formatting.",
+      "doc": [
+        "# clisp",
+        "",
+        "`clisp` is an implementation of ANSI Common Lisp, used in Emacs helper functions for number formatting.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install clisp",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install clisp",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "clisp",
+        "dnf": "clisp"
+      }
+    },
+    {
+      "id": "darktable",
+      "binary": [
+        "darktable"
+      ],
+      "description": "`darktable` is an open-source photography workflow application and RAW developer.",
+      "doc": [
+        "# darktable",
+        "",
+        "`darktable` is an open-source photography workflow application and RAW developer.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install darktable clinfo",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install darktable clinfo",
+        "    ```",
+        "",
+        "## OpenCL Hardware Acceleration Setup",
+        "",
+        "Darktable uses **OpenCL** to accelerate image rendering, demosaicing, and export operations using the GPU.",
+        "",
+        "### 1. Install OpenCL Runtime Drivers",
+        "",
+        "*   **NVIDIA GPUs**:",
+        "    *   *Debian / gLinux*: `sudo apt install nvidia-opencl-icd`",
+        "    *   *Fedora*: `sudo dnf install xorg-x11-drv-nvidia-cuda`",
+        "*   **Intel GPUs (Broadwell or newer / Arc)**:",
+        "    *   *Debian / gLinux*: `sudo apt install intel-opencl-icd`",
+        "    *   *Fedora*: `sudo dnf install intel-compute-runtime`",
+        "*   **AMD GPUs**:",
+        "    *   *Debian / gLinux*: `sudo apt install mesa-opencl-icd` or ROCm driver",
+        "    *   *Fedora*: `sudo dnf install mesa-ocl-drivers` or `rocm-clinfo`",
+        "",
+        "### 2. Verify GPU OpenCL Detection",
+        "",
+        "Run `clinfo` in your terminal to verify that your GPU device and OpenCL platform are detected:",
+        "```bash",
+        "clinfo | grep -E \"Platform Name|Device Name\"",
+        "```",
+        "",
+        "### 3. Test & Enable OpenCL in Darktable",
+        "",
+        "Launch Darktable from the terminal with OpenCL debugging enabled to test performance:",
+        "```bash",
+        "darktable -d opencl",
+        "```",
+        "",
+        "Inside Darktable, ensure OpenCL is enabled:",
+        "1. Open **Preferences** (gear icon at top right).",
+        "2. Go to the **Processing** tab.",
+        "3. Under **CPU/GPU/Memory**, check **activate OpenCL support**.",
+        "4. Set **opencl scheduling profile** to `default` or `very fast GPU`."
+      ],
+      "packages": {
+        "apt": "darktable",
+        "dnf": "darktable"
+      }
+    },
+    {
+      "id": "digikam",
+      "binary": [
+        "digikam"
+      ],
+      "description": "`digikam` is an advanced open-source digital photo management application.",
+      "doc": [
+        "# digikam",
+        "",
+        "`digikam` is an advanced open-source digital photo management application.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install digikam",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install digikam",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "digikam",
+        "dnf": "digikam"
+      }
+    },
+    {
+      "id": "doom",
+      "binary": [
+        "doom"
+      ],
+      "description": "`doom` (Doom Emacs) is an Emacs framework for hackers and keyboard enthusiasts.",
+      "doc": [
+        "# doom",
+        "",
+        "`doom` (Doom Emacs) is an Emacs framework for hackers and keyboard enthusiasts.",
+        "",
+        "## Installation",
+        "",
+        "*   **Git Clone / Setup**:",
+        "    ```bash",
+        "    git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs",
+        "    ~/.config/emacs/bin/doom install",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "doom",
+        "dnf": "doom"
+      },
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs && ~/.config/emacs/bin/doom install",
+      "check_script": "test -d $HOME/.config/emacs"
+    },
+    {
+      "id": "dunst",
+      "binary": [
+        "dunst"
+      ],
+      "description": "`dunst` is a lightweight notification daemon.",
+      "doc": [
+        "# dunst",
+        "",
+        "`dunst` is a lightweight notification daemon.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install dunst",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install dunst",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "dunst",
+        "dnf": "dunst"
+      }
+    },
+    {
+      "id": "emacs",
+      "binary": [
+        "emacs"
+      ],
+      "description": "`emacs` is an extensible, customizable, free/libre text editor and computing environment.",
+      "doc": [
+        "# emacs",
+        "",
+        "`emacs` is an extensible, customizable, free/libre text editor and computing environment.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install emacs",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install emacs",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "emacs",
+        "dnf": "emacs"
+      }
+    },
+    {
+      "id": "fcitx5",
+      "binary": [
+        "fcitx5"
+      ],
+      "description": "`fcitx5` is a flexible multilingual input method framework for Linux and Wayland.",
+      "doc": [
+        "# fcitx5",
+        "",
+        "`fcitx5` is a flexible multilingual input method framework for Linux and Wayland.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install fcitx5",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install fcitx5",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "fcitx5",
+        "dnf": "fcitx5"
+      }
+    },
+    {
+      "id": "feh",
+      "binary": [
+        "feh"
+      ],
+      "description": "`feh` is a lightweight X11/Wayland image viewer used by Emacs for buffer image galleries.",
+      "doc": [
+        "# feh",
+        "",
+        "`feh` is a lightweight X11/Wayland image viewer used by Emacs for buffer image galleries.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install feh",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install feh",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "feh",
+        "dnf": "feh"
+      }
+    },
+    {
+      "id": "flatpak",
+      "binary": [
+        "flatpak"
+      ],
+      "description": "`flatpak` is a utility for software deployment, package management, and application virtualization on Linux.",
+      "doc": [
+        "# flatpak",
+        "",
+        "`flatpak` is a utility for software deployment, package management, and application virtualization on Linux.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install flatpak",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install flatpak",
+        "    ```",
+        "",
+        "## Add Flathub Repository",
+        "",
+        "```bash",
+        "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
+        "```"
+      ],
+      "packages": {
+        "apt": "flatpak",
+        "dnf": "flatpak"
+      }
+    },
+    {
+      "id": "font-manager",
+      "binary": [
+        "font-manager"
+      ],
+      "description": "`font-manager` is a font management application for GTK Desktop Environments.",
+      "doc": [
+        "# font-manager",
+        "",
+        "`font-manager` is a font management application for GTK Desktop Environments.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install font-manager",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install font-manager",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "font-manager",
+        "dnf": "font-manager"
+      }
+    },
+    {
+      "id": "fzf",
+      "binary": [
+        "fzf"
+      ],
+      "description": "`fzf` is a general-purpose command-line fuzzy finder.",
+      "doc": [
+        "# fzf",
+        "",
+        "`fzf` is a general-purpose command-line fuzzy finder.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install fzf",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install fzf",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "fzf",
+        "dnf": "fzf"
+      }
+    },
+    {
+      "id": "gmi",
+      "binary": [
+        "gmi",
+        "lieer"
+      ],
+      "description": "`gmi` (Lieer) is a fast 2-way Gmail sync tool for Notmuch, used in Emacs for sending and syncing email.",
+      "doc": [
+        "# gmi (lieer)",
+        "",
+        "`gmi` (Lieer) is a fast 2-way Gmail sync tool for Notmuch, used in Emacs for sending and syncing email.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install lieer",
+        "    ```",
+        "*   **Fedora / Pip (Personal)**:",
+        "    ```bash",
+        "    pip install lieer",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "lieer",
+        "pip": "lieer"
+      },
+      "preferred_sources": [
+        "apt",
+        "pip"
+      ]
+    },
+    {
+      "id": "gnuplot",
+      "binary": [
+        "gnuplot"
+      ],
+      "description": "`gnuplot` is a command-line driven graphing utility used in Emacs for generating plots from Org mode tables and code blocks.",
+      "doc": [
+        "# gnuplot",
+        "",
+        "`gnuplot` is a command-line driven graphing utility used in Emacs for generating plots from Org mode tables and code blocks.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install gnuplot",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install gnuplot",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "gnuplot",
+        "dnf": "gnuplot"
+      }
+    },
+    {
+      "id": "grim",
+      "binary": [
+        "grim"
+      ],
+      "description": "`grim` is a command-line screenshot utility for Wayland compositors.",
+      "doc": [
+        "# grim",
+        "",
+        "`grim` is a command-line screenshot utility for Wayland compositors.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install grim",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install grim",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "grim",
+        "dnf": "grim"
+      }
+    },
+    {
+      "id": "i3status-rs",
+      "binary": [
+        "i3status-rs",
+        "i3status-rust"
+      ],
+      "description": "`i3status-rs` (`i3status-rust`) is a feature-rich status bar generator written in Rust, used by Sway.",
+      "doc": [
+        "# i3status-rs / i3status-rust",
+        "",
+        "`i3status-rs` (`i3status-rust`) is a feature-rich status bar generator written in Rust, used by Sway.",
+        "",
+        "## Installation",
+        "",
+        "*   **Cargo (Debian / gLinux / Universal)**:",
+        "    ```bash",
+        "    cargo install i3status-rs",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf copr enable atim/i3status-rust",
+        "    sudo dnf install i3status-rust",
+        "    ```"
+      ],
+      "packages": {
+        "cargo": "i3status-rs",
+        "apt": "i3status-rs",
+        "dnf": {
+          "package": "i3status-rust",
+          "repo_enable": "sudo dnf copr enable -y atim/i3status-rust"
+        }
+      },
+      "preferred_sources": [
+        "cargo",
+        "dnf",
+        "apt"
+      ]
+    },
+    {
+      "id": "input-remapper-control",
+      "binary": [
+        "input-remapper-control",
+        "input-remapper-gtk",
+        "input-remapper-service"
+      ],
+      "description": "`input-remapper` (CLI: `input-remapper-control`) is an input key mapping tool for Linux/Wayland.",
+      "doc": [
+        "# input-remapper-control (input-remapper)",
+        "",
+        "`input-remapper` (CLI: `input-remapper-control`) is an input key mapping tool for Linux/Wayland.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install input-remapper",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install input-remapper",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "input-remapper",
+        "dnf": "input-remapper"
+      }
+    },
+    {
+      "id": "kanshi",
+      "binary": [
+        "kanshi"
+      ],
+      "description": "`kanshi` allows dynamic display configuration for Wayland compositors (like Sway), switching monitor profiles when displays are plugged or unplugged.",
+      "doc": [
+        "# kanshi",
+        "",
+        "`kanshi` allows dynamic display configuration for Wayland compositors (like Sway), switching monitor profiles when displays are plugged or unplugged.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install kanshi",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install kanshi",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "kanshi",
+        "dnf": "kanshi"
+      }
+    },
+    {
+      "id": "kitty",
+      "binary": [
+        "kitty"
+      ],
+      "description": "`kitty` is a GPU-accelerated terminal emulator, used as the primary terminal emulator in Sway.",
+      "doc": [
+        "# kitty",
+        "",
+        "`kitty` is a GPU-accelerated terminal emulator, used as the primary terminal emulator in Sway.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install kitty",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install kitty",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "kitty",
+        "dnf": "kitty"
+      }
+    },
+    {
+      "id": "libreoffice",
+      "binary": [
+        "libreoffice"
+      ],
+      "description": "`libreoffice` is an office suite used by Org mode for opening documents (`.doc`, `.xls`, `.ppt`).",
+      "doc": [
+        "# libreoffice",
+        "",
+        "`libreoffice` is an office suite used by Org mode for opening documents (`.doc`, `.xls`, `.ppt`).",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install libreoffice",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install libreoffice",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "libreoffice",
+        "dnf": "libreoffice"
+      }
+    },
+    {
+      "id": "mako",
+      "binary": [
+        "mako"
+      ],
+      "description": "`mako` is a lightweight notification daemon for Wayland compositors.",
+      "doc": [
+        "# mako",
+        "",
+        "`mako` is a lightweight notification daemon for Wayland compositors.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install mako-notifier",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install mako",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "mako-notifier",
+        "dnf": "mako"
+      }
+    },
+    {
+      "id": "ncspot",
+      "binary": [
+        "ncspot"
+      ],
+      "description": "`ncspot` is an ncurses Spotify client written in Rust.",
+      "doc": [
+        "# ncspot",
+        "",
+        "`ncspot` is an ncurses Spotify client written in Rust.",
+        "",
+        "## Installation",
+        "",
+        "*   **Flathub (Preferred)**:",
+        "    ```bash",
+        "    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
+        "    flatpak install flathub com.github.hrkfdn.ncspot",
+        "    ```",
+        "*   **Cargo (Alternative)**:",
+        "    ```bash",
+        "    cargo install ncspot",
+        "    ```"
+      ],
+      "packages": {
+        "flatpak": "flathub com.github.hrkfdn.ncspot",
+        "cargo": "ncspot",
+        "dnf": "ncspot"
+      },
+      "preferred_sources": [
+        "flatpak",
+        "cargo",
+        "dnf"
+      ]
+    },
+    {
+      "id": "nmtui",
+      "binary": [
+        "nmtui"
+      ],
+      "description": "`nmtui` is a text user interface utility for controlling NetworkManager and managing Wi-Fi and network connections.",
+      "doc": [
+        "# nmtui",
+        "",
+        "`nmtui` is a text user interface utility for controlling NetworkManager and managing Wi-Fi and network connections.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install network-manager-tui",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install NetworkManager-tui",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "network-manager-tui",
+        "dnf": "NetworkManager-tui"
+      }
+    },
+    {
+      "id": "notmuch",
+      "binary": [
+        "notmuch"
+      ],
+      "description": "`notmuch` is a fast, global-search, tag-based email system used by Emacs for reading and managing email.",
+      "doc": [
+        "# notmuch",
+        "",
+        "`notmuch` is a fast, global-search, tag-based email system used by Emacs for reading and managing email.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install notmuch",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install notmuch",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "notmuch",
+        "dnf": "notmuch"
+      }
+    },
+    {
+      "id": "nvm",
+      "binary": [
+        "nvm"
+      ],
+      "description": "`nvm` (Node Version Manager) is used to install and manage Node.js versions.",
+      "doc": [
+        "# nvm",
+        "",
+        "`nvm` (Node Version Manager) is used to install and manage Node.js versions.",
+        "",
+        "## Installation & Update",
+        "",
+        "Use the following command to perform a fresh installation or update an existing NVM installation to the latest release:",
+        "",
+        "```bash",
+        "export NVM_DIR=\"$HOME/.config/nvm\"",
+        "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash",
+        "```"
+      ],
+      "packages": {
+        "apt": "nvm",
+        "dnf": "nvm"
+      },
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "export NVM_DIR=\"$HOME/.config/nvm\" && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash",
+      "env_var": "NVM_DIR"
+    },
+    {
+      "id": "ollama",
+      "binary": [
+        "ollama"
+      ],
+      "description": "`ollama` is a runner for local Large Language Models (LLMs) used by Emacs AI packages.",
+      "doc": [
+        "# ollama",
+        "",
+        "`ollama` is a runner for local Large Language Models (LLMs) used by Emacs AI packages.",
+        "",
+        "## Installation",
+        "",
+        "*   **cURL / Install Script**:",
+        "    ```bash",
+        "    curl -fsSL https://ollama.com/install.sh | sh",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "ollama",
+        "dnf": "ollama"
+      },
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "curl -fsSL https://ollama.com/install.sh | sh"
+    },
+    {
+      "id": "pandoc",
+      "binary": [
+        "pandoc"
+      ],
+      "description": "`pandoc` is a universal document converter used by Emacs for converting Markdown, Org, HTML, and other formats.",
+      "doc": [
+        "# pandoc",
+        "",
+        "`pandoc` is a universal document converter used by Emacs for converting Markdown, Org, HTML, and other formats.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install pandoc",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install pandoc",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "pandoc",
+        "dnf": "pandoc"
+      }
+    },
+    {
+      "id": "pcregrep",
+      "binary": [
+        "pcregrep",
+        "pcre2grep"
+      ],
+      "description": "`pcregrep` is a grep utility that uses Perl Compatible Regular Expressions, used in Emacs custom search functions.",
+      "doc": [
+        "# pcregrep",
+        "",
+        "`pcregrep` is a grep utility that uses Perl Compatible Regular Expressions, used in Emacs custom search functions.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install pcre2-utils",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install pcre-tools",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "pcre2-utils",
+        "dnf": "pcre-tools"
+      }
+    },
+    {
+      "id": "playerctl",
+      "binary": [
+        "playerctl"
+      ],
+      "description": "`playerctl` is a command-line utility and library for controlling media players supporting the MPRIS D-Bus interface.",
+      "doc": [
+        "# playerctl",
+        "",
+        "`playerctl` is a command-line utility and library for controlling media players supporting the MPRIS D-Bus interface.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install playerctl",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install playerctl",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "playerctl",
+        "dnf": "playerctl"
+      }
+    },
+    {
+      "id": "rofi",
+      "binary": [
+        "rofi",
+        "rofi-wayland"
+      ],
+      "description": "`rofi` is an application launcher, window switcher, and dmenu replacement (with native Wayland support).",
+      "doc": [
+        "# rofi",
+        "",
+        "`rofi` is an application launcher, window switcher, and dmenu replacement (with native Wayland support).",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install rofi",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install rofi",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "rofi",
+        "dnf": "rofi"
+      }
+    },
+    {
+      "id": "slurp",
+      "binary": [
+        "slurp"
+      ],
+      "description": "`slurp` allows selecting a region in a Wayland compositor (used with `grim` for area screenshots).",
+      "doc": [
+        "# slurp",
+        "",
+        "`slurp` allows selecting a region in a Wayland compositor (used with `grim` for area screenshots).",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install slurp",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install slurp",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "slurp",
+        "dnf": "slurp"
+      }
+    },
+    {
+      "id": "starship",
+      "binary": [
+        "starship"
+      ],
+      "description": "`starship` is a minimal, fast, and infinitely customizable prompt for any shell.",
+      "doc": [
+        "# starship",
+        "",
+        "`starship` is a minimal, fast, and infinitely customizable prompt for any shell.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install starship",
+        "    ```",
+        "    *Or official install script:*",
+        "    ```bash",
+        "    curl -sS https://starship.rs/install.sh | sh",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install starship",
+        "    ```"
+      ],
+      "packages": {
+        "cargo": "starship",
+        "apt": "starship",
+        "dnf": "starship"
+      },
+      "preferred_sources": [
+        "cargo",
+        "dnf",
+        "apt"
+      ]
+    },
+    {
+      "id": "sway",
+      "binary": [
+        "sway"
+      ],
+      "description": "`sway` is an i3-compatible Wayland compositor. It serves as the primary tiling window manager.",
+      "doc": [
+        "# sway",
+        "",
+        "`sway` is an i3-compatible Wayland compositor. It serves as the primary tiling window manager.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install sway",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install sway",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S sway",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "sway",
+        "dnf": "sway"
+      }
+    },
+    {
+      "id": "swayidle",
+      "binary": [
+        "swayidle"
+      ],
+      "description": "`swayidle` is an idle management daemon for Wayland compositors.",
+      "doc": [
+        "# swayidle",
+        "",
+        "`swayidle` is an idle management daemon for Wayland compositors.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install swayidle",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install swayidle",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S swayidle",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "swayidle",
+        "dnf": "swayidle"
+      }
+    },
+    {
+      "id": "swaylock",
+      "binary": [
+        "swaylock"
+      ],
+      "description": "`swaylock` is a screen locking utility for Wayland compositors like Sway.",
+      "doc": [
+        "# swaylock",
+        "",
+        "`swaylock` is a screen locking utility for Wayland compositors like Sway.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install swaylock",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install swaylock",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S swaylock",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "swaylock",
+        "dnf": "swaylock"
+      }
+    },
+    {
+      "id": "swaync",
+      "binary": [
+        "swaync",
+        "sway-notification-center"
+      ],
+      "description": "`swaync` (Sway Notification Center) is a GTK-based notification daemon and control center for Wayland compositors.",
+      "doc": [
+        "# swaync",
+        "",
+        "`swaync` (Sway Notification Center) is a GTK-based notification daemon and control center for Wayland compositors.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install sway-notification-center",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install SwayNotificationCenter",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "sway-notification-center",
+        "dnf": "SwayNotificationCenter"
+      }
+    },
+    {
+      "id": "unzip",
+      "binary": [
+        "unzip"
+      ],
+      "description": "`unzip` is a utility for extracting compressed ZIP archives.",
+      "doc": [
+        "# unzip",
+        "",
+        "`unzip` is a utility for extracting compressed ZIP archives.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install unzip",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install unzip",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "unzip",
+        "dnf": "unzip"
+      }
+    },
+    {
+      "id": "vlc",
+      "binary": [
+        "vlc"
+      ],
+      "description": "`vlc` is a multimedia player used by Org mode for playing audio and video file attachments.",
+      "doc": [
+        "# vlc",
+        "",
+        "`vlc` is a multimedia player used by Org mode for playing audio and video file attachments.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install vlc",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install vlc",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "vlc",
+        "dnf": "vlc"
+      }
+    },
+    {
+      "id": "voxtype",
+      "binary": [
+        "voxtype"
+      ],
+      "description": "`voxtype` is a fast local voice dictation tool for Linux/Wayland powered by Whisper.",
+      "doc": [
+        "# voxtype",
+        "",
+        "`voxtype` is a fast local voice dictation tool for Linux/Wayland powered by Whisper.",
+        "",
+        "## Installation",
+        "",
+        "*   **Dotfiles Installation Script**:",
+        "    Run the repo script to install the binary to `~/.local/bin/voxtype` and download Whisper models:",
+        "    ```bash",
+        "    bash scripts/config/install_voxtype.sh",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "voxtype",
+        "dnf": "voxtype"
+      },
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "bash scripts/config/install_voxtype.sh"
+    },
+    {
+      "id": "wl-copy",
+      "binary": [
+        "wl-copy",
+        "wl-paste"
+      ],
+      "description": "`wl-copy` and `wl-paste` are command-line copy/paste utilities for Wayland, provided by the `wl-clipboard` package.",
+      "doc": [
+        "# wl-copy (wl-clipboard)",
+        "",
+        "`wl-copy` and `wl-paste` are command-line copy/paste utilities for Wayland, provided by the `wl-clipboard` package.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install wl-clipboard",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install wl-clipboard",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "wl-clipboard",
+        "dnf": "wl-clipboard"
+      }
+    },
+    {
+      "id": "wlprop",
+      "binary": [
+        "wlprop"
+      ],
+      "description": "`wlprop` is a script for inspecting Wayland window properties on Sway/wlroots compositors (similar to `xprop` on X11).",
+      "doc": [
+        "# wlprop",
+        "",
+        "`wlprop` is a script for inspecting Wayland window properties on Sway/wlroots compositors (similar to `xprop` on X11).",
+        "",
+        "## Dependencies",
+        "",
+        "Requires the following packages:",
+        "* `sway` (`swaymsg`)",
+        "* `jq`",
+        "* `slurp`",
+        "* `gawk` / `awk`",
+        "",
+        "## Installation",
+        "",
+        "The script is tracked directly inside this repository under `scripts/utility/wlprop.sh`. To make it accessible in your `$PATH`:",
+        "",
+        "```bash",
+        "mkdir -p ~/.local/bin",
+        "ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop",
+        "```"
+      ],
+      "packages": {
+        "apt": "wlprop",
+        "dnf": "wlprop"
+      },
+      "preferred_sources": [
+        "custom"
+      ],
+      "custom_install": "mkdir -p ~/.local/bin && ln -sf ~/proj/dotfiles/scripts/utility/wlprop.sh ~/.local/bin/wlprop"
+    },
+    {
+      "id": "wtype",
+      "binary": [
+        "wtype"
+      ],
+      "description": "`wtype` is a Wayland text copy-paste/typing utility. It is required by Voxtype to type transcriptions into active windows.",
+      "doc": [
+        "# wtype",
+        "",
+        "`wtype` is a Wayland text copy-paste/typing utility. It is required by Voxtype to type transcriptions into active windows.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian/Ubuntu/gLinux**:",
+        "    ```bash",
+        "    sudo apt install wtype",
+        "    ```",
+        "*   **Arch Linux**:",
+        "    ```bash",
+        "    sudo pacman -S wtype",
+        "    ```",
+        "*   **Fedora**:",
+        "    ```bash",
+        "    sudo dnf install wtype",
+        "    ```"
+      ],
+      "packages": {
+        "apt": "wtype",
+        "dnf": "wtype"
+      }
+    },
+    {
+      "id": "zsh",
+      "binary": [
+        "zsh"
+      ],
+      "description": "`zsh` (Z Shell) is an advanced shell used as the primary command-line interpreter in this environment.",
+      "doc": [
+        "# zsh",
+        "",
+        "`zsh` (Z Shell) is an advanced shell used as the primary command-line interpreter in this environment.",
+        "",
+        "## Installation",
+        "",
+        "*   **Debian / gLinux (Work)**:",
+        "    ```bash",
+        "    sudo apt install zsh",
+        "    ```",
+        "*   **Fedora (Personal)**:",
+        "    ```bash",
+        "    sudo dnf install zsh",
+        "    ```",
+        "",
+        "## Set as Default Shell",
+        "",
+        "```bash",
+        "chsh -s $(which zsh)",
+        "```"
+      ],
+      "packages": {
+        "apt": "zsh",
+        "dnf": "zsh"
+      }
+    }
+  ],
+  "fonts": [
+    {
+      "id": "fira-code",
+      "font_pattern": "Fira Code",
+      "description": "Monospaced font with programming ligatures",
+      "doc": [
+        "# Fira Code Font",
+        "",
+        "Installed via package managers: `fonts-firacode` (APT) or `fira-code-fonts` (DNF)."
+      ],
+      "packages": {
+        "dnf": "fira-code-fonts",
+        "apt": "fonts-firacode"
+      }
+    },
+    {
+      "id": "fira-code-nerd",
+      "font_pattern": "FiraCode Nerd Font",
+      "description": "Fira Code font patched with Nerd Font icons",
+      "doc": [
+        "# Fira Code Nerd Font",
+        "",
+        "Provides icons for terminal prompts (Starship) and status bars."
+      ],
+      "packages": {
+        "dnf": "nerd-fonts",
+        "apt": "fonts-nerd-font"
+      }
+    }
+  ]
+}

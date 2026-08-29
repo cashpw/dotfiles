@@ -1,4 +1,29 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+set -e
 
-cd ~/.local/share/zotra-server
-#npm install
+BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ZOTRA_REPO_DIR="${BASEDIR}/local/share/zotra-server"
+ZOTRA_LINK_DIR="$HOME/.local/share/zotra-server"
+
+echo "Setting up Zotra Server..."
+
+if [ -d "${ZOTRA_REPO_DIR}" ]; then
+  echo "Updating Zotra submodules recursively from repo..."
+  git -C "${BASEDIR}" submodule update --init --recursive local/share/zotra-server
+fi
+
+if [ ! -d "${ZOTRA_LINK_DIR}" ]; then
+  echo "Error: Directory ${ZOTRA_LINK_DIR} does not exist."
+  echo "Ensure dotbot symlinks have been installed."
+  exit 1
+fi
+
+cd "${ZOTRA_LINK_DIR}"
+
+if command -v npm >/dev/null 2>&1; then
+  echo "Installing Zotra npm dependencies..."
+  npm install --production --quiet
+  echo "Zotra Server setup complete."
+else
+  echo "WARNING: 'npm' is not installed. Skipping Zotra Server npm dependency installation."
+fi

@@ -2,14 +2,49 @@
 
 set -e
 
+BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="install.conf.yaml"
 DOTBOT_DIR="dotbot"
-
 DOTBOT_BIN="bin/dotbot"
-BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${BASEDIR}"
-git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-git submodule update --init --recursive "${DOTBOT_DIR}"
 
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+# Pass 'info' command directly to dependency manager
+if [ "$1" = "info" ]; then
+  shift
+  python3 scripts/setup/check_deps.py info "$@"
+  exit 0
+fi
+
+# Pass '--check-only' command directly
+if [ "$1" = "--check-only" ]; then
+  python3 scripts/setup/check_deps.py
+  exit 0
+fi
+
+echo "================================================================"
+echo " Dotfiles Installation & Setup Bootstrapper"
+echo "================================================================"
+
+# Step 1: System Dependency & Package Resolution
+python3 scripts/setup/check_deps.py "$@"
+
+echo ""
+read -p "Proceed with Dotbot configuration symlinking? [Y/n] " -n 1 -r REPLY
+echo ""
+
+if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+  echo ""
+  echo "[Phase 2] Initializing Dotbot submodules..."
+  git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
+  git submodule update --init --recursive "${DOTBOT_DIR}"
+
+  echo "[Phase 2] Symlinking configuration files via Dotbot..."
+  "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}"
+
+  echo ""
+  echo "[Phase 3] Executing Post-Installation Setup..."
+  bash scripts/setup/post_install.sh
+else
+  echo "Dotbot symlinking cancelled by user."
+fi

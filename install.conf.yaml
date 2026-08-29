@@ -8,6 +8,7 @@
   - ~/.scripts
   - ~/.config
   - ~/.gemini
+  - ~/.local/bin
   - ~/.local/share/zotra-server
   - ~/.local/share/icons/google-material
 
@@ -32,7 +33,6 @@
       path: local/share/icons/google-material/*
     ~/.Xresources:
     ~/.Xresources.base:
-    ~/.xinitrc:
     ~/.profile:
     ~/.profile-personal:
     ~/.zshrc:
@@ -42,23 +42,3 @@
     ~/.bash_aliases:
     ~/.chrome-remote-desktop-session:
     ~/.notmuch-config:
-
-- shell:
-  - [git submodule update --init --recursive, Installing submodules.]
-  -
-    command: bash install_zotra.sh
-    description: Installing zotra
-    stdout: true
-  -
-    command: bash check_programs.sh
-    description: Checking for expected programs.
-    stdout: true
-  -
-    command: bash scripts/config/setup_env.sh
-    description: Setting up environment-specific configurations.
-    stdout: true
-  -
-    command: bash scripts/config/install_voxtype.sh
-    description: Installing Voxtype and models
-    stdout: true
-

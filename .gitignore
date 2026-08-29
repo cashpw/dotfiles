@@ -21,8 +21,10 @@ config/systemd/user/jetski-*
 config/systemd/user/default.target.wants/jetski-*
 config/systemd/user/timers.target.wants/jetski-*
 
-# zsh
+# zsh & python
 *.zwc
+__pycache__/
+*.pyc
 /config/sway/config.d/env.conf
 /config/sway/config.d/autostart-env.conf
 /config/kanshi/config
