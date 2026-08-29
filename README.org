@@ -45,7 +45,7 @@ cargo install bluetui ncspot i3status-rs
 cargo install --git https://github.com/ammgws/autotiling-rs
 
 # Node Version Manager (NVM)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.config/nvm" && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 
 # Local LLM Runner (Ollama)
 curl -fsSL https://ollama.com/install.sh | sh
