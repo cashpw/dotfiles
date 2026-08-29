@@ -1,12 +1,65 @@
 #+title: Dotfiles
 
-My personal dotfiles, configurations, etc.
+Personal dotfiles and system configurations for Wayland/Sway desktop environment, Doom Emacs, Zsh, and development tools.
 
-* Install
+* Installation
 
-#+begin_src sh :results output
-git clone ...
-cd dotfiles
+#+begin_src sh
+git clone git@github.com:cashpw/dotfiles.git ~/.config/dotfiles
+cd ~/.config/dotfiles
 git submodule update --init --recursive
+bash check_programs.sh
+#+end_src
+
+* Wayland / Sway Environment Setup
+
+** 1. Install Required Packages
+
+*** Debian / gLinux (Work)
+#+begin_src sh
+sudo apt update && sudo apt install -y \
+  sway swaylock swayidle sway-notification-center mako-notifier kanshi \
+  grim slurp wl-clipboard rofi i3status-rust brightnessctl playerctl \
+  input-remapper wtype fzf unzip font-manager
+#+end_src
+
+*** Fedora (Personal)
+#+begin_src sh
+sudo dnf install -y \
+  sway swaylock swayidle swaynotificationcenter mako kanshi \
+  grim slurp wl-clipboard rofi-wayland i3status-rs brightnessctl playerctl \
+  input-remapper wtype fzf unzip font-manager
+#+end_src
+
+*** Build / Cargo Tools
+For custom Wayland layout components like ~autotiling-rs~:
+#+begin_src sh
+cargo install --git https://github.com/ammgws/autotiling-rs
+#+end_src
+
+** 2. Environment Variables
+
+Ensure the following environment variables are set (e.g. in =~/.profile= or =~/.zshrc=):
+#+begin_src sh
+export XDG_CURRENT_DESKTOP=sway
+export XDG_SESSION_TYPE=wayland
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM=wayland
+#+end_src
+
+** 3. Systemd User Services Setup
+
+Enable user-level systemd target and notification services:
+#+begin_src sh
+systemctl --user daemon-reload
+systemctl --user enable --now sway-session.target
+systemctl --user enable --now notify-listener.service
+systemctl --user enable --now notify-tunnel.service
+#+end_src
+
+** 4. Verification
+
+Verify all expected binaries are installed and accessible in your =$PATH=:
+#+begin_src sh
 bash check_programs.sh
 #+end_src
