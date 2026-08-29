@@ -85,3 +85,50 @@ Verify all expected binaries are installed and accessible in your =$PATH=:
 #+begin_src sh
 bash check_programs.sh
 #+end_src
+
+* Email Setup (Lieer / Notmuch)
+
+Lieer (~gmi~) is used to synchronize Gmail repositories locally into Notmuch-indexed maildirs.
+
+** 1. Create Mail Directories
+
+#+begin_src sh
+mkdir -p ~/mail/cashbweaver.gmail
+mkdir -p ~/mail/cash.cashpw
+#+end_src
+
+** 2. Initialize & Authenticate Accounts
+
+*** Personal Gmail (~cashbweaver.gmail~)
+#+begin_src sh
+cd ~/mail/cashbweaver.gmail
+gmi init
+gmi auth
+gmi sync
+#+end_src
+
+*** Personal Domain (~cash.cashpw~)
+#+begin_src sh
+cd ~/mail/cash.cashpw
+gmi init
+gmi auth
+gmi sync
+#+end_src
+
+** 3. Configure Notmuch Indexer
+
+Run initial Notmuch database setup pointing to your =~/{mail_dir}=:
+#+begin_src sh
+notmuch setup
+notmuch new
+#+end_src
+
+** 4. Automatic Mail Syncing
+
+Execute the provided helper scripts or configure them via cron/systemd timers for periodic background mail syncing:
+#+begin_src sh
+bash scripts/mail/sync_cashbweaver_gmail_email.sh
+bash scripts/mail/sync_cash_cashpw_email.sh
+# or generic wrapper:
+bash scripts/mail/sync_local_email.sh cashbweaver.gmail
+#+end_src
