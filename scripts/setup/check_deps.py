@@ -246,6 +246,7 @@ def main():
     parser.add_argument("target", nargs="?", help="Target program ID for 'info' action")
     parser.add_argument("--json", action="store_true", help="Output status in JSON format")
     parser.add_argument("--install", action="store_true", help="Interactively run generated package manager commands")
+    parser.add_argument("--exit-code", action="store_true", help="Exit with code 2 if missing dependencies are detected")
     args = parser.parse_args()
 
     if not MANIFEST_PATH.exists():
@@ -281,6 +282,8 @@ def main():
             "missing_fonts": [f["id"] for f in results["missing_fonts"]]
         }
         print(json.dumps(out, indent=2))
+        if (results["missing_progs"] or results["missing_fonts"]) and args.exit_code:
+            sys.exit(2)
         return
 
     print("=" * 64)
@@ -316,6 +319,12 @@ def main():
             print(f"{cmd}")
         print("-" * 64)
 
+    print("\n" + "-" * 64)
+    print(" ℹ Note: Some custom binaries or environment paths (e.g. Doom Emacs,")
+    print("   NVM, local scripts like 'wlprop') will only be discovered in $PATH")
+    print("   after symlinking dotfiles or executing custom setup scripts.")
+    print("-" * 64)
+
     if args.install and commands:
         print("\nExecuting package installation commands...")
         for label, cmd in commands:
@@ -328,6 +337,9 @@ def main():
                 subprocess.run(cmd, shell=True)
             else:
                 print(f"Skipped {label}.")
+
+    if (missing_progs or missing_fonts) and args.exit_code:
+        sys.exit(2)
 
 if __name__ == "__main__":
     main()

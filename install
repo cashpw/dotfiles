@@ -27,24 +27,37 @@ echo " Dotfiles Installation & Setup Bootstrapper"
 echo "================================================================"
 
 # Step 1: System Dependency & Package Resolution
-python3 scripts/setup/check_deps.py "$@"
+set +e
+python3 scripts/setup/check_deps.py --exit-code "$@"
+DEPS_STATUS=$?
+set -e
 
-echo ""
-read -p "Proceed with Dotbot configuration symlinking? [Y/n] " -n 1 -r REPLY
-echo ""
-
-if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+if [ $DEPS_STATUS -eq 2 ]; then
   echo ""
-  echo "[Phase 2] Initializing Dotbot submodules..."
-  git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-  git submodule update --init --recursive "${DOTBOT_DIR}"
-
-  echo "[Phase 2] Symlinking configuration files via Dotbot..."
-  "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}"
-
+  read -p "Proceed with Dotbot configuration symlinking anyway? [y/N] " -n 1 -r REPLY
   echo ""
-  echo "[Phase 3] Executing Post-Installation Setup..."
-  bash scripts/setup/post_install.sh
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Dotbot symlinking skipped. Install missing packages above, then rerun ./install."
+    exit 0
+  fi
 else
-  echo "Dotbot symlinking cancelled by user."
+  echo ""
+  read -p "Proceed with Dotbot configuration symlinking? [Y/n] " -n 1 -r REPLY
+  echo ""
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    echo "Dotbot symlinking cancelled by user."
+    exit 0
+  fi
 fi
+
+echo ""
+echo "[Phase 2] Initializing Dotbot submodules..."
+git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
+git submodule update --init --recursive "${DOTBOT_DIR}"
+
+echo "[Phase 2] Symlinking configuration files via Dotbot..."
+"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}"
+
+echo ""
+echo "[Phase 3] Executing Post-Installation Setup..."
+bash scripts/setup/post_install.sh
