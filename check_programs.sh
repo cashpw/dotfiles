@@ -8,6 +8,7 @@ declare -A ALIASES=(
   ["i3status-rs"]="i3status-rs i3status-rust"
   ["rofi"]="rofi rofi-wayland"
   ["nvm"]="nvm node"
+  ["gmi"]="gmi lieer"
 )
 
 is_installed() {
