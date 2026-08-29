@@ -20,7 +20,7 @@ bash check_programs.sh
 sudo apt update && sudo apt install -y \
   sway swaylock swayidle sway-notification-center mako-notifier kanshi \
   grim slurp wl-clipboard rofi i3status-rust brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager
+  input-remapper wtype fzf unzip font-manager btop network-manager
 #+end_src
 
 *** Fedora (Personal)
@@ -28,12 +28,13 @@ sudo apt update && sudo apt install -y \
 sudo dnf install -y \
   sway swaylock swayidle swaynotificationcenter mako kanshi \
   grim slurp wl-clipboard rofi-wayland i3status-rs brightnessctl playerctl \
-  input-remapper wtype fzf unzip font-manager
+  input-remapper wtype fzf unzip font-manager btop NetworkManager-tui
 #+end_src
 
 *** Build / Cargo Tools
-For custom Wayland layout components like ~autotiling-rs~:
+For TUI tools and custom Wayland components (e.g. ~bluetui~, ~autotiling-rs~):
 #+begin_src sh
+cargo install bluetui
 cargo install --git https://github.com/ammgws/autotiling-rs
 #+end_src
 
